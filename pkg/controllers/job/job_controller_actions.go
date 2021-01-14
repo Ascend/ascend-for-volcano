@@ -248,7 +248,6 @@ func (cc *jobcontroller) syncJob(jobInfo *apis.JobInfo, updateStatus state.Updat
 				newJob.Namespace, newJob.Name, e)
 			return e
 		}
-
 		return nil
 	}
 
