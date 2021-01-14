@@ -15,8 +15,13 @@
 
 # The base image is created via `Dockerfile.base`, the base image is cached
 # since the required packages change very rarely.
-FROM volcanosh/vc-webhook-manager-base:1.3.1
+FROM volcanosh/vc-webhook-manager-base:v1.0.1-r40
 
-ADD vc-webhook-manager /vc-webhook-manager
-ADD gen-admission-secret.sh /gen-admission-secret.sh
-ENTRYPOINT ["/vc-webhook-manager"]
+COPY vc-webhook-manager /vc-webhook-manager
+COPY gen-admission-secret.sh /gen-admission-secret.sh
+
+RUN adduser -h /home/hwMindX -u 9000 -D -s /bin/ash hwMindX && \
+    chown -R hwMindX:hwMindX /vc-webhook-manager /gen-admission-secret.sh && \
+    chmod 500 /vc-webhook-manager /gen-admission-secret.sh
+
+USER hwMindX

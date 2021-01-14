@@ -15,5 +15,10 @@
 
 FROM alpine:latest
 
-ADD vc-controller-manager /vc-controller-manager
-ENTRYPOINT ["/vc-controller-manager"]
+COPY vc-controller-manager /vc-controller-manager
+
+RUN adduser -h /home/hwMindX -u 9000 -D -s /bin/ash hwMindX && \
+    chown -R hwMindX:hwMindX /vc-controller-manager && \
+    chmod 500 /vc-controller-manager
+
+USER hwMindX

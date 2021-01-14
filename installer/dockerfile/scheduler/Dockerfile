@@ -15,5 +15,10 @@
 
 FROM alpine:latest
 
-ADD vc-scheduler /vc-scheduler
-ENTRYPOINT ["/vc-scheduler"]
+COPY vc-scheduler /vc-scheduler
+
+RUN adduser -h /home/hwMindX -u 9000 -D -s /bin/ash hwMindX && \
+    chown -R hwMindX:hwMindX /vc-scheduler && \
+    chmod 500 /vc-scheduler
+
+USER hwMindX
