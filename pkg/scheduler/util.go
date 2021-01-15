@@ -14,6 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+/*
+
+Package scheduler is using for getting scheduler config.
+
+*/
 package scheduler
 
 import (
@@ -32,6 +37,8 @@ var defaultSchedulerConf = `
 actions: "enqueue, allocate, backfill"
 tiers:
 - plugins:
+  - name: topology910
+- plugins:
   - name: priority
   - name: gang
 - plugins:
@@ -39,6 +46,10 @@ tiers:
   - name: predicates
   - name: proportion
   - name: nodeorder
+configurations:
+  - arguments: {"host-arch":"huawei-arm|huawei-x86",
+  "accelerator":"huawei-Ascend910|nvidia-tesla-v100|nvidia-tesla-p40",
+  "accelerator-type":"card|module"}
 `
 
 func loadSchedulerConf(confStr string) ([]framework.Action, []conf.Tier, []conf.Configuration, error) {
