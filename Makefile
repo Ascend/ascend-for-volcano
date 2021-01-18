@@ -11,16 +11,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# 202006028:add support for arm64.
+# Huawei technologies Co.,Ltd.
 
 BIN_DIR=_output/bin
 RELEASE_DIR=_output/release
-REL_OSARCH=linux/amd64
+REL_OSARCH_ROOT=linux/
 REPO_PATH=volcano.sh/volcano
 IMAGE_PREFIX=volcanosh/vc
 
 include Makefile.def
 
 .EXPORT_ALL_VARIABLES:
+
+REL_OSARCH=$(REL_OSARCH_ROOT)
+ARMARCH=arm64
+X86ARCH=amd64
+MACHINE_ARCH=$(shell uname -m)
+ifeq ($(MACHINE_ARCH),aarch64)
+        REL_OSARCH=$(REL_OSARCH_ROOT)$(ARMARCH)
+else
+        REL_OSARCH=$(REL_OSARCH_ROOT)$(X86ARCH)
+endif
 
 all: vc-scheduler vc-controller-manager vc-webhook-manager vcctl command-lines
 

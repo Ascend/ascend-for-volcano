@@ -67,6 +67,8 @@ spec:
       labels:
         app: volcano-admission
     spec:
+      nodeSelector:
+        masterselector: dls-master-node
       serviceAccount: {{ .Release.Name }}-admission
       {{ if .Values.basic.image_pull_secret }}
       imagePullSecrets:
@@ -79,22 +81,42 @@ spec:
             - --ca-cert-file=/admission.local.config/certificates/ca.crt
             - --webhook-namespace={{ .Release.Namespace }}
             - --webhook-service-name={{ .Release.Name }}-admission-service
-            - --logtostderr
             - --port=443
+            - --logtostderr=false
+            - --log_dir=/var/log/
+            - --log_file=/var/log/volcano-admission.log
             - -v=4
             - 2>&1
           image: {{.Values.basic.admission_image_name}}:{{.Values.basic.image_tag_version}}
           imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              memory: 300Mi
+              cpu: 500m
+            limits:
+              memory: 300Mi
+              cpu: 500m
           name: admission
           volumeMounts:
             - mountPath: /admission.local.config/certificates
               name: admission-certs
               readOnly: true
+            - name: admission-log
+              mountPath: /var/log
+            - name: localtime
+              mountPath: /etc/localtime
       volumes:
         - name: admission-certs
           secret:
             defaultMode: 420
             secretName: {{.Values.basic.admission_secret_name}}
+        - name: admission-log
+          hostPath:
+            path: /var/log/atlas_dls/volcano-admission
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+
 
 ---
 apiVersion: v1

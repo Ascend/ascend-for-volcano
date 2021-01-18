@@ -32,6 +32,8 @@ var defaultSchedulerConf = `
 actions: "enqueue, allocate, backfill"
 tiers:
 - plugins:
+  - name: topology910
+- plugins:
   - name: priority
   - name: gang
 - plugins:

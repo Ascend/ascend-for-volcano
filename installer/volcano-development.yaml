@@ -17,6 +17,7 @@ data:
       - name: priority
       - name: gang
       - name: conformance
+      - name: topology910
     - plugins:
       - name: drf
       - name: predicates
@@ -117,8 +118,9 @@ spec:
       labels:
         app: volcano-scheduler
     spec:
+      nodeSelector:
+        masterselector: dls-master-node
       serviceAccount: volcano-scheduler
-      
       containers:
         - name: volcano-scheduler
           image: volcanosh/vc-scheduler:latest
@@ -207,8 +209,9 @@ spec:
       labels:
         app: volcano-admission
     spec:
+      nodeSelector:
+        masterselector: dls-master-node
       serviceAccount: volcano-admission
-      
       containers:
         - args:
             - --tls-cert-file=/admission.local.config/certificates/tls.crt
@@ -360,8 +363,9 @@ spec:
       labels:
         app: volcano-controller
     spec:
+      nodeSelector:
+        masterselector: dls-master-node
       serviceAccount: volcano-controllers
-      
       containers:
           - name: volcano-controllers
             image: volcanosh/vc-controller-manager:latest
