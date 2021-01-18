@@ -85,6 +85,8 @@ spec:
       labels:
         app: volcano-controller
     spec:
+      nodeSelector:
+        masterselector: dls-master-node
       serviceAccount: {{ .Release.Name }}-controllers
       {{ if .Values.basic.image_pull_secret }}
       imagePullSecrets:
@@ -93,8 +95,32 @@ spec:
       containers:
           - name: {{ .Release.Name }}-controllers
             image: {{.Values.basic.controller_image_name}}:{{.Values.basic.image_tag_version}}
-            args:
-              - --logtostderr
-              - -v=4
-              - 2>&1
             imagePullPolicy: "IfNotPresent"
+            command: [ "/bin/bash", "-c", "--"]
+            args: [ "umask 027;/vc-controller-manager
+                    --logtostderr=false --log_dir=/var/log/ --log_file=/var/log/volcano-controller.log -v=4" ]
+            resources:
+              requests:
+                memory: 300Mi
+                cpu: 500m
+              limits:
+                memory: 300Mi
+                cpu: 500m
+            volumeMounts:
+              - name: device-volcanocontroller
+                mountPath: /var/log
+              - name: timezone
+                mountPath: /etc/timezone
+              - name: localtime
+                mountPath: /etc/localtime
+      volumes:
+          - name: device-volcanocontroller
+            hostPath:
+              path: /var/log/atlas_dls/volcano-controller
+          - name: timezone
+            hostPath:
+              path: /etc/timezone
+          - name: localtime
+            hostPath:
+              path: /etc/localtime
+

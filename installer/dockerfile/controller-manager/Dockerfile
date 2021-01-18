@@ -13,7 +13,12 @@
 # limitations under the License.
 
 
-FROM alpine:latest
+FROM ubuntu:18.04 as build
 
-ADD vc-controller-manager /vc-controller-manager
-ENTRYPOINT ["/vc-controller-manager"]
+COPY vc-controller-manager /vc-controller-manager
+
+RUN useradd -d /home/hwMindX -u 9000 -m -s /bin/bash hwMindX && \
+    chown -R hwMindX:hwMindX /vc-controller-manager && \
+    chmod 500 /vc-controller-manager
+
+USER hwMindX

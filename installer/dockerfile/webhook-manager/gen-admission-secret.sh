@@ -58,10 +58,14 @@ if [[ ! -x "$(command -v openssl)" ]]; then
     exit 1
 fi
 
-CERTDIR=/tmp
+CERTDIR=/tmp/volcano
 
 function createCerts() {
   echo "creating certs in dir ${CERTDIR} "
+
+  mkdir -p ${CERTDIR}
+  chmod -R 600 ${CERTDIR}
+  chown -R hwMindX:hwMindX ${CERTDIR}
 
   cat <<EOF > ${CERTDIR}/csr.conf
 [req]

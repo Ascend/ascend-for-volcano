@@ -13,6 +13,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# 202006028:add support for arm64
+# Huawei technologies Co.,Ltd.
 
 set -o errexit
 set -o nounset
@@ -25,6 +28,13 @@ export RELEASE_FOLDER=${VK_ROOT}/${RELEASE_DIR}
 export HELM_VER=${HELM_VER:-v2.13.0}
 export VOLCANO_IMAGE_TAG=${TAG:-"latest"}
 export YAML_FILENAME=volcano-${VOLCANO_IMAGE_TAG}.yaml
+
+REL_OSARCH=amd64
+ARMARCH=arm64
+machine_arch=`uname -a`
+if [[ $machine_arch =~ "aarch" ]]; then
+	REL_OSARCH=$ARMARCH
+fi
 
 LOCAL_OS=${OSTYPE}
 case $LOCAL_OS in
@@ -44,9 +54,9 @@ esac
 if [[ ! -f "${HELM_BIN_DIR}/version.helm.${HELM_VER}" ]] ; then
     TD=$(mktemp -d)
     cd "${TD}" && \
-        curl -Lo "${TD}/helm.tgz" "https://storage.googleapis.com/kubernetes-helm/helm-${HELM_VER}-${LOCAL_OS}-amd64.tar.gz" && \
+        curl -Lo "${TD}/helm.tgz" "https://storage.googleapis.com/kubernetes-helm/helm-${HELM_VER}-${LOCAL_OS}-${REL_OSARCH}.tar.gz" && \
         tar xfz helm.tgz && \
-        mv ${LOCAL_OS}-amd64/helm "${HELM_BIN_DIR}/helm-${HELM_VER}" && \
+        mv ${LOCAL_OS}-${REL_OSARCH}/helm "${HELM_BIN_DIR}/helm-${HELM_VER}" && \
         cp "${HELM_BIN_DIR}/helm-${HELM_VER}" "${HELM_BIN_DIR}/helm" && \
         chmod +x ${HELM_BIN_DIR}/helm
         rm -rf "${TD}" && \
