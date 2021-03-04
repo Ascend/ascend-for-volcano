@@ -24,8 +24,13 @@ package topology910
 import (
 	"errors"
 	"fmt"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 	"strings"
+	"volcano.sh/volcano/pkg/apis/scheduling"
+	"volcano.sh/volcano/pkg/apis/scheduling/v1beta1"
+	"volcano.sh/volcano/pkg/cli/vjobs"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 )
@@ -42,11 +47,48 @@ func getJobHandle(obj interface{}) *api.JobInfo {
 
 func getJobReqNpuNum(job *api.JobInfo) (int, error) {
 	jobNpu, ok := job.TotalRequest.ScalarResources[npu910CardName]
-	if !ok {
-		return 0, errors.New("not npu job")
+	if !ok || int(jobNpu/npuHex) == 0 {
+		return 0, errors.New("job no use npu")
 	}
 
 	return int(jobNpu / npuHex), nil
+}
+
+func getNpuJobDefaultSelector() map[string]string {
+	var defaultSchedulerConfig map[string]string
+	defaultSchedulerConfig = make(map[string]string, magicNumInt3)
+
+	defaultSchedulerConfig[archSelector] = huaweiArchArm + "|" + huaweiArchX86
+
+	return defaultSchedulerConfig
+}
+
+// for verify npu job must config selector
+func validNpuJobSelector(job *api.JobInfo) error {
+	jobSelectors, errJob := getJobSelectors(job)
+	if errJob != nil {
+		klog.V(logErrorLev).Infof("%s %s, err: %v", PluginName, job.Name, errJob)
+		return fmt.Errorf("job(%s) selector error:%v", job.Name, errJob)
+	}
+
+	defaultSchedulerConfig := getNpuJobDefaultSelector()
+
+	for defKey, defValue := range defaultSchedulerConfig {
+		jobValue, jobOk := jobSelectors[defKey]
+		if !jobOk {
+			msg := fmt.Errorf("%s has no selector:%s", job.Name, defKey)
+			klog.V(logErrorLev).Infof("%s : %v", PluginName, msg)
+			return msg
+		}
+
+		if !strings.Contains(defValue, jobValue) {
+			msg := fmt.Errorf("%s selector[%s]:[%s] not in [%s]", job.Name, defKey, jobValue, defValue)
+			klog.V(logErrorLev).Infof("%s : %v", PluginName, msg)
+			return msg
+		}
+	}
+
+	return nil
 }
 
 func isNpuJob(job *api.JobInfo) error {
@@ -101,14 +143,15 @@ func validJobSelector(job *api.JobInfo, confs []conf.Configuration) error {
 	jobSelectors, errJob := getJobSelectors(job)
 	if errJob != nil {
 		klog.V(logErrorLev).Infof("%s JobName: %s, err: %v,", PluginName, job.Name, errJob)
-		return fmt.Errorf("job(%s) selector error", job.Name)
+		return fmt.Errorf("job(%s) selector error (%v)", job.Name, errJob)
 	}
 
 	schedulerConf := getSchedulerSelectorConfig(confs)
 	if schedulerConf == nil || len(schedulerConf) == 0 {
-		// get scheduler selector configure failed, but need continue
-		klog.V(logErrorLev).Infof("%s JobName: %s get selector nil", PluginName, job.Name)
-		return errors.New("get scheduler selector nil")
+		// get scheduler selector configure failed, including default
+		msg := "scheduler selector get nil"
+		klog.V(logErrorLev).Infof("%s : %s", PluginName, msg)
+		return errors.New(msg)
 	}
 
 	// check the job selector
@@ -124,7 +167,7 @@ func validJobSelector(job *api.JobInfo, confs []conf.Configuration) error {
 func isJobCardModel(job *api.JobInfo) bool {
 	// one task is card module, the job is
 	for _, task := range job.Tasks {
-		ok := validCardModule(task)
+		ok := isTaskOfCardMode(task)
 		if !ok {
 			klog.V(logDebugLev).Infof("task(%s) is module mode", task.Name)
 			return false
@@ -134,11 +177,19 @@ func isJobCardModel(job *api.JobInfo) bool {
 	return true
 }
 
-func validMouldeJobNpuNum(job *api.JobInfo) error {
+func validJobNpuNum(job *api.JobInfo, jobType string) error {
 	jobNpu, err := getJobReqNpuNum(job)
 	if err != nil {
 		klog.V(logDebugLev).Infof("job(%s) get npu number failed", job.Name)
 		return err
+	}
+
+	if jobType == cardAcceleratorType {
+		// only support 1,2,3*n
+		if jobNpu == magicNumInt1 || jobNpu%magicNumInt2 == 0 {
+			return nil
+		}
+		return fmt.Errorf("illegal req_npu num: %d in %s mode", jobNpu, cardAcceleratorType)
 	}
 
 	if jobNpu == magicNumInt1 ||
@@ -148,7 +199,7 @@ func validMouldeJobNpuNum(job *api.JobInfo) error {
 		return nil
 	}
 
-	return fmt.Errorf("illegal req_npu num:%d", jobNpu)
+	return fmt.Errorf("illegal req_npu num:%d in %s mode", jobNpu, moduleAcceleratorType)
 }
 
 // less 8 npu, can only one task.
@@ -165,7 +216,7 @@ func checkSingleTrainMode(job *api.JobInfo) error {
 }
 
 // more 8 npu required,every task need 8 npu.
-func checkDistributeTrainMode(job *api.JobInfo) error {
+func checkDistributeTrainMode(job *api.JobInfo, nodeNpu int) error {
 	taskNum := len(job.Tasks)
 
 	klog.V(logDebugLev).Infof("%s checkDistributeTrainMode job(%s) has %d tasks", PluginName, job.Name, taskNum)
@@ -178,43 +229,59 @@ func checkDistributeTrainMode(job *api.JobInfo) error {
 
 		klog.V(logDebugLev).Infof("%s checkDistributeTrainMode task(%s) has %d npu", PluginName, task.Name, taskNpu)
 
-		if taskNpu != nodeNpuNumber {
-			return fmt.Errorf("DistributeTrain Job: %s  has %d tasks, and req npu illegal: %d", job.Name, taskNum, taskNpu)
+		if taskNpu != nodeNpu {
+			return fmt.Errorf("DistributeTrain %s req npu [%d] but node [%d]", task.Name, taskNpu, nodeNpu)
 		}
 	}
 
 	return nil
 }
 
-func validJobNpuMode(job *api.JobInfo) error {
+func validJobNpuMode(job *api.JobInfo, jobType string) error {
 	var jobNpu int
 	var err error
+	var nodeNpu = nodeNpuNumber
 
 	if jobNpu, err = getJobReqNpuNum(job); err != nil {
 		return err
 	}
 
-	if jobNpu <= nodeNpuNumber {
+	if jobType == cardAcceleratorType {
+		nodeNpu = magicNumInt2
+	}
+
+	if jobNpu <= nodeNpu {
 		if err = checkSingleTrainMode(job); err != nil {
 			return err
 		}
+		return nil
 	}
 
-	if jobNpu > nodeNpuNumber {
-		if err = checkDistributeTrainMode(job); err != nil {
-			return err
-		}
+	if err = checkDistributeTrainMode(job, nodeNpu); err != nil {
+		return err
 	}
 
 	return nil
 }
 
 func validModuleJob(job *api.JobInfo) error {
-	if jobError := validMouldeJobNpuNum(job); jobError != nil {
+	if jobError := validJobNpuNum(job, moduleAcceleratorType); jobError != nil {
 		return jobError
 	}
 
-	if jobError := validJobNpuMode(job); jobError != nil {
+	if jobError := validJobNpuMode(job, moduleAcceleratorType); jobError != nil {
+		return jobError
+	}
+
+	return nil
+}
+
+func validCardJob(job *api.JobInfo) error {
+	if jobError := validJobNpuNum(job, cardAcceleratorType); jobError != nil {
+		return jobError
+	}
+
+	if jobError := validJobNpuMode(job, cardAcceleratorType); jobError != nil {
 		return jobError
 	}
 
@@ -224,36 +291,37 @@ func validModuleJob(job *api.JobInfo) error {
 func validJobModel(job *api.JobInfo) error {
 	if isJobCardModel(job) {
 		// card mode job
-		// valid nothing
 		klog.V(logDebugLev).Infof("job(%s) is card mode", job.Name)
+		if errJob := validCardJob(job); errJob != nil {
+			return errJob
+		}
 		return nil
 	}
 	// module mode
 	klog.V(logDebugLev).Infof("job(%s) is module mode", job.Name)
-	errJob := validModuleJob(job)
-	if errJob != nil {
+	if errJob := validModuleJob(job); errJob != nil {
 		return errJob
 	}
 	return nil
 }
 
 func validNpuJob(job *api.JobInfo, confs []conf.Configuration) *api.ValidateResult {
-	// 1.validate job selector
-	if errSelector := validJobSelector(job, confs); errSelector != nil {
-		klog.V(logErrorLev).Infof("%s JobName: %s, err: %v,", PluginName, job.Name, errSelector)
+	// 1.validate npu job selector
+	if err := validNpuJobSelector(job); err != nil {
+		klog.V(logErrorLev).Infof("%s err: %v", PluginName, err)
 		return &api.ValidateResult{
 			Pass:    false,
-			Reason:  "Job selector error",
-			Message: fmt.Sprintf("JobName: %s, err:%v", job.Name, errSelector),
+			Reason:  err.Error(),
+			Message: fmt.Sprintf("validNpuJob err: %v", err),
 		}
 	}
 	// 2.validate job model
-	if errTask := validJobModel(job); errTask != nil {
-		klog.V(logErrorLev).Infof("%s err: %v", PluginName, errTask)
+	if errJob := validJobModel(job); errJob != nil {
+		klog.V(logErrorLev).Infof("%s err: %v", PluginName, errJob)
 		return &api.ValidateResult{
 			Pass:    false,
 			Reason:  "job model error",
-			Message: fmt.Sprintf("JobName: %s, err: %v", job.Name, errTask),
+			Message: fmt.Sprintf("%s, err: %v", job.Name, errJob),
 		}
 	}
 
@@ -267,14 +335,31 @@ func validJobFn(obj interface{}, confs []conf.Configuration) *api.ValidateResult
 	job := getJobHandle(obj)
 	if job == nil {
 		klog.V(logErrorLev).Infof("%s validJobFn convert <%v> failed", PluginName, obj)
+		reason := "job convert failed"
 		return &api.ValidateResult{
 			Pass:    false,
-			Message: fmt.Sprintf("%s validJobFn convert <%v> failed", PluginName, obj),
+			Reason:  reason,
+			Message: fmt.Sprintf("%s validJobFn [%v] failed:%v", PluginName, obj, reason),
+		}
+	}
+
+	// validate job selector, for all kinds
+	if errSelector := validJobSelector(job, confs); errSelector != nil {
+		klog.V(logErrorLev).Infof("%s %s, err: %v", PluginName, job.Name, errSelector)
+		if setErr := setJobFailed(job, errSelector); setErr != nil {
+			klog.V(logErrorLev).Infof("%s set job failed: %v", PluginName, setErr)
+		}
+
+		msg := "Job selector error"
+		return &api.ValidateResult{
+			Pass:    false,
+			Reason:  msg,
+			Message: fmt.Sprintf("%v", errSelector),
 		}
 	}
 
 	if err := isNpuJob(job); err != nil {
-		klog.V(logInfoLev).Infof("%s job(%s) : %v", PluginName, job.Name, err)
+		klog.V(logDebugLev).Infof("%s job(%s) : %v", PluginName, job.Name, err)
 		// to be Compatible with CPU scenarios ,cannot return error
 		return nil
 	}
@@ -282,11 +367,89 @@ func validJobFn(obj interface{}, confs []conf.Configuration) *api.ValidateResult
 	result := validNpuJob(job, confs)
 	if result != nil {
 		klog.V(logErrorLev).Infof("%s validNpuJob failed:%v", PluginName, result.Message)
-
+		if setErr := setJobFailed(job, result.Message); setErr != nil {
+			klog.V(logErrorLev).Infof("%s set job failed: %v", PluginName, setErr)
+		}
 		return result
 	}
 
-	klog.V(logInfoLev).Infof("%s validJobFn check ok, JobName: %s, reqNpu:%v", PluginName, job.Name, job.TotalRequest)
+	klog.V(logInfoLev).Infof("%s check ok, Job(%s), reqNpu(%v)", PluginName, job.Name, job.TotalRequest)
 
 	return nil
+}
+
+func initPgLabels(jobs map[api.JobID]*api.JobInfo) {
+	for _, jobIn := range jobs {
+		jobIn.PodGroup.Labels = make(map[string]string, magicNumInt3)
+	}
+	klog.V(logDebugLev).Infof("%s pd init ok", PluginName)
+}
+
+func updatePgLabels(job *api.JobInfo, key, value string) error {
+	if job.PodGroup.Labels == nil {
+		return errors.New("nil pg labels")
+	}
+	job.PodGroup.Labels[key] = value
+
+	return nil
+}
+
+func setJobStatusByScheduler(job *api.JobInfo, status scheduling.PodGroupPhase) error {
+	job.PodGroup.Status.Phase = status
+	return updatePgLabels(job, string(status), "scheduler")
+}
+
+func updateJobFailedReason(job *api.JobInfo, reason interface{}) error {
+	var flag = false
+	var reasonTmp string
+
+	// for set job not meet case
+	jobError, jobOk := reason.(string)
+	if jobOk {
+		// job failed
+		job.JobFitErrors = jobError
+		reasonTmp = jobError
+		flag = true
+	}
+	// for set nodes not meet case
+	nodeErrors, nodeOk := reason.(map[api.TaskID]*api.FitErrors)
+	if nodeOk {
+		job.NodesFitErrors = nodeErrors
+		for _, nodeErrors := range nodeErrors {
+			reasonTmp += nodeErrors.Error()
+		}
+		flag = true
+	}
+	// other type are not allowed
+	if !flag {
+		return fmt.Errorf("aseert reason(%v) failed", reason)
+	}
+	// for write failed reason into pod
+	updatePodsFailedReason(job, reasonTmp)
+	// for write failed reason into vcjob
+	updatePodGroupFailedReason(job, reasonTmp)
+
+	return nil
+}
+
+func updatePodGroupFailedReason(job *api.JobInfo, reasonTmp string) {
+	jc := scheduling.PodGroupCondition{
+		Type:               scheduling.PodGroupConditionType("ScheduledFailed"),
+		Status:             v1.ConditionTrue,
+		LastTransitionTime: metav1.Now(),
+		TransitionID:       "",
+		Reason:             v1beta1.PodFailedReason,
+		Message:            reasonTmp,
+	}
+	job.PodGroup.Status.Conditions = append(job.PodGroup.Status.Conditions, jc)
+}
+
+func setJobFailed(job *api.JobInfo, reason interface{}) error {
+	if err := updateJobFailedReason(job, reason); err != nil {
+		klog.V(logErrorLev).Infof("update job(%s) failed reason(%v),failed!", job.Name, reason)
+	}
+
+	klog.V(logInfoLev).Infof("set job(%s) to failed, reason:%v", job.Name, reason)
+
+	return setJobStatusByScheduler(job, scheduling.PodGroupPhase(vjobs.Failed))
 }

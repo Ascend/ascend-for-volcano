@@ -44,8 +44,6 @@ const (
 	PodNamePrefix  = "p"
 	osArchX86      = "x86"
 	osArchArm      = "arm"
-	huaWeiArchArm  = "huawei-arm"
-	huaWeiArchX86  = "huawei-x86"
 	labelSize      = 8
 	annSize        = 8
 	nodePoolSize   = 8
@@ -56,13 +54,13 @@ const (
 )
 
 type testCaseStruct struct {
-	name      string
 	podGroups []*schedulingv1.PodGroup
 	pods      []*v1.Pod
 	nodes     []*api.NodeInfo
 	queues    []*schedulingv1.Queue
 	arguments framework.Arguments
 	expected  interface{}
+	name      string
 }
 
 type NodeAllocate struct {
@@ -119,7 +117,7 @@ func addNodeNpuTop(Annotations map[string]string, top string) {
 
 func addNodeSelector(node *v1.Node, nodeArch string) error {
 	if nodeArch == osArchArm {
-		node.Labels[archSelector] = huaWeiArchArm
+		node.Labels[archSelector] = huaweiArchArm
 		return nil
 	}
 
@@ -166,12 +164,12 @@ func buildNpuNode(nodeInfo testNodeInfo) *api.NodeInfo {
 
 func addPodLabels(pod *v1.Pod, nodeArch string) error {
 	if nodeArch == osArchArm {
-		pod.Spec.NodeSelector[archSelector] = huaWeiArchArm
+		pod.Spec.NodeSelector[archSelector] = huaweiArchArm
 		return nil
 	}
 
 	if nodeArch == osArchX86 {
-		pod.Spec.NodeSelector[archSelector] = huaWeiArchX86
+		pod.Spec.NodeSelector[archSelector] = huaweiArchX86
 		return nil
 	}
 

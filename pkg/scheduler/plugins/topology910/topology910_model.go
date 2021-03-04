@@ -30,9 +30,10 @@ import (
 )
 
 const (
-	leftHccsName  = "leftHccs"
-	rightHccsName = "rightHccs"
-	allHccsName   = "allHccs"
+	leftHccsName        = "leftHccs"
+	rightHccsName       = "rightHccs"
+	allHccsName         = "allHccs"
+	nodeNoFitNPUWarning = "node no fit npu number"
 )
 
 type hccsInf struct {
@@ -97,7 +98,7 @@ func initOneCardPriNodeGroups(
 	// priority:1>3>2>4
 	if sNodeInf.leftNpuNum == magicNumInt1 || sNodeInf.rightNpuNum == magicNumInt1 {
 		// A group
-		addPriNodeGroupFn(priNodeGroups[magicNumInt0], "A", magicNumInt1)
+		addPriNodeGroupFn(priNodeGroups[0], "A", magicNumInt1)
 		return nil
 	}
 
@@ -122,7 +123,7 @@ func initOneCardPriNodeGroups(
 	// no satisfy HCCS,8*N need whole nodes
 	klog.V(logErrorLev).Infof("%s initOneCardPriNodeGroups node(%s) (left :%d,right :%d) cannot fit",
 		PluginName, sNodeInf.nodeName, sNodeInf.leftNpuNum, sNodeInf.rightNpuNum)
-	return errors.New(nodeNoFitNPU)
+	return errors.New(nodeNoFitNPUWarning)
 }
 
 // the police for Two need card
@@ -134,7 +135,7 @@ func initTwoCardPriNodeGroups(
 	// priority：2>npuNumPerHccs>3
 	if sNodeInf.leftNpuNum == magicNumInt2 || sNodeInf.rightNpuNum == magicNumInt2 {
 		// A group
-		addPriNodeGroupFn(priNodeGroups[magicNumInt0], "A", magicNumInt2)
+		addPriNodeGroupFn(priNodeGroups[0], "A", magicNumInt2)
 		return nil
 	}
 
@@ -153,7 +154,7 @@ func initTwoCardPriNodeGroups(
 	// no satisfy HCCS,8*N need whole nodes
 	klog.V(logErrorLev).Infof("%s initTwoCardPriNodeGroups node(%s) (left :%d,right :%d) cannot fit 2",
 		PluginName, sNodeInf.nodeName, sNodeInf.leftNpuNum, sNodeInf.rightNpuNum)
-	return errors.New(nodeNoFitNPU)
+	return errors.New(nodeNoFitNPUWarning)
 }
 
 // the police four one need card
@@ -164,13 +165,13 @@ func initFourCardPriNodeGroups(
 	// only can allocate 4
 	if sNodeInf.leftNpuNum == npuNumPerHccs || sNodeInf.rightNpuNum == npuNumPerHccs {
 		// A group
-		addPriNodeGroupFn(priNodeGroups[magicNumInt0], "A", npuNumPerHccs)
+		addPriNodeGroupFn(priNodeGroups[0], "A", npuNumPerHccs)
 		return nil
 	}
 	// no satisfy HCCS,8*N need whole nodes
 	klog.V(logErrorLev).Infof("%s initFoureCardPriNodeGroups node(%s) (left :%d,right :%d) cannot fit 4",
 		PluginName, sNodeInf.nodeName, sNodeInf.leftNpuNum, sNodeInf.rightNpuNum)
-	return errors.New(nodeNoFitNPU)
+	return errors.New(nodeNoFitNPUWarning)
 }
 
 // the police four one need card
@@ -180,13 +181,13 @@ func initEightCardPriNodeGroups(
 	addPriNodeGroupFn initPriNodeGroupFn) error {
 
 	if sNodeInf.allNpuNum == nodeNpuNumber {
-		addPriNodeGroupFn(priNodeGroups[magicNumInt0], "A", nodeNpuNumber)
+		addPriNodeGroupFn(priNodeGroups[0], "A", nodeNpuNumber)
 		return nil
 	}
 
 	klog.V(logErrorLev).Infof("%s initEightCardPriNodeGroups node(%s) (all:%d) cannot fit 8",
 		PluginName, sNodeInf.nodeName, sNodeInf.allNpuNum)
-	return errors.New(nodeNoFitNPU)
+	return errors.New(nodeNoFitNPUWarning)
 }
 
 // insert into group by police
@@ -198,7 +199,7 @@ func insertNodeInPriGroup(
 
 	var err error
 	switch taskReqNPU {
-	case magicNumInt0:
+	case 0:
 		klog.V(logInfoLev).Infof("%s initPriNodeGroups task npu is 0", PluginName)
 	case magicNumInt1:
 		err = initOneCardPriNodeGroups(sNodeInf, priNodeGroups, addPriNodeGroupFn)
@@ -223,7 +224,12 @@ func initPriNodeGroups(taskReqNPU int, nodes []*api.NodeInfo) ([]map[string]*npu
 	var err error
 	var priNodeGroups []map[string]*npuPriNodeInf
 
-	for i := magicNumInt0; i < npuNumPerHccs; i++ {
+	// for pipelined state the node npu is nil
+	if len(nodes) == 0 {
+		return nil, errors.New("nodes is empty")
+	}
+
+	for i := 0; i < npuNumPerHccs; i++ {
 		priNodeGroups = append(priNodeGroups, make(map[string]*npuPriNodeInf, 1))
 	}
 
@@ -290,9 +296,9 @@ func getBestPriNodeGroup(priNodeGroups []map[string]*npuPriNodeInf) (map[string]
 		return loopFlg
 	}
 	// loop capacity
-	for (capacity != magicNumInt0) && loopFlg {
+	for (capacity != 0) && loopFlg {
 		// loop 4 pri-node-list-group
-		i = magicNumInt0
+		i = 0
 		for i < npuNumPerHccs && loopFlg {
 			// to find node
 			loopFlg = findNodeInPriGroupFn()
@@ -335,7 +341,7 @@ func getBestNodeFromPriNodeGroup(selectPriGroup map[string]*npuPriNodeInf) (*npu
 	}
 
 	// loop capacity
-	for (capacity != magicNumInt0) && loopFlg {
+	for (capacity != 0) && loopFlg {
 		for _, priNodeInf := range selectPriGroup {
 			tmpPriNodeInf, loopFlg = getBetNodeFromGroupFn(capacity, priNodeInf)
 		}
@@ -405,16 +411,16 @@ func getBestNodeAndTop(needCards int, priNodeGroups []map[string]*npuPriNodeInf)
 
 func setSelectTopValue(needCards int, selectHCCS *hccsInf) ([]int, error) {
 	var setTop []int
-	i := magicNumInt0
+	i := 0
 	// select whole node
 	if needCards == nodeNpuNumber {
-		for i = magicNumInt0; i < nodeNpuNumber; i++ {
+		for i = 0; i < nodeNpuNumber; i++ {
 			setTop = append(setTop, i)
 		}
 		return setTop, nil
 	}
 
-	i = magicNumInt0
+	i = 0
 	for _, cardID := range selectHCCS.top {
 		if i < needCards {
 			setTop = append(setTop, cardID)
@@ -523,10 +529,10 @@ func batchNodeOrderFn(task *api.TaskInfo, nodes []*api.NodeInfo) (map[string]flo
 	scoreMp := initScoreMp(nodes, interPodAffinityScore)
 
 	// 1.Get the task's NPU request
-	taskReqNPU, taskError := getTaskNpuNum(task)
-	if taskError != nil {
+	taskReqNPU, errGet := getTaskNpuNum(task)
+	if errGet != nil {
 		// cannot return error for task is no npu kind possible.
-		klog.V(logErrorLev).Infof("%s batchNodeOrderFn task :%s,%v", PluginName, task.Name, taskError)
+		klog.V(logErrorLev).Infof("%s batchNodeOrderFn task :%s,%v", PluginName, task.Name, errGet)
 		// cannot return nil，will panic
 		return scoreMp, nil
 	}
@@ -536,8 +542,8 @@ func batchNodeOrderFn(task *api.TaskInfo, nodes []*api.NodeInfo) (map[string]flo
 	bestNodeName, top, errGet = getNpuAffinityBestNodeAndTop(taskReqNPU, nodes)
 	if errGet != nil {
 		// get suitable node failed
-		klog.V(logErrorLev).Infof("%s batchNodeOrderFn find none fit node for task:%s,require npu:%d",
-			PluginName, task.Name, taskReqNPU)
+		klog.V(logErrorLev).Infof("%s batchNodeOrderFn find none fit node for task[%s],require npu:%d, failed[%v]",
+			PluginName, task.Name, taskReqNPU, errGet)
 		return scoreMp, nil
 	}
 	klog.V(logInfoLev).Infof("%s batchNodeOrderFn Get task for NPU number:%d,node top:%v",
@@ -548,7 +554,7 @@ func batchNodeOrderFn(task *api.TaskInfo, nodes []*api.NodeInfo) (map[string]flo
 	if errGet != nil {
 		// get suitable node failed
 		klog.V(logErrorLev).Infof("%s scoreAndSetSelectNodes get err:%v", PluginName, errGet)
-		return scoreMp, nil
+		return scoreMp, errGet
 	}
 
 	klog.V(logInfoLev).Infof("%s Total Score for task %s/%s is: %v", PluginName,

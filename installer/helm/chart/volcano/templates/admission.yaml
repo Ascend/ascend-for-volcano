@@ -78,8 +78,8 @@ spec:
         - name: admission
           image: {{.Values.basic.admission_image_name}}:{{.Values.basic.image_tag_version}}
           imagePullPolicy: IfNotPresent
-          command: [ "/bin/ash", "-c", "--" ]
-          args: [ "umask 027; /vc-webhook-manager
+          command: [ "/bin/ash" ]
+          args: [ "-c", "umask 027; /vc-webhook-manager
                   --tls-cert-file=/admission.local.config/certificates/tls.crt
                   --tls-private-key-file=/admission.local.config/certificates/tls.key
                   --ca-cert-file=/admission.local.config/certificates/ca.crt

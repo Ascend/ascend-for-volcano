@@ -18,9 +18,11 @@ package job
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
+	"volcano.sh/volcano/pkg/apis/batch/v1alpha1"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/scheduling/v1beta1"
@@ -28,7 +30,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
-
 	batch "volcano.sh/volcano/pkg/apis/batch/v1alpha1"
 	bus "volcano.sh/volcano/pkg/apis/bus/v1alpha1"
 	"volcano.sh/volcano/pkg/apis/helpers"
@@ -419,6 +420,11 @@ func (cc *jobcontroller) updatePodGroup(oldObj, newObj interface{}) {
 			"Failed to find job in cache by PodGroup, this may not be a PodGroup for volcano job.")
 	}
 
+	if errJob := cc.setJobFailedFromScheduler(newPG); errJob == nil {
+		klog.V(3).Infof("Update job(%v) in pg ok", newPG.Name)
+		return
+	}
+
 	if newPG.Status.Phase != oldPG.Status.Phase {
 		req := apis.Request{
 			Namespace: newPG.Namespace,
@@ -431,6 +437,30 @@ func (cc *jobcontroller) updatePodGroup(oldObj, newObj interface{}) {
 		key := jobhelpers.GetJobKeyByReq(&req)
 		queue := cc.getWorkerQueue(key)
 		queue.Add(req)
+	}
+}
+
+func (cc *jobcontroller) setJobFailedFromScheduler(newPg *scheduling.PodGroup) error {
+	if v, ok := newPg.Labels["Failed"]; ok {
+		if v == "scheduler" {
+			cc.updatePodGroupStatus(newPg)
+			return nil
+		}
+	}
+	return errors.New("no Labels need set")
+}
+
+func (cc *jobcontroller) updatePodGroupStatus(newPg *scheduling.PodGroup) {
+	jobIn, err := cc.cache.Get(jobcache.JobKeyByName(newPg.Namespace, newPg.Name))
+	if err == nil {
+		klog.V(3).Infof("try make job(%s) failed", newPg.Name)
+		jobIn.Job.Status.State.Phase = v1alpha1.Failed
+		for _, cond := range newPg.Status.Conditions {
+			if cond.Type == "ScheduledFailed" {
+				jobIn.Job.Status.State.Reason = cond.Message
+			}
+		}
+		cc.updateJobStatus(jobIn.Job)
 	}
 }
 
