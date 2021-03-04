@@ -612,7 +612,6 @@ func (sc *SchedulerCache) taskUnschedulable(task *schedulingapi.TaskInfo, messag
 
 	if podConditionHaveUpdate(&pod.Status, condition) {
 		pod = pod.DeepCopy()
-
 		// The reason field in 'Events' should be "FailedScheduling", there is not constants defined for this in
 		// k8s core, so using the same string here.
 		// The reason field in PodCondition should be "Unschedulable"

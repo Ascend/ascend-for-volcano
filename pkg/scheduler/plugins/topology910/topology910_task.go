@@ -23,6 +23,7 @@ package topology910
 
 import (
 	"errors"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 	"strconv"
 	"time"
@@ -34,7 +35,7 @@ func getTaskSelectors(task *api.TaskInfo) map[string]string {
 }
 
 // true is card, false is module
-func validCardModule(task *api.TaskInfo) bool {
+func isTaskOfCardMode(task *api.TaskInfo) bool {
 	taskSelectors := getTaskSelectors(task)
 	if taskSelectors == nil || len(taskSelectors) == 0 {
 		klog.V(logDebugLev).Infof("task(%s) has no selectors", task.Name)
@@ -59,7 +60,7 @@ func validCardModule(task *api.TaskInfo) bool {
 
 func getTaskNpuNum(task *api.TaskInfo) (int, error) {
 	tmpNpu, ok := task.Resreq.ScalarResources[npu910CardName]
-	if !ok {
+	if !ok || int(tmpNpu/npuHex) == 0 {
 		return 0, errors.New("not npu task")
 	}
 
@@ -68,8 +69,8 @@ func getTaskNpuNum(task *api.TaskInfo) (int, error) {
 }
 
 func isNpuTask(task *api.TaskInfo) error {
-	_, ok := task.Resreq.ScalarResources[npu910CardName]
-	if !ok {
+	tmpNpu, ok := task.Resreq.ScalarResources[npu910CardName]
+	if !ok || int(tmpNpu/npuHex) == 0 {
 		return errors.New("not npu task")
 	}
 
@@ -87,4 +88,17 @@ func doSetPodNpuTopology(top []int, task *api.TaskInfo) error {
 	klog.V(logInfoLev).Infof("%s setNpuTopologyToPod task:%s top:%s", PluginName, task.Name, topologyStr)
 
 	return nil
+}
+
+func updatePodsFailedReason(job *api.JobInfo, reasonTmp string) {
+	for _, task := range job.Tasks {
+		condition := v1.PodCondition{
+			Type:    v1.PodScheduled,
+			Status:  v1.ConditionFalse,
+			Reason:  v1.PodReasonUnschedulable,
+			Message: reasonTmp,
+		}
+
+		task.Pod.Status.Conditions = append(task.Pod.Status.Conditions, condition)
+	}
 }

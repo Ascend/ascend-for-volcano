@@ -93,8 +93,8 @@ spec:
           - name: {{ .Release.Name }}-controllers
             image: {{.Values.basic.controller_image_name}}:{{.Values.basic.image_tag_version}}
             imagePullPolicy: "IfNotPresent"
-            command: [ "/bin/ash", "-c", "--"]
-            args: [ "umask 027;/vc-controller-manager
+            command: [ "/bin/ash" ]
+            args: [ "-c", "umask 027;/vc-controller-manager
                     --logtostderr=false --log_dir=/var/log/ --log_file=/var/log/volcano-controller.log -v=4 2>&1" ]
             resources:
               requests:

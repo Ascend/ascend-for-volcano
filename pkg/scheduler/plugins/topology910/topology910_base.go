@@ -35,24 +35,24 @@ const (
 	podPredicateTime  = "predicate-time"
 	nodeNpuNumber     = 8
 	// npu 910 card resource is named by npu device-plugin
-	npu910CardName      = "huawei.com/Ascend910"
-	logErrorLev         = 1
-	logWarningLev       = 2
-	logInfoLev          = 3
-	logDebugLev         = 4
-	npuHex              = 1000
-	archSelector        = "host-arch"
-	huaweiArchArm       = "huawei-arm"
-	huaweiArchX86       = "huawei-x86"
-	accelerator         = "accelerator"
-	acceleratorType     = "accelerator-type"
-	cardAcceleratorType = "card"
-	npuNumPerHccs       = 4
-	magicNumInt0        = 0
-	magicNumInt1        = 1
-	magicNumInt2        = 2
-	magicNumInt3        = 3
-	nodeNoFitNPU        = "node no fit npu number"
+	npu910CardName        = "huawei.com/Ascend910"
+	logErrorLev           = 1
+	logWarningLev         = 2
+	logInfoLev            = 3
+	logDebugLev           = 4
+	npuHex                = 1000
+	archSelector          = "host-arch"
+	huaweiArchArm         = "huawei-arm"
+	huaweiArchX86         = "huawei-x86"
+	accelerator           = "accelerator"
+	acceleratorValue      = "huawei.com-Ascend910"
+	acceleratorType       = "accelerator-type"
+	cardAcceleratorType   = "card"
+	moduleAcceleratorType = "module"
+	npuNumPerHccs         = 4
+	magicNumInt1          = 1
+	magicNumInt2          = 2
+	magicNumInt3          = 3
 )
 
 // set 910 card topology in
@@ -63,10 +63,11 @@ func saveTopologyInMap(annotation map[string]interface{}, srcStr string) {
 
 func getDefaultSchedulerSelectorConfig() map[string]string {
 	var defaultSchedulerConfig map[string]string
-	defaultSchedulerConfig = make(map[string]string, magicNumInt2)
+	defaultSchedulerConfig = make(map[string]string, magicNumInt3)
 
 	defaultSchedulerConfig[archSelector] = huaweiArchArm + "|" + huaweiArchX86
-	defaultSchedulerConfig[accelerator] = npu910CardName
+	defaultSchedulerConfig[accelerator] = acceleratorValue
+	defaultSchedulerConfig[acceleratorType] = cardAcceleratorType + "|" + moduleAcceleratorType
 
 	return defaultSchedulerConfig
 }
@@ -75,14 +76,13 @@ func getSchedulerSelectorConfig(confs []conf.Configuration) map[string]string {
 	var customerScheduler map[string]string
 	customerScheduler = make(map[string]string, magicNumInt2)
 
-	if len(confs) == 0 {
-		klog.V(logDebugLev).Infof("%s getSchedulerSelectorConfig nil", PluginName)
+	if len(confs) != 0 {
+		klog.V(logDebugLev).Infof("%s getSchedulerSelectorConfig ok[%+v]", PluginName, confs)
+		// get customer config selector
+		for k, v := range confs[0].Arguments {
+			customerScheduler[k] = v
+		}
 		return nil
-	}
-
-	// get customer config selector
-	for k, v := range confs[0].Arguments {
-		customerScheduler[k] = v
 	}
 
 	// default conf cannot be covered
@@ -92,16 +92,17 @@ func getSchedulerSelectorConfig(confs []conf.Configuration) map[string]string {
 		tempStr, ok := customerScheduler[k]
 		if !ok {
 			customerScheduler[k] = v
-			klog.V(logDebugLev).Infof("%s use default config:(%s-%s)", PluginName, k, v)
+			klog.V(logDebugLev).Infof("%s use default config [%s]:[%s]", PluginName, k, v)
 			continue
 		}
 		// exist default key, compare content
 		if strings.Contains(tempStr, v) {
-			klog.V(logDebugLev).Infof("%s default config has customer config:(%s-%s)", PluginName, k, v)
+			klog.V(logDebugLev).Infof("%s default config has customer config [%s]:[%s]", PluginName, k, v)
 			continue
 		}
 		// append not cover
-		klog.V(logDebugLev).Infof("%s config key(%s) not same(%s-%s)", PluginName, k, v, defaultSchedulerConfig)
+		klog.V(logDebugLev).Infof("%s config key(%s) not same [%s]:[%s]",
+			PluginName, k, v, tempStr)
 		customerScheduler[k] = v + "|" + tempStr
 	}
 

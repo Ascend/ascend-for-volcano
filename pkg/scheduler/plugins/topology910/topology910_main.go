@@ -22,6 +22,8 @@ Package topology910 is using for HuaWei Ascend910 pin affinity schedule.
 package topology910
 
 import (
+	"k8s.io/klog"
+	"volcano.sh/volcano/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 )
@@ -44,6 +46,8 @@ func New(arguments framework.Arguments) framework.Plugin {
 func initNpuSession(ssn *framework.Session) {
 	// init npu node top in other, for concurrency-oriented allocation
 	initNodesNpuAllocTopology(ssn.Nodes)
+	// init job podGroup Labels
+	initPgLabels(ssn.Jobs)
 }
 
 // topology910plugin's init session for frame
@@ -59,7 +63,15 @@ func (tp *topology910plugin) OnSessionOpen(ssn *framework.Session) {
 		return nodePredicate(taskInfo, nodeInfo, ssn.Configurations)
 	})
 	// The job who has below or equal 8 NPU,only has one pod. If over, every pod has 8s NPU.
-	ssn.AddBatchNodeOrderFn(tp.Name(), batchNodeOrderFn)
+	ssn.AddBatchNodeOrderFn(tp.Name(), func(task *api.TaskInfo, nodes []*api.NodeInfo) (map[string]float64, error) {
+		score, err := batchNodeOrderFn(task, nodes)
+		if err != nil {
+			if setErr := setJobFailed(ssn.Jobs[task.Job], err); setErr != nil {
+				klog.V(logErrorLev).Infof("%s set job failed:%v", PluginName, setErr)
+			}
+		}
+		return score, nil
+	})
 	// Register event handlers to update task info in PodLister & nodeMap
 	// for support Concurrency
 	ssn.AddEventHandler(&framework.EventHandler{
@@ -76,4 +88,11 @@ func (tp *topology910plugin) OnSessionOpen(ssn *framework.Session) {
 func (tp *topology910plugin) OnSessionClose(ssn *framework.Session) {
 	// for recording job's unscheduled reason; and update job statue
 	// write pod info which need trance to other MindX DL component. The info like requestId
+	for _, job := range ssn.Jobs {
+		// deal pending job
+		if job.PodGroup.Status.Phase == scheduling.PodGroupInqueue {
+			// if all nodes not meet job require failed
+			setJobFailedByNodesCase(ssn.Nodes, job)
+		}
+	}
 }
