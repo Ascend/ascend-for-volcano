@@ -542,12 +542,12 @@ func batchNodeOrderFn(task *api.TaskInfo, nodes []*api.NodeInfo) (map[string]flo
 	bestNodeName, top, errGet = getNpuAffinityBestNodeAndTop(taskReqNPU, nodes)
 	if errGet != nil {
 		// get suitable node failed
-		klog.V(logErrorLev).Infof("%s batchNodeOrderFn find none fit node for task[%s],require npu:%d, failed[%v]",
+		klog.V(logErrorLev).Infof("%s batchNodeOrderFn task[%s],require npu:%d, failed[%v]",
 			PluginName, task.Name, taskReqNPU, errGet)
 		return scoreMp, nil
 	}
-	klog.V(logInfoLev).Infof("%s batchNodeOrderFn Get task for NPU number:%d,node top:%v",
-		PluginName, taskReqNPU, top)
+	klog.V(logInfoLev).Infof("%s batchNodeOrderFn Get task for NPU number:%d, %s[%v]",
+		PluginName, taskReqNPU, bestNodeName, top)
 
 	// 3.scored the nodes and set top
 	scoreMp, errGet = scoreAndSetSelectNodes(task, nodes, scoreMp, bestNodeName, top)

@@ -10,4 +10,3 @@ LD_FLAGS=" \
     -X '${REPO_PATH}/pkg/version.Version=${RELEASE_VER}' \
     -s \
     -extldflags=-Wl,-z,now"
-
