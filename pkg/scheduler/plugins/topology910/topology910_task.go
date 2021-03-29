@@ -26,6 +26,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 	"strconv"
+	"strings"
 	"time"
 	"volcano.sh/volcano/pkg/scheduler/api"
 )
@@ -101,4 +102,18 @@ func updatePodsFailedReason(job *api.JobInfo, reasonTmp string) {
 
 		task.Pod.Status.Conditions = append(task.Pod.Status.Conditions, condition)
 	}
+}
+
+func getTaskModule(task *api.TaskInfo) string {
+	var taskModule = moduleAcceleratorType
+
+	taskSelector := getTaskSelectors(task)
+	for _, selector := range taskSelector {
+		if strings.Contains(selector, cardAcceleratorType) {
+			taskModule = cardAcceleratorType
+			break
+		}
+	}
+
+	return taskModule
 }
