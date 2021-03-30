@@ -54,11 +54,10 @@ esac
 if [[ ! -f "${HELM_BIN_DIR}/version.helm.${HELM_VER}" ]] ; then
     TD=$(mktemp -d)
     cd "${TD}" && \
-        #curl -Lo "${TD}/helm.tgz" "https://storage.googleapis.com/kubernetes-helm/helm-${HELM_VER}-${LOCAL_OS}-${REL_OSARCH}.tar.gz" && \
-        #tar xfz helm.tgz && \
-        #mv ${LOCAL_OS}-${REL_OSARCH}/helm "${HELM_BIN_DIR}/helm-${HELM_VER}" && \
-        #cp "${HELM_BIN_DIR}/helm-${HELM_VER}" "${HELM_BIN_DIR}/helm" && \
-        cp "${GOPATH}/bin/helm-${HELM_VER}" "${HELM_BIN_DIR}/helm" && \
+        curl -Lo "${TD}/helm.tgz" "https://storage.googleapis.com/kubernetes-helm/helm-${HELM_VER}-${LOCAL_OS}-${REL_OSARCH}.tar.gz" && \
+        tar xfz helm.tgz && \
+        mv ${LOCAL_OS}-${REL_OSARCH}/helm "${HELM_BIN_DIR}/helm-${HELM_VER}" && \
+        cp "${HELM_BIN_DIR}/helm-${HELM_VER}" "${HELM_BIN_DIR}/helm" && \
         chmod +x ${HELM_BIN_DIR}/helm
         rm -rf "${TD}" && \
         touch "${HELM_BIN_DIR}/version.helm.${HELM_VER}"
