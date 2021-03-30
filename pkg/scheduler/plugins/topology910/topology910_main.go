@@ -46,7 +46,7 @@ func New(arguments framework.Arguments) framework.Plugin {
 func initNpuSession(ssn *framework.Session) {
 	// init npu node top in other, for concurrency-oriented allocation
 	initNodesNpuAllocTopology(ssn.Nodes)
-	// init job podGroup Labels
+	// init job podGroup Labels, for recored and changed job status.
 	initPgLabels(ssn.Jobs)
 }
 

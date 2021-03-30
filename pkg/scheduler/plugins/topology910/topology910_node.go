@@ -40,9 +40,11 @@ const (
 )
 
 func initNodesNpuAllocTopology(nodes map[string]*api.NodeInfo) {
-	var nodeTop = []int{0, 1, 2, 3, 4, 5, 6, 7}
-
 	for _, node := range nodes {
+		nodeTop := getTopFromNode(node)
+		if nodeTop == nil || len(nodeTop) == 0 {
+			continue
+		}
 		node.Others = make(map[string]interface{}, magicNumInt1)
 		saveTopologyInMap(node.Others, changeIntArrToStr(nodeTop))
 	}
@@ -408,7 +410,7 @@ func getNodeHccsArray(nodeTop []int, taskModule string) ([]int, []int) {
 	return leftHccsArray, rightHccsArray
 }
 
-func getNpuHccsFromNodeTopologyBypriority(nodeTop []int, priorityArray [npuNumPerHccs]int, taskModule string) ([]int, error) {
+func getHccsFromNodeByPriority(nodeTop []int, priorityArray [npuNumPerHccs]int, taskModule string) ([]int, error) {
 	var allocTopology []int
 
 	leftHccsArray, rightHccsArray := getNodeHccsArray(nodeTop, taskModule)
@@ -441,42 +443,40 @@ func getNpuHccsFromNodeTopologyBypriority(nodeTop []int, priorityArray [npuNumPe
 
 func getNpuAllocPriorityArray(taskNpuNumber int, taskModule string) ([npuNumPerHccs]int, error) {
 	var priorityArray [npuNumPerHccs]int
-	var err error
-	err = nil
+	var err = error(nil)
 
-	switch taskNpuNumber {
-	case 0:
-		klog.V(logInfoLev).Infof("%s task req npu is 0", PluginName)
-	case magicNumInt1:
-		if taskModule == cardAcceleratorType {
+	if taskModule == cardAcceleratorType {
+		switch taskNpuNumber {
+		case 0:
+			klog.V(logInfoLev).Infof("%s task req npu is 0", PluginName)
+		case magicNumInt1:
 			priorityArray = [npuNumPerHccs]int{magicNumInt1}
-			break
-		}
-		// priority:1>3>2>4
-		priorityArray = [npuNumPerHccs]int{magicNumInt1, magicNumInt3, magicNumInt2, npuNumPerHccs}
-	case magicNumInt2:
-		if taskModule == cardAcceleratorType {
+		case magicNumInt2:
 			priorityArray = [npuNumPerHccs]int{magicNumInt2}
-			break
-		}
-		// priority：2>npuNumPerHccs>3
-		priorityArray = [npuNumPerHccs]int{magicNumInt2, npuNumPerHccs, magicNumInt3}
-	case npuNumPerHccs:
-		if taskModule == cardAcceleratorType {
+		default:
 			err = fmt.Errorf("illegal request npu number: %d", taskNpuNumber)
-			break
 		}
-		// priority：4
-		priorityArray = [npuNumPerHccs]int{npuNumPerHccs}
-	case nodeNpuNumber:
-		if taskModule == cardAcceleratorType {
+	}
+
+	if taskModule == moduleAcceleratorType {
+		switch taskNpuNumber {
+		case 0:
+			klog.V(logInfoLev).Infof("%s task req npu is 0", PluginName)
+		case magicNumInt1:
+			// priority:1>3>2>4
+			priorityArray = [npuNumPerHccs]int{magicNumInt1, magicNumInt3, magicNumInt2, npuNumPerHccs}
+		case magicNumInt2:
+			// priority：2>npuNumPerHccs>3
+			priorityArray = [npuNumPerHccs]int{magicNumInt2, npuNumPerHccs, magicNumInt3}
+		case npuNumPerHccs:
+			// priority：4
+			priorityArray = [npuNumPerHccs]int{npuNumPerHccs}
+		case nodeNpuNumber:
+			priorityArray = [npuNumPerHccs]int{nodeNpuNumber}
+		default:
+			// For normal,can not be here. The pre function validate job has done this.
 			err = fmt.Errorf("illegal request npu number: %d", taskNpuNumber)
-			break
 		}
-		priorityArray = [npuNumPerHccs]int{nodeNpuNumber}
-	default:
-		// For normal,can not be here. The pre function validate job has done this.
-		err = fmt.Errorf("illegal request npu number: %d", taskNpuNumber)
 	}
 
 	if err != nil {
@@ -519,7 +519,7 @@ func getAllocatedNpuFromTopology(taskNpuNumber int, nodeTop []int, taskModule st
 	}
 	klog.V(logInfoLev).Infof("%s %d 's priority:%v in %v", PluginName, taskNpuNumber, priorityArray, nodeTop)
 
-	allocTopologyHccl, err = getNpuHccsFromNodeTopologyBypriority(nodeTop, priorityArray, taskModule)
+	allocTopologyHccl, err = getHccsFromNodeByPriority(nodeTop, priorityArray, taskModule)
 	if err != nil {
 		err = fmt.Errorf("node %v not meet req: %d", nodeTop, taskNpuNumber)
 		klog.V(logInfoLev).Infof("%s %s", PluginName, err.Error())
@@ -552,7 +552,7 @@ func useAnnotation(node *api.NodeInfo, task *api.TaskInfo) {
 
 	useTop, err := getAllocatedNpuFromTopology(taskNpuNumber, nodeTop, taskModule)
 	if err != nil {
-		klog.V(logErrorLev).Infof("alloc %d :%v in %s failed", taskNpuNumber, nodeTop, node.Name)
+		klog.V(logErrorLev).Infof("alloc %d :%v in %s failed:%v", taskNpuNumber, nodeTop, node.Name, err)
 		return
 	}
 
@@ -659,39 +659,6 @@ func npuDeallocateFunc(event *framework.Event, nodeMap map[string]*api.NodeInfo)
 	} else {
 		releaseAnnotation(node, event.Task)
 		klog.V(logDebugLev).Infof("%s releaseAnnotation node [%s]'s top", PluginName, nodeName)
-	}
-}
-
-func setJobFailedByNodesCase(nodes map[string]*api.NodeInfo, job *api.JobInfo) {
-	var msgString string
-	var errorNodeCount int
-
-	for _, task := range job.Tasks {
-		nodeErr, ok := job.NodesFitErrors[task.UID]
-		if !ok {
-			continue
-		}
-
-		msgString = nodeErr.Error()
-		errorNodeCount = 0
-		msgs := strings.Split(msgString, ", ")
-		for _, msg := range msgs {
-			// only error need failed, warning will pending
-			if strings.Contains(msg, nodeNoFitSelectorError) || strings.Contains(msg, nodesNoMeetNPUReqError) {
-				klog.V(logInfoLev).Infoln("%s %s[%s]", PluginName, task.Name, msg)
-				errorNodeCount++
-			}
-		}
-
-		availableNodes := len(nodes) - errorNodeCount
-		needNodes := len(job.Tasks)
-		if availableNodes < needNodes {
-			klog.V(logErrorLev).Infof("%s %s req (%d)nodes but has (%d)nodes, need be failed",
-				PluginName, job.Name, needNodes, availableNodes)
-			if setErr := setJobFailed(job, job.NodesFitErrors); setErr != nil {
-				klog.V(logErrorLev).Infof("%s set job failed:%v", PluginName, setErr)
-			}
-		}
 	}
 }
 

@@ -115,39 +115,37 @@ func initTwoCardPriNodeGroups(
 	addPriNodeGroupFn initPriNodeGroupFn,
 	taskModule string) error {
 
-	switch taskModule {
-	case cardAcceleratorType:
+	if taskModule == cardAcceleratorType {
 		if sNodeInf.allNpuNum == magicNumInt2 {
 			addPriNodeGroupFn(priNodeGroups[0], "A")
 			return nil
 		}
 		klog.V(logDebugLev).Infof("%s %s not have 2 npu in card module", PluginName, sNodeInf.nodeName)
-	case moduleAcceleratorType:
-		// priority：2>npuNumPerHccs>3
-		if sNodeInf.leftNpuNum == magicNumInt2 || sNodeInf.rightNpuNum == magicNumInt2 {
-			// A group
-			addPriNodeGroupFn(priNodeGroups[0], "A")
-			return nil
-		}
-
-		if sNodeInf.leftNpuNum == npuNumPerHccs || sNodeInf.rightNpuNum == npuNumPerHccs {
-			// B group
-			addPriNodeGroupFn(priNodeGroups[magicNumInt1], "B")
-			return nil
-		}
-
-		if sNodeInf.leftNpuNum == magicNumInt3 || sNodeInf.rightNpuNum == magicNumInt3 {
-			// C group
-			addPriNodeGroupFn(priNodeGroups[magicNumInt2], "C")
-			return nil
-		}
-
-		// no satisfy HCCS,8*N need whole nodes
-		klog.V(logErrorLev).Infof("%s initTwoCardPriNodeGroups node(%s) (left :%d,right :%d) cannot fit 2",
-			PluginName, sNodeInf.nodeName, sNodeInf.leftNpuNum, sNodeInf.rightNpuNum)
-	default:
-		klog.V(logErrorLev).Infof("%s task module %s, not surpport", PluginName, taskModule)
+		return errors.New(nodeNoFitNPUWarning)
 	}
+
+	// priority：2>npuNumPerHccs>3
+	if sNodeInf.leftNpuNum == magicNumInt2 || sNodeInf.rightNpuNum == magicNumInt2 {
+		// A group
+		addPriNodeGroupFn(priNodeGroups[0], "A")
+		return nil
+	}
+
+	if sNodeInf.leftNpuNum == npuNumPerHccs || sNodeInf.rightNpuNum == npuNumPerHccs {
+		// B group
+		addPriNodeGroupFn(priNodeGroups[magicNumInt1], "B")
+		return nil
+	}
+
+	if sNodeInf.leftNpuNum == magicNumInt3 || sNodeInf.rightNpuNum == magicNumInt3 {
+		// C group
+		addPriNodeGroupFn(priNodeGroups[magicNumInt2], "C")
+		return nil
+	}
+
+	// no satisfy HCCS,8*N need whole nodes
+	klog.V(logErrorLev).Infof("%s initTwoCardPriNodeGroups node(%s) (left :%d,right :%d) cannot fit 2",
+		PluginName, sNodeInf.nodeName, sNodeInf.leftNpuNum, sNodeInf.rightNpuNum)
 
 	return errors.New(nodeNoFitNPUWarning)
 }
@@ -274,7 +272,9 @@ func initPriNodeGroups(taskReqNPU int, nodes []*api.NodeInfo, taskModule string)
 }
 
 // According to need card number,get best node from 4 pri-node-list-group
-func getBestNodesMap(needCards int, priNodeGroups []map[string]*npuPriNodeInf, taskModule string) (map[string]int, error) {
+func getBestNodesMap(needCards int,
+	priNodeGroups []map[string]*npuPriNodeInf,
+	taskModule string) (map[string]int, error) {
 	var bestNodesMap = make(map[string]int, magicNumInt2)
 
 	for i := 0; i < npuNumPerHccs; i++ {
@@ -363,7 +363,9 @@ func setNpuTopologyToPod(task *api.TaskInfo, nodeInfo *api.NodeInfo, top []int) 
 }
 
 // select the best nodes for task using, score=healthCores*4-priority
-func scoreBestNpuNodes(scoreMp map[string]float64, bestNodes map[string]int, nodes []*api.NodeInfo) (map[string]float64, error) {
+func scoreBestNpuNodes(scoreMp map[string]float64,
+	bestNodes map[string]int,
+	nodes []*api.NodeInfo) (map[string]float64, error) {
 	var nodeWeight = 1.0
 
 	for nodeName, priority := range bestNodes {
@@ -406,7 +408,7 @@ func batchNodeOrderFn(task *api.TaskInfo, nodes []*api.NodeInfo) (map[string]flo
 	taskModule := getTaskModule(task)
 	// 2.get the best node and top by A,B,C,D rules and require numbers.
 	bestNodes, errGet = getNpuAffinityBestNodes(taskReqNPU, nodes, taskModule)
-	if errGet != nil || bestNodes == nil {
+	if errGet != nil || len(bestNodes) == 0 {
 		// get suitable node failed
 		klog.V(logErrorLev).Infof("%s batchNodeOrderFn task[%s],require npu:%d, failed[%v]",
 			PluginName, task.Name, taskReqNPU, errGet)

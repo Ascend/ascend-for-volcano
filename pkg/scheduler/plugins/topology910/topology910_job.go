@@ -185,7 +185,7 @@ func validJobNpuNum(job *api.JobInfo, jobType string) error {
 	}
 
 	if jobType == cardAcceleratorType {
-		// only support 1,2,3*n
+		// only support 1,2,2*n
 		if jobNpu == magicNumInt1 || jobNpu%magicNumInt2 == 0 {
 			return nil
 		}
@@ -452,4 +452,38 @@ func setJobFailed(job *api.JobInfo, reason interface{}) error {
 	klog.V(logInfoLev).Infof("set job(%s) to failed, reason:%v", job.Name, reason)
 
 	return setJobStatusByScheduler(job, scheduling.PodGroupPhase(vjobs.Failed))
+}
+
+
+func setJobFailedByNodesCase(nodes map[string]*api.NodeInfo, job *api.JobInfo) {
+	var msgString string
+	var errorNodeCount int
+
+	for _, task := range job.Tasks {
+		nodeErr, ok := job.NodesFitErrors[task.UID]
+		if !ok {
+			continue
+		}
+
+		msgString = nodeErr.Error()
+		errorNodeCount = 0
+		msgs := strings.Split(msgString, ", ")
+		for _, msg := range msgs {
+			// only error need failed, warning will pending
+			if strings.Contains(msg, nodeNoFitSelectorError) || strings.Contains(msg, nodesNoMeetNPUReqError) {
+				klog.V(logInfoLev).Infoln("%s %s[%s]", PluginName, task.Name, msg)
+				errorNodeCount++
+			}
+		}
+
+		availableNodes := len(nodes) - errorNodeCount
+		needNodes := len(job.Tasks)
+		if availableNodes < needNodes {
+			klog.V(logErrorLev).Infof("%s %s req (%d)nodes but has (%d)nodes, need be failed",
+				PluginName, job.Name, needNodes, availableNodes)
+			if setErr := setJobFailed(job, job.NodesFitErrors); setErr != nil {
+				klog.V(logErrorLev).Infof("%s set job failed:%v", PluginName, setErr)
+			}
+		}
+	}
 }
