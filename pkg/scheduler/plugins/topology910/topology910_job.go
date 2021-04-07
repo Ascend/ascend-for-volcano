@@ -347,7 +347,7 @@ func validJobFn(obj interface{}, confs []conf.Configuration) *api.ValidateResult
 	if errSelector := validJobSelector(job, confs); errSelector != nil {
 		klog.V(logErrorLev).Infof("%s %s, err: %v", PluginName, job.Name, errSelector)
 		if setErr := setJobFailed(job, errSelector); setErr != nil {
-			klog.V(logErrorLev).Infof("%s set job failed: %v", PluginName, setErr)
+			klog.V(logErrorLev).Infof("%s setJobFailed err: %v", PluginName, setErr)
 		}
 
 		msg := "Job selector error"
@@ -368,7 +368,7 @@ func validJobFn(obj interface{}, confs []conf.Configuration) *api.ValidateResult
 	if result != nil {
 		klog.V(logErrorLev).Infof("%s validNpuJob failed:%v", PluginName, result.Message)
 		if setErr := setJobFailed(job, result.Message); setErr != nil {
-			klog.V(logErrorLev).Infof("%s set job failed: %v", PluginName, setErr)
+			klog.V(logErrorLev).Infof("%s setJobFailed err: %v", PluginName, setErr)
 		}
 		return result
 	}
@@ -454,7 +454,6 @@ func setJobFailed(job *api.JobInfo, reason interface{}) error {
 	return setJobStatusByScheduler(job, scheduling.PodGroupPhase(vjobs.Failed))
 }
 
-
 func setJobFailedByNodesCase(nodes map[string]*api.NodeInfo, job *api.JobInfo) {
 	var msgString string
 	var errorNodeCount int
@@ -471,7 +470,7 @@ func setJobFailedByNodesCase(nodes map[string]*api.NodeInfo, job *api.JobInfo) {
 		for _, msg := range msgs {
 			// only error need failed, warning will pending
 			if strings.Contains(msg, nodeNoFitSelectorError) || strings.Contains(msg, nodesNoMeetNPUReqError) {
-				klog.V(logInfoLev).Infoln("%s %s[%s]", PluginName, task.Name, msg)
+				klog.V(logInfoLev).Infof("%s %s[%v]", PluginName, task.Name, msg)
 				errorNodeCount++
 			}
 		}
@@ -479,10 +478,10 @@ func setJobFailedByNodesCase(nodes map[string]*api.NodeInfo, job *api.JobInfo) {
 		availableNodes := len(nodes) - errorNodeCount
 		needNodes := len(job.Tasks)
 		if availableNodes < needNodes {
-			klog.V(logErrorLev).Infof("%s %s req (%d)nodes but has (%d)nodes, need be failed",
+			klog.V(logErrorLev).Infof("%s %s req (%d)nodes but has (%d)nodes, will be failed",
 				PluginName, job.Name, needNodes, availableNodes)
 			if setErr := setJobFailed(job, job.NodesFitErrors); setErr != nil {
-				klog.V(logErrorLev).Infof("%s set job failed:%v", PluginName, setErr)
+				klog.V(logErrorLev).Infof("%s setJobFailed err:%v", PluginName, setErr)
 			}
 		}
 	}

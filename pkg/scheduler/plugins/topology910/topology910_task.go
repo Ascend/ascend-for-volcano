@@ -25,9 +25,7 @@ import (
 	"errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
-	"strconv"
 	"strings"
-	"time"
 	"volcano.sh/volcano/pkg/scheduler/api"
 )
 
@@ -74,19 +72,6 @@ func isNpuTask(task *api.TaskInfo) error {
 	if !ok || int(tmpNpu/npuHex) == 0 {
 		return errors.New("not npu task")
 	}
-
-	return nil
-}
-
-func doSetPodNpuTopology(top []int, task *api.TaskInfo) error {
-	var topologyStr string
-
-	klog.V(logDebugLev).Infof("%s setNpuTopologyToPod begin top:%v", PluginName, top)
-	topologyStr = changeIntArrToStr(top)
-	task.Pod.Annotations[npu910CardName] = topologyStr
-	// to device-plugin judge pending pod.
-	task.Pod.Annotations[podPredicateTime] = strconv.FormatInt(time.Now().UnixNano(), 10)
-	klog.V(logInfoLev).Infof("%s setNpuTopologyToPod task:%s top:%s", PluginName, task.Name, topologyStr)
 
 	return nil
 }

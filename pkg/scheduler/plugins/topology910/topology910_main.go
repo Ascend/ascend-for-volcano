@@ -67,7 +67,7 @@ func (tp *topology910plugin) OnSessionOpen(ssn *framework.Session) {
 		score, err := batchNodeOrderFn(task, nodes)
 		if err != nil {
 			if setErr := setJobFailed(ssn.Jobs[task.Job], err); setErr != nil {
-				klog.V(logErrorLev).Infof("%s set job failed:%v", PluginName, setErr)
+				klog.V(logErrorLev).Infof("%s setJobFailed err:%v", PluginName, setErr)
 			}
 		}
 		return score, nil

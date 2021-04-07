@@ -25,7 +25,9 @@ import (
 	"errors"
 	"k8s.io/klog"
 	schedulerApi "k8s.io/kube-scheduler/extender/v1"
+	"reflect"
 	"strconv"
+	"time"
 	"volcano.sh/volcano/pkg/scheduler/api"
 )
 
@@ -72,7 +74,7 @@ func initScoreMp(nodes []*api.NodeInfo, interPodAffinityScore schedulerApi.HostP
 	return scoreMp
 }
 
-// the police for one need card
+// the policy for one need card
 func initOneCardPriNodeGroups(
 	sNodeInf selectNodeInf,
 	priNodeGroups []map[string]*npuPriNodeInf,
@@ -108,7 +110,7 @@ func initOneCardPriNodeGroups(
 	return errors.New(nodeNoFitNPUWarning)
 }
 
-// the police for Two need card
+// the policy for Two need cards
 func initTwoCardPriNodeGroups(
 	sNodeInf selectNodeInf,
 	priNodeGroups []map[string]*npuPriNodeInf,
@@ -150,7 +152,7 @@ func initTwoCardPriNodeGroups(
 	return errors.New(nodeNoFitNPUWarning)
 }
 
-// the police four one need card
+// the policy for four need cards
 func initFourCardPriNodeGroups(
 	sNodeInf selectNodeInf,
 	priNodeGroups []map[string]*npuPriNodeInf,
@@ -167,7 +169,7 @@ func initFourCardPriNodeGroups(
 	return errors.New(nodeNoFitNPUWarning)
 }
 
-// the police four one need card
+// the policy four eight need cards
 func initEightCardPriNodeGroups(
 	sNodeInf selectNodeInf,
 	priNodeGroups []map[string]*npuPriNodeInf,
@@ -183,7 +185,7 @@ func initEightCardPriNodeGroups(
 	return errors.New(nodeNoFitNPUWarning)
 }
 
-// insert into group by police
+// insert into group by policy
 func insertNodeInPriGroup(
 	taskReqNPU int,
 	sNodeInf selectNodeInf,
@@ -262,7 +264,7 @@ func initPriNodeGroups(taskReqNPU int, nodes []*api.NodeInfo, taskModule string)
 				PluginName, node.Name, priNodeGroup[node.Name])
 		}
 
-		// insert into group by police
+		// insert into group by policy
 		err = insertNodeInPriGroup(taskReqNPU, sNodeInf, priNodeGroups, addPriNodeGroupFn, taskModule)
 		if err != nil {
 			continue
@@ -279,7 +281,8 @@ func getBestNodesMap(needCards int,
 
 	for i := 0; i < npuNumPerHccs; i++ {
 		for nodeName, _ := range priNodeGroups[i] {
-			bestNodesMap[nodeName] = i
+			tmpName := nodeName
+			bestNodesMap[tmpName] = i
 		}
 	}
 
@@ -313,8 +316,7 @@ func setSelectTopValue(needCards int, selectHCCS *hccsInf) ([]int, error) {
 	return setTop, nil
 }
 
-// get the best node
-// map[string]int string:nodeName, int:priority[0-3]
+// get the best node, return map  nodeName : priority(0~3)
 func getNpuAffinityBestNodes(taskReqNPU int, nodes []*api.NodeInfo, taskModule string) (map[string]int, error) {
 
 	// 1. inti 4 pri node-list group
@@ -354,12 +356,16 @@ func checkResourceReady(task *api.TaskInfo, nodeInfo *api.NodeInfo) error {
 // write the topology to pod
 // to change the top kind :int[] to device-plugin point kind:string link with ','
 func setNpuTopologyToPod(task *api.TaskInfo, nodeInfo *api.NodeInfo, top []int) error {
-	/*	err := checkResourceReady(task, nodeInfo)
-		if err != nil {
-			return err
-		}*/
+	var topologyStr string
 
-	return doSetPodNpuTopology(top, task)
+	klog.V(logDebugLev).Infof("%s setNpuTopologyToPod begin top:%v", PluginName, top)
+	topologyStr = changeIntArrToStr(top)
+	task.Pod.Annotations[npu910CardName] = topologyStr
+	// to device-plugin judge pending pod.
+	task.Pod.Annotations[podPredicateTime] = strconv.FormatInt(time.Now().UnixNano(), 10)
+	klog.V(logInfoLev).Infof("%s setNpuTopologyToPod task:%s top:%s", PluginName, task.Name, topologyStr)
+
+	return nil
 }
 
 // select the best nodes for task using, score=healthCores*4-priority
@@ -367,6 +373,13 @@ func scoreBestNpuNodes(scoreMp map[string]float64,
 	bestNodes map[string]int,
 	nodes []*api.NodeInfo) (map[string]float64, error) {
 	var nodeWeight = 1.0
+
+	// parameters check
+	if reflect.ValueOf(scoreMp).IsNil() {
+		err := errors.New("scoreBestNpuNodes's scoreMp is nill")
+		klog.V(logInfoLev).Infof("%s %v", PluginName, err)
+		return nil, err
+	}
 
 	for nodeName, priority := range bestNodes {
 		healthNpuNumber, err := getNodeHealthNpuNumberByName(nodeName, nodes)
