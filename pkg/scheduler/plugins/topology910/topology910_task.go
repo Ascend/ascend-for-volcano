@@ -25,8 +25,7 @@ import (
 	"errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
-	"strconv"
-	"time"
+	"strings"
 	"volcano.sh/volcano/pkg/scheduler/api"
 )
 
@@ -77,19 +76,6 @@ func isNpuTask(task *api.TaskInfo) error {
 	return nil
 }
 
-func doSetPodNpuTopology(top []int, task *api.TaskInfo) error {
-	var topologyStr string
-
-	klog.V(logDebugLev).Infof("%s setNpuTopologyToPod begin top:%v", PluginName, top)
-	topologyStr = changeIntArrToStr(top)
-	task.Pod.Annotations[npu910CardName] = topologyStr
-	// to device-plugin judge pending pod.
-	task.Pod.Annotations[podPredicateTime] = strconv.FormatInt(time.Now().UnixNano(), 10)
-	klog.V(logInfoLev).Infof("%s setNpuTopologyToPod task:%s top:%s", PluginName, task.Name, topologyStr)
-
-	return nil
-}
-
 func updatePodsFailedReason(job *api.JobInfo, reasonTmp string) {
 	for _, task := range job.Tasks {
 		condition := v1.PodCondition{
@@ -101,4 +87,18 @@ func updatePodsFailedReason(job *api.JobInfo, reasonTmp string) {
 
 		task.Pod.Status.Conditions = append(task.Pod.Status.Conditions, condition)
 	}
+}
+
+func getTaskModule(task *api.TaskInfo) string {
+	var taskModule = moduleAcceleratorType
+
+	taskSelector := getTaskSelectors(task)
+	for _, selector := range taskSelector {
+		if strings.Contains(selector, cardAcceleratorType) {
+			taskModule = cardAcceleratorType
+			break
+		}
+	}
+
+	return taskModule
 }

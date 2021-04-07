@@ -802,7 +802,7 @@ func testScore(test *testCaseStruct, taskID string, task *api.TaskInfo, score ma
 		return nil
 	}
 
-	if expectScore, scoreOk := tasks[task.NodeName]; scoreOk && expectScore != score[task.NodeName] {
+	if expectScore, scoreOk := tasks[task.NodeName]; !scoreOk {
 		fmt.Println("case " + strconv.Itoa(testNo) + " : " + test.name + " task:" +
 			taskID + " on node:" + task.NodeName + " test failed, expect have score:" +
 			strconv.Itoa(int(expectScore)) + ",but get:" + strconv.Itoa(int(score[task.NodeName])))

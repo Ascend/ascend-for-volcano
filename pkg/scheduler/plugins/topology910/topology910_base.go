@@ -45,7 +45,7 @@ const (
 	huaweiArchArm         = "huawei-arm"
 	huaweiArchX86         = "huawei-x86"
 	accelerator           = "accelerator"
-	acceleratorValue      = "huawei.com-Ascend910"
+	acceleratorValue      = "huawei-Ascend910"
 	acceleratorType       = "accelerator-type"
 	cardAcceleratorType   = "card"
 	moduleAcceleratorType = "module"
@@ -82,7 +82,7 @@ func getSchedulerSelectorConfig(confs []conf.Configuration) map[string]string {
 		for k, v := range confs[0].Arguments {
 			customerScheduler[k] = v
 		}
-		return nil
+		klog.V(logDebugLev).Infof("%s add config SchedulerSelector ok[%+v]", PluginName, customerScheduler)
 	}
 
 	// default conf cannot be covered
@@ -105,7 +105,7 @@ func getSchedulerSelectorConfig(confs []conf.Configuration) map[string]string {
 			PluginName, k, v, tempStr)
 		customerScheduler[k] = v + "|" + tempStr
 	}
-
+	klog.V(logDebugLev).Infof("%s add getSchedulerSelectorConfig ok[%+v]", PluginName, customerScheduler)
 	return customerScheduler
 }
 

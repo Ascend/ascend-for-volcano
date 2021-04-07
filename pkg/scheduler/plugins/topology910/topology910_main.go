@@ -46,7 +46,7 @@ func New(arguments framework.Arguments) framework.Plugin {
 func initNpuSession(ssn *framework.Session) {
 	// init npu node top in other, for concurrency-oriented allocation
 	initNodesNpuAllocTopology(ssn.Nodes)
-	// init job podGroup Labels
+	// init job podGroup Labels, for recored and changed job status.
 	initPgLabels(ssn.Jobs)
 }
 
@@ -67,7 +67,7 @@ func (tp *topology910plugin) OnSessionOpen(ssn *framework.Session) {
 		score, err := batchNodeOrderFn(task, nodes)
 		if err != nil {
 			if setErr := setJobFailed(ssn.Jobs[task.Job], err); setErr != nil {
-				klog.V(logErrorLev).Infof("%s set job failed:%v", PluginName, setErr)
+				klog.V(logErrorLev).Infof("%s setJobFailed err:%v", PluginName, setErr)
 			}
 		}
 		return score, nil
