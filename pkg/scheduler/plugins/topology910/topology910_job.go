@@ -346,7 +346,7 @@ func validJobFn(obj interface{}, confs []conf.Configuration) *api.ValidateResult
 	// validate job selector, for all kinds
 	if errSelector := validJobSelector(job, confs); errSelector != nil {
 		klog.V(logErrorLev).Infof("%s %s, err: %v", PluginName, job.Name, errSelector)
-		if setErr := setJobFailed(job, errSelector); setErr != nil {
+		if setErr := setJobFailed(job, errSelector.Error()); setErr != nil {
 			klog.V(logErrorLev).Infof("%s setJobFailed err: %v", PluginName, setErr)
 		}
 
@@ -422,7 +422,7 @@ func updateJobFailedReason(job *api.JobInfo, reason interface{}) error {
 	}
 	// other type are not allowed
 	if !flag {
-		return fmt.Errorf("aseert reason(%v) failed", reason)
+		return fmt.Errorf("aseert reason(%T) failed", reason)
 	}
 	// for write failed reason into pod
 	updatePodsFailedReason(job, reasonTmp)
