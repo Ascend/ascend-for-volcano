@@ -122,7 +122,12 @@ func getNodeNPUNumFromAnnotation(nodeInfo *api.NodeInfo) (int, error) {
 	if top == nil {
 		return 0, fmt.Errorf("nil node(%s) top", nodeInfo.Name)
 	}
+
 	nodeNPUIdleNumFromTop := len(top)
+	if nodeNPUIdleNumFromTop > maxNPUNum {
+		return 0, fmt.Errorf("amount of npus exceeded the limitation, maximum(%d), actual(%d)",
+			maxNPUNum, nodeNPUIdleNumFromTop)
+	}
 
 	return nodeNPUIdleNumFromTop, nil
 }

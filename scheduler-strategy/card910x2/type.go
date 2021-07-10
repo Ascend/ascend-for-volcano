@@ -27,6 +27,7 @@ const (
 	a300TNPUCardName    = "huawei.com/Ascend910"
 	podPredicateTime    = "predicate-time"
 	a300tNPUCardPreName = "Ascend910-"
+	maxNPUNum           = 2
 
 	archSelector          = "host-arch"
 	huaweiArchArm         = "huawei-arm"
