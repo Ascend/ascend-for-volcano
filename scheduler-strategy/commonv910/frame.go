@@ -143,6 +143,7 @@ func (tp *Vnpu) CheckNPUResourceStableFn(node *api.NodeInfo) error {
 
 // CheckNodeNPUByTaskFn check whether the requested resource exists and are sufficient on the node
 func (tp *Vnpu) CheckNodeNPUByTaskFn(task *api.TaskInfo, node *api.NodeInfo) error {
+	total := 0
 	for _, vType := range VnpuType {
 		taskVnpu, taskError := hwutil.GetTaskNPUNum(task, vType)
 		if taskError != nil {
@@ -156,6 +157,13 @@ func (tp *Vnpu) CheckNodeNPUByTaskFn(task *api.TaskInfo, node *api.NodeInfo) err
 				tp.Name(), node.Name, nodeVnpu, vType, taskVnpu)
 			return fmt.Errorf("%s:get Vnpu nil", nodeNotEnoughVnpuWarning)
 		}
+
+		total += nodeVnpu * vnpuCoefficients[vType]
+	}
+
+	if tp.MaxNPUNum > 0 && total > npu910CardCoef * tp.MaxNPUNum {
+		return fmt.Errorf("total amount of npu (%d)c excceeded the maximum limitation of (%d x %d)c",
+			total, tp.MaxNPUNum, npu910CardCoef)
 	}
 
 	return nil
@@ -201,7 +209,6 @@ func (tp *Vnpu) ScoreBestNPUNodesFn(scoreMap map[string]float64,
 
 // GetAllocatedNPUFromTopologyFn obtain the name of the allocated devices
 func (tp *Vnpu) GetAllocatedNPUFromTopologyFn(task *api.TaskInfo, node *api.NodeInfo) (interface{}, error) {
-	var nodeTop string
 	var nodeTopArr, allocTopologyVnpus []string
 	var err error
 
@@ -212,12 +219,11 @@ func (tp *Vnpu) GetAllocatedNPUFromTopologyFn(task *api.TaskInfo, node *api.Node
 			continue
 		}
 
-		nodeTop, err = getResourceFromAnnotationFn(node.Node.Annotations, vType)
+		nodeTopArr, err = getNPUsFromNodeAnnotation(node.Node.Annotations, vType)
 		if err != nil {
 			klog.V(logErrorLev).Infof("allocateVnpuFromTopology no resource %s on node %s.", vType, node.Name)
 			return allocTopologyVnpus, err
 		}
-		nodeTopArr = strings.Split(nodeTop, ",")
 		allocTopologyVnpus = nodeTopArr[:1]
 
 		return allocTopologyVnpus, nil
@@ -267,23 +273,21 @@ func (tp *Vnpu) UpdateNPUNodeUsedCardFn(node *api.NodeInfo, top interface{}) err
 // GetReleaseNPUTopologyFn obtain allocated device info from Pod
 func (tp *Vnpu) GetReleaseNPUTopologyFn(task *api.TaskInfo) (interface{}, error) {
 	var vType string
-	var taskTop string
 	var taskTopArr []string
 	var err error
 
 	for _, vType = range VnpuType {
-		taskTop, err = getResourceFromAnnotationFn(task.Pod.Annotations, vType)
+		taskTopArr, err = getNPUsFromNodeAnnotation(task.Pod.Annotations, vType)
 		if err != nil {
 			continue
 		}
 		break
 	}
 
-	if len(taskTop) == 0 {
+	if taskTopArr == nil {
 		klog.V(logErrorLev).Infof("%s getReleaseVnpuTopology pod annotation for %s is empty.", tp.Name(), vType)
 		return taskTopArr, errors.New("task pod annotation is empty")
 	}
-	taskTopArr = strings.Split(taskTop, ",")
 
 	return taskTopArr, nil
 }

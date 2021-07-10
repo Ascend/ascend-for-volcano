@@ -23,7 +23,9 @@ package commonv910
 
 import (
 	"errors"
+	"fmt"
 	"k8s.io/klog"
+	"sort"
 	"strings"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
@@ -65,15 +67,40 @@ func getResourceFromAnnotationFn(Annotations map[string]string, resourceName str
 	return topStr, nil
 }
 
+func getNPUsFromNodeAnnotation(annotations map[string]string, resourceName string) ([]string, error) {
+	topStr, err := getResourceFromAnnotationFn(annotations, resourceName)
+	if err != nil {
+		klog.V(logErrorLev).Infof("getNPUsFromNodeAnnotation failed to get annotation value")
+		return nil, err
+	}
+
+	prefix := strings.TrimPrefix(resourceName, npu910CardNamePrefix)
+	tops := strings.Split(topStr, ",")
+	sort.Strings(tops)
+	for i, top := range tops {
+		if !strings.HasPrefix(top, prefix) {
+			klog.V(logErrorLev).Infof("getNPUsFromNodeAnnotation: vnpu name(%s) did not match its type(%s)",
+				top, prefix)
+			return nil, fmt.Errorf("vnpu name(%s) did not match its type(%s)", top, prefix)
+		}
+
+		if i > 0 && top == tops[i-1] {
+			klog.V(logErrorLev).Infof("getNPUsFromNodeAnnotation: got duplicated npu(%s)", top)
+			return nil, fmt.Errorf("got duplicated npu(%s)", top)
+		}
+	}
+
+	return tops, nil
+}
+
 // Get number of devices in node annotation
 func getNPUNumFromNodeAnnotation(node *api.NodeInfo, resourceName string) (int, error) {
-	topStr, err := getResourceFromAnnotationFn(node.Node.Annotations, resourceName)
+	npuArr, err := getNPUsFromNodeAnnotation(node.Node.Annotations, resourceName)
 	if err != nil {
 		return 0, err
 	}
-	n := len(strings.Split(topStr, ","))
 
-	return n, nil
+	return len(npuArr), nil
 }
 
 func judgeResourceTypeByTopInfo(instance string) string {

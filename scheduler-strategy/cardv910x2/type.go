@@ -38,6 +38,8 @@ const (
 	acceleratorType       = "accelerator-type"
 	cardAcceleratorType   = "card"
 	moduleAcceleratorType = "module"
+
+	maxNPUNum = 2
 )
 
 type cardv910x2 struct {
