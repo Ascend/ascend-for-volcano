@@ -31,6 +31,7 @@ const (
 	huaweiArchArm         = "huawei-arm"
 	huaweiArchX86         = "huawei-x86"
 	moduleAcceleratorType = "module"
+	maxNPUNum             = 8
 
 	npuNumPerHccs = 4
 	constIntNum2  = 2
