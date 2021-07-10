@@ -20,14 +20,14 @@ mkdir -p "${GOPATH}"/src/volcano.sh/volcano/_output/test/
 cd "${GOPATH}"/src/volcano.sh/volcano/_output/test/
 rm -rf $file_detail_output $file_input
 
-if  ! go test -v -race -coverprofile cov.out "${GOPATH}"/src/volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/... \
+if  ! go test -v -race -coverprofile cov.out "${GOPATH}"/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/... \
     > ./$file_input;
 then
   echo '****** go test cases error! ******'
   echo 'Failed' > $file_input
 else
   gocov convert cov.out | gocov-html >"$file_detail_output"
-  gotestsum --junitfile unit-tests.xml "${GOPATH}"/src/volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/...
+  gotestsum --junitfile unit-tests.xml "${GOPATH}"/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/...
 fi
 
 echo "************************************* End   LLT Test *************************************"

@@ -27,7 +27,7 @@ import (
 	"k8s.io/klog"
 	"strings"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/scheduler-strategy/util"
+	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 func validJobResource(job *api.JobInfo) error {

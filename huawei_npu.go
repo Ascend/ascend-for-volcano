@@ -26,13 +26,13 @@ import (
 	"volcano.sh/volcano/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
-	npuapi "volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/npuinterface"
-	"volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/plugin"
-	"volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/scheduler-strategy/card910x2"
-	"volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/scheduler-strategy/cardv910x2"
-	"volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/scheduler-strategy/module910x8"
-	"volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/scheduler-strategy/modulev910x8"
-	"volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/scheduler-strategy/util"
+	npuapi "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/npuinterface"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/card910x2"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/cardv910x2"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/module910x8"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/modulev910x8"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 var sHandler *plugin.ScheduleHandler

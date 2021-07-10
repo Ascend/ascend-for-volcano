@@ -22,7 +22,7 @@ Package cardv910x2 is using for virtual HuaWei A300T schedule.
 package cardv910x2
 
 import (
-	"volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/scheduler-strategy/commonv910"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/commonv910"
 )
 
 const (

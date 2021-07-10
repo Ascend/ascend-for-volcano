@@ -25,7 +25,7 @@ import (
 	"errors"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/scheduler-strategy/util"
+	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 // Check whether the selector of the node matches that of the task.

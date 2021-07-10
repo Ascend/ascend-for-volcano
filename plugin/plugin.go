@@ -28,7 +28,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
-	npuapi "volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/npuinterface"
+	npuapi "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/npuinterface"
 )
 
 // PluginBuilder plugin management

@@ -27,7 +27,7 @@ import (
 	"k8s.io/klog"
 	"strconv"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/scheduler-strategy/util"
+	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 func judgeNodeAndTaskNPU(taskNPU int, nodeNPUTopology []int) error {
