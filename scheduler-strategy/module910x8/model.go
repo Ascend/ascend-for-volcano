@@ -29,7 +29,7 @@ import (
 	"strconv"
 	"volcano.sh/volcano/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/scheduler-strategy/util"
+	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 func getHccsFromNodeByPriority(nodeTop []int, priorityArray [npuNumPerHccs]int) ([]int, error) {

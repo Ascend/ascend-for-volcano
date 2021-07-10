@@ -25,9 +25,9 @@ import (
 	"errors"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	"volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/plugin"
-	v910 "volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/scheduler-strategy/commonv910"
-	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/scheduler-strategy/util"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
+	v910 "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/commonv910"
+	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 var mType []string

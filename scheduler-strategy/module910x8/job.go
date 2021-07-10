@@ -29,8 +29,8 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/api"
 	vapi "volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
-	"volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/plugin"
-	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/scheduler-strategy/util"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
+	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 // If job requires more than 8 npu, every task need 8 npu.

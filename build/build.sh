@@ -7,7 +7,7 @@ set -e
 REL_VERSION='v2.0.2'
 REL_OSARCH="amd64"
 TOP_DIR=${GOPATH}/src/volcano.sh/volcano/
-BASE_PATH=${GOPATH}/src/volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/
+BASE_PATH=${GOPATH}/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/
 
 function parseVersion() {
     version_file="${TOP_DIR}"/service_config.ini
@@ -43,7 +43,7 @@ function build() {
     CGO_CPPFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
     CC=/usr/local/musl/bin/musl-gcc CGO_ENABLED=1 go build -buildmode=plugin -ldflags \
     "-extldflags=-Wl,-z,now" -o huaweinpu-"${REL_VERSION}".so \
-    "${GOPATH}"/src/volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/
+    "${GOPATH}"/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/
 
     if [ ! -f "${BASE_PATH}/output/huaweinpu-${REL_VERSION}.so" ]
     then

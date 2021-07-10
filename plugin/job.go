@@ -34,7 +34,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
-	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/scheduler-strategy/util"
+	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 func getJobHandle(obj interface{}) *api.JobInfo {

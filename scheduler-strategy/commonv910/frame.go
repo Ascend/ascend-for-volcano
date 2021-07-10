@@ -31,8 +31,8 @@ import (
 	"time"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
-	"volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/plugin"
-	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/scheduler-strategy/util"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
+	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 // VnpuType types of vNPU

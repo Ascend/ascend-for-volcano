@@ -21,7 +21,7 @@ Package modulev910x8 is using for virtual HuaWei Ascend910 schedule.
 */
 package modulev910x8
 
-import "volcano.sh/volcano/pkg/scheduler/plugins/huaweinpu/scheduler-strategy/commonv910"
+import "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/commonv910"
 
 const (
 	// PluginName the modulev910x8's plugin name.
