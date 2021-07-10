@@ -52,6 +52,8 @@ func (tp *module910x8) OnHandlerStart(sHandler *plugin.ScheduleHandler) {
 	sHandler.AddInitNodesNPUAllocTopology(PluginName, initNodesNPUTopologyFn)
 	// Only used by deal fault npu.
 	sHandler.AddPreHandleFaultNPU(PluginName, preHandleFaultNPUFn)
+	// Pre-select cluster processing.
+	sHandler.AddClusterNodePredicateFn(PluginName, clusterNodePredicateFn)
 }
 
 // Check the compliance of the selector and resource request numbers of job.
@@ -108,22 +110,7 @@ func (tp *module910x8) PreCheckNodeFn(task *vapi.TaskInfo, node *vapi.NodeInfo, 
 
 // Check whether the node's NPU resources are stable.
 func (tp *module910x8) CheckNPUResourceStableFn(node *vapi.NodeInfo) error {
-	// default is the npu task
-	nodeNPUIdleNumFromTop, err := getNodeNPUNumFromAnnotation(node)
-	if err != nil {
-		return fmt.Errorf("getNodeNPUNumFromAnnotation %s : %s", nodesNoMeetNPUReqError, err)
-	}
-
-	nodeNPUIdleNumFromIdle, err := npuutil.GetNodeNPUNumFromIdle(node, npu800And9000CardName)
-	if err != nil {
-		return fmt.Errorf("getNodeNPUNumFromIdle %s : %s", nodesNoMeetNPUReqError, err)
-	}
-
-	if err = npuutil.CheckNodeNPUStabilize(nodeNPUIdleNumFromTop, nodeNPUIdleNumFromIdle); err != nil {
-		return fmt.Errorf("%s : %s", nodeNotStableWarning, err)
-	}
-
-	return nil
+	return checkNPUResourceStable(node)
 }
 
 // Check whether the requested resource exists and are sufficient on the node.

@@ -248,6 +248,18 @@ func (hwNPU *ScheduleHandler) checkNPUResourceStable(task *api.TaskInfo, node *a
 	return curNPUPlugin.CheckNPUResourceStableFn(node)
 }
 
+// ClusterNodePredicate Predicate node by volcano frame.
+func (hwNPU *ScheduleHandler) ClusterNodePredicate(task *api.TaskInfo, ssn *framework.Session) error {
+	for pluginName, clusterNodePredicate := range hwNPU.ClusterNodePredicateFns {
+		if err := clusterNodePredicate(task, ssn); err != nil {
+			klog.V(logErrorLev).Infof("%s clusterNodePredicate :%v.", pluginName, err)
+			return err
+		}
+	}
+
+	return nil
+}
+
 // NodePredicate Predicate node by volcano frame.
 func (hwNPU *ScheduleHandler) NodePredicate(task *api.TaskInfo, node *api.NodeInfo, conf []conf.Configuration) error {
 	klog.V(logInfoLev).Infof("enter node predicate")

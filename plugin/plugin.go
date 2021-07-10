@@ -80,6 +80,8 @@ type ScheduleHandler struct {
 	InitNodesNPUAllocTopologyFns map[string]npuapi.InitNodesNPUTopologyFn
 	// Handle NPU fault chip functions.
 	PreHandleFaultNPUFns map[string]npuapi.PreHandleFaultNPUFn
+	// Nodes pre-select cluster processing
+	ClusterNodePredicateFns map[string]npuapi.ClusterNodePredicateFn
 }
 
 // AddJobEnqueueableFn add Pretreatment of NPU faults function
@@ -92,6 +94,12 @@ func (hwNPU *ScheduleHandler) AddPreHandleFaultNPU(pluginName string, fn npuapi.
 func (hwNPU *ScheduleHandler) AddInitNodesNPUAllocTopology(name string, fn npuapi.InitNodesNPUTopologyFn) {
 	hwNPU.InitNodesNPUAllocTopologyFns[name] = fn
 	klog.V(logDebugLev).Infof("InitNodesNPUAllocTopology :%v add.", name)
+}
+
+// AddClusterNodePredicateFn add pre-select cluster processing function.
+func (hwNPU *ScheduleHandler) AddClusterNodePredicateFn(pluginName string, fn npuapi.ClusterNodePredicateFn) {
+	hwNPU.ClusterNodePredicateFns[pluginName] = fn
+	klog.V(logDebugLev).Infof("ClusterNodePredicate :%v add.", pluginName)
 }
 
 // RegisterNPUScheduler register the plugin

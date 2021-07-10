@@ -30,6 +30,9 @@ import (
 	"strings"
 	time2 "time"
 	"volcano.sh/volcano/pkg/scheduler/api"
+	vapi "volcano.sh/volcano/pkg/scheduler/api"
+	"volcano.sh/volcano/pkg/scheduler/framework"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
@@ -124,10 +127,6 @@ func getNodeNPUNumFromAnnotation(nodeInfo *api.NodeInfo) (int, error) {
 	}
 
 	nodeNPUIdleNumFromTop := len(top)
-	if nodeNPUIdleNumFromTop > maxNPUNum {
-		return 0, fmt.Errorf("amount of npus exceeded the limitation, maximum(%d), actual(%d)",
-			maxNPUNum, nodeNPUIdleNumFromTop)
-	}
 
 	return nodeNPUIdleNumFromTop, nil
 }
@@ -238,6 +237,70 @@ func setFaultLabelOnNodeAndJob(faultNPUJobs []faultNPUJob, jobs map[string]*api.
 			klog.V(logErrorLev).Infof("%s recordNPUFaultJobToBuffer :%v.", PluginName, err)
 			return err
 		}
+	}
+
+	return nil
+}
+
+func checkNPUResourceStable(node *vapi.NodeInfo) error {
+	// default is the npu task
+	nodeNPUIdleNumFromTop, err := getNodeNPUNumFromAnnotation(node)
+	if err != nil {
+		return fmt.Errorf("getNodeNPUNumFromAnnotation %s : %s", nodesNoMeetNPUReqError, err)
+	}
+
+	nodeNPUIdleNumFromIdle, err := hwutil.GetNodeNPUNumFromIdle(node, npu800And9000CardName)
+	if err != nil {
+		return fmt.Errorf("getNodeNPUNumFromIdle %s : %s", nodesNoMeetNPUReqError, err)
+	}
+
+	if err = hwutil.CheckNodeNPUStabilize(nodeNPUIdleNumFromTop, nodeNPUIdleNumFromIdle); err != nil {
+		return fmt.Errorf("%s : %s", nodeNotStableWarning, err)
+	}
+
+	return nil
+}
+
+// Pre-select cluster processing.
+func clusterNodePredicateFn(task *api.TaskInfo, ssn *framework.Session) error {
+	klog.V(logDebugLev).Infof("%s enter clusterNodePredicateFn.", PluginName)
+	defer klog.V(logDebugLev).Infof("%s leave clusterNodePredicateFn.", PluginName)
+
+	job, err := plugin.GetJobInfoByTask(task, ssn)
+	if err != nil {
+		klog.V(logErrorLev).Infof("%s get910x8Jobs: %v.", PluginName, err)
+		return nil
+	}
+	// 1.Determine if it is a 910 jobs.
+	if err := isMyJob(job); err != nil {
+		klog.V(logDebugLev).Infof("%s get910x8Jobs: %v.", PluginName, err)
+		return nil
+	}
+	// 2.Determine if it is a NPUFault jobs.
+	if !isNPUFaultTask(task) {
+		klog.V(logDebugLev).Infof("%s %s is not npu fault job.", PluginName, task.Name)
+		return nil
+	}
+	// 3.Whether the job is distributed
+	if isDistributedJob(job) {
+		klog.V(logDebugLev).Infof("%s %s is distributed job.", PluginName, job.Name)
+		return nil
+	}
+	// 4.Get the task uses node.
+	node, err := getTaskUseNodeInfo(task, ssn)
+	if err != nil {
+		klog.V(logErrorLev).Infof("%s %s get nil use node.", PluginName, task.Name)
+		return nil
+	}
+	// 5.check node NPU Resource Stable
+	if err := checkNPUResourceStable(node); err == nil {
+		klog.V(logDebugLev).Infof("%s %s NPU Resource Stable.", PluginName, node.Name)
+		return nil
+	}
+	// 6.Instability requires a decision on whether to continue to wait this node..
+	if isNodeMeetTaskReqNPUSource(task, node) {
+		klog.V(logErrorLev).Infof("%s %s NPU Resource Stable.", PluginName, node.Name)
+		return fmt.Errorf("%s is meet npu fault task %s, need continue using this node", node.Name, task.Name)
 	}
 
 	return nil

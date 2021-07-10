@@ -23,6 +23,7 @@ package util
 
 import (
 	"errors"
+	"fmt"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -97,4 +98,34 @@ func GetDeviceIDsFromAnnotations(Annotations map[string]string, npuCardName stri
 
 func getTaskSelectors(task *api.TaskInfo) map[string]string {
 	return task.Pod.Spec.NodeSelector
+}
+
+func getTaskNPUUseCards(task *api.TaskInfo, npuCardName string) (string, error) {
+	topStr, ok := task.Pod.Annotations[npuCardName]
+	if !ok {
+		msg := fmt.Errorf("%s npu card nil", task.Name)
+		klog.V(logDebugLev).Infof("%s :%v.", npuCardName, msg.Error())
+		return "", msg
+	}
+	return topStr, nil
+}
+
+func GetTaskUseNPUIntCards(task *api.TaskInfo, npuCardName string, npuCardPreName string) []int {
+	var topInt []int
+
+	topStr, err := getTaskNPUUseCards(task, npuCardName)
+	if err != nil {
+		klog.V(logErrorLev).Infof("Get Top from task top nil:%v.", err)
+		return nil
+	}
+
+	// cannot judge len(topInt) is 0, for pipelined state
+	topInt = ChangeTopToIntArray(topStr, npuCardPreName)
+	if topInt == nil {
+		klog.V(logInfoLev).Infof("%s getTop from %s nil(%s).", npuCardName, task.Name, topStr)
+		return nil
+	}
+
+	klog.V(logDebugLev).Infof("%s getTopFromNode int: %v, s: %s.", npuCardName, topInt, topStr)
+	return topInt
 }
