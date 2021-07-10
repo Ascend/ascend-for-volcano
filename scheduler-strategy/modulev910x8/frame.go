@@ -43,7 +43,12 @@ func (tp *modulev910x8) Name() string {
 
 // New returns a 910-A800 npu plugin
 func New(npuName string) plugin.HwNPUSchedulerPlugin {
-	return &modulev910x8{name: npuName}
+	return &modulev910x8{
+		name: npuName,
+		Vnpu: v910.Vnpu {
+			MaxNPUNum: maxNPUNum,
+		},
+	}
 }
 
 // IsMyTask determine whether the task is a 910-A800 task

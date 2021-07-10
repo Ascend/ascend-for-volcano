@@ -30,6 +30,7 @@ import (
 	"testing"
 	vapi "volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/util"
+	v910 "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/commonv910"
 )
 
 const (
@@ -87,7 +88,12 @@ func TestMVnpuNew(t *testing.T) {
 		const (
 			name = "modulev910x8"
 		)
-		expectResult := &modulev910x8{name: name}
+		expectResult := &modulev910x8{
+			name: name,
+			Vnpu: v910.Vnpu {
+				MaxNPUNum: maxNPUNum,
+			},
+		}
 
 		Convey("Name() should return a modulev910x8 instance", func() {
 			result := New(name)
