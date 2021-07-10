@@ -337,10 +337,31 @@ func getJobUsedNodes(job *api.JobInfo) (map[string]*v1.Pod, error) {
 
 // Getting the number of NPU chips idle on the node includes the failure task
 func getNodeIdleNPUIntCardsIncludeFaultTask(task *api.TaskInfo, node *api.NodeInfo) []int {
+	var returnNPUs []int
 	nodeNPUTopology := hwutil.GetTopFromNode(node, npu800And9000CardName, npu910CardPreName)
 	taskNPUTopology := hwutil.GetTaskUseNPUIntCards(task, npu800And9000CardName, npu910CardPreName)
+	allIntNPUs := append(nodeNPUTopology, taskNPUTopology...)
 
-	return append(nodeNPUTopology, taskNPUTopology...)
+	allNodeFaultNPUs, err := getNodeFaultNPUsByInt(node)
+	if err != nil {
+		return nil
+	}
+
+	// Gets the difference set of slices.
+	for _, card := range allIntNPUs {
+		i := 0
+		for _, fCard := range allNodeFaultNPUs {
+			if card == fCard {
+				i++
+				break
+			}
+		}
+		if i == 0 {
+			returnNPUs = append(returnNPUs, card)
+		}
+	}
+
+	return returnNPUs
 }
 
 func isNodeMeetTaskReqNPUSource(task *api.TaskInfo, node *api.NodeInfo) bool {

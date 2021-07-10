@@ -27,6 +27,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 	"reflect"
+	"strconv"
 	"strings"
 	time2 "time"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -127,6 +128,10 @@ func getNodeNPUNumFromAnnotation(nodeInfo *api.NodeInfo) (int, error) {
 	}
 
 	nodeNPUIdleNumFromTop := len(top)
+	if nodeNPUIdleNumFromTop > maxNPUNum {
+		return 0, fmt.Errorf("amount of npus exceeded the limitation, maximum(%d), actual(%d)",
+			maxNPUNum, nodeNPUIdleNumFromTop)
+	}
 
 	return nodeNPUIdleNumFromTop, nil
 }
@@ -167,6 +172,31 @@ func getNodeFaultNPUs(node *api.NodeInfo) ([]string, error) {
 	return faultNPUs, nil
 }
 
+func getNodeFaultNPUsByInt(node *api.NodeInfo) ([]int, error) {
+	var topInt []int
+
+	npusStrSlice, err := getNodeFaultNPUs(node)
+	if err != nil {
+		klog.V(logDebugLev).Infof("%s getNodeFaultNPUs err:%v.", PluginName, err)
+		return nil, err
+	}
+
+	for _, cardStr := range npusStrSlice {
+		// cannot use strings 's Trim
+		value := strings.TrimPrefix(cardStr, npu910CardPreName)
+		klog.V(logDebugLev).Infof("getNodeFaultNPUsByInt after TrimPrefix %s.", value)
+		cardInt, err := strconv.Atoi(value)
+		if err != nil {
+			klog.V(logErrorLev).Infof("getNodeFaultNPUsByInt convert failed %v.", err)
+			return nil, err
+		}
+
+		topInt = append(topInt, cardInt)
+	}
+
+	return topInt, nil
+}
+
 func getInoperableNPUs(nodes map[string]*api.NodeInfo) ([]nodeFaultNPUs, error) {
 	var faultNPUs []nodeFaultNPUs
 	for _, nodeInfo := range nodes {
@@ -192,6 +222,7 @@ func getFaultNodePODAndRankIndex(job *api.JobInfo, nodes map[string]*v1.Pod) (fa
 		namespace:        job.Namespace,
 		taskUseRankIndex: make(map[string]string, constIntNum3),
 		taskUseNode:      make(map[string]string, constIntNum3),
+		taskUseNPUs:      make(map[string]string, constIntNum3),
 	}
 
 	for _, task := range job.Tasks {
@@ -203,6 +234,7 @@ func getFaultNodePODAndRankIndex(job *api.JobInfo, nodes map[string]*v1.Pod) (fa
 			}
 			faultJob.taskUseRankIndex[task.Name] = rankIndex
 			faultJob.taskUseNode[task.Name] = task.NodeName
+			faultJob.taskUseNPUs[task.Name] = pod.Annotations[npu800And9000CardName]
 		}
 	}
 
@@ -219,6 +251,7 @@ func setFaultLabelOnNodeAndJob(faultNPUJobs []faultNPUJob, jobs map[string]*api.
 			NodeNames:   make(map[string]string, constIntNum3),
 			RankIndexes: make(map[string]string, constIntNum3),
 			Time:        make(map[string]int64, constIntNum3),
+			TaskUseNPUs: make(map[string]string, constIntNum3),
 			NameSpace:   tmpFaultNPUJob.namespace}
 
 		for taskName, nodeName := range tmpFaultNPUJob.taskUseNode {
@@ -228,7 +261,13 @@ func setFaultLabelOnNodeAndJob(faultNPUJobs []faultNPUJob, jobs map[string]*api.
 				continue
 			}
 
+			useNPUs, npuOK := tmpFaultNPUJob.taskUseNPUs[taskName]
+			if !npuOK {
+				klog.V(logErrorLev).Infof("%s %s get use NPUs failed.", PluginName, taskName)
+				continue
+			}
 			tmpTask.NodeNames[taskName] = nodeName
+			tmpTask.TaskUseNPUs[taskName] = useNPUs
 			tmpTask.RankIndexes[taskName] = rankIndex
 			tmpTask.Time[taskName] = time2.Now().Unix()
 		}

@@ -53,6 +53,7 @@ type ReSchedulerTasks struct {
 	NodeNames   map[string]string
 	RankIndexes map[string]string
 	Time        map[string]int64
+	TaskUseNPUs map[string]string
 	NameSpace   string
 }
 

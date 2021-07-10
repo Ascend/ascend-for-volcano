@@ -69,6 +69,8 @@ type faultNPUJob struct {
 	taskUseRankIndex map[string]string
 	// task name:node name
 	taskUseNode map[string]string
+	// task name:task annotation
+	taskUseNPUs map[string]string
 }
 
 // Record the node's corresponding fault chips.

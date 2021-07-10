@@ -100,20 +100,28 @@ func getTaskSelectors(task *api.TaskInfo) map[string]string {
 	return task.Pod.Spec.NodeSelector
 }
 
-func getTaskNPUUseCards(task *api.TaskInfo, npuCardName string) (string, error) {
-	topStr, ok := task.Pod.Annotations[npuCardName]
+func getFaultTaskNPUUseCards(task *api.TaskInfo) (string, error) {
+	faultTasks, ok := ReSchedulerJobs[task.Job]
+	if !ok {
+		return "", fmt.Errorf("get jobId%s failed", task.Job)
+	}
+
+	topStr, ok := faultTasks.TaskUseNPUs[task.Name]
 	if !ok {
 		msg := fmt.Errorf("%s npu card nil", task.Name)
-		klog.V(logDebugLev).Infof("%s :%v.", npuCardName, msg.Error())
+		klog.V(logDebugLev).Infof("%v.", msg)
 		return "", msg
 	}
+
+	klog.V(logErrorLev).Infof("getFaultTaskNPUUseCards %s use:%v.", task.Name, topStr)
 	return topStr, nil
 }
 
+// GetTaskUseNPUIntCards get task use NPU int cards.
 func GetTaskUseNPUIntCards(task *api.TaskInfo, npuCardName string, npuCardPreName string) []int {
 	var topInt []int
 
-	topStr, err := getTaskNPUUseCards(task, npuCardName)
+	topStr, err := getFaultTaskNPUUseCards(task)
 	if err != nil {
 		klog.V(logErrorLev).Infof("Get Top from task top nil:%v.", err)
 		return nil
@@ -126,6 +134,6 @@ func GetTaskUseNPUIntCards(task *api.TaskInfo, npuCardName string, npuCardPreNam
 		return nil
 	}
 
-	klog.V(logDebugLev).Infof("%s getTopFromNode int: %v, s: %s.", npuCardName, topInt, topStr)
+	klog.V(logDebugLev).Infof("%s GetTaskUseNPUIntCards int: %v, s: %s.", npuCardName, topInt, topStr)
 	return topInt
 }
