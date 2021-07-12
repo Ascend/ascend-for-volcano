@@ -22,7 +22,7 @@ data:
       - name: priority
       - name: gang
       - name: conformance
-      - name: huaweinpu-v2.0.2
+      - name: volcano-npu-v2.0.2
     - plugins:
       - name: drf
       - name: predicates

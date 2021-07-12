@@ -28,7 +28,7 @@ import (
 
 const (
 	// PluginName use in frame
-	PluginName  = "huaweinpu-v2.0.2"
+	PluginName  = "volcano-npu-v2.0.2"
 	logErrorLev = 1
 	logInfoLev  = 3
 	logDebugLev = 4

@@ -332,13 +332,14 @@ func clusterNodePredicateFn(task *api.TaskInfo, ssn *framework.Session) error {
 		return nil
 	}
 	// 5.check node NPU Resource Stable
-	if err := checkNPUResourceStable(node); err == nil {
+	stableErr := checkNPUResourceStable(node)
+	if stableErr == nil {
 		klog.V(logDebugLev).Infof("%s %s NPU Resource Stable.", PluginName, node.Name)
 		return nil
 	}
+	klog.V(logInfoLev).Infof("%s %v.", PluginName, node.Name, stableErr)
 	// 6.Instability requires a decision on whether to continue to wait this node..
 	if isNodeMeetTaskReqNPUSource(task, node) {
-		klog.V(logErrorLev).Infof("%s %s NPU Resource Stable.", PluginName, node.Name)
 		return fmt.Errorf("%s is meet npu fault task %s, need continue using this node", node.Name, task.Name)
 	}
 

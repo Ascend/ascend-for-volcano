@@ -28,8 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 	"strings"
-	"volcano.sh/volcano/pkg/apis/scheduling"
-	"volcano.sh/volcano/pkg/apis/scheduling/v1beta1"
+	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/cli/vjobs"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
@@ -53,7 +52,7 @@ func updatePodGroupPendingReason(ssn *framework.Session, job *api.JobInfo, reaso
 		Status:             v1.ConditionTrue,
 		LastTransitionTime: metav1.Now(),
 		TransitionID:       string(ssn.UID),
-		Reason:             v1beta1.NotEnoughResourcesReason,
+		Reason:             scheduling.NotEnoughResourcesReason,
 		Message:            reasonTmp,
 	}
 	job.PodGroup.Status.Conditions = append(job.PodGroup.Status.Conditions, jc)
