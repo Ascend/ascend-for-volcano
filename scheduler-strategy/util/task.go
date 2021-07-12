@@ -113,7 +113,7 @@ func getFaultTaskNPUUseCards(task *api.TaskInfo) (string, error) {
 		return "", msg
 	}
 
-	klog.V(logErrorLev).Infof("getFaultTaskNPUUseCards %s use:%v.", task.Name, topStr)
+	klog.V(logDebugLev).Infof("getFaultTaskNPUUseCards %s use:%v.", task.Name, topStr)
 	return topStr, nil
 }
 
