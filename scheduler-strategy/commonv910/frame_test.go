@@ -566,10 +566,17 @@ func TestVnpuGetReleaseNPUTopologyFn(t *testing.T) {
 			So(err, ShouldBeError)
 			So(taskTopArr, ShouldResemble, expectResult)
 		})
-		Convey("GetReleaseNPUTopologyFn() should return nil when pod has correct annotation", func() {
+		Convey("GetReleaseNPUTopologyFn() should return error when pod has mismatch annotation", func() {
 			topStr := "Ascend910-2c-190-1"
-			expectResult = append(expectResult, topStr)
 			task.Pod.Annotations[npuV910CardName16c] = topStr
+			taskTopArr, err := vnpu.GetReleaseNPUTopologyFn(task)
+			So(err, ShouldBeError)
+			So(taskTopArr, ShouldResemble, expectResult)
+		})
+		Convey("GetReleaseNPUTopologyFn() should return nil when pod has correct annotation", func() {
+			topStr := "Ascend910-16c-180-1"
+			task.Pod.Annotations[npuV910CardName16c] = topStr
+			expectResult = append(expectResult, topStr)
 			taskTopArr, err := vnpu.GetReleaseNPUTopologyFn(task)
 			So(err, ShouldBeNil)
 			So(taskTopArr, ShouldResemble, expectResult)
