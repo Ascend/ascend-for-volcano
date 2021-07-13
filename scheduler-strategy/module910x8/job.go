@@ -243,3 +243,11 @@ func isJobHasFaultNPU(nodesTask map[string]*v1.Pod, allFaultNPUs []nodeFaultNPUs
 	}
 	return false
 }
+
+func isDistributedJob(job *api.JobInfo) bool {
+	if len(job.Tasks) > 1 {
+		return true
+	}
+
+	return false
+}

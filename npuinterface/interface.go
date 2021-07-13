@@ -31,3 +31,6 @@ type InitNodesNPUTopologyFn func(map[string]*api.NodeInfo) error
 
 // PreHandleFaultNPUFn handle NPU fault chip.
 type PreHandleFaultNPUFn func(*framework.Session) error
+
+// ClusterNodePredicateFn pre-select cluster processing.
+type ClusterNodePredicateFn func(*api.TaskInfo, *framework.Session) error

@@ -31,6 +31,11 @@ const (
 	npuV910CardName4c    = "huawei.com/Ascend910-4c"
 	npuV910CardName8c    = "huawei.com/Ascend910-8c"
 	npuV910CardName16c   = "huawei.com/Ascend910-16c"
+	npuV910CardCoef2c    = 2
+	npuV910CardCoef4c    = 4
+	npuV910CardCoef8c    = 8
+	npuV910CardCoef16c   = 16
+	npu910CardCoef       = 32
 	const2               = 2
 	const3               = 3
 
@@ -48,6 +53,16 @@ const (
 	nodeNotEnoughVnpuWarning = "insufficient number of available Vnpus on this node"
 )
 
+var (
+	vnpuCoefficients = map[string]int{
+		npuV910CardName2c:  npuV910CardCoef2c,
+		npuV910CardName4c:  npuV910CardCoef4c,
+		npuV910CardName8c:  npuV910CardCoef8c,
+		npuV910CardName16c: npuV910CardCoef16c,
+	}
+)
+
 // Vnpu type
 type Vnpu struct {
+	MaxNPUNum int
 }

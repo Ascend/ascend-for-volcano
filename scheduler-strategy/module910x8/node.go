@@ -27,9 +27,13 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 	"reflect"
+	"strconv"
 	"strings"
 	time2 "time"
 	"volcano.sh/volcano/pkg/scheduler/api"
+	vapi "volcano.sh/volcano/pkg/scheduler/api"
+	"volcano.sh/volcano/pkg/scheduler/framework"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
@@ -168,6 +172,31 @@ func getNodeFaultNPUs(node *api.NodeInfo) ([]string, error) {
 	return faultNPUs, nil
 }
 
+func getNodeFaultNPUsByInt(node *api.NodeInfo) ([]int, error) {
+	var topInt []int
+
+	npusStrSlice, err := getNodeFaultNPUs(node)
+	if err != nil {
+		klog.V(logDebugLev).Infof("%s getNodeFaultNPUs err:%v.", PluginName, err)
+		return nil, err
+	}
+
+	for _, cardStr := range npusStrSlice {
+		// cannot use strings 's Trim
+		value := strings.TrimPrefix(cardStr, npu910CardPreName)
+		klog.V(logDebugLev).Infof("getNodeFaultNPUsByInt after TrimPrefix %s.", value)
+		cardInt, err := strconv.Atoi(value)
+		if err != nil {
+			klog.V(logErrorLev).Infof("getNodeFaultNPUsByInt convert failed %v.", err)
+			return nil, err
+		}
+
+		topInt = append(topInt, cardInt)
+	}
+
+	return topInt, nil
+}
+
 func getInoperableNPUs(nodes map[string]*api.NodeInfo) ([]nodeFaultNPUs, error) {
 	var faultNPUs []nodeFaultNPUs
 	for _, nodeInfo := range nodes {
@@ -193,6 +222,7 @@ func getFaultNodePODAndRankIndex(job *api.JobInfo, nodes map[string]*v1.Pod) (fa
 		namespace:        job.Namespace,
 		taskUseRankIndex: make(map[string]string, constIntNum3),
 		taskUseNode:      make(map[string]string, constIntNum3),
+		taskUseNPUs:      make(map[string]string, constIntNum3),
 	}
 
 	for _, task := range job.Tasks {
@@ -204,6 +234,7 @@ func getFaultNodePODAndRankIndex(job *api.JobInfo, nodes map[string]*v1.Pod) (fa
 			}
 			faultJob.taskUseRankIndex[task.Name] = rankIndex
 			faultJob.taskUseNode[task.Name] = task.NodeName
+			faultJob.taskUseNPUs[task.Name] = pod.Annotations[npu800And9000CardName]
 		}
 	}
 
@@ -220,6 +251,7 @@ func setFaultLabelOnNodeAndJob(faultNPUJobs []faultNPUJob, jobs map[string]*api.
 			NodeNames:   make(map[string]string, constIntNum3),
 			RankIndexes: make(map[string]string, constIntNum3),
 			Time:        make(map[string]int64, constIntNum3),
+			TaskUseNPUs: make(map[string]string, constIntNum3),
 			NameSpace:   tmpFaultNPUJob.namespace}
 
 		for taskName, nodeName := range tmpFaultNPUJob.taskUseNode {
@@ -229,7 +261,13 @@ func setFaultLabelOnNodeAndJob(faultNPUJobs []faultNPUJob, jobs map[string]*api.
 				continue
 			}
 
+			useNPUs, npuOK := tmpFaultNPUJob.taskUseNPUs[taskName]
+			if !npuOK {
+				klog.V(logErrorLev).Infof("%s %s get use NPUs failed.", PluginName, taskName)
+				continue
+			}
 			tmpTask.NodeNames[taskName] = nodeName
+			tmpTask.TaskUseNPUs[taskName] = useNPUs
 			tmpTask.RankIndexes[taskName] = rankIndex
 			tmpTask.Time[taskName] = time2.Now().Unix()
 		}
@@ -238,6 +276,71 @@ func setFaultLabelOnNodeAndJob(faultNPUJobs []faultNPUJob, jobs map[string]*api.
 			klog.V(logErrorLev).Infof("%s recordNPUFaultJobToBuffer :%v.", PluginName, err)
 			return err
 		}
+	}
+
+	return nil
+}
+
+func checkNPUResourceStable(node *vapi.NodeInfo) error {
+	// default is the npu task
+	nodeNPUIdleNumFromTop, err := getNodeNPUNumFromAnnotation(node)
+	if err != nil {
+		return fmt.Errorf("getNodeNPUNumFromAnnotation %s : %s", nodesNoMeetNPUReqError, err)
+	}
+
+	nodeNPUIdleNumFromIdle, err := hwutil.GetNodeNPUNumFromIdle(node, npu800And9000CardName)
+	if err != nil {
+		return fmt.Errorf("getNodeNPUNumFromIdle %s : %s", nodesNoMeetNPUReqError, err)
+	}
+
+	if err = hwutil.CheckNodeNPUStabilize(nodeNPUIdleNumFromTop, nodeNPUIdleNumFromIdle); err != nil {
+		return fmt.Errorf("%s : %s", nodeNotStableWarning, err)
+	}
+
+	return nil
+}
+
+// Pre-select cluster processing.
+func clusterNodePredicateFn(task *api.TaskInfo, ssn *framework.Session) error {
+	klog.V(logDebugLev).Infof("%s enter clusterNodePredicateFn.", PluginName)
+	defer klog.V(logDebugLev).Infof("%s leave clusterNodePredicateFn.", PluginName)
+
+	job, err := plugin.GetJobInfoByTask(task, ssn)
+	if err != nil {
+		klog.V(logErrorLev).Infof("%s get910x8Jobs: %v.", PluginName, err)
+		return nil
+	}
+	// 1.Determine if it is a 910 jobs.
+	if err := isMyJob(job); err != nil {
+		klog.V(logDebugLev).Infof("%s get910x8Jobs: %v.", PluginName, err)
+		return nil
+	}
+	// 2.Determine if it is a NPUFault jobs.
+	if !isNPUFaultTask(task) {
+		klog.V(logDebugLev).Infof("%s %s is not npu fault job.", PluginName, task.Name)
+		return nil
+	}
+	// 3.Whether the job is distributed
+	if isDistributedJob(job) {
+		klog.V(logDebugLev).Infof("%s %s is distributed job.", PluginName, job.Name)
+		return nil
+	}
+	// 4.Get the task uses node.
+	node, err := getTaskUseNodeInfo(task, ssn)
+	if err != nil {
+		klog.V(logErrorLev).Infof("%s %s get nil use node.", PluginName, task.Name)
+		return nil
+	}
+	// 5.check node NPU Resource Stable
+	stableErr := checkNPUResourceStable(node)
+	if stableErr == nil {
+		klog.V(logDebugLev).Infof("%s %s NPU Resource Stable.", PluginName, node.Name)
+		return nil
+	}
+	klog.V(logInfoLev).Infof("%s %v.", PluginName, node.Name, stableErr)
+	// 6.Instability requires a decision on whether to continue to wait this node..
+	if isNodeMeetTaskReqNPUSource(task, node) {
+		return fmt.Errorf("%s is meet npu fault task %s, need continue using this node", node.Name, task.Name)
 	}
 
 	return nil

@@ -23,7 +23,7 @@ package main
 
 import (
 	"k8s.io/klog"
-	"volcano.sh/volcano/pkg/apis/scheduling"
+	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 	npuapi "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/npuinterface"
@@ -79,6 +79,11 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 	})
 	// if npu no meet the task require,the task will failed.so need to intercept in advance
 	ssn.AddPredicateFn(tp.Name(), func(taskInfo *api.TaskInfo, nodeInfo *api.NodeInfo) error {
+		if err := sHandler.ClusterNodePredicate(taskInfo, ssn); err != nil {
+			klog.V(logDebugLev).Infof("%s clusterNodePredicate : %v.", PluginName, err)
+			return err
+		}
+
 		return sHandler.NodePredicate(taskInfo, nodeInfo, ssn.Configurations)
 	})
 	// The job who has below or equal 8 NPU,only has one pod. If over, every pod has 8s NPU.
@@ -130,6 +135,8 @@ func HandlerStart() *plugin.ScheduleHandler {
 		InitNodesNPUAllocTopologyFns: map[string]npuapi.InitNodesNPUTopologyFn{},
 		// Handle NPU fault chip functions.
 		PreHandleFaultNPUFns: map[string]npuapi.PreHandleFaultNPUFn{},
+		// Nodes pre-select cluster processing
+		ClusterNodePredicateFns: map[string]npuapi.ClusterNodePredicateFn{},
 	}
 
 	// registor new npu scheduler strategy.

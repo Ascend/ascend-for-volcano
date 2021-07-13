@@ -64,12 +64,12 @@ function build() {
     CGO_CFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
     CGO_CPPFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
     CC=/usr/local/musl/bin/musl-gcc CGO_ENABLED=1 go build -buildmode=plugin -ldflags \
-    "-s -extldflags=-Wl,-z,now" -o huaweinpu-"${REL_VERSION}".so \
+    "-s -extldflags=-Wl,-z,now" -o volcano-npu-"${REL_VERSION}".so \
     "${GOPATH}"/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/
 
-    if [ ! -f "${BASE_PATH}/output/huaweinpu-${REL_VERSION}.so" ]
+    if [ ! -f "${BASE_PATH}/output/volcano-npu-${REL_VERSION}.so" ]
     then
-      echo "fail to find huaweinpu-${REL_VERSION}.so"
+      echo "fail to find volcano-npu-${REL_VERSION}.so"
       exit 1
     fi
 

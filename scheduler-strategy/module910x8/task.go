@@ -28,6 +28,7 @@ import (
 	"strconv"
 	"strings"
 	"volcano.sh/volcano/pkg/scheduler/api"
+	"volcano.sh/volcano/pkg/scheduler/framework"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
@@ -103,4 +104,23 @@ func getTaskUseNPUs(nodesTask map[string]*v1.Pod, nodeName string) ([]string, er
 	}
 
 	return taskNPUs, nil
+}
+
+func getTaskUseNodeInfo(task *api.TaskInfo, ssn *framework.Session) (*api.NodeInfo, error) {
+	faultTasks, ok := util.ReSchedulerJobs[task.Job]
+	if !ok {
+		return nil, fmt.Errorf("get jobId%s failed", task.Job)
+	}
+
+	nodeName, ok := faultTasks.NodeNames[task.Name]
+	if !ok {
+		return nil, fmt.Errorf("get taskName %s failed", task.Name)
+	}
+
+	node, ok := ssn.Nodes[nodeName]
+	if !ok {
+		return nil, fmt.Errorf("get node name %s failed", nodeName)
+	}
+
+	return node, nil
 }

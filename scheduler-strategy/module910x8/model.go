@@ -27,7 +27,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 	"strconv"
-	"volcano.sh/volcano/pkg/apis/scheduling"
+	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
@@ -333,4 +333,75 @@ func getJobUsedNodes(job *api.JobInfo) (map[string]*v1.Pod, error) {
 	}
 	klog.V(logDebugLev).Infof("%s getJobUsedNodes %s use %v.", PluginName, job.Name, nodeNames)
 	return nodeNames, nil
+}
+
+// Getting the number of NPU chips idle on the node includes the failure task
+func getNodeIdleNPUIntCardsIncludeFaultTask(task *api.TaskInfo, node *api.NodeInfo) []int {
+	var returnNPUs []int
+	nodeNPUTopology := hwutil.GetTopFromNode(node, npu800And9000CardName, npu910CardPreName)
+	taskNPUTopology := hwutil.GetTaskUseNPUIntCards(task, npu800And9000CardName, npu910CardPreName)
+	allIntNPUs := append(nodeNPUTopology, taskNPUTopology...)
+
+	allNodeFaultNPUs, err := getNodeFaultNPUsByInt(node)
+	if err != nil {
+		return nil
+	}
+
+	// Gets the difference set of slices.
+	for _, card := range allIntNPUs {
+		i := 0
+		for _, fCard := range allNodeFaultNPUs {
+			if card == fCard {
+				i++
+				break
+			}
+		}
+		if i == 0 {
+			returnNPUs = append(returnNPUs, card)
+		}
+	}
+
+	return returnNPUs
+}
+
+func isNodeMeetTaskReqNPUSource(task *api.TaskInfo, node *api.NodeInfo) bool {
+	var meetFlag = false
+
+	taskNPU, taskError := hwutil.GetTaskNPUNum(task, npu800And9000CardName)
+	if taskError != nil {
+		klog.V(logErrorLev).Infof("getTaskNPUNum %s : %s", nodesNoMeetNPUReqError, taskError)
+		return false
+	}
+	// Getting the number of NPU chips idle on the node includes the failure task
+	idleNPUTopology := getNodeIdleNPUIntCardsIncludeFaultTask(task, node)
+	if len(idleNPUTopology) == 0 {
+		// node has none npu
+		klog.V(logErrorLev).Infof("%s add %s:get npu nil", node.Name, task.Name)
+		return false
+	}
+
+	leftCardNum, rightCardNum := hwutil.GetNodeHccsCardNum(idleNPUTopology)
+
+	switch taskNPU {
+	case 0:
+		return true
+	case 1:
+		meetFlag = (leftCardNum > 0) || (rightCardNum > 0)
+	case constIntNum2:
+		meetFlag = (leftCardNum > 1) || (rightCardNum > 1)
+	case npuNumPerHccs:
+		meetFlag = (leftCardNum == npuNumPerHccs) || (rightCardNum == npuNumPerHccs)
+	case nodeNPUNumber:
+		meetFlag = (leftCardNum + rightCardNum) == nodeNPUNumber
+	default:
+		klog.V(logErrorLev).Infof("%s %s get wrong %v NPU number.", PluginName, task.Name, taskNPU)
+	}
+
+	if meetFlag {
+		klog.V(logInfoLev).Infof("%s %s %v meet req %d.", PluginName, node.Name, idleNPUTopology, taskNPU)
+		return true
+	}
+
+	klog.V(logErrorLev).Infof("%s %v not meet req %d.", PluginName, idleNPUTopology, taskNPU)
+	return false
 }
