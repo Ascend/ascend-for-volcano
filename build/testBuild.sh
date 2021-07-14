@@ -25,9 +25,11 @@ if  ! go test -v -race -coverprofile cov.out "${GOPATH}"/src/volcano.sh/volcano/
 then
   echo '****** go test cases error! ******'
   echo 'Failed' > $file_input
+  exit 1
 else
   gocov convert cov.out | gocov-html >"$file_detail_output"
   gotestsum --junitfile unit-tests.xml "${GOPATH}"/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/...
 fi
 
 echo "************************************* End   LLT Test *************************************"
+exit 0

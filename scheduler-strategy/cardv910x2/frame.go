@@ -43,7 +43,12 @@ func (tp *cardv910x2) Name() string {
 
 // New returns a 910-300T npu plugin
 func New(npuName string) plugin.HwNPUSchedulerPlugin {
-	return &cardv910x2{name: npuName}
+	return &cardv910x2{
+		name: npuName,
+		Vnpu: v910.Vnpu{
+			MaxNPUNum:maxNPUNum,
+		},
+	}
 }
 
 // get selector configs of 910-300T
