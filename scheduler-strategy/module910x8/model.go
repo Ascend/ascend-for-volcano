@@ -287,21 +287,19 @@ func judgeNodeAndTaskNPU(taskNPU int, nodeNPUTopology []int) error {
 		return nil
 	}
 
-	klog.V(logErrorLev).Infof("%s %v not meet req %d.", PluginName, nodeNPUTopology, taskNPU)
+	klog.V(logErrorLev).Infof("%s cardIDs:%v not meet reqNum %d.", PluginName, nodeNPUTopology, taskNPU)
 	return meetErr
 }
 
-func isNodeInFaultJobUseList(task *api.TaskInfo, node *api.NodeInfo) bool {
-	value, ok := hwutil.ReSchedulerJobs[task.Job]
-	if !ok {
-		return false
-	}
-
-	for _, nodeName := range value.NodeNames {
-		if nodeName == node.Name {
-			return true
+func isNodeInFaultJobUseList(node *api.NodeInfo) bool {
+	for _, jobValue := range hwutil.ReSchedulerJobs {
+		for _, nodeName := range jobValue.NodeNames {
+			if nodeName == node.Name {
+				return true
+			}
 		}
 	}
+
 	return false
 }
 
@@ -312,11 +310,12 @@ func checkFaultJobNode(task *api.TaskInfo, node *api.NodeInfo) error {
 		return nil
 	}
 
-	if isNodeInFaultJobUseList(task, node) {
+	if isNodeInFaultJobUseList(node) {
 		msg := fmt.Errorf("%s is used by npu fault job:%s", node.Name, task.Job)
 		klog.V(logErrorLev).Infof("%s %s.", PluginName, msg)
 		return msg
 	}
+	klog.V(logDebugLev).Infof("%s %s not in fault job use node list.", PluginName, node.Name)
 
 	return nil
 }
