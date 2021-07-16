@@ -23,7 +23,7 @@ function buildBinaryFiles() {
 
     CGO_CFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
     CGO_CPPFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
-    CGO_ENABLED=0 go build -buildmode=pie -ldflags "-s -extldflags=-Wl,-z,now
+    CGO_ENABLED=0 go build -buildmode=pie -ldflags "-s -linkmode=external -extldflags=-Wl,-z,now
     -X '${PKG_PATH}/version.Built=${Date}' -X '${PKG_PATH}/version.Version=${BASE_VER}'" \
     -o vc-controller-manager "${CMD_PATH}"/controller-manager
 
