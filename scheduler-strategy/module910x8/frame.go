@@ -397,7 +397,7 @@ func preHandleFaultNPUFn(ssn *framework.Session) error {
 	// 3.Get fault vcjobs and its node-rankIndex.
 	faultNPUJobs, err = getFaultNPUJobs(jobs, faultNPUs)
 	if err != nil {
-		klog.V(logErrorLev).Infof("%s getFaultNPUJobs %v.", PluginName, err)
+		klog.V(logDebugLev).Infof("%s getFaultNPUJobs %v.", PluginName, err)
 		return err
 	}
 	// 4.Sets the node reschedule occupancy flag.
