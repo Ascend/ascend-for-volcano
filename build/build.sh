@@ -4,8 +4,7 @@
 
 set -e
 
-REL_VERSION='v2.0.2'
-REL_OSARCH="amd64"
+DEFAULT_VER='v2.0.2'
 TOP_DIR=${GOPATH}/src/volcano.sh/volcano/
 BASE_PATH=${GOPATH}/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/
 CMD_PATH=${GOPATH}/src/volcano.sh/volcano/cmd/
@@ -18,9 +17,22 @@ function parse_version() {
     if  [ -f "$version_file" ]; then
       line=$(sed -n '1p' "$version_file" 2>&1)
       version=${line#*:}
-      REL_VERSION=${version}
+      echo ${version}
+    fi
+    echo ${DEFAULT_VER}
+}
+
+function parse_arch() {
+    machine_arch=$(uname -m)
+    if [ "$machine_arch" = "aarch64" ]; then
+      echo "aarch64"
+    else
+      echo "amd64"
     fi
 }
+
+REL_VERSION=$(parse_version)
+REL_OSARCH=$(parse_arch)
 
 function clean() {
     rm -f "${BASE_PATH}"/output/vc-controller-manager
@@ -29,10 +41,6 @@ function clean() {
 }
 
 function build() {
-    machine_arch=$(uname -m)
-    if [ "$machine_arch" = "aarch64" ]; then
-      REL_OSARCH="arm64"
-    fi
     echo "Build Architecture is" "${REL_OSARCH}"
 
     export GO111MODULE=on
@@ -77,7 +85,6 @@ function build() {
 }
 
 function main() {
-  parse_version
   clean
   build
 }
