@@ -10,34 +10,10 @@ TOP_DIR=${GOPATH}/src/volcano.sh/volcano/
 BASE_PATH=${GOPATH}/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/
 CMD_PATH=${GOPATH}/src/volcano.sh/volcano/cmd/
 PKG_PATH=volcano.sh/volcano/pkg
-Date=`date "+%Y-%m-%d %H:%M:%S"`
+DATE=$(date "+%Y-%m-%d %H:%M:%S")
 BASE_VER=v1.3.0
 
-function clearBinaryFiles() {
-    rm -f "${BASE_PATH}"/output/vc-controller-manager
-    rm -f "${BASE_PATH}"/output/vc-scheduler
-}
-
-function buildBinaryFiles() {
-    cd "${BASE_PATH}"/output/
-
-    CGO_CFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
-    CGO_CPPFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
-    CGO_ENABLED=0 go build -buildmode=pie -ldflags "-s -linkmode=external -extldflags=-Wl,-z,now
-    -X '${PKG_PATH}/version.Built=${Date}' -X '${PKG_PATH}/version.Version=${BASE_VER}'" \
-    -o vc-controller-manager "${CMD_PATH}"/controller-manager
-
-    CGO_CFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
-    CGO_CPPFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
-    CC=/usr/local/musl/bin/musl-gcc \
-    CGO_ENABLED=1 go build -buildmode=pie -ldflags "-s -extldflags=-Wl,-z,now
-    -X '${PKG_PATH}/version.Built=${Date}' -X '${PKG_PATH}/version.Version=${BASE_VER}'" \
-    -o vc-scheduler "${CMD_PATH}"/scheduler
-
-    chmod 500 vc-controller-manager vc-scheduler
-}
-
-function parseVersion() {
+function parse_version() {
     version_file="${TOP_DIR}"/service_config.ini
     if  [ -f "$version_file" ]; then
       line=$(sed -n '1p' "$version_file" 2>&1)
@@ -46,7 +22,9 @@ function parseVersion() {
     fi
 }
 
-function clearInstall() {
+function clean() {
+    rm -f "${BASE_PATH}"/output/vc-controller-manager
+    rm -f "${BASE_PATH}"/output/vc-scheduler
     rm -f "${BASE_PATH}"/output/*.so
 }
 
@@ -69,6 +47,19 @@ function build() {
 
     CGO_CFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
     CGO_CPPFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
+    CGO_ENABLED=0 go build -buildmode=pie -ldflags "-s -linkmode=external -extldflags=-Wl,-z,now
+    -X '${PKG_PATH}/version.Built=${DATE}' -X '${PKG_PATH}/version.Version=${BASE_VER}'" \
+    -o vc-controller-manager "${CMD_PATH}"/controller-manager
+
+    CGO_CFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
+    CGO_CPPFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
+    CC=/usr/local/musl/bin/musl-gcc \
+    CGO_ENABLED=1 go build -buildmode=pie -ldflags "-s -extldflags=-Wl,-z,now
+    -X '${PKG_PATH}/version.Built=${DATE}' -X '${PKG_PATH}/version.Version=${BASE_VER}'" \
+    -o vc-scheduler "${CMD_PATH}"/scheduler
+
+    CGO_CFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
+    CGO_CPPFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
     CC=/usr/local/musl/bin/musl-gcc CGO_ENABLED=1 go build -buildmode=plugin -ldflags \
     "-s -extldflags=-Wl,-z,now" -o volcano-npu-"${REL_VERSION}".so \
     "${GOPATH}"/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/
@@ -80,15 +71,14 @@ function build() {
     fi
 
     chmod 400 "${BASE_PATH}"/output/*.so
+    chmod 500 vc-controller-manager vc-scheduler
     chmod 400 "${BASE_PATH}"/output/Dockerfile*
     chmod 400 "${BASE_PATH}"/output/volcano-*.yaml
 }
 
 function main() {
-  clearBinaryFiles
-  buildBinaryFiles
-  parseVersion
-  clearInstall
+  parse_version
+  clean
   build
 }
 
