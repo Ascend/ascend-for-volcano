@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Perform  test volcano-huawei-npu-scheduler plugin
 # Copyright @ Huawei Technologies CO., Ltd. 2020-2021. All rights reserved
 
@@ -18,7 +18,7 @@ file_detail_output='api.html'
 echo "************************************* Start LLT Test *************************************"
 mkdir -p "${GOPATH}"/src/volcano.sh/volcano/_output/test/
 cd "${GOPATH}"/src/volcano.sh/volcano/_output/test/
-rm -rf $file_detail_output $file_input
+rm -f $file_detail_output $file_input
 
 if  ! go test -v -race -coverprofile cov.out "${GOPATH}"/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/... \
     > ./$file_input;
