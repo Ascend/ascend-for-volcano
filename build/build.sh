@@ -18,6 +18,7 @@ function parse_version() {
       line=$(sed -n '1p' "$version_file" 2>&1)
       version=${line#*:}
       echo ${version}
+      return
     fi
     echo ${DEFAULT_VER}
 }
