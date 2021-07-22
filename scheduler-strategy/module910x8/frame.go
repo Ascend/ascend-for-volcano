@@ -213,7 +213,7 @@ func (tp *module910x8) GetAllocatedNPUFromTopologyFn(task *vapi.TaskInfo, node *
 	nodeTop := npuutil.GetTopFromNode(node, npu800And9000CardName, npu910CardPreName)
 	if nodeTop == nil {
 		klog.V(logErrorLev).Infof("module910x8 not npu node[%s], no need to continue.", node.Name)
-		return allocTopologyHccl, err
+		return allocTopologyHccl, errors.New("failed to get npu topology from node")
 	}
 	klog.V(logInfoLev).Infof("module910x8 %s %s[%d] priority:%v in %v.", PluginName,
 		task.Name, taskNPUNumber, priorityArray, nodeTop)
@@ -325,7 +325,7 @@ func (tp *module910x8) UpdateReleaseNPUNodeTopologyFn(node *vapi.NodeInfo, top i
 		return fmt.Errorf("%s has nil npu", node.Name)
 	}
 	// delete the use top
-	newNodeTopStr := npuutil.GetRealTopAfterRelease(nodeDeviceIDs, taskDeviceIDs, npu800And9000CardName)
+	newNodeTopStr := npuutil.GetRealTopAfterRelease(nodeDeviceIDs, taskDeviceIDs, npu910CardPreName)
 	if newNodeTopStr == "" {
 		klog.V(logErrorLev).Infof("%s getRealTopAfterRelease top failed.", PluginName)
 		return fmt.Errorf("%s release nil npu", node.Name)
