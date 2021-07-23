@@ -63,9 +63,13 @@ func GetTopFromNode(node *api.NodeInfo, npuCardName string, npuCardPreName strin
 
 // CheckTopValidity Checks the validity of npu card ids which are read from annotations
 func CheckTopValidity(top []int) bool {
-	sort.Ints(top) // sort ascend
-	for i, num := range top {
-		if i != 0 && num == top[i-1] {
+	tmp := make([]int, len(top))
+	for index, v := range top {
+		tmp[index] = v
+	}
+	sort.Ints(tmp)
+	for i, num := range tmp {
+		if i != 0 && num == tmp[i-1] {
 			klog.V(logErrorLev).Infof("duplicated npu(%d)", num)
 			return false
 		}

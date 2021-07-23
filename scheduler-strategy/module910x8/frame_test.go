@@ -215,7 +215,7 @@ func TestMNPUValidNPUJobFnInvalidSelector(t *testing.T) {
 	})
 }
 
-// TestVnpuValidNPUJobFnInvalidNum
+// TestMnpuValidNPUJobFnInvalidNum
 func TestMNPUValidNPUJobFnInvalidNum(t *testing.T) {
 	Convey("Test module910x8 ValidNPUJobFnInvalidNum", t, func() {
 		const (
@@ -437,7 +437,7 @@ func TestMnpuGetNPUAffinityBestNodesFn(t *testing.T) {
 		task := vapi.NewTaskInfo(pod)
 		nodes := []*vapi.NodeInfo{}
 
-		Convey("GetNPUAffinityBestNodesFn() should return ", func() {
+		Convey("GetNPUAffinityBestNodesFn() should return correct result", func() {
 			node1 := buildNPUNode(MNodeInfo{nodeName1, huaweiArchX86, "192", "755Gi",
 				"5", "Ascend910-5,Ascend910-2,Ascend910-0,Ascend910-1,Ascend910-3"})
 			nodes = append(nodes, node1)
@@ -448,6 +448,175 @@ func TestMnpuGetNPUAffinityBestNodesFn(t *testing.T) {
 			result, err := npu.GetNPUAffinityBestNodesFn(task, nodes)
 
 			So(result[nodeName1], ShouldEqual, constNum)
+			So(err, ShouldBeNil)
+		})
+	})
+}
+
+// TestMnpuScoreBestNPUNodesFn
+func TestMnpuScoreBestNPUNodesFn(t *testing.T) {
+	Convey("Test module910x8 ScoreBestNPUNodesFn", t, func() {
+		const (
+			nodeName1 = "euler1"
+			nodeName2 = "euler2"
+		)
+		npu := &module910x8{}
+		bestNodes := map[string]int{
+			nodeName1: 0,
+			nodeName2: constIntNum3,
+		}
+		pod := buildNPUPod(MPodInfo{namespace: "default", groupName: "npu-group-62",
+			podName: "npu-test-62", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
+			reqNPUType: npu800And9000CardName, reqNpuNum: "4"})
+		task := vapi.NewTaskInfo(pod)
+
+		nodes := []*vapi.NodeInfo{}
+		node1 := buildNPUNode(MNodeInfo{nodeName1, huaweiArchX86, "192", "755Gi",
+			"8", "Ascend910-5,Ascend910-2,Ascend910-0,Ascend910-1,Ascend910-3," +
+				"Ascend910-6,Ascend910-7"})
+		nodes = append(nodes, node1)
+		node2 := buildNPUNode(MNodeInfo{nodeName2, huaweiArchArm, "192", "755Gi",
+			"8", "Ascend910-5,Ascend910-2,Ascend910-0,Ascend910-1,Ascend910-3," +
+				"Ascend910-6,Ascend910-7"})
+		nodes = append(nodes, node2)
+
+		Convey("ScoreBestNPUNodesFn() should return err when scoreMap is nil", func() {
+			var scoreMap map[string]float64
+			_, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
+			So(err, ShouldNotBeNil)
+		})
+
+		Convey("ScoreBestNPUNodesFn() should return correct result", func() {
+			scoreMap := make(map[string]float64)
+			expectedResult := map[string]float64{
+				nodeName1: 32.00,
+				nodeName2: 29.00,
+			}
+			result, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
+			So(err, ShouldBeNil)
+			So(result, ShouldResemble, expectedResult)
+		})
+	})
+}
+
+// TestMnpuGetAllocatedNPUFromTopologyFn
+func TestMnpuGetAllocatedNPUFromTopologyFn(t *testing.T) {
+	Convey("Test module910x8 GetAllocatedNPUFromTopologyFn", t, func() {
+		npu := &module910x8{}
+
+		Convey("GetAllocatedNPUFromTopologyFn()", func() {
+			pod := buildNPUPod(MPodInfo{namespace: "default", groupName: "npu-group-64",
+				podName: "npu-test-64", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
+				reqNPUType: npu800And9000CardName, reqNpuNum: "8"})
+			task := vapi.NewTaskInfo(pod)
+			node := buildNPUNode(MNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
+				"8", ""})
+			setNodeAnnotation(node.Node, npu800And9000CardName, "")
+			var expectedResult []int
+			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node)
+			So(err, ShouldBeError)
+			So(result, ShouldResemble, expectedResult)
+		})
+		Convey("GetAllocatedNPUFromTopologyFn() should return correct result case 1", func() {
+			pod := buildNPUPod(MPodInfo{namespace: "default", groupName: "npu-group-63",
+				podName: "npu-test-63", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
+				reqNPUType: npu800And9000CardName, reqNpuNum: "4"})
+			task := vapi.NewTaskInfo(pod)
+			node := buildNPUNode(MNodeInfo{nodeName, huaweiArchArm, "192", "755Gi",
+				"5", "Ascend910-5,Ascend910-2,Ascend910-0,Ascend910-1,Ascend910-3"})
+			expectedResult := []int{2, 0, 1, 3}
+			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node)
+			So(err, ShouldBeNil)
+			So(result, ShouldResemble, expectedResult)
+		})
+		Convey("GetAllocatedNPUFromTopologyFn() should return correct result case 2", func() {
+			pod := buildNPUPod(MPodInfo{namespace: "default", groupName: "npu-group-65",
+				podName: "npu-test-65", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
+				reqNPUType: npu800And9000CardName, reqNpuNum: "2"})
+			task := vapi.NewTaskInfo(pod)
+			node := buildNPUNode(MNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
+				"2", "Ascend910-5,Ascend910-7"})
+			expectedResult := []int{5, 7}
+			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node)
+			So(err, ShouldBeNil)
+			So(result, ShouldResemble, expectedResult)
+		})
+	})
+}
+
+// TestMnpuSetNPUTopologyToPodFn
+func TestMnpuSetNPUTopologyToPodFn(t *testing.T) {
+	Convey("Test module910x8 SetNPUTopologyToPodFn", t, func() {
+		npu := &module910x8{}
+		task := vapi.NewTaskInfo(buildNPUPod(MPodInfo{namespace: "default", groupName: "npu-group-64",
+			podName: "npu-test-64", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
+			reqNPUType: npu800And9000CardName, reqNpuNum: "4"}))
+		Convey("SetNPUTopologyToPodFn() should return error when top is of wrong type", func() {
+			top := []string{}
+			err := npu.SetNPUTopologyToPodFn(task, top)
+			So(err, ShouldBeError)
+			So(task.Pod.Annotations[npu800And9000CardName], ShouldEqual, "")
+		})
+		Convey("SetNPUTopologyToPodFn() should write correct info in pod annotation", func() {
+			top := []int{2, 0, 1, 3}
+			expectedResult := "Ascend910-2,Ascend910-0,Ascend910-1,Ascend910-3"
+			err := npu.SetNPUTopologyToPodFn(task, top)
+			So(err, ShouldBeNil)
+			So(task.Pod.Annotations[npu800And9000CardName], ShouldEqual, expectedResult)
+		})
+	})
+}
+
+// TestMnpuUpdateNPUNodeUsedCardFn
+func TestMnpuUpdateNPUNodeUsedCardFn(t *testing.T) {
+	Convey("Test module910x8 UpdateNPUNodeUsedCardFn", t, func() {
+		npu := &module910x8{}
+		node := buildNPUNode(MNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
+			"4", "Ascend910-2,Ascend910-0,Ascend910-1,Ascend910-3"})
+		node.Others = map[string]interface{}{
+			npu800And9000CardName: "Ascend910-2,Ascend910-0,Ascend910-1,Ascend910-3",
+		}
+		Convey("UpdateNPUNodeUsedCardFn() should successfully update node.others", func() {
+			top := []int{0, 1}
+			expectedResult := map[string]interface{}{
+				npu800And9000CardName: "Ascend910-2,Ascend910-3",
+			}
+			err := npu.UpdateNPUNodeUsedCardFn(node, top)
+			So(err, ShouldBeNil)
+			So(node.Others, ShouldResemble, expectedResult)
+		})
+	})
+}
+
+// TestMnpuGetReleaseNPUTopologyFn
+func TestMnpuGetReleaseNPUTopologyFn(t *testing.T) {
+	Convey("Test module910x8 GetReleaseNPUTopologyFn", t, func() {
+		npu := &module910x8{}
+		task := vapi.NewTaskInfo(buildNPUPod(MPodInfo{namespace: "default", groupName: "npu-group-64",
+			podName: "npu-test-64", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
+			reqNPUType: npu800And9000CardName, reqNpuNum: "4"}))
+		Convey("GetReleaseNPUTopologyFn() should return correct card id slice", func() {
+			task.Pod.Annotations[npu800And9000CardName] = "Ascend910-0,Ascend910-1,Ascend910-2,Ascend910-3,Ascend910-6"
+			expectedResult := []int{0, 1, 2, 3, 6}
+			result, err := npu.GetReleaseNPUTopologyFn(task)
+			So(err, ShouldBeNil)
+			So(result, ShouldResemble, expectedResult)
+		})
+	})
+}
+
+// TestMnpuUpdateReleaseNPUNodeTopologyFn
+func TestMnpuUpdateReleaseNPUNodeTopologyFn(t *testing.T) {
+	Convey("Test module910x8 UpdateReleaseNPUNodeTopologyFn", t, func() {
+		npu := &module910x8{}
+		node := buildNPUNode(MNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
+			"4", "Ascend910-4,Ascend910-6,Ascend910-7,Ascend910-5"})
+		node.Others = map[string]interface{}{
+			npu800And9000CardName: "Ascend910-4,Ascend910-6,Ascend910-7,Ascend910-5",
+		}
+		Convey("UpdateNPUNodeUsedCardFn() should successfully update node.others", func() {
+			top := []int{0, 1}
+			err := npu.UpdateReleaseNPUNodeTopologyFn(node, top)
 			So(err, ShouldBeNil)
 		})
 	})

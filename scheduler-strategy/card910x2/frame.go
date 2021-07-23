@@ -251,7 +251,7 @@ func (tp *card910x2) UpdateReleaseNPUNodeTopologyFn(node *api.NodeInfo, top inte
 		return fmt.Errorf("%s has nil npu", node.Name)
 	}
 	// delete the use top
-	newNodeTopStr := hwutil.GetRealTopAfterRelease(nodeDeviceIDs, taskDeviceIDs, a300TNPUCardName)
+	newNodeTopStr := hwutil.GetRealTopAfterRelease(nodeDeviceIDs, taskDeviceIDs, a300tNPUCardPreName)
 	if newNodeTopStr == "" {
 		klog.V(logErrorLev).Infof("%s getRealTopAfterRelease top failed", PluginName)
 		return fmt.Errorf("%s release nil npu", node.Name)
