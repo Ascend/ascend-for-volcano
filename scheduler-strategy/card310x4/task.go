@@ -16,20 +16,27 @@ limitations under the License.
 
 /*
 
-Package plugin is using for HuaWei Ascend pin affinity schedule.
+Package card310x4 is using for HuaWei A300T Ascend pin affinity schedule.
 
 */
-package plugin
+package card310x4
 
-const (
-	// PluginName the HuaWei NPU 's plugin name.
-	PluginName             = "huaweiNPU"
-	a310NPUCardName        = "huawei.com/Ascend310"
-	logErrorLev            = 1
-	logWarningLev          = 2
-	logInfoLev             = 3
-	logDebugLev            = 4
-	nodeNoFitSelectorError = "no matching label on this node"
-	nodesNoMeetNPUReqError = "insufficient npus on the schedulable nodes in cluster"
-	noneNPUPlugin          = "get nil NPUPlugin(not npu task)"
-)
+import "errors"
+
+// According to need card number, get best node from 4 pri-node-list-group.
+func getBestNodesMap(priNodeGroups []map[string]*npuPriNodeInf) (map[string]int, error) {
+	var bestNodesMap = make(map[string]int, cardNPUNumber)
+
+	for i := 0; i < cardNPUNumber; i++ {
+		for nodeName := range priNodeGroups[i] {
+			tmpName := nodeName
+			bestNodesMap[tmpName] = i
+		}
+	}
+
+	if len(bestNodesMap) == 0 {
+		return nil, errors.New("none bestNodes")
+	}
+
+	return bestNodesMap, nil
+}

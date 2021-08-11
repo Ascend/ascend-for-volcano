@@ -16,20 +16,26 @@ limitations under the License.
 
 /*
 
-Package plugin is using for HuaWei Ascend pin affinity schedule.
+Package util is using for HuaWei Ascend9 pin affinity schedule utilities.
 
 */
-package plugin
+package util
 
 const (
-	// PluginName the HuaWei NPU 's plugin name.
-	PluginName             = "huaweiNPU"
-	a310NPUCardName        = "huawei.com/Ascend310"
+	constIntNum2           = 2
+	constIntNum3           = 3
+	nodeNPUNumber          = 8
 	logErrorLev            = 1
-	logWarningLev          = 2
 	logInfoLev             = 3
 	logDebugLev            = 4
+	npuHex                 = 1000
+	archSelector           = "host-arch"
+	huaweiArchArm          = "huawei-arm"
+	huaweiArchX86          = "huawei-x86"
+	accelerator            = "accelerator"
+	acceleratorValue       = "huawei-Ascend310"
+	acceleratorType        = "npu-310-strategy"
+	cardAcceleratorType    = "card"
+	chipAcceleratorType    = "chip"
 	nodeNoFitSelectorError = "no matching label on this node"
-	nodesNoMeetNPUReqError = "insufficient npus on the schedulable nodes in cluster"
-	noneNPUPlugin          = "get nil NPUPlugin(not npu task)"
 )

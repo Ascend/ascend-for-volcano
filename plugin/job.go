@@ -209,6 +209,10 @@ func SetJobPendReasonByNodesCase(ssn *framework.Session, nodes map[string]*api.N
 			}
 		}
 
+		if _, ok := task.Resreq.ScalarResources[a310NPUCardName]; ok {
+			return
+		}
+
 		availableNodes := len(nodes) - errorNodeCount
 		needNodes := len(job.Tasks)
 		klog.V(logDebugLev).Infof("%s %d %d %v", PluginName, availableNodes, needNodes, job.NodesFitErrors)
