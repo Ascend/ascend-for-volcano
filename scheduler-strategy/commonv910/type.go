@@ -42,6 +42,7 @@ const (
 	logErrorLev   = 1
 	logInfoLev    = 3
 	logDebugLev   = 4
+	constIntNum8  = 8
 	npuHex        = 1000
 	archSelector  = "host-arch"
 	huaweiArchArm = "huawei-arm"

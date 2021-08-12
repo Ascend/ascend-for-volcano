@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"k8s.io/klog"
 	"sort"
+	"strconv"
 	"strings"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
@@ -218,4 +219,103 @@ func updateNPUNodeTopology(node *api.NodeInfo, top interface{}, updateFn func([]
 	klog.V(logInfoLev).Infof("ReloadNewTopToNode %s to %s successes.", newNodeTopStr, node.Name)
 
 	return nil
+}
+
+// return a slice of string of virtual card to be allocated
+// sorted based on rules of try to allocate from physical card with the least remaining compute power
+func getVCardWithLeastRemainPw(annotations map[string]string, vType string) ([]string, error) {
+	vAnno, exist := annotations[vType]
+	if !exist {
+		return nil, errors.New("getVCardWithLeastRemainPw no such vnpu resources")
+	}
+
+	cardByPriority, errR := getCardIDInAscRemainPwOrder(annotations)
+	if errR != nil {
+		return nil, errR
+	}
+
+	vNPUEachCard, errC := getVNPUByEachCard(vAnno)
+	if errC != nil {
+		return nil, errC
+	}
+
+	vNPUByPriority := []string{}
+	for _, cardID := range cardByPriority {
+		vNPUByPriority = append(vNPUByPriority, vNPUEachCard[cardID]...)
+	}
+
+	return vNPUByPriority, nil
+}
+
+// return a map of physical card ID(int) to certain vNPUs(slice of string) belong to that card
+func getVNPUByEachCard(vAnno string) (map[int][]string, error) {
+	vNPUEachCard := map[int][]string{}
+
+	vAnnoList := strings.Split(vAnno, ",")
+	for _, vAnnoInstance := range vAnnoList {
+		vAnnoInstanceSlice := strings.Split(vAnnoInstance, "-")
+		vAnnoCardID, err := strconv.Atoi(vAnnoInstanceSlice[len(vAnnoInstanceSlice)-1])
+		if err != nil || vAnnoCardID < 0 || vAnnoCardID >= constIntNum8 {
+			return nil, errors.New("getVCardWithLeastRemainPw error change certain field in vAnno to int")
+		}
+		vNPUEachCard[vAnnoCardID] = append(vNPUEachCard[vAnnoCardID], vAnnoInstance)
+	}
+
+	return vNPUEachCard, nil
+}
+
+// change map of remain power of each card to a ascending sorted slice
+func getSortedRemainPwSlice(remainPw map[int]int) []int {
+	powerAvl := []struct {
+		cardID int
+		avl    int
+	}{}
+
+	for vCardID, vRPower := range remainPw {
+		powerAvl = append(powerAvl, struct {
+			cardID int
+			avl    int
+		}{cardID: vCardID, avl: vRPower})
+	}
+
+	sort.SliceStable(powerAvl, func(i, j int) bool {
+		return powerAvl[i].avl < powerAvl[j].avl
+	})
+
+	cardsSorted := []int{}
+	for _, avlInfo := range powerAvl {
+		cardsSorted = append(cardsSorted, avlInfo.cardID)
+	}
+
+	return cardsSorted
+}
+
+// Get the sorted card ids, sort from least to most according to the remaining compute power of the card
+func getCardIDInAscRemainPwOrder(annotations map[string]string) ([]int, error) {
+	remainPower := map[int]int{}
+
+	for vType, vAnno := range annotations {
+		if _, exist := vnpuCoefficients[vType]; !exist {
+			continue
+		}
+		cPowerList := strings.Split(vType, "-")
+		cPower, err := strconv.Atoi(strings.TrimSuffix(cPowerList[len(cPowerList)-1], "c"))
+		if err != nil {
+			return nil, errors.New("getCardIDInAscRemainPwOrder error change certain field in vtype to int")
+		}
+
+		vAnnoList := strings.Split(vAnno, ",")
+		for _, vAnnoInstance := range vAnnoList {
+			vAnnoInstanceSlice := strings.Split(vAnnoInstance, "-")
+			vAnnoCardID, err := strconv.Atoi(vAnnoInstanceSlice[len(vAnnoInstanceSlice)-1])
+			if err != nil {
+				return nil, errors.New("getCardIDInAscRemainPwOrder error change certain field in vAnno to int")
+			}
+			remainPower[vAnnoCardID] += cPower
+		}
+	}
+
+	remainPwID := getSortedRemainPwSlice(remainPower)
+
+	return remainPwID, nil
 }

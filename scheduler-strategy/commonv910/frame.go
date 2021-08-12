@@ -161,7 +161,7 @@ func (tp *Vnpu) CheckNodeNPUByTaskFn(task *api.TaskInfo, node *api.NodeInfo) err
 		total += nodeVnpu * vnpuCoefficients[vType]
 	}
 
-	if tp.MaxNPUNum > 0 && total > npu910CardCoef * tp.MaxNPUNum {
+	if tp.MaxNPUNum > 0 && total > npu910CardCoef*tp.MaxNPUNum {
 		return fmt.Errorf("total amount of npu (%d)c excceeded the maximum limitation of (%d x %d)c",
 			total, tp.MaxNPUNum, npu910CardCoef)
 	}
@@ -209,22 +209,21 @@ func (tp *Vnpu) ScoreBestNPUNodesFn(scoreMap map[string]float64,
 
 // GetAllocatedNPUFromTopologyFn obtain the name of the allocated devices
 func (tp *Vnpu) GetAllocatedNPUFromTopologyFn(task *api.TaskInfo, node *api.NodeInfo) (interface{}, error) {
-	var nodeTopArr, allocTopologyVnpus []string
-	var err error
+	var allocTopologyVnpus []string
 
 	for _, vType := range VnpuType {
-		_, taskError := hwutil.GetTaskNPUNum(task, vType)
+		reqNum, taskError := hwutil.GetTaskNPUNum(task, vType)
 		if taskError != nil {
 			klog.V(logDebugLev).Infof("checkVNodeNPUByTask %s doesn't requests %s.", task.Name, vType)
 			continue
 		}
 
-		nodeTopArr, err = getNPUsFromNodeAnnotation(node.Node.Annotations, vType)
+		vNPUByPriority, err := getVCardWithLeastRemainPw(node.Node.Annotations, vType)
 		if err != nil {
-			klog.V(logErrorLev).Infof("allocateVnpuFromTopology no resource %s on node %s.", vType, node.Name)
+			klog.V(logErrorLev).Infof("GetAllocatedNPUFromTopologyFn allocate error: %s", err)
 			return allocTopologyVnpus, err
 		}
-		allocTopologyVnpus = nodeTopArr[:1]
+		allocTopologyVnpus = vNPUByPriority[:reqNum]
 
 		return allocTopologyVnpus, nil
 	}
