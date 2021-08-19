@@ -26,12 +26,14 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 )
 
+// PluginName use in frame
+var PluginName = "volcano-npu-v2.0.2"
+
 const (
-	// PluginName use in frame
-	PluginName  = "volcano-npu-v2.0.2"
-	logErrorLev = 1
-	logInfoLev  = 3
-	logDebugLev = 4
+	logErrorLev   = 1
+	logInfoLev    = 3
+	logDebugLev   = 4
+	maxPluginName = 50
 )
 
 type huaweiNPUPlugin struct {
