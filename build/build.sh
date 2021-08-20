@@ -78,7 +78,9 @@ function build() {
       echo "fail to find volcano-npu-${REL_VERSION}.so"
       exit 1
     fi
-
+    sed -i "s/name: volcano-npu-.*/name: volcano-npu-${REL_VERSION}/" "${BASE_PATH}"/output/volcano-*.yaml
+    sed -i "s/ value: \"volcano-npu-.*/ value: \"volcano-npu-${REL_VERSION}\"/" "${BASE_PATH}"/output/volcano-*.yaml
+    sed -i "s/pluginName=volcano-npu-.*/pluginName=volcano-npu-${REL_VERSION}/" "${BASE_PATH}"/output/Dockerfile-scheduler
     chmod 400 "${BASE_PATH}"/output/*.so
     chmod 500 vc-controller-manager vc-scheduler
     chmod 400 "${BASE_PATH}"/output/Dockerfile*
