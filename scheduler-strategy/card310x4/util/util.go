@@ -121,30 +121,31 @@ func GetSchedulerSelectorConfig(confs []conf.Configuration) map[string]string {
 }
 
 // CheckTaskAndNodeSelectorMeet Check the selector between task and node.
-func CheckTaskAndNodeSelectorMeet(tSelectors map[string]string,
+func CheckTaskAndNodeSelectorMeet(defaultConf map[string]string,
 	nSelector map[string]string,
 	conf map[string]string) error {
 
-	for nodeKey, nodeValue := range nSelector {
-		confValue, confOk := conf[nodeKey]
+	for taskKey, taskValue := range defaultConf {
+		confValue, confOk := conf[taskKey]
 		if !confOk {
-			klog.V(logErrorLev).Infof("conf has no task selector:%s.", nodeKey)
-			return fmt.Errorf("%s : conf has no:%s", nodeNoFitSelectorError, nodeKey)
+			klog.V(logErrorLev).Infof("conf has no task selector:%s.", taskKey)
+			return fmt.Errorf("%s : conf has no:%s", nodeNoFitSelectorError, taskKey)
 		}
 
-		taskValue, taskOk := tSelectors[nodeKey]
-		if !taskOk {
-			klog.V(logErrorLev).Infof("node has no task selector:%s.", nodeKey)
-			return fmt.Errorf("%s : node has no:%s", nodeNoFitSelectorError, nodeKey)
+		nodeValue, nodeOk := nSelector[taskKey]
+		if !nodeOk {
+			klog.V(logErrorLev).Infof("node has no task selector:%s.", taskKey)
+			return fmt.Errorf("%s : node has no:%s", nodeNoFitSelectorError, taskKey)
 		}
 
-		if !strings.Contains(confValue, nodeValue) || !strings.EqualFold(nodeValue, taskValue) {
+		if !strings.Contains(confValue, taskValue) || !strings.Contains(taskValue, nodeValue) {
 			klog.V(logErrorLev).Infof("selector(%s) not equal: task(%s) node(%s) conf(%s).",
-				nodeKey, nodeValue, taskValue, confValue)
+				taskKey, taskValue, nodeValue, confValue)
 			return fmt.Errorf("%s key[%s] : task(%s) node(%s) conf(%s)",
-				nodeNoFitSelectorError, nodeKey, nodeValue, taskValue, confValue)
+				nodeNoFitSelectorError, taskKey, taskValue, nodeValue, confValue)
 		}
 	}
+
 	return nil
 }
 
@@ -199,17 +200,7 @@ func GetRealTopAfterRelease(nodeDeviceIDs []int, taskDeviceIDs []int, npuCardPre
 }
 
 // IsSelectorMeetNode Determines whether the selectors of the task and node are equal.
-func IsSelectorMeetNode(task *api.TaskInfo, node *api.NodeInfo, conf map[string]string, cardName string) error {
-	taskSelectors := GetTaskSelectors(task)
-	if len(taskSelectors) == 0 {
-		if err := IsNPUTask(task, cardName); err != nil {
-			klog.V(logDebugLev).Infof("not npu task[%s], no need selector.", task.Name)
-			return nil
-		}
-		// npu task need selector
-		klog.V(logErrorLev).Infof("task[%s] no selector in select node[%s].", task.Name, node.Name)
-		return errors.New(nodeNoFitSelectorError)
-	}
+func IsSelectorMeetNode(task *api.TaskInfo, node *api.NodeInfo, defaultConf, conf map[string]string, cardName string) error {
 
 	// task has selector, so node should have
 	nodeSelector, errNode := GetNodeSelector(node)
@@ -218,7 +209,7 @@ func IsSelectorMeetNode(task *api.TaskInfo, node *api.NodeInfo, conf map[string]
 		return errors.New(nodeNoFitSelectorError)
 	}
 
-	if err := CheckTaskAndNodeSelectorMeet(taskSelectors, nodeSelector, conf); err != nil {
+	if err := CheckTaskAndNodeSelectorMeet(defaultConf, nodeSelector, conf); err != nil {
 		klog.V(logErrorLev).Infof("CheckTaskAndNodeSelectorMeet %s err:%v.", node.Name, err)
 		return err
 	}

@@ -92,7 +92,10 @@ func (tp *chip310x4) PreCheckNodeFn(task *api.TaskInfo, node *api.NodeInfo, conf
 		return fmt.Errorf("%s get scheduler selector nil", node.Name)
 	}
 
-	if err := hwutil.IsSelectorMeetNode(task, node, schedulerConf, a310NPUChipName); err != nil {
+	defaultSchedulerConfig := getCardNPUNodeDefaultSelectorConfig()
+	klog.V(logDebugLev).Infof("%s card selector: %v default:%v.", node.Name, schedulerConf, defaultSchedulerConfig)
+
+	if err := hwutil.IsSelectorMeetNode(task, node, defaultSchedulerConfig, schedulerConf, a310NPUChipName); err != nil {
 		// get scheduler selector configure failed, but need continue
 		klog.V(logErrorLev).Infof("%s taskName: %s ,nodeName %s : %v.", PluginName, task.Name, node.Name, err)
 		return err
