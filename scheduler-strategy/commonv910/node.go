@@ -226,6 +226,7 @@ func updateNPUNodeTopology(node *api.NodeInfo, top interface{}, updateFn func([]
 func getVCardWithLeastRemainPw(annotations map[string]string, vType string) ([]string, error) {
 	vAnno, exist := annotations[vType]
 	if !exist {
+		klog.V(logErrorLev).Infof("%v.", annotations)
 		return nil, errors.New("getVCardWithLeastRemainPw no such vnpu resources")
 	}
 
@@ -256,7 +257,8 @@ func getVNPUByEachCard(vAnno string) (map[int][]string, error) {
 		vAnnoInstanceSlice := strings.Split(vAnnoInstance, "-")
 		vAnnoCardID, err := strconv.Atoi(vAnnoInstanceSlice[len(vAnnoInstanceSlice)-1])
 		if err != nil || vAnnoCardID < 0 || vAnnoCardID >= constIntNum8 {
-			return nil, errors.New("getVCardWithLeastRemainPw error change certain field in vAnno to int")
+			klog.V(logErrorLev).Infof("%s : %s : %d : %s.", vAnno, vAnnoInstanceSlice, vAnnoCardID, err)
+			return nil, err
 		}
 		vNPUEachCard[vAnnoCardID] = append(vNPUEachCard[vAnnoCardID], vAnnoInstance)
 	}
@@ -295,13 +297,14 @@ func getCardIDInAscRemainPwOrder(annotations map[string]string) ([]int, error) {
 	remainPower := map[int]int{}
 
 	for vType, vAnno := range annotations {
-		if _, exist := vnpuCoefficients[vType]; !exist {
+		if _, exist := vnpuCoefficients[vType]; !exist || len(vAnno) == 0 {
 			continue
 		}
 		cPowerList := strings.Split(vType, "-")
 		cPower, err := strconv.Atoi(strings.TrimSuffix(cPowerList[len(cPowerList)-1], "c"))
 		if err != nil {
-			return nil, errors.New("getCardIDInAscRemainPwOrder error change certain field in vtype to int")
+			klog.V(logErrorLev).Infof("%s : %s : %s.", vType, cPowerList, err)
+			return nil, err
 		}
 
 		vAnnoList := strings.Split(vAnno, ",")
@@ -309,7 +312,8 @@ func getCardIDInAscRemainPwOrder(annotations map[string]string) ([]int, error) {
 			vAnnoInstanceSlice := strings.Split(vAnnoInstance, "-")
 			vAnnoCardID, err := strconv.Atoi(vAnnoInstanceSlice[len(vAnnoInstanceSlice)-1])
 			if err != nil {
-				return nil, errors.New("getCardIDInAscRemainPwOrder error change certain field in vAnno to int")
+				klog.V(logErrorLev).Infof("%s : %s : %s.", vAnno, vAnnoInstanceSlice, err)
+				return nil, err
 			}
 			remainPower[vAnnoCardID] += cPower
 		}
