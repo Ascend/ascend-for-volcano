@@ -120,7 +120,7 @@ func (tp *module910x8) CheckNodeNPUByTaskFn(task *vapi.TaskInfo, node *vapi.Node
 		return fmt.Errorf("getTaskNPUNum %s : %s", nodesNoMeetNPUReqError, taskError)
 	}
 
-	nodeNPUTopology := npuutil.GetTopFromNode(node, npu800And9000CardName, npu910CardPreName)
+	nodeNPUTopology := npuutil.GetTopFromNodeOthers(node, npu800And9000CardName, npu910CardPreName)
 	if len(nodeNPUTopology) == 0 {
 		// node has none npu
 		klog.V(logInfoLev).Infof("%s checkNodeNPUByTask nil,node name:%s(top:%v),task req npu:%d.",
@@ -210,7 +210,7 @@ func (tp *module910x8) GetAllocatedNPUFromTopologyFn(task *vapi.TaskInfo, node *
 		return allocTopologyHccl, err
 	}
 
-	nodeTop := npuutil.GetTopFromNode(node, npu800And9000CardName, npu910CardPreName)
+	nodeTop := npuutil.GetTopFromNodeOthers(node, npu800And9000CardName, npu910CardPreName)
 	if nodeTop == nil {
 		klog.V(logErrorLev).Infof("module910x8 not npu node[%s], no need to continue.", node.Name)
 		return allocTopologyHccl, errors.New("failed to get npu topology from node")
@@ -275,7 +275,7 @@ func (tp *module910x8) UpdateNPUNodeUsedCardFn(node *vapi.NodeInfo, top interfac
 	}
 
 	// get node available top
-	nodeDeviceIDs := npuutil.GetDeviceIDsFromNodeOther(node.Others, npu800And9000CardName, npu910CardPreName)
+	nodeDeviceIDs := npuutil.GetTopFromNodeOthers(node, npu800And9000CardName, npu910CardPreName)
 	if nodeDeviceIDs == nil {
 		klog.V(logErrorLev).Infof("%s useAnnotation node(%s) top nil.", PluginName, node.Name)
 		return errors.New("nodeDeviceIDs nil")
@@ -319,7 +319,7 @@ func (tp *module910x8) UpdateReleaseNPUNodeTopologyFn(node *vapi.NodeInfo, top i
 	}
 
 	// get node available top
-	nodeDeviceIDs := npuutil.GetDeviceIDsFromNodeOther(node.Others, npu800And9000CardName, npu910CardPreName)
+	nodeDeviceIDs := npuutil.GetTopFromNodeOthers(node, npu800And9000CardName, npu910CardPreName)
 	if nodeDeviceIDs == nil {
 		klog.V(logErrorLev).Infof("%s useAnnotation node(%s) top nil.", PluginName, node.Name)
 		return fmt.Errorf("%s has nil npu", node.Name)
@@ -358,7 +358,7 @@ func (tp *module910x8) IsMyTask(task *vapi.TaskInfo) error {
 
 // Determine if it is the NPU node of your plug-in.
 func (tp *module910x8) IsMyNode(node *vapi.NodeInfo) error {
-	_, err := npuutil.GetNodeNPUAllocCards(node, npu800And9000CardName)
+	_, err := npuutil.GetNPUAllocCardsFromNodeOthers(node, npu800And9000CardName)
 	if err != nil {
 		return fmt.Errorf("%s %s", node.Name, jobNoNPUCard)
 	}

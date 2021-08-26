@@ -152,7 +152,7 @@ func CheckTaskAndNodeSelectorMeet(defaultConf map[string]string,
 // CheckNodeNPUStabilize Check node npu 's stable.
 func CheckNodeNPUStabilize(nodeNPUIdleNumFromTop int, nodeNPUIdleNumFromIdle int) error {
 	if nodeNPUIdleNumFromTop != nodeNPUIdleNumFromIdle {
-		return fmt.Errorf("node not stable for annotations(%d) : idle(%d)",
+		return fmt.Errorf("node not stable for others(%d) : idle(%d)",
 			nodeNPUIdleNumFromTop, nodeNPUIdleNumFromIdle)
 	}
 

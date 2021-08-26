@@ -49,7 +49,7 @@ func initSelectNodeInf(node *api.NodeInfo) selectNodeInf {
 	var leftHccsTop []int
 	var rightHccsTop []int
 
-	cardIds := hwutil.GetTopFromNode(node, npu800And9000CardName, npu910CardPreName)
+	cardIds := hwutil.GetTopFromNodeOthers(node, npu800And9000CardName, npu910CardPreName)
 	klog.V(logDebugLev).Infof("%s initPriNodeGroups:%v.", PluginName, cardIds)
 	for _, cardID := range cardIds {
 		if cardID < npuNumPerHccs {
@@ -121,8 +121,8 @@ func getNodeHccsArray(nodeTop []int) ([]int, []int) {
 	return leftHccsArray, rightHccsArray
 }
 
-func getNodeNPUNumFromAnnotation(nodeInfo *api.NodeInfo) (int, error) {
-	top := hwutil.GetTopFromNode(nodeInfo, npu800And9000CardName, npu910CardPreName)
+func getNodeNPUNumFromOthers(nodeInfo *api.NodeInfo) (int, error) {
+	top := hwutil.GetTopFromNodeOthers(nodeInfo, npu800And9000CardName, npu910CardPreName)
 	if top == nil {
 		return 0, fmt.Errorf("nil node(%s) top", nodeInfo.Name)
 	}
@@ -142,13 +142,14 @@ func initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) error {
 			continue
 		}
 
-		topStr, err := hwutil.GetNodeNPUAllocCards(node, npu800And9000CardName)
+		topStr, err := hwutil.GetNPUAllocCardsFromNodeAnnotation(node, npu800And9000CardName)
 		if err != nil {
 			klog.V(logDebugLev).Infof("%s initNodesFn :%v.", PluginName, err)
 			return nil
 		}
-
-		node.Others = make(map[string]interface{}, 1)
+		if node.Others == nil {
+			node.Others = make(map[string]interface{}, 1)
+		}
 		err = hwutil.SaveTopologyInMap(node.Others, topStr, npu800And9000CardName)
 		if err != nil {
 			return err
@@ -283,7 +284,7 @@ func setFaultLabelOnNodeAndJob(faultNPUJobs []faultNPUJob, jobs map[string]*api.
 
 func checkNPUResourceStable(node *vapi.NodeInfo) error {
 	// default is the npu task
-	nodeNPUIdleNumFromTop, err := getNodeNPUNumFromAnnotation(node)
+	nodeNPUIdleNumFromTop, err := getNodeNPUNumFromOthers(node)
 	if err != nil {
 		return fmt.Errorf("getNodeNPUNumFromAnnotation %s : %s", nodesNoMeetNPUReqError, err)
 	}

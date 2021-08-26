@@ -283,6 +283,7 @@ func TestCnpuCheckNPUResourceStableFn(t *testing.T) {
 			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 				"0", ""})
 			node.Node.Annotations[a300TNPUCardName] = "Ascend910-2"
+			node.Others[a300TNPUCardName] = "Ascend910-2"
 			result := vnpu.CheckNPUResourceStableFn(node)
 			So(result, ShouldBeError)
 		})
@@ -290,6 +291,7 @@ func TestCnpuCheckNPUResourceStableFn(t *testing.T) {
 			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 				"1", ""})
 			node.Node.Annotations[a300TNPUCardName] = "Ascend910-2,Ascend910-8"
+			node.Others[a300TNPUCardName] = "Ascend910-2,Ascend910-8"
 			result := vnpu.CheckNPUResourceStableFn(node)
 			So(result, ShouldBeError)
 		})
@@ -599,14 +601,6 @@ func TestCnpuUpdateNPUNodeUsedCardFnError1(t *testing.T) {
 			So(err, ShouldBeError)
 		})
 
-		Convey("UpdateNPUNodeUsedCardFn() should return error when node's npuTop is empty", func() {
-			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"8", ""})
-			top := []int{0, 4}
-			err := npu.UpdateNPUNodeUsedCardFn(node, top)
-			So(err, ShouldBeError)
-		})
-
 	})
 }
 
@@ -749,6 +743,7 @@ func TestCnpuGetAllocatedNPUFromTopologyFnError(t *testing.T) {
 		Convey("GetAllocatedNPUFromTopologyFn() should return nil when npuTop of node is wrong", func() {
 			task.Resreq.ScalarResources[a300TNPUCardName] = constInt2000
 			node.Node.Annotations[a300TNPUCardName] = "Ascend910-0Ascend910-4"
+			node.Others[a300TNPUCardName] = "Ascend910-0Ascend910-4"
 			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node)
 			So(err, ShouldBeNil)
 			So(result, ShouldBeNil)
@@ -757,6 +752,7 @@ func TestCnpuGetAllocatedNPUFromTopologyFnError(t *testing.T) {
 		Convey("GetAllocatedNPUFromTopologyFn() should return correct result when reqNpuNum is 0", func() {
 			task.Resreq.ScalarResources[a300TNPUCardName] = 0
 			node.Node.Annotations[a300TNPUCardName] = "Ascend910-0,Ascend910-4"
+			node.Others[a300TNPUCardName] = "Ascend910-0,Ascend910-4"
 			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node)
 			So(err, ShouldBeError)
 			So(result, ShouldBeNil)
@@ -765,6 +761,7 @@ func TestCnpuGetAllocatedNPUFromTopologyFnError(t *testing.T) {
 		Convey("GetAllocatedNPUFromTopologyFn() should return error when none node meet request", func() {
 			task.Resreq.ScalarResources[a300TNPUCardName] = constInt2000
 			node.Node.Annotations[a300TNPUCardName] = "Ascend910-0"
+			node.Others[a300TNPUCardName] = "Ascend910-0"
 			_, err := npu.GetAllocatedNPUFromTopologyFn(task, node)
 			So(err, ShouldBeError)
 		})
@@ -973,5 +970,13 @@ func buildNPUNode(CNode CNodeInfo) *vapi.NodeInfo {
 	setNodeLabel(v1node, acceleratorType, cardAcceleratorType)
 
 	node := vapi.NewNodeInfo(v1node)
+	setNodeOthers(node)
 	return node
+}
+
+func setNodeOthers(node *vapi.NodeInfo) {
+	node.Others = make(map[string]interface{}, 1)
+	for k, v := range node.Node.Annotations {
+		node.Others[k] = v
+	}
 }

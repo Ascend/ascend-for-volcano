@@ -30,8 +30,7 @@ import (
 
 func initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) error {
 	for _, node := range nodes {
-
-		topStr, err := hwutil.GetNodeNPUAllocCards(node, a310NPUChipName)
+		topStr, err := hwutil.GetNPUAllocCardsFromNodeAnnotation(node, a310NPUChipName)
 		if err != nil {
 			klog.V(logDebugLev).Infof("%s initNodesFn :%v", PluginName, err)
 			return nil
@@ -48,8 +47,8 @@ func initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) error {
 	return nil
 }
 
-func getNodeNPUNumFromAnnotation(nodeInfo *api.NodeInfo) (int, error) {
-	top := hwutil.GetTopFromNode(nodeInfo, a310NPUChipName, a310NPUCardPreName)
+func getNodeNPUNumFromOthers(nodeInfo *api.NodeInfo) (int, error) {
+	top := hwutil.GetTopFromNodeOthers(nodeInfo, a310NPUChipName, a310NPUCardPreName)
 	if top == nil {
 		return 0, fmt.Errorf("nil node(%s) top", nodeInfo.Name)
 	}
