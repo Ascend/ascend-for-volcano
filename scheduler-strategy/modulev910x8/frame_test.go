@@ -29,8 +29,8 @@ import (
 	"strconv"
 	"testing"
 	vapi "volcano.sh/volcano/pkg/scheduler/api"
-	"volcano.sh/volcano/pkg/scheduler/util"
 	v910 "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/commonv910"
+	"volcano.sh/volcano/pkg/scheduler/util"
 )
 
 const (
@@ -90,7 +90,7 @@ func TestMVnpuNew(t *testing.T) {
 		)
 		expectResult := &modulev910x8{
 			name: name,
-			Vnpu: v910.Vnpu {
+			Vnpu: v910.Vnpu{
 				MaxNPUNum: maxNPUNum,
 			},
 		}
@@ -145,7 +145,7 @@ func TestMVnpuIsMyNode(t *testing.T) {
 		Convey("IsMyNode() should return error when node has no vnpu annotation", func() {
 			node := buildNPUNode(VMNodeInfo{nodeName, huaweiArchArm, "192", "755Gi",
 				"1", "Ascend910-16c-150-0"})
-			setNodeAnnotation(node.Node, npuV910CardName16c, "")
+			setNodeAnnotation(node, npuV910CardName16c, "")
 			result := vnpu.IsMyNode(node)
 			So(result, ShouldBeError)
 		})
@@ -210,8 +210,9 @@ func setPodSelector(mPod *v1.Pod, selectorKey string, selectorValue string) {
 	mPod.Spec.NodeSelector[selectorKey] = selectorValue
 }
 
-func setNodeAnnotation(mNode *v1.Node, annotationKey string, annotationValue string) {
-	mNode.Annotations[annotationKey] = annotationValue
+func setNodeAnnotation(node *vapi.NodeInfo, annotationKey string, annotationValue string) {
+	node.Node.Annotations[annotationKey] = annotationValue
+	setNodeOthers(node)
 }
 
 func setNodeLabel(mNode *v1.Node, labelKey string, labelValue string) {
@@ -280,5 +281,13 @@ func buildNPUNode(mNode VMNodeInfo) *vapi.NodeInfo {
 	setNodeLabel(v1node, archSelector, mNode.nodeArch)
 
 	node := vapi.NewNodeInfo(v1node)
+	setNodeOthers(node)
 	return node
+}
+
+func setNodeOthers(node *vapi.NodeInfo) {
+	node.Others = make(map[string]interface{}, 1)
+	for k, v := range node.Node.Annotations {
+		node.Others[k] = v
+	}
 }

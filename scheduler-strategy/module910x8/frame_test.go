@@ -112,7 +112,7 @@ func TestMNPUIsMyNode(t *testing.T) {
 		Convey("IsMyNode() should return error when node has no 	npu annotation", func() {
 			node := buildNPUNode(MNodeInfo{nodeName, huaweiArchArm, "192", "755Gi",
 				"1", "Ascend910-11"})
-			setNodeAnnotation(node.Node, npu800And9000CardName, "")
+			deleteNodeOthers(node, npu800And9000CardName)
 			result := npu.IsMyNode(node)
 			So(result, ShouldBeError)
 		})
@@ -511,7 +511,7 @@ func TestMnpuGetAllocatedNPUFromTopologyFn(t *testing.T) {
 			task := vapi.NewTaskInfo(pod)
 			node := buildNPUNode(MNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 				"8", ""})
-			setNodeAnnotation(node.Node, npu800And9000CardName, "")
+			deleteNodeOthers(node, npu800And9000CardName)
 			var expectedResult []int
 			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node)
 			So(err, ShouldBeError)
@@ -704,5 +704,17 @@ func buildNPUNode(MNode MNodeInfo) *vapi.NodeInfo {
 	setNodeLabel(v1node, archSelector, MNode.nodeArch)
 
 	node := vapi.NewNodeInfo(v1node)
+	setNodeOthers(node)
 	return node
+}
+
+func setNodeOthers(node *vapi.NodeInfo) {
+	node.Others = make(map[string]interface{}, 1)
+	for k, v := range node.Node.Annotations {
+		node.Others[k] = v
+	}
+}
+
+func deleteNodeOthers(node *vapi.NodeInfo, annKey string) {
+	delete(node.Others, annKey)
 }

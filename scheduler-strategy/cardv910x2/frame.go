@@ -46,7 +46,7 @@ func New(npuName string) plugin.HwNPUSchedulerPlugin {
 	return &cardv910x2{
 		name: npuName,
 		Vnpu: v910.Vnpu{
-			MaxNPUNum:maxNPUNum,
+			MaxNPUNum: maxNPUNum,
 		},
 	}
 }
@@ -88,7 +88,7 @@ func (tp *cardv910x2) IsMyNode(node *api.NodeInfo) error {
 	var vCardExist bool
 
 	for _, vType := range cType {
-		topStr, err := hwutil.GetNodeNPUAllocCards(node, vType)
+		topStr, err := hwutil.GetNPUAllocCardsFromNodeOthers(node, vType)
 		// IsMyNode is called only in node predict phase, fields of vNPU in Annotation cannot be empty at this phase
 		if err != nil || topStr == "" {
 			continue

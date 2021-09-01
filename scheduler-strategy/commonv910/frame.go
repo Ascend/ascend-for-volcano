@@ -122,7 +122,7 @@ func (tp *Vnpu) PreCheckNodeFn(task *api.TaskInfo, node *api.NodeInfo, confs []c
 // CheckNPUResourceStableFn check whether the resources on the node are stable
 func (tp *Vnpu) CheckNPUResourceStableFn(node *api.NodeInfo) error {
 	for _, vType := range VnpuType {
-		nodeNPUIdleNumFromTop, err := getNPUNumFromNodeAnnotation(node, vType)
+		nodeNPUIdleNumFromTop, err := getNPUNumFromNodeOthers(node, vType)
 		if err != nil {
 			klog.V(logInfoLev).Infof("getNodeNPUNumFromAnnotation node %s doesn't have %s.", node.Name, vType)
 			continue
@@ -151,7 +151,7 @@ func (tp *Vnpu) CheckNodeNPUByTaskFn(task *api.TaskInfo, node *api.NodeInfo) err
 			continue
 		}
 
-		nodeVnpu, err := getNPUNumFromNodeAnnotation(node, vType)
+		nodeVnpu, err := getNPUNumFromNodeOthers(node, vType)
 		if err != nil || nodeVnpu < taskVnpu {
 			klog.V(logInfoLev).Infof("%s checkVNodeNPUByTask nil, node name:%s(top:%v),task req %s:%d.",
 				tp.Name(), node.Name, nodeVnpu, vType, taskVnpu)

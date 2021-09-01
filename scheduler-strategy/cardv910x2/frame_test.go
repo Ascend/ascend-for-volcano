@@ -29,8 +29,8 @@ import (
 	"strconv"
 	"testing"
 	vapi "volcano.sh/volcano/pkg/scheduler/api"
-	"volcano.sh/volcano/pkg/scheduler/util"
 	v910 "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/commonv910"
+	"volcano.sh/volcano/pkg/scheduler/util"
 )
 
 const (
@@ -301,5 +301,13 @@ func buildNPUNode(cNode VCNodeInfo) *vapi.NodeInfo {
 	setNodeLabel(v1node, archSelector, cNode.nodeArch)
 
 	node := vapi.NewNodeInfo(v1node)
+	setNodeOthers(node)
 	return node
+}
+
+func setNodeOthers(node *vapi.NodeInfo) {
+	node.Others = make(map[string]interface{}, 1)
+	for k, v := range node.Node.Annotations {
+		node.Others[k] = v
+	}
 }

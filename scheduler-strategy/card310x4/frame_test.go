@@ -801,14 +801,6 @@ func TestCnpuUpdateNPUNodeUsedCardFnError1(t *testing.T) {
 			So(err, ShouldBeError)
 		})
 
-		Convey("UpdateNPUNodeUsedCardFn() should return error when node's npuTop is empty", func() {
-			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"8", ""})
-			top := []int{0, 4}
-			err := npu.UpdateNPUNodeUsedCardFn(node, top)
-			So(err, ShouldBeError)
-		})
-
 	})
 }
 

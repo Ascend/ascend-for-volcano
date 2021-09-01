@@ -525,14 +525,6 @@ func TestCnpuUpdateNPUNodeUsedCardFnError1(t *testing.T) {
 			So(err, ShouldBeError)
 		})
 
-		Convey("UpdateNPUNodeUsedCardFn() should return error when node's npuTop is empty", func() {
-			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"8", ""})
-			top := []int{0, 4}
-			err := npu.UpdateNPUNodeUsedCardFn(node, top)
-			So(err, ShouldBeError)
-		})
-
 	})
 }
 
@@ -671,7 +663,7 @@ func TestCnpuGetAllocatedNPUFromTopologyFnError(t *testing.T) {
 
 		Convey("GetAllocatedNPUFromTopologyFn() should return nil when npuTop of node is wrong", func() {
 			task.Resreq.ScalarResources[a310NPUChipName] = constInt2000
-			node.Node.Annotations[a310NPUChipName] = "Ascend310-0Ascend310-4"
+			node.Others[a310NPUChipName] = "Ascend310-0Ascend310-4"
 			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node)
 			So(err, ShouldBeNil)
 			So(result, ShouldBeNil)
@@ -679,7 +671,7 @@ func TestCnpuGetAllocatedNPUFromTopologyFnError(t *testing.T) {
 
 		Convey("GetAllocatedNPUFromTopologyFn() should return correct result when reqNpuNum is 0", func() {
 			task.Resreq.ScalarResources[a310NPUChipName] = 0
-			node.Node.Annotations[a310NPUChipName] = "Ascend310-0,Ascend310-3"
+			node.Others[a310NPUChipName] = "Ascend310-0,Ascend310-3"
 			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node)
 			So(err, ShouldBeError)
 			So(result, ShouldBeNil)
@@ -687,7 +679,7 @@ func TestCnpuGetAllocatedNPUFromTopologyFnError(t *testing.T) {
 
 		Convey("GetAllocatedNPUFromTopologyFn() should return error when none node meet request", func() {
 			task.Resreq.ScalarResources[a310NPUChipName] = constInt2000
-			node.Node.Annotations[a310NPUChipName] = "Ascend310-0"
+			node.Others[a310NPUChipName] = "Ascend310-0"
 			_, err := npu.GetAllocatedNPUFromTopologyFn(task, node)
 			So(err, ShouldBeError)
 		})
@@ -857,5 +849,13 @@ func buildNPUNode(CNode CNodeInfo) *vapi.NodeInfo {
 	setNodeLabel(v1node, archSelector, CNode.nodeArch)
 
 	node := vapi.NewNodeInfo(v1node)
+	setNodeOthers(node)
 	return node
+}
+
+func setNodeOthers(node *vapi.NodeInfo) {
+	node.Others = make(map[string]interface{}, 1)
+	for k, v := range node.Node.Annotations {
+		node.Others[k] = v
+	}
 }

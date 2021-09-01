@@ -34,7 +34,9 @@ import (
 
 func initVNodesFn(nodes map[string]*api.NodeInfo) error {
 	for _, node := range nodes {
-		node.Others = make(map[string]interface{}, 1)
+		if node.Others == nil {
+			node.Others = make(map[string]interface{}, 1)
+		}
 		for _, vType := range VnpuType {
 			nTopStr, err := getResourceFromAnnotationFn(node.Node.Annotations, vType)
 			if err != nil {
@@ -104,6 +106,16 @@ func getNPUNumFromNodeAnnotation(node *api.NodeInfo, resourceName string) (int, 
 	return len(npuArr), nil
 }
 
+// Get number of devices in node others
+func getNPUNumFromNodeOthers(node *api.NodeInfo, resourceName string) (int, error) {
+	npuArr, err := getTopStrFromNodeOther(node.Others, resourceName)
+	if err != nil {
+		return 0, err
+	}
+
+	return len(npuArr), nil
+}
+
 func judgeResourceTypeByTopInfo(instance string) string {
 	var vType string
 	for _, vt := range VnpuType {
@@ -122,13 +134,13 @@ func getTopStrFromNodeOther(othersMap map[string]interface{}, npuCardName string
 
 	valueTmp, ok := othersMap[npuCardName]
 	if !ok {
-		klog.V(logErrorLev).Infof("%s getNodeNPUStrFromOther other nil.", npuCardName)
+		klog.V(logErrorLev).Infof("%s GetNPUAllocCardsFromNodeOthers other nil.", npuCardName)
 		return nil, errors.New("nodeTopStrArr nil")
 	}
 
 	mapStr, ok := valueTmp.(string)
 	if !ok {
-		klog.V(logErrorLev).Infof("%s getNodeNPUStrFromOther not string type.", npuCardName)
+		klog.V(logErrorLev).Infof("%s GetNPUAllocCardsFromNodeOthers not string type.", npuCardName)
 		return nil, errors.New("nodeTopStrArr nil")
 	}
 
