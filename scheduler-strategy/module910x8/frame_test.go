@@ -112,7 +112,7 @@ func TestMNPUIsMyNode(t *testing.T) {
 		Convey("IsMyNode() should return error when node has no 	npu annotation", func() {
 			node := buildNPUNode(MNodeInfo{nodeName, huaweiArchArm, "192", "755Gi",
 				"1", "Ascend910-11"})
-			deleteNodeOthers(node, npu800And9000CardName)
+			setNodeAnnotation(node.Node, npu800And9000CardName, "")
 			result := npu.IsMyNode(node)
 			So(result, ShouldBeError)
 		})
@@ -410,13 +410,13 @@ func TestMnpuCheckNodeNPUByTaskFn(t *testing.T) {
 		Convey("CheckNodeNPUByTaskFn() should return error when node doesn't meet task requests", func() {
 			node := buildNPUNode(MNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 				"2", "Ascend910-5,Ascend910-2"})
-			result := npu.CheckNodeNPUByTaskFn(task, node)
+			result := npu.CheckNodeNPUByTaskFn(task, node, true)
 			So(result, ShouldBeError)
 		})
 		Convey("CheckNodeNPUByTaskFn() should return error when node meets task requests", func() {
 			node := buildNPUNode(MNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 				"4", "Ascend910-1,Ascend910-0,Ascend910-3,Ascend910-2"})
-			result := npu.CheckNodeNPUByTaskFn(task, node)
+			result := npu.CheckNodeNPUByTaskFn(task, node, true)
 			So(result, ShouldBeNil)
 		})
 	})
@@ -445,7 +445,7 @@ func TestMnpuGetNPUAffinityBestNodesFn(t *testing.T) {
 				"6", "Ascend910-5,Ascend910-4,Ascend910-6,Ascend910-7,Ascend910-0,Ascend910-1"})
 			nodes = append(nodes, node2)
 
-			result, err := npu.GetNPUAffinityBestNodesFn(task, nodes)
+			result, err := npu.GetNPUAffinityBestNodesFn(task, nodes, false)
 
 			So(result[nodeName1], ShouldEqual, constNum)
 			So(err, ShouldBeNil)
@@ -511,9 +511,9 @@ func TestMnpuGetAllocatedNPUFromTopologyFn(t *testing.T) {
 			task := vapi.NewTaskInfo(pod)
 			node := buildNPUNode(MNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 				"8", ""})
-			deleteNodeOthers(node, npu800And9000CardName)
+			setNodeAnnotation(node.Node, npu800And9000CardName, "")
 			var expectedResult []int
-			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node)
+			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node, false)
 			So(err, ShouldBeError)
 			So(result, ShouldResemble, expectedResult)
 		})
@@ -525,7 +525,7 @@ func TestMnpuGetAllocatedNPUFromTopologyFn(t *testing.T) {
 			node := buildNPUNode(MNodeInfo{nodeName, huaweiArchArm, "192", "755Gi",
 				"5", "Ascend910-5,Ascend910-2,Ascend910-0,Ascend910-1,Ascend910-3"})
 			expectedResult := []int{2, 0, 1, 3}
-			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node)
+			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node, false)
 			So(err, ShouldBeNil)
 			So(result, ShouldResemble, expectedResult)
 		})
@@ -537,7 +537,7 @@ func TestMnpuGetAllocatedNPUFromTopologyFn(t *testing.T) {
 			node := buildNPUNode(MNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 				"2", "Ascend910-5,Ascend910-7"})
 			expectedResult := []int{5, 7}
-			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node)
+			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node, false)
 			So(err, ShouldBeNil)
 			So(result, ShouldResemble, expectedResult)
 		})
@@ -704,17 +704,5 @@ func buildNPUNode(MNode MNodeInfo) *vapi.NodeInfo {
 	setNodeLabel(v1node, archSelector, MNode.nodeArch)
 
 	node := vapi.NewNodeInfo(v1node)
-	setNodeOthers(node)
 	return node
-}
-
-func setNodeOthers(node *vapi.NodeInfo) {
-	node.Others = make(map[string]interface{}, 1)
-	for k, v := range node.Node.Annotations {
-		node.Others[k] = v
-	}
-}
-
-func deleteNodeOthers(node *vapi.NodeInfo, annKey string) {
-	delete(node.Others, annKey)
 }

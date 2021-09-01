@@ -39,6 +39,21 @@ func GetTaskNPUNum(task *api.TaskInfo, npuCardName string) (int, error) {
 	return taskNPU, nil
 }
 
+// IsNPUTask Judge the task whether is npu or not.
+func IsNPUTask(task *api.TaskInfo, npuCardName string) error {
+	tmpNPU, ok := GetTaskNPUNum(task, npuCardName)
+	if ok != nil || tmpNPU == 0 {
+		return errors.New("not npu task")
+	}
+
+	return nil
+}
+
+// GetTaskSelectors Get task's selector.
+func GetTaskSelectors(task *api.TaskInfo) map[string]string {
+	return getTaskSelectors(task)
+}
+
 // IsTaskOfCardMode Determine if the task is in card mode.
 func IsTaskOfCardMode(task *api.TaskInfo) bool {
 	taskSelectors := getTaskSelectors(task)

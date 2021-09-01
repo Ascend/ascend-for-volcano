@@ -35,58 +35,30 @@ const (
 	npuNumberLowerBoundary = 0
 )
 
-// GetNPUAllocCardsFromNodeAnnotation Get node distributable npu card ids.
-func GetNPUAllocCardsFromNodeAnnotation(node *api.NodeInfo, npuCardName string) (string, error) {
-	topStr1, ok := node.Node.Annotations[npuCardName]
-	if !ok {
-		msg := fmt.Errorf("%s npu card nil", node.Name)
-		klog.V(logDebugLev).Infof("%s :%v :%v", npuCardName, msg.Error(), node.Node.Annotations[npuCardName])
-		return "", msg
-	}
-	return topStr1, nil
-}
+// GetTopFromNode Get npu card ids like（int[]） from node info.
+func GetTopFromNode(node *api.NodeInfo, npuCardName string, npuCardPreName string) []int {
+	var topInt []int
 
-// GetTopFromNodeOthers Get npu card ids from node other.
-func GetTopFromNodeOthers(node *api.NodeInfo, npuCardName string, npuCardPreName string) []int {
-	mapStr, err := GetNPUAllocCardsFromNodeOthers(node, npuCardName)
+	topStr, err := GetNodeNPUAllocCards(node, npuCardName)
 	if err != nil {
-		klog.V(logErrorLev).Infof("%s GetNPUAllocCardsFromNodeOthers top nil:%v.", npuCardName, node.Name)
+		klog.V(logErrorLev).Infof("%s getTopFromNode top nil:%v.", npuCardName, node.Name)
 		return nil
 	}
 
-	tmpDeviceIDs := ChangeTopToIntArray(mapStr, npuCardPreName)
-	if tmpDeviceIDs == nil {
-		klog.V(logErrorLev).Infof("%s ChangeTopToIntArray to int failed.", npuCardName)
+	// cannot judge len(topInt) is 0, for pipelined state
+	topInt = ChangeTopToIntArray(topStr, npuCardPreName)
+	if topInt == nil {
+		klog.V(logInfoLev).Infof("%s getTopFromNode %s nil(%s).", npuCardName, node.Name, topStr)
 		return nil
 	}
 
-	if !CheckTopValidity(tmpDeviceIDs) {
-		klog.V(logErrorLev).Infof("%s CheckTopValidity %s got invalid top", npuCardName, node.Name)
+	if !CheckTopValidity(topInt) {
+		klog.V(logErrorLev).Infof("%s getTopFromNode %s got invalid top", npuCardName, node.Name)
 		return nil
 	}
 
-	klog.V(logDebugLev).Infof("%s GetTopFromNodeOthers int: %v, s: %s.", npuCardName, tmpDeviceIDs, mapStr)
-
-	return tmpDeviceIDs
-}
-
-// GetNPUAllocCardsFromNodeOthers Get node distributable npu card ids from node other.
-func GetNPUAllocCardsFromNodeOthers(node *api.NodeInfo, npuCardName string) (string, error) {
-	valueTmp, ok := node.Others[npuCardName]
-	if !ok {
-		msg := fmt.Errorf("%s npu card nil", node.Name)
-		klog.V(logErrorLev).Infof("%s :%v :%v", npuCardName, msg.Error(), node.Others[npuCardName])
-		return "", msg
-	}
-
-	mapStr, ok := valueTmp.(string)
-	if !ok {
-		msg := fmt.Errorf("type is not match")
-		klog.V(logErrorLev).Infof("%s :%v :%v.", npuCardName, valueTmp, msg.Error())
-		return "", msg
-	}
-
-	return mapStr, nil
+	klog.V(logDebugLev).Infof("%s getTopFromNode int: %v, s: %s.", npuCardName, topInt, topStr)
+	return topInt
 }
 
 // CheckTopValidity Checks the validity of npu card ids which are read from annotations
@@ -142,6 +114,39 @@ func GetNodeHealthNPUNumberByName(nodeName string, nodes []*api.NodeInfo, npuCar
 	return 0, errors.New("no found")
 }
 
+func getNodeNPUStrFromOther(mapInter map[string]interface{}, npuCardName string) string {
+	valueTmp, ok := mapInter[npuCardName]
+	if !ok {
+		klog.V(logErrorLev).Infof("%s getNodeNPUStrFromOther nil.", npuCardName)
+		return ""
+	}
+
+	mapStr, ok := valueTmp.(string)
+	if !ok {
+		klog.V(logErrorLev).Infof("%s getNodeNPUStrFromOther no string type.", npuCardName)
+		return ""
+	}
+
+	return mapStr
+}
+
+// GetDeviceIDsFromNodeOther Get npu card ids from node other.
+func GetDeviceIDsFromNodeOther(mapInter map[string]interface{}, npuCardName string, npuCardPreName string) []int {
+	mapStr := getNodeNPUStrFromOther(mapInter, npuCardName)
+	if mapStr == "" {
+		klog.V(logErrorLev).Infof("%s getNodeNPUStrFromOther other nil.", npuCardName)
+		return nil
+	}
+
+	tmpDeviceIDs := ChangeTopToIntArray(mapStr, npuCardPreName)
+	if tmpDeviceIDs == nil {
+		klog.V(logErrorLev).Infof("%s getDeviceIDsFromAnnotations to int failed.", npuCardName)
+		return nil
+	}
+
+	return tmpDeviceIDs
+}
+
 // GetRealTopAfterAlloc Get npu card ids after alloc.
 func GetRealTopAfterAlloc(nodeDeviceIDs []int, useDeviceIDs []int, npuCardName string) string {
 	var tmpDeviceIDs []int
@@ -184,6 +189,17 @@ func GetNodeSelector(node *api.NodeInfo) (map[string]string, error) {
 	}
 
 	return node.Node.Labels, nil
+}
+
+// GetNodeNPUAllocCards Get node distributable npu card ids.
+func GetNodeNPUAllocCards(node *api.NodeInfo, npuCardName string) (string, error) {
+	topStr, ok := node.Node.Annotations[npuCardName]
+	if !ok {
+		msg := fmt.Errorf("%s npu card nil", node.Name)
+		klog.V(logDebugLev).Infof("%s :%v.", npuCardName, msg.Error())
+		return "", msg
+	}
+	return topStr, nil
 }
 
 // IsCardModeNode Judge the node mode:card or not
@@ -247,32 +263,4 @@ func GetNPUTopFromHccs(taskNPUNumber int, allocTopologyHccl []int) ([]int, error
 	}
 
 	return allocTopologyNPUs, nil
-}
-
-// AddScoreByFaultNPUTask returns nil to indicate that it is selected, and anything else to indicate that it is not.
-func AddScoreByFaultNPUTask(task *api.TaskInfo, scoreMap map[string]float64) (map[string]float64, error) {
-	tmpValue, ok := ReSchedulerJobs[task.Job]
-	if !ok {
-		klog.V(logInfoLev).Infof("not fault %s,no need add score.", task.Name)
-		return scoreMap, nil
-	}
-
-	if len(scoreMap) == 0 {
-		mgs := fmt.Errorf("AddScoreByFaultNPUTask scoreMap is nil")
-		klog.V(logInfoLev).Infof("%v.", mgs)
-		return scoreMap, mgs
-	}
-
-	klog.V(logInfoLev).Infof("AddScoreByFaultNPUTask get %v.", tmpValue)
-	for taskName, nodeName := range tmpValue.NodeNames {
-		if taskName != task.Name {
-			continue
-		}
-		if _, ok := scoreMap[nodeName]; !ok {
-			return scoreMap, nil
-		}
-		scoreMap[nodeName] += nodeNPUNumber * nodeNPUNumber
-	}
-
-	return scoreMap, nil
 }

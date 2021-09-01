@@ -106,7 +106,7 @@ func (tp *card910x2) PreCheckNodeFn(task *api.TaskInfo, node *api.NodeInfo, conf
 // CheckNPUResourceStableFn Check whether the node's NPU resources are stable.
 func (tp *card910x2) CheckNPUResourceStableFn(node *api.NodeInfo) error {
 	// default is the npu task
-	nodeNPUIdleNumFromTop, err := getNodeNPUNumFromOthers(node)
+	nodeNPUIdleNumFromTop, err := getNodeNPUNumFromAnnotation(node)
 	if err != nil {
 		return fmt.Errorf("getNodeNPUNumFromAnnotation %s : %s", nodesNoMeetNPUReqError, err)
 	}
@@ -124,13 +124,13 @@ func (tp *card910x2) CheckNPUResourceStableFn(node *api.NodeInfo) error {
 }
 
 // CheckNodeNPUByTaskFn Check whether the requested resource exists and are sufficient on the node.
-func (tp *card910x2) CheckNodeNPUByTaskFn(task *api.TaskInfo, node *api.NodeInfo) error {
+func (tp *card910x2) CheckNodeNPUByTaskFn(task *api.TaskInfo, node *api.NodeInfo, _ bool) error {
 	taskNPU, taskError := hwutil.GetTaskNPUNum(task, a300TNPUCardName)
 	if taskError != nil {
 		return fmt.Errorf("getTaskNPUNum %s : %s", nodesNoMeetNPUReqError, taskError)
 	}
 
-	nodeNPUTopology := hwutil.GetTopFromNodeOthers(node, a300TNPUCardName, a300tNPUCardPreName)
+	nodeNPUTopology := hwutil.GetTopFromNode(node, a300TNPUCardName, a300tNPUCardPreName)
 	if len(nodeNPUTopology) == 0 {
 		// node has none npu
 		klog.V(logInfoLev).Infof("%s checkNodeNPUByTask nil,node name:%s(top:%v),task req npu:%d",
@@ -148,7 +148,8 @@ func (tp *card910x2) CheckNodeNPUByTaskFn(task *api.TaskInfo, node *api.NodeInfo
 }
 
 // GetNPUAffinityBestNodesFn Initialize a mapping between nodes and priorities.
-func (tp *card910x2) GetNPUAffinityBestNodesFn(task *api.TaskInfo, nodes []*api.NodeInfo) (map[string]int, error) {
+func (tp *card910x2) GetNPUAffinityBestNodesFn(task *api.TaskInfo,
+	nodes []*api.NodeInfo, _ bool) (map[string]int, error) {
 	// 1. init 4 prioritized node-list array.
 	priNodeGroups, err := initPriNodeGroups(task, nodes)
 	if err != nil {
@@ -202,7 +203,7 @@ func (tp *card910x2) UpdateNPUNodeUsedCardFn(node *api.NodeInfo, top interface{}
 	}
 
 	// get node available top
-	nodeDeviceIDs := hwutil.GetTopFromNodeOthers(node, a300TNPUCardName, a300tNPUCardPreName)
+	nodeDeviceIDs := hwutil.GetDeviceIDsFromNodeOther(node.Others, a300TNPUCardName, a300tNPUCardPreName)
 	if nodeDeviceIDs == nil {
 		klog.V(logErrorLev).Infof("%s useAnnotation node(%s) top nil.", PluginName, node.Name)
 		return errors.New("nodeDeviceIDs nil")
@@ -245,7 +246,7 @@ func (tp *card910x2) UpdateReleaseNPUNodeTopologyFn(node *api.NodeInfo, top inte
 	}
 
 	// get node available top
-	nodeDeviceIDs := hwutil.GetTopFromNodeOthers(node, a300TNPUCardName, a300tNPUCardPreName)
+	nodeDeviceIDs := hwutil.GetDeviceIDsFromNodeOther(node.Others, a300TNPUCardName, a300tNPUCardPreName)
 	if nodeDeviceIDs == nil {
 		klog.V(logErrorLev).Infof("%s useAnnotation node(%s) top nil", PluginName, node.Name)
 		return fmt.Errorf("%s has nil npu", node.Name)
@@ -269,7 +270,7 @@ func (tp *card910x2) UpdateReleaseNPUNodeTopologyFn(node *api.NodeInfo, top inte
 }
 
 // GetAllocatedNPUFromTopologyFn Get the pod's npu card to record in node others.
-func (tp *card910x2) GetAllocatedNPUFromTopologyFn(task *api.TaskInfo, node *api.NodeInfo) (interface{}, error) {
+func (tp *card910x2) GetAllocatedNPUFromTopologyFn(task *api.TaskInfo, node *api.NodeInfo, _ bool) (interface{}, error) {
 	var allocTopologyHccl []int
 	var allocTopologyNPUs []int
 
@@ -283,7 +284,7 @@ func (tp *card910x2) GetAllocatedNPUFromTopologyFn(task *api.TaskInfo, node *api
 		return allocTopologyHccl, err
 	}
 
-	nodeTop := hwutil.GetTopFromNodeOthers(node, a300TNPUCardName, a300tNPUCardPreName)
+	nodeTop := hwutil.GetTopFromNode(node, a300TNPUCardName, a300tNPUCardPreName)
 	if nodeTop == nil {
 		klog.V(logErrorLev).Infof("not npu node[%s], no need to continue.", node.Name)
 		return allocTopologyHccl, err
@@ -342,7 +343,7 @@ func (tp *card910x2) IsMyTask(task *api.TaskInfo) error {
 
 // IsMyNode Determine if it is the NPU node of your plug-in.
 func (tp *card910x2) IsMyNode(node *api.NodeInfo) error {
-	_, err := hwutil.GetNPUAllocCardsFromNodeOthers(node, a300TNPUCardName)
+	_, err := hwutil.GetNodeNPUAllocCards(node, a300TNPUCardName)
 	if err != nil {
 		return errors.New(jobNoNPUCard)
 	}

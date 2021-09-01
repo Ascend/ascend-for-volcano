@@ -33,10 +33,11 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/rescheduling"
 	npuutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
-// This need by frame init plugin.
+// Name This need by frame init plugin.
 func (tp *module910x8) Name() string {
 	return PluginName
 }
@@ -46,7 +47,7 @@ func New(npuName string) plugin.HwNPUSchedulerPlugin {
 	return &module910x8{name: npuName}
 }
 
-// The npu scheduler policy initial and common processing.
+// OnHandlerStart The npu scheduler policy initial and common processing.
 func (tp *module910x8) OnHandlerStart(sHandler *plugin.ScheduleHandler) {
 	klog.V(logErrorLev).Infof("%v start Handler.", PluginName)
 	sHandler.AddInitNodesNPUAllocTopology(PluginName, initNodesNPUTopologyFn)
@@ -56,7 +57,7 @@ func (tp *module910x8) OnHandlerStart(sHandler *plugin.ScheduleHandler) {
 	sHandler.AddClusterNodePredicateFn(PluginName, clusterNodePredicateFn)
 }
 
-// Check the compliance of the selector and resource request numbers of job.
+// ValidNPUJobFn Check the compliance of the selector and resource request numbers of job.
 func (tp *module910x8) ValidNPUJobFn(job *vapi.JobInfo) *vapi.ValidateResult {
 	// 1.validate npu job selector
 	if err := validNPUJobSelector(job); err != nil {
@@ -89,8 +90,12 @@ func (tp *module910x8) ValidNPUJobFn(job *vapi.JobInfo) *vapi.ValidateResult {
 	return nil
 }
 
-// Get the nodes that meet the task requirements.
+// PreCheckNodeFn Get the nodes that meet the task requirements.
 func (tp *module910x8) PreCheckNodeFn(task *vapi.TaskInfo, node *vapi.NodeInfo, confs []conf.Configuration) error {
+	if rescheduling.IsNodeInFaultNodeList(node) {
+		return fmt.Errorf("PreCheckNodeFn %s in fault node list", node.Name)
+	}
+
 	schedulerConf := npuutil.GetSchedulerSelectorConfig(confs)
 	if len(schedulerConf) == 0 {
 		// get scheduler selector configure failed, but need continue
@@ -108,19 +113,19 @@ func (tp *module910x8) PreCheckNodeFn(task *vapi.TaskInfo, node *vapi.NodeInfo, 
 	return nil
 }
 
-// Check whether the node's NPU resources are stable.
+// CheckNPUResourceStableFn Check whether the node's NPU resources are stable.
 func (tp *module910x8) CheckNPUResourceStableFn(node *vapi.NodeInfo) error {
 	return checkNPUResourceStable(node)
 }
 
-// Check whether the requested resource exists and are sufficient on the node.
-func (tp *module910x8) CheckNodeNPUByTaskFn(task *vapi.TaskInfo, node *vapi.NodeInfo) error {
+// CheckNodeNPUByTaskFn Check whether the requested resource exists and are sufficient on the node.
+func (tp *module910x8) CheckNodeNPUByTaskFn(task *vapi.TaskInfo, node *vapi.NodeInfo, distributeFlag bool) error {
 	taskNPU, taskError := npuutil.GetTaskNPUNum(task, npu800And9000CardName)
 	if taskError != nil {
 		return fmt.Errorf("getTaskNPUNum %s : %s", nodesNoMeetNPUReqError, taskError)
 	}
 
-	nodeNPUTopology := npuutil.GetTopFromNodeOthers(node, npu800And9000CardName, npu910CardPreName)
+	nodeNPUTopology := getUsableTopFromNode(node, distributeFlag)
 	if len(nodeNPUTopology) == 0 {
 		// node has none npu
 		klog.V(logInfoLev).Infof("%s checkNodeNPUByTask nil,node name:%s(top:%v),task req npu:%d.",
@@ -134,7 +139,7 @@ func (tp *module910x8) CheckNodeNPUByTaskFn(task *vapi.TaskInfo, node *vapi.Node
 		return fmt.Errorf("judgeNodeAndTaskNPU %s : %v", nodeNotMeetTopologyWarning, err)
 	}
 
-	faultJobErr := checkFaultJobNode(task, node)
+	faultJobErr := rescheduling.CheckFaultJobNode(task, node)
 	if faultJobErr != nil {
 		return fmt.Errorf("checkFaultJobNode %s : %v", nodesNoMeetNPUReqError, faultJobErr)
 	}
@@ -142,12 +147,13 @@ func (tp *module910x8) CheckNodeNPUByTaskFn(task *vapi.TaskInfo, node *vapi.Node
 	return nil
 }
 
-// Initialize a mapping between nodes and priorities.
+// GetNPUAffinityBestNodesFn Initialize a mapping between nodes and priorities.
 func (tp *module910x8) GetNPUAffinityBestNodesFn(
 	task *vapi.TaskInfo,
-	nodes []*vapi.NodeInfo) (map[string]int, error) {
+	nodes []*vapi.NodeInfo,
+	disFlag bool) (map[string]int, error) {
 	// 1. init 4 prioritized node-list array.
-	priNodeGroups, err := initPriNodeGroups(task, nodes)
+	priNodeGroups, err := initPriNodeGroups(task, nodes, disFlag)
 	if err != nil {
 		klog.V(logErrorLev).Infof("%s initPriNodeGroups failed :%s.", PluginName, err)
 		return nil, err
@@ -188,15 +194,17 @@ func (tp *module910x8) ScoreBestNPUNodesFn(scoreMap map[string]float64,
 		scoreMap[nodeName] = nodeWeight * (healthNPUNumber*npuNumPerHccs - float64(priority))
 	}
 
-	if scoreMap, err := npuutil.AddScoreByFaultNPUTask(task, scoreMap); err != nil {
-		klog.V(logErrorLev).Infof("%s : %v.", PluginName, err)
-		return scoreMap, err
+	tmpScoreMap, err := rescheduling.AddScoreByFaultNPUTask(task, scoreMap)
+	if err != nil {
+		klog.V(logErrorLev).Infof("%s ScoreBestNPUNodesFn: %v.", PluginName, err)
+		return tmpScoreMap, err
 	}
-	return scoreMap, nil
+	return tmpScoreMap, nil
 }
 
-// Get the pod's npu card to record in node others.
-func (tp *module910x8) GetAllocatedNPUFromTopologyFn(task *vapi.TaskInfo, node *vapi.NodeInfo) (interface{}, error) {
+// GetAllocatedNPUFromTopologyFn Get the pod's npu card to record in node others.
+func (tp *module910x8) GetAllocatedNPUFromTopologyFn(task *vapi.TaskInfo,
+	node *vapi.NodeInfo, disFlag bool) (interface{}, error) {
 	var allocTopologyHccl []int
 	var allocTopologyNPUs []int
 
@@ -210,8 +218,8 @@ func (tp *module910x8) GetAllocatedNPUFromTopologyFn(task *vapi.TaskInfo, node *
 		return allocTopologyHccl, err
 	}
 
-	nodeTop := npuutil.GetTopFromNodeOthers(node, npu800And9000CardName, npu910CardPreName)
-	if nodeTop == nil {
+	nodeTop := getUsableTopFromNode(node, disFlag)
+	if len(nodeTop) == 0 {
 		klog.V(logErrorLev).Infof("module910x8 not npu node[%s], no need to continue.", node.Name)
 		return allocTopologyHccl, errors.New("failed to get npu topology from node")
 	}
@@ -234,7 +242,7 @@ func (tp *module910x8) GetAllocatedNPUFromTopologyFn(task *vapi.TaskInfo, node *
 	return allocTopologyNPUs, nil
 }
 
-// Set the npu card ids into pod.
+// SetNPUTopologyToPodFn Set the npu card ids into pod.
 func (tp *module910x8) SetNPUTopologyToPodFn(task *vapi.TaskInfo, top interface{}) error {
 	var topologyStr string
 
@@ -250,24 +258,15 @@ func (tp *module910x8) SetNPUTopologyToPodFn(task *vapi.TaskInfo, top interface{
 	task.Pod.Annotations[podPredicateTime] = strconv.FormatInt(time.Now().UnixNano(), 10)
 	klog.V(logInfoLev).Infof("%s setNPUTopologyToPod %s top:%s.", PluginName, task.Name, topologyStr)
 
-	tmpValue, ok := npuutil.ReSchedulerJobs[task.Job]
-	if !ok {
-		klog.V(logInfoLev).Infof("%s setNPUTopologyToPod %s not npu fault task.", PluginName, task.Name)
-		return nil
+	if err := rescheduling.SetFaultJobPodIndex(task); err != nil {
+		klog.V(logInfoLev).Infof("%s setFaultJobPodIndex %s %v.", PluginName, task.Name, err)
+		return err
 	}
 
-	klog.V(logDebugLev).Infof("%s %s setNPUTopologyToPodFn from buffer: %v.", PluginName, task.Job, tmpValue)
-	for taskName, rankIndex := range tmpValue.RankIndexes {
-		if taskName == task.Name {
-			klog.V(logInfoLev).Infof("%s set %s rankIndex %v.", PluginName, task.Pod.Name, rankIndex)
-			task.Pod.Annotations[podRankIndex] = rankIndex
-			break
-		}
-	}
 	return nil
 }
 
-// Update used npu resources on node.
+// UpdateNPUNodeUsedCardFn Update used npu resources on node.
 func (tp *module910x8) UpdateNPUNodeUsedCardFn(node *vapi.NodeInfo, top interface{}) error {
 	useTop, ok := top.([]int)
 	if !ok {
@@ -275,7 +274,7 @@ func (tp *module910x8) UpdateNPUNodeUsedCardFn(node *vapi.NodeInfo, top interfac
 	}
 
 	// get node available top
-	nodeDeviceIDs := npuutil.GetTopFromNodeOthers(node, npu800And9000CardName, npu910CardPreName)
+	nodeDeviceIDs := npuutil.GetDeviceIDsFromNodeOther(node.Others, npu800And9000CardName, npu910CardPreName)
 	if nodeDeviceIDs == nil {
 		klog.V(logErrorLev).Infof("%s useAnnotation node(%s) top nil.", PluginName, node.Name)
 		return errors.New("nodeDeviceIDs nil")
@@ -299,7 +298,7 @@ func (tp *module910x8) UpdateNPUNodeUsedCardFn(node *vapi.NodeInfo, top interfac
 	return nil
 }
 
-// Get the release npu card id from task(pod).
+// GetReleaseNPUTopologyFn Get the release npu card id from task(pod).
 func (tp *module910x8) GetReleaseNPUTopologyFn(task *vapi.TaskInfo) (interface{}, error) {
 	// get task use top
 	taskDevIDs := npuutil.GetDeviceIDsFromAnnotations(task.Pod.Annotations, npu800And9000CardName, npu910CardPreName)
@@ -311,7 +310,7 @@ func (tp *module910x8) GetReleaseNPUTopologyFn(task *vapi.TaskInfo) (interface{}
 	return taskDevIDs, nil
 }
 
-// Update the node using npu when release pod's npu.
+// UpdateReleaseNPUNodeTopologyFn Update the node using npu when release pod's npu.
 func (tp *module910x8) UpdateReleaseNPUNodeTopologyFn(node *vapi.NodeInfo, top interface{}) error {
 	taskDeviceIDs, ok := top.([]int)
 	if !ok {
@@ -319,7 +318,7 @@ func (tp *module910x8) UpdateReleaseNPUNodeTopologyFn(node *vapi.NodeInfo, top i
 	}
 
 	// get node available top
-	nodeDeviceIDs := npuutil.GetTopFromNodeOthers(node, npu800And9000CardName, npu910CardPreName)
+	nodeDeviceIDs := npuutil.GetDeviceIDsFromNodeOther(node.Others, npu800And9000CardName, npu910CardPreName)
 	if nodeDeviceIDs == nil {
 		klog.V(logErrorLev).Infof("%s useAnnotation node(%s) top nil.", PluginName, node.Name)
 		return fmt.Errorf("%s has nil npu", node.Name)
@@ -342,7 +341,7 @@ func (tp *module910x8) UpdateReleaseNPUNodeTopologyFn(node *vapi.NodeInfo, top i
 	return nil
 }
 
-// Determine if it is the NPU task of your plug-in.
+// IsMyTask Determine if it is the NPU task of your plug-in.
 func (tp *module910x8) IsMyTask(task *vapi.TaskInfo) error {
 	_, err := npuutil.GetTaskNPUNum(task, npu800And9000CardName)
 	if err != nil {
@@ -356,60 +355,46 @@ func (tp *module910x8) IsMyTask(task *vapi.TaskInfo) error {
 	return nil
 }
 
-// Determine if it is the NPU node of your plug-in.
+// IsMyNode Determine if it is the NPU node of your plug-in.
 func (tp *module910x8) IsMyNode(node *vapi.NodeInfo) error {
-	_, err := npuutil.GetNPUAllocCardsFromNodeOthers(node, npu800And9000CardName)
-	if err != nil {
-		return fmt.Errorf("%s %s", node.Name, jobNoNPUCard)
-	}
-
-	if npuutil.IsCardModeNode(node) {
-		return fmt.Errorf("%s is card mode", node.Name)
-	}
-
-	return nil
+	return isMyNode(node)
 }
 
-// Determine if it is the NPU job of your plug-in.
+// IsMyJob Determine if it is the NPU job of your plug-in.
 func (tp *module910x8) IsMyJob(job *vapi.JobInfo) error {
 	return isMyJob(job)
 }
 
 func preHandleFaultNPUFn(ssn *framework.Session) error {
-	var faultNPUs []nodeFaultNPUs
-	var faultNPUJobs []faultNPUJob
-
 	klog.V(logDebugLev).Infof("%s enter preHandleFaultNPUFn.", PluginName)
 	defer klog.V(logDebugLev).Infof("%s leave preHandleFaultNPUFn.", PluginName)
 
-	// 1.Determine if it is a 910 jobs.
-	jobs, err := get910x8Jobs(ssn.Jobs)
-	if err != nil {
-		klog.V(logDebugLev).Infof("%s get910x8Jobs: %v.", PluginName, err)
-		return nil
+	// 1.record fault information.
+	if err := rescheduling.RecordFaultInfInCache(ssn, nodeNPUNumber); err != nil {
+		klog.V(logDebugLev).Infof("%s preHandleFaultNPUFn %v.", PluginName, err)
 	}
-	// 2.Get fault npus and its nodes from running vcjob.
-	faultNPUs, err = getInoperableNPUs(ssn.Nodes)
-	if err != nil {
-		klog.V(logDebugLev).Infof("%s getInoperableNPUs %v.", PluginName, err)
+	// 2.Determine if it is a 910 jobs.
+	jobs, jobGetErr := get910x8Jobs(ssn.Jobs)
+	if jobGetErr != nil {
+		klog.V(logDebugLev).Infof("%s get910x8Jobs: %v.", PluginName, jobGetErr)
 		return nil
 	}
 	// 3.Get fault vcjobs and its node-rankIndex.
-	faultNPUJobs, err = getFaultNPUJobs(jobs, faultNPUs)
-	if err != nil {
-		klog.V(logDebugLev).Infof("%s getFaultNPUJobs %v.", PluginName, err)
-		return err
+	faultNPUJobs, getFaultErr := rescheduling.GetFaultNPUJobs(jobs)
+	if getFaultErr != nil {
+		klog.V(logDebugLev).Infof("%s getFaultNPUJobs %v.", PluginName, getFaultErr)
+		return nil
 	}
-	// 4.Sets the node reschedule occupancy flag.
-	err = setFaultLabelOnNodeAndJob(faultNPUJobs, jobs)
+	// 4.Sets the fault jobs and its index.
+	err := rescheduling.SetFaultInNodeAndJobs(faultNPUJobs, jobs)
 	if err != nil {
-		klog.V(logErrorLev).Infof("%s setFaultLabelOnNodeAndJob %v.", PluginName, err)
+		klog.V(logErrorLev).Infof("%s setFaultInNodeAndJobs %v.", PluginName, err)
 		return err
 	}
 	// 5.Restart vcjobs.
-	err = restartNPUFaultJob(ssn, faultNPUJobs, jobs)
+	err = restartFaultJob(ssn, faultNPUJobs, jobs)
 	if err != nil {
-		klog.V(logErrorLev).Infof("%s restartNPUFaultJob %v.", PluginName, err)
+		klog.V(logErrorLev).Infof("%s restartFaultJob %v.", PluginName, err)
 		return err
 	}
 

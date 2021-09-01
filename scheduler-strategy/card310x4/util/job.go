@@ -23,6 +23,7 @@ package util
 
 import (
 	"errors"
+	"fmt"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -85,4 +86,17 @@ func IsJobOfCardMode(job *api.JobInfo) bool {
 
 	klog.V(logDebugLev).Infof("job(%s) is module type.", job.Name)
 	return false
+}
+
+// CheckSingleTrainMode Single Train job has only one task.
+func CheckSingleTrainMode(job *api.JobInfo) error {
+	taskNum := len(job.Tasks)
+
+	klog.V(logDebugLev).Infof("checkSingleTrainMode job(%s) has %d tasks.", job.Name, taskNum)
+
+	if taskNum > 1 {
+		return fmt.Errorf("%s single trainning has too many task:%d", job.Name, taskNum)
+	}
+
+	return nil
 }

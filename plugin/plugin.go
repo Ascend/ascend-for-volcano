@@ -31,44 +31,44 @@ import (
 	npuapi "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/npuinterface"
 )
 
-// PluginBuilder plugin management
+// NPUBuilder PluginBuilder plugin management
 type NPUBuilder = func(string2 string) HwNPUSchedulerPlugin
 
-// Define the npu scheduler policy which new npu scheduler need to realize.
+// HwNPUSchedulerPlugin Define the npu scheduler policy which new npu scheduler need to realize.
 type HwNPUSchedulerPlugin interface {
-	// The unique name of npu scheduler policy, used by volcano frame.
+	// Name The unique name of npu scheduler policy, used by volcano frame.
 	Name() string
 
-	// The npu scheduler policy initial and common processing.
+	// OnHandlerStart The npu scheduler policy initial and common processing.
 	OnHandlerStart(*ScheduleHandler)
 
-	// For npu scheduler policy distinguish itself task.
+	// IsMyTask For npu scheduler policy distinguish itself task.
 	IsMyTask(*api.TaskInfo) error
-	// For npu scheduler policy distinguish itself node.
+	// IsMyNode For npu scheduler policy distinguish itself node.
 	IsMyNode(*api.NodeInfo) error
-	// For npu scheduler policy distinguish itself job.
+	// IsMyJob For npu scheduler policy distinguish itself job.
 	IsMyJob(*api.JobInfo) error
-	// Valid the job part of npu scheduler policy, if not, disallowed.
+	// ValidNPUJobFn Valid the job part of npu scheduler policy, if not, disallowed.
 	ValidNPUJobFn(*api.JobInfo) *api.ValidateResult
-	// Check whether the node matches the tag requirements of the task.
+	// PreCheckNodeFn Check whether the node matches the tag requirements of the task.
 	PreCheckNodeFn(*api.TaskInfo, *api.NodeInfo, []conf.Configuration) error
-	// Check whether the resources on the node are stable.
+	// CheckNPUResourceStableFn Check whether the resources on the node are stable.
 	CheckNPUResourceStableFn(*api.NodeInfo) error
-	// Check whether the requested resource exists and are sufficient on the node.
-	CheckNodeNPUByTaskFn(*api.TaskInfo, *api.NodeInfo) error
-	// Get all the nodes,witch meet the npu affinity condition.
-	GetNPUAffinityBestNodesFn(*api.TaskInfo, []*api.NodeInfo) (map[string]int, error)
-	// Score the nodes.
+	// CheckNodeNPUByTaskFn Check whether the requested resource exists and are sufficient on the node.
+	CheckNodeNPUByTaskFn(*api.TaskInfo, *api.NodeInfo, bool) error
+	// GetNPUAffinityBestNodesFn Get all the nodes,witch meet the npu affinity condition.
+	GetNPUAffinityBestNodesFn(*api.TaskInfo, []*api.NodeInfo, bool) (map[string]int, error)
+	// ScoreBestNPUNodesFn Score the nodes.
 	ScoreBestNPUNodesFn(map[string]float64, map[string]int, *api.TaskInfo, []*api.NodeInfo) (map[string]float64, error)
-	// Get the pod's npu card to record in node others.
-	GetAllocatedNPUFromTopologyFn(*api.TaskInfo, *api.NodeInfo) (interface{}, error)
-	// Update node others.
+	// GetAllocatedNPUFromTopologyFn Get the pod's npu card to record in node others.
+	GetAllocatedNPUFromTopologyFn(*api.TaskInfo, *api.NodeInfo, bool) (interface{}, error)
+	// UpdateNPUNodeUsedCardFn Update node others.
 	UpdateNPUNodeUsedCardFn(*api.NodeInfo, interface{}) error
-	// Set the npu cared id into pod.
+	// SetNPUTopologyToPodFn Set the npu cared id into pod.
 	SetNPUTopologyToPodFn(*api.TaskInfo, interface{}) error
-	// Update the node using npu when release pod's npu.
+	// UpdateReleaseNPUNodeTopologyFn Update the node using npu when release pod's npu.
 	UpdateReleaseNPUNodeTopologyFn(*api.NodeInfo, interface{}) error
-	// Get the release npu card id from task.
+	// GetReleaseNPUTopologyFn Get the release npu card id from task.
 	GetReleaseNPUTopologyFn(*api.TaskInfo) (interface{}, error)
 }
 
@@ -78,16 +78,16 @@ type ScheduleHandler struct {
 	HuaweiNPUs map[string]HwNPUSchedulerPlugin
 	// For object functions
 	InitNodesNPUAllocTopologyFns map[string]npuapi.InitNodesNPUTopologyFn
-	// Handle NPU fault chip functions.
+	// Handle NPU fault chip/node functions.
 	PreHandleFaultNPUFns map[string]npuapi.PreHandleFaultNPUFn
 	// Nodes pre-select cluster processing
 	ClusterNodePredicateFns map[string]npuapi.ClusterNodePredicateFn
 }
 
-// AddJobEnqueueableFn add Pretreatment of NPU faults function
+// AddPreHandleFaultNPU add Pretreatment of NPU faults function
 func (hwNPU *ScheduleHandler) AddPreHandleFaultNPU(pluginName string, fn npuapi.PreHandleFaultNPUFn) {
 	hwNPU.PreHandleFaultNPUFns[pluginName] = fn
-	klog.V(logDebugLev).Infof("PreHandleFaultNPU :%v add.", pluginName)
+	klog.V(logDebugLev).Infof("PreHandleFaultNPUFns :%v add.", pluginName)
 }
 
 // AddInitNodesNPUAllocTopology add node NPU assignable topology chip function
@@ -108,7 +108,7 @@ func (hwNPU *ScheduleHandler) RegisterNPUScheduler(name string, pc NPUBuilder) {
 	klog.V(logInfoLev).Infof("NPU Scheduler[%v] registered.", name)
 }
 
-// GetPluginBuilder get the NPU scheduler by name
+// GetNPUScheduler get the NPU scheduler by name
 func (hwNPU *ScheduleHandler) GetNPUScheduler(name string) (HwNPUSchedulerPlugin, bool) {
 	pb, found := hwNPU.HuaweiNPUs[name]
 	if found && pb != nil {
@@ -122,6 +122,10 @@ func (hwNPU *ScheduleHandler) GetNPUScheduler(name string) (HwNPUSchedulerPlugin
 func (hwNPU *ScheduleHandler) InitNPUSession(ssn *framework.Session) {
 	if err := hwNPU.initNodesNPUAllocTopology(ssn.Nodes); err != nil {
 		klog.V(logErrorLev).Infof("%s InitNPUSession failed :%v.", PluginName, err)
+	}
+	// Handle NPU fault chip/node/job.
+	if err := hwNPU.initHandleFaultNPUInf(ssn); err != nil {
+		klog.V(logDebugLev).Infof("InitNPUSession :%v .", err)
 	}
 }
 

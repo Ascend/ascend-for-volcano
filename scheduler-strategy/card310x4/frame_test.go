@@ -409,13 +409,13 @@ func TestCnpuCheckNodeNPUByTaskFn(t *testing.T) {
 		Convey("CheckNodeNPUByTaskFn() should return error when node doesn't meet task requests", func() {
 			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 				"3", "Ascend310-3,Ascend310-7,Ascend310-8"})
-			result := npu.CheckNodeNPUByTaskFn(task, node)
+			result := npu.CheckNodeNPUByTaskFn(task, node, true)
 			So(result, ShouldBeError)
 		})
 		Convey("CheckNodeNPUByTaskFn() should return error when node meets task requests", func() {
 			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 				"2", "Ascend310-8,Ascend310-9"})
-			result := npu.CheckNodeNPUByTaskFn(task, node)
+			result := npu.CheckNodeNPUByTaskFn(task, node, true)
 			So(result, ShouldBeNil)
 		})
 	})
@@ -433,7 +433,7 @@ func TestCnpuCheckNodeNPUByTaskFnError(t *testing.T) {
 			task := vapi.NewTaskInfo(pod)
 			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 				"2", "Ascend310-1,Ascend310-4"})
-			result := npu.CheckNodeNPUByTaskFn(task, node)
+			result := npu.CheckNodeNPUByTaskFn(task, node, true)
 			So(result, ShouldBeError)
 		})
 
@@ -444,7 +444,7 @@ func TestCnpuCheckNodeNPUByTaskFnError(t *testing.T) {
 			task := vapi.NewTaskInfo(pod)
 			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 				"", ""})
-			result := npu.CheckNodeNPUByTaskFn(task, node)
+			result := npu.CheckNodeNPUByTaskFn(task, node, true)
 			So(result, ShouldBeError)
 		})
 	})
@@ -485,7 +485,7 @@ func TestCnpuGetNPUAffinityBestNodesFnReq1(t *testing.T) {
 			node4 := buildNPUNode(CNodeInfo{nodeName4, huaweiArchX86, "192", "755Gi",
 				"4", "Ascend310-20,Ascend310-21,Ascend310-22,Ascend310-23"})
 			nodes = append(nodes, node4)
-			result, err := npu.GetNPUAffinityBestNodesFn(task, nodes)
+			result, err := npu.GetNPUAffinityBestNodesFn(task, nodes, false)
 			So(result[nodeName1], ShouldEqual, constNum0)
 			So(result[nodeName2], ShouldEqual, constNum1)
 			So(result[nodeName3], ShouldEqual, constNum1)
@@ -531,7 +531,7 @@ func TestCnpuGetNPUAffinityBestNodesFnReq2(t *testing.T) {
 			node4 := buildNPUNode(CNodeInfo{nodeName4, huaweiArchX86, "192", "755Gi",
 				"4", "Ascend310-20,Ascend310-21,Ascend310-22,Ascend310-23"})
 			nodes = append(nodes, node4)
-			result, err := npu.GetNPUAffinityBestNodesFn(task, nodes)
+			result, err := npu.GetNPUAffinityBestNodesFn(task, nodes, false)
 			So(result[nodeName1], ShouldEqual, constNum0)
 			So(result[nodeName2], ShouldEqual, constNum0)
 			So(result[nodeName3], ShouldEqual, constNum1)
@@ -575,7 +575,7 @@ func TestCnpuGetNPUAffinityBestNodesFnReq3(t *testing.T) {
 			node4 := buildNPUNode(CNodeInfo{nodeName4, huaweiArchX86, "192", "755Gi",
 				"4", "Ascend310-20,Ascend310-21,Ascend310-22,Ascend310-23"})
 			nodes = append(nodes, node4)
-			result, err := npu.GetNPUAffinityBestNodesFn(task, nodes)
+			result, err := npu.GetNPUAffinityBestNodesFn(task, nodes, false)
 			So(result[nodeName1], ShouldEqual, constNum0)
 			So(result[nodeName2], ShouldEqual, constNum0)
 			So(result[nodeName3], ShouldEqual, constNum0)
@@ -618,7 +618,7 @@ func TestCnpuGetNPUAffinityBestNodesFnReq4(t *testing.T) {
 			node4 := buildNPUNode(CNodeInfo{nodeName4, huaweiArchX86, "192", "755Gi",
 				"4", "Ascend310-20,Ascend310-21,Ascend310-22,Ascend310-23"})
 			nodes = append(nodes, node4)
-			result, err := npu.GetNPUAffinityBestNodesFn(task, nodes)
+			result, err := npu.GetNPUAffinityBestNodesFn(task, nodes, false)
 			So(result[nodeName1], ShouldEqual, constNum0)
 			So(result[nodeName2], ShouldEqual, constNum0)
 			So(result[nodeName3], ShouldEqual, constNum0)
@@ -644,7 +644,7 @@ func TestCnpuGetNPUAffinityBestNodesFnError(t *testing.T) {
 		nodes := []*vapi.NodeInfo{}
 
 		Convey("GetNPUAffinityBestNodesFn() should return error when node is empty", func() {
-			_, err := npu.GetNPUAffinityBestNodesFn(task, nodes)
+			_, err := npu.GetNPUAffinityBestNodesFn(task, nodes, false)
 			So(err, ShouldBeError)
 		})
 
@@ -653,20 +653,20 @@ func TestCnpuGetNPUAffinityBestNodesFnError(t *testing.T) {
 		nodes = append(nodes, node)
 
 		Convey("GetNPUAffinityBestNodesFn() should return error when none bestNodes", func() {
-			result, err := npu.GetNPUAffinityBestNodesFn(task, nodes)
+			result, err := npu.GetNPUAffinityBestNodesFn(task, nodes, false)
 			So(result[nodeName2], ShouldEqual, 0)
 			So(err, ShouldBeError)
 		})
 
 		Convey("GetNPUAffinityBestNodesFn() should return error when request NPU number is 0", func() {
 			task.Resreq.ScalarResources[a310NPUCardName] = 0
-			_, err := npu.GetNPUAffinityBestNodesFn(task, nodes)
+			_, err := npu.GetNPUAffinityBestNodesFn(task, nodes, false)
 			So(err, ShouldBeError)
 		})
 
 		Convey("GetNPUAffinityBestNodesFn() should return error when request number is greater than 4", func() {
 			task.Resreq.ScalarResources[a310NPUCardName] = constInt5000
-			_, err := npu.GetNPUAffinityBestNodesFn(task, nodes)
+			_, err := npu.GetNPUAffinityBestNodesFn(task, nodes, false)
 			So(err, ShouldBeError)
 		})
 	})
@@ -801,6 +801,14 @@ func TestCnpuUpdateNPUNodeUsedCardFnError1(t *testing.T) {
 			So(err, ShouldBeError)
 		})
 
+		Convey("UpdateNPUNodeUsedCardFn() should return error when node's npuTop is empty", func() {
+			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
+				"8", ""})
+			top := []int{0, 4}
+			err := npu.UpdateNPUNodeUsedCardFn(node, top)
+			So(err, ShouldBeError)
+		})
+
 	})
 }
 
@@ -898,7 +906,7 @@ func TestCnpuGetAllocatedNPUFromTopologyFn(t *testing.T) {
 			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchArm, "192", "755Gi",
 				"2", "Ascend310-0,Ascend310-3"})
 			expectedResult := []int{0, 3}
-			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node)
+			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node, false)
 			So(err, ShouldBeNil)
 			So(result, ShouldResemble, expectedResult)
 		})
@@ -911,7 +919,7 @@ func TestCnpuGetAllocatedNPUFromTopologyFn(t *testing.T) {
 			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchArm, "192", "755Gi",
 				"2", "Ascend310-0,Ascend310-3"})
 			expectedResult := []int{0}
-			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node)
+			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node, false)
 			So(err, ShouldBeNil)
 			So(result, ShouldResemble, expectedResult)
 		})
@@ -932,20 +940,20 @@ func TestCnpuGetAllocatedNPUFromTopologyFnError(t *testing.T) {
 
 		Convey("GetAllocatedNPUFromTopologyFn() should return error when reqNpuNum of pod is 0", func() {
 			task.Resreq.ScalarResources[a310NPUCardName] = 0
-			_, err := npu.GetAllocatedNPUFromTopologyFn(task, node)
+			_, err := npu.GetAllocatedNPUFromTopologyFn(task, node, false)
 			So(err, ShouldBeError)
 		})
 
 		Convey("GetAllocatedNPUFromTopologyFn() should return error when reqNpuNum Is greater than 4", func() {
 			task.Resreq.ScalarResources[a310NPUCardName] = constInt5000
-			_, err := npu.GetAllocatedNPUFromTopologyFn(task, node)
+			_, err := npu.GetAllocatedNPUFromTopologyFn(task, node, false)
 			So(err, ShouldBeError)
 		})
 
 		Convey("GetAllocatedNPUFromTopologyFn() should return nil when npuTop of node is wrong", func() {
 			task.Resreq.ScalarResources[a310NPUCardName] = constInt2000
 			node.Others[a310NPUCardName] = "Ascend310-0Ascend310-4"
-			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node)
+			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node, false)
 			So(err, ShouldBeNil)
 			So(result, ShouldBeNil)
 		})
@@ -953,7 +961,7 @@ func TestCnpuGetAllocatedNPUFromTopologyFnError(t *testing.T) {
 		Convey("GetAllocatedNPUFromTopologyFn() should return correct result when reqNpuNum is 0", func() {
 			task.Resreq.ScalarResources[a310NPUCardName] = 0
 			node.Node.Annotations[a310NPUCardName] = "Ascend310-0,Ascend310-3"
-			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node)
+			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node, false)
 			So(err, ShouldBeError)
 			So(result, ShouldBeNil)
 		})
@@ -961,7 +969,7 @@ func TestCnpuGetAllocatedNPUFromTopologyFnError(t *testing.T) {
 		Convey("GetAllocatedNPUFromTopologyFn() should return error when none node meet request", func() {
 			task.Resreq.ScalarResources[a310NPUCardName] = constInt2000
 			node.Node.Annotations[a310NPUCardName] = "Ascend310-0"
-			_, err := npu.GetAllocatedNPUFromTopologyFn(task, node)
+			_, err := npu.GetAllocatedNPUFromTopologyFn(task, node, false)
 			So(err, ShouldBeError)
 		})
 	})
