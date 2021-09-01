@@ -31,10 +31,6 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/conf"
 )
 
-func init() {
-	ReSchedulerJobs = make(map[api.JobID]ReSchedulerTasks, constIntNum3)
-}
-
 // ChangeTopToIntArray Change npu card ids from string to int array.
 func ChangeTopToIntArray(topStr string, npuCardPreName string) []int {
 	var topInt []int

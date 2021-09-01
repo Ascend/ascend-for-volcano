@@ -37,7 +37,6 @@ const (
 	constIntNum2  = 2
 	constIntNum3  = 3
 	nodeNPUNumber = 8
-	maxRankIndex  = 1000
 
 	logErrorLev = 1
 	logInfoLev  = 3
@@ -51,34 +50,13 @@ const (
 	nodeNotStableWarning       = "the npus on this node are unstable"
 	nodeNotMeetTopologyWarning = "the npus on this node don't satisfy the schedulable topology"
 	nodeNotEnoughNPUWarning    = "insufficient number of available npus on this node"
-	faultNPU                   = "huawei.com/Ascend910-Unhealthy"
-	podRankIndex               = "hccl/rankIndex"
-	jobRestartReasion          = "restart for NPU malfunction"
+	jobRestartReason           = "restart for NPU malfunction"
 )
 
 type npuPriNodeInf struct {
 	// the priority for NPU HCCS top
 	Name     string
 	nodeName string
-}
-
-type faultNPUJob struct {
-	jobName   string
-	namespace string
-	// task name:rank index
-	taskUseRankIndex map[string]string
-	// task name:node name
-	taskUseNode map[string]string
-	// task name:task annotation
-	taskUseNPUs map[string]string
-}
-
-// Record the node's corresponding fault chips.
-type nodeFaultNPUs struct {
-	// Fault npus's node nodeName.
-	nodeName string
-	// Fault npus that in one nodes.
-	faultNPUs []string
 }
 
 type initPriNodeGroupFn func(priNodeGroup map[string]*npuPriNodeInf, groupName string)

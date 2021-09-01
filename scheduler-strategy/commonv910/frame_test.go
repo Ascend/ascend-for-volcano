@@ -332,7 +332,6 @@ func TestVnpuCheckNPUResourceStableFn(t *testing.T) {
 			node := buildNPUNode(VNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 				"0", ""})
 			node.Node.Annotations[npuV910CardName16c] = "Ascend910-16c-142-1,Ascend910-16c-143-1"
-			node.Others[npuV910CardName16c] = "Ascend910-16c-142-1,Ascend910-16c-143-1"
 			result := vnpu.CheckNPUResourceStableFn(node)
 			So(result, ShouldBeError)
 		})
@@ -341,7 +340,6 @@ func TestVnpuCheckNPUResourceStableFn(t *testing.T) {
 			node := buildNPUNode(VNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 				"1", ""})
 			node.Node.Annotations[npuV910CardName16c] = "Ascend910-16c-144-1,Ascend910-16c-145-1"
-			node.Others[npuV910CardName16c] = "Ascend910-16c-144-1,Ascend910-16c-145-1"
 			result := vnpu.CheckNPUResourceStableFn(node)
 			So(result, ShouldBeError)
 		})
@@ -367,13 +365,13 @@ func TestVnpuCheckNodeNPUByTaskFn(t *testing.T) {
 		Convey("CheckNodeNPUByTaskFn() should return error when node doesn't meet task requests", func() {
 			node := buildNPUNode(VNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 				"0", ""})
-			result := vnpu.CheckNodeNPUByTaskFn(task, node)
+			result := vnpu.CheckNodeNPUByTaskFn(task, node, true)
 			So(result, ShouldBeError)
 		})
 		Convey("CheckNodeNPUByTaskFn() should return error when node meets task requests", func() {
 			node := buildNPUNode(VNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 				"1", "Ascend910-16c-199-1"})
-			result := vnpu.CheckNodeNPUByTaskFn(task, node)
+			result := vnpu.CheckNodeNPUByTaskFn(task, node, true)
 			So(result, ShouldBeNil)
 		})
 	})
@@ -407,7 +405,7 @@ func TestVnpuGetNPUAffinityBestNodesFn(t *testing.T) {
 
 		Convey("GetNPUAffinityBestNodesFn() should return correct bestNodesMap", func() {
 			nodes := []*vapi.NodeInfo{node1, node2, node3, nil}
-			result, err := vnpu.GetNPUAffinityBestNodesFn(task, nodes)
+			result, err := vnpu.GetNPUAffinityBestNodesFn(task, nodes, false)
 			So(result, ShouldResemble, bestNodesMap)
 			So(err, ShouldBeNil)
 		})
@@ -462,14 +460,14 @@ func TestVnpuGetAllocatedNPUFromTopologyFn(t *testing.T) {
 			node := buildNPUNode(VNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 				"1", "Ascend910-16c-133-1"})
 			expectResult = []string{"Ascend910-16c-133-1"}
-			result, err := vnpu.GetAllocatedNPUFromTopologyFn(task, node)
+			result, err := vnpu.GetAllocatedNPUFromTopologyFn(task, node, false)
 			So(result, ShouldResemble, expectResult)
 			So(err, ShouldBeNil)
 		})
 		Convey("GetAllocatedNPUFromTopologyFn() should return error when node annotation is empty", func() {
 			node := buildNPUNode(VNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 				"1", ""})
-			result, err := vnpu.GetAllocatedNPUFromTopologyFn(task, node)
+			result, err := vnpu.GetAllocatedNPUFromTopologyFn(task, node, false)
 			So(result, ShouldResemble, expectResult)
 			So(err, ShouldBeError)
 		})
@@ -480,7 +478,7 @@ func TestVnpuGetAllocatedNPUFromTopologyFn(t *testing.T) {
 			taskNoReq := vapi.NewTaskInfo(podNoReq)
 			node := buildNPUNode(VNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 				"1", ""})
-			result, err := vnpu.GetAllocatedNPUFromTopologyFn(taskNoReq, node)
+			result, err := vnpu.GetAllocatedNPUFromTopologyFn(taskNoReq, node, false)
 			So(result, ShouldResemble, expectResult)
 			So(err, ShouldBeError)
 		})
@@ -525,7 +523,6 @@ func TestVnpuUpdateNPUNodeUsedCardFn(t *testing.T) {
 		})
 		Convey("UpdateNPUNodeUsedCardFn() should return error when no certain vnpu type in node.Others", func() {
 			top := []string{"Ascend910-16c-113-0"}
-			cleanNodeOthers(node)
 			result := vnpu.UpdateNPUNodeUsedCardFn(node, top)
 			So(result, ShouldBeError)
 		})
@@ -713,17 +710,5 @@ func buildNPUNode(nodeInfo VNodeInfo) *vapi.NodeInfo {
 	setNodeLabel(v1node, archSelector, nodeInfo.nodeArch)
 
 	node := vapi.NewNodeInfo(v1node)
-	setNodeOthers(node)
 	return node
-}
-
-func setNodeOthers(node *vapi.NodeInfo) {
-	node.Others = make(map[string]interface{}, 1)
-	for k, v := range node.Node.Annotations {
-		node.Others[k] = v
-	}
-}
-
-func cleanNodeOthers(node *vapi.NodeInfo) {
-	node.Others = make(map[string]interface{}, 1)
 }

@@ -122,7 +122,7 @@ func (tp *Vnpu) PreCheckNodeFn(task *api.TaskInfo, node *api.NodeInfo, confs []c
 // CheckNPUResourceStableFn check whether the resources on the node are stable
 func (tp *Vnpu) CheckNPUResourceStableFn(node *api.NodeInfo) error {
 	for _, vType := range VnpuType {
-		nodeNPUIdleNumFromTop, err := getNPUNumFromNodeOthers(node, vType)
+		nodeNPUIdleNumFromTop, err := getNPUNumFromNodeAnnotation(node, vType)
 		if err != nil {
 			klog.V(logInfoLev).Infof("getNodeNPUNumFromAnnotation node %s doesn't have %s.", node.Name, vType)
 			continue
@@ -142,7 +142,7 @@ func (tp *Vnpu) CheckNPUResourceStableFn(node *api.NodeInfo) error {
 }
 
 // CheckNodeNPUByTaskFn check whether the requested resource exists and are sufficient on the node
-func (tp *Vnpu) CheckNodeNPUByTaskFn(task *api.TaskInfo, node *api.NodeInfo) error {
+func (tp *Vnpu) CheckNodeNPUByTaskFn(task *api.TaskInfo, node *api.NodeInfo, _ bool) error {
 	total := 0
 	for _, vType := range VnpuType {
 		taskVnpu, taskError := hwutil.GetTaskNPUNum(task, vType)
@@ -151,7 +151,7 @@ func (tp *Vnpu) CheckNodeNPUByTaskFn(task *api.TaskInfo, node *api.NodeInfo) err
 			continue
 		}
 
-		nodeVnpu, err := getNPUNumFromNodeOthers(node, vType)
+		nodeVnpu, err := getNPUNumFromNodeAnnotation(node, vType)
 		if err != nil || nodeVnpu < taskVnpu {
 			klog.V(logInfoLev).Infof("%s checkVNodeNPUByTask nil, node name:%s(top:%v),task req %s:%d.",
 				tp.Name(), node.Name, nodeVnpu, vType, taskVnpu)
@@ -170,7 +170,7 @@ func (tp *Vnpu) CheckNodeNPUByTaskFn(task *api.TaskInfo, node *api.NodeInfo) err
 }
 
 // GetNPUAffinityBestNodesFn initialize a mapping between nodes and priorities
-func (tp *Vnpu) GetNPUAffinityBestNodesFn(task *api.TaskInfo, nodes []*api.NodeInfo) (map[string]int, error) {
+func (tp *Vnpu) GetNPUAffinityBestNodesFn(task *api.TaskInfo, nodes []*api.NodeInfo, _ bool) (map[string]int, error) {
 	klog.V(logDebugLev).Infof("Get NPU affinity best node for task %s.", task.Name)
 	var bestNodesMap = make(map[string]int, const2)
 
@@ -208,7 +208,7 @@ func (tp *Vnpu) ScoreBestNPUNodesFn(scoreMap map[string]float64,
 }
 
 // GetAllocatedNPUFromTopologyFn obtain the name of the allocated devices
-func (tp *Vnpu) GetAllocatedNPUFromTopologyFn(task *api.TaskInfo, node *api.NodeInfo) (interface{}, error) {
+func (tp *Vnpu) GetAllocatedNPUFromTopologyFn(task *api.TaskInfo, node *api.NodeInfo, _ bool) (interface{}, error) {
 	var allocTopologyVnpus []string
 
 	for _, vType := range VnpuType {

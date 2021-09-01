@@ -21,8 +21,6 @@ Package util is using for HuaWei Ascend9 pin affinity schedule utilities.
 */
 package util
 
-import "volcano.sh/volcano/pkg/scheduler/api"
-
 const (
 	constIntNum2           = 2
 	constIntNum3           = 3
@@ -40,22 +38,5 @@ const (
 	acceleratorType        = "accelerator-type"
 	cardAcceleratorType    = "card"
 	moduleAcceleratorType  = "module"
-	constIntNum1           = 1
-	maxIntervalTime        = 300
-	cmNameSpace            = "volcano-system"
-	cmName                 = "vcjob-fault-npu-cm"
 	nodeNoFitSelectorError = "no matching label on this node"
 )
-
-// ReSchedulerTasks record the tasks using the failed NPU.
-type ReSchedulerTasks struct {
-	// Key is taskName.
-	NodeNames   map[string]string
-	RankIndexes map[string]string
-	Time        map[string]int64
-	TaskUseNPUs map[string]string
-	NameSpace   string
-}
-
-// ReSchedulerJobs record the jobs using the failed NPU.
-var ReSchedulerJobs map[api.JobID]ReSchedulerTasks

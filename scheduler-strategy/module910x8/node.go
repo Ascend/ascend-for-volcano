@@ -24,16 +24,13 @@ package module910x8
 import (
 	"errors"
 	"fmt"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 	"reflect"
-	"strconv"
-	"strings"
-	time2 "time"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	vapi "volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/rescheduling"
 	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
@@ -44,12 +41,12 @@ type selectNodeInf struct {
 	rightNPUNum int
 }
 
-func initSelectNodeInf(node *api.NodeInfo) selectNodeInf {
+func initSelectNodeInf(node *api.NodeInfo, disFlag bool) selectNodeInf {
 	var sNodeInf selectNodeInf
 	var leftHccsTop []int
 	var rightHccsTop []int
 
-	cardIds := hwutil.GetTopFromNodeOthers(node, npu800And9000CardName, npu910CardPreName)
+	cardIds := getUsableTopFromNode(node, disFlag)
 	klog.V(logDebugLev).Infof("%s initPriNodeGroups:%v.", PluginName, cardIds)
 	for _, cardID := range cardIds {
 		if cardID < npuNumPerHccs {
@@ -66,7 +63,7 @@ func initSelectNodeInf(node *api.NodeInfo) selectNodeInf {
 }
 
 // Initializes the priority group of the node.
-func initPriNodeGroups(task *api.TaskInfo, nodes []*api.NodeInfo) ([]map[string]*npuPriNodeInf, error) {
+func initPriNodeGroups(task *api.TaskInfo, nodes []*api.NodeInfo, disFlag bool) ([]map[string]*npuPriNodeInf, error) {
 	var err error
 	var priNodeGroups []map[string]*npuPriNodeInf
 
@@ -85,7 +82,7 @@ func initPriNodeGroups(task *api.TaskInfo, nodes []*api.NodeInfo) ([]map[string]
 			continue
 		}
 
-		sNodeInf := initSelectNodeInf(node)
+		sNodeInf := initSelectNodeInf(node, disFlag)
 		// set the meet node into its pri-node-list group
 		addPriNodeGroupFn := func(priNodeGroup map[string]*npuPriNodeInf, groupName string) {
 			klog.V(logDebugLev).Infof("%s nodeName:%s,group:%v.", PluginName, node.Name, priNodeGroup[node.Name])
@@ -121,8 +118,8 @@ func getNodeHccsArray(nodeTop []int) ([]int, []int) {
 	return leftHccsArray, rightHccsArray
 }
 
-func getNodeNPUNumFromOthers(nodeInfo *api.NodeInfo) (int, error) {
-	top := hwutil.GetTopFromNodeOthers(nodeInfo, npu800And9000CardName, npu910CardPreName)
+func getNodeNPUNumFromAnnotation(nodeInfo *api.NodeInfo) (int, error) {
+	top := hwutil.GetTopFromNode(nodeInfo, npu800And9000CardName, npu910CardPreName)
 	if top == nil {
 		return 0, fmt.Errorf("nil node(%s) top", nodeInfo.Name)
 	}
@@ -142,14 +139,13 @@ func initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) error {
 			continue
 		}
 
-		topStr, err := hwutil.GetNPUAllocCardsFromNodeAnnotation(node, npu800And9000CardName)
+		topStr, err := hwutil.GetNodeNPUAllocCards(node, npu800And9000CardName)
 		if err != nil {
 			klog.V(logDebugLev).Infof("%s initNodesFn :%v.", PluginName, err)
 			return nil
 		}
-		if node.Others == nil {
-			node.Others = make(map[string]interface{}, 1)
-		}
+
+		node.Others = make(map[string]interface{}, 1)
 		err = hwutil.SaveTopologyInMap(node.Others, topStr, npu800And9000CardName)
 		if err != nil {
 			return err
@@ -159,132 +155,9 @@ func initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) error {
 	return nil
 }
 
-func getNodeFaultNPUs(node *api.NodeInfo) ([]string, error) {
-	npuStrings, ok := node.Node.Annotations[faultNPU]
-	if !ok || len(npuStrings) == 0 {
-		return nil, fmt.Errorf("%s get nil npus", node.Name)
-	}
-
-	faultNPUs := strings.Split(npuStrings, ",")
-	if len(faultNPUs) > nodeNPUNumber {
-		return nil, fmt.Errorf("%s get fault npus(%d)", node.Name, len(faultNPUs))
-	}
-
-	return faultNPUs, nil
-}
-
-func getNodeFaultNPUsByInt(node *api.NodeInfo) ([]int, error) {
-	var topInt []int
-
-	npusStrSlice, err := getNodeFaultNPUs(node)
-	if err != nil {
-		klog.V(logDebugLev).Infof("%s getNodeFaultNPUs err:%v.", PluginName, err)
-		return nil, err
-	}
-
-	for _, cardStr := range npusStrSlice {
-		// cannot use strings 's Trim
-		value := strings.TrimPrefix(cardStr, npu910CardPreName)
-		klog.V(logDebugLev).Infof("getNodeFaultNPUsByInt after TrimPrefix %s.", value)
-		cardInt, err := strconv.Atoi(value)
-		if err != nil {
-			klog.V(logErrorLev).Infof("getNodeFaultNPUsByInt convert failed %v.", err)
-			return nil, err
-		}
-
-		topInt = append(topInt, cardInt)
-	}
-
-	return topInt, nil
-}
-
-func getInoperableNPUs(nodes map[string]*api.NodeInfo) ([]nodeFaultNPUs, error) {
-	var faultNPUs []nodeFaultNPUs
-	for _, nodeInfo := range nodes {
-		npus, err := getNodeFaultNPUs(nodeInfo)
-		if err != nil {
-			klog.V(logDebugLev).Infof("%s getNodeFaultNPUs err:%v.", PluginName, err)
-			continue
-		}
-		faultNPUs = append(faultNPUs, nodeFaultNPUs{nodeInfo.Name, npus})
-	}
-
-	if len(faultNPUs) == 0 {
-		return nil, errors.New("nil inoperable NPU")
-	}
-	klog.V(logDebugLev).Infof("%s getNodeFaultNPUs %+v.", PluginName, faultNPUs)
-
-	return faultNPUs, nil
-}
-
-func getFaultNodePODAndRankIndex(job *api.JobInfo, nodes map[string]*v1.Pod) (faultNPUJob, error) {
-	var faultJob = faultNPUJob{
-		jobName:          job.Name,
-		namespace:        job.Namespace,
-		taskUseRankIndex: make(map[string]string, constIntNum3),
-		taskUseNode:      make(map[string]string, constIntNum3),
-		taskUseNPUs:      make(map[string]string, constIntNum3),
-	}
-
-	for _, task := range job.Tasks {
-		if pod, ok := nodes[task.NodeName]; ok {
-			rankIndex, err := getPodRankIndex(pod)
-			if err != nil {
-				klog.V(logErrorLev).Infof("%s getPodRankIndex %s %v.", PluginName, pod.Name, err)
-				return faultJob, err
-			}
-			faultJob.taskUseRankIndex[task.Name] = rankIndex
-			faultJob.taskUseNode[task.Name] = task.NodeName
-			faultJob.taskUseNPUs[task.Name] = pod.Annotations[npu800And9000CardName]
-		}
-	}
-
-	if len(faultJob.taskUseRankIndex) == 0 {
-		return faultJob, errors.New("get nil rankIndex")
-	}
-
-	return faultJob, nil
-}
-
-func setFaultLabelOnNodeAndJob(faultNPUJobs []faultNPUJob, jobs map[string]*api.JobInfo) error {
-	for _, tmpFaultNPUJob := range faultNPUJobs {
-		tmpTask := hwutil.ReSchedulerTasks{
-			NodeNames:   make(map[string]string, constIntNum3),
-			RankIndexes: make(map[string]string, constIntNum3),
-			Time:        make(map[string]int64, constIntNum3),
-			TaskUseNPUs: make(map[string]string, constIntNum3),
-			NameSpace:   tmpFaultNPUJob.namespace}
-
-		for taskName, nodeName := range tmpFaultNPUJob.taskUseNode {
-			rankIndex, indexOK := tmpFaultNPUJob.taskUseRankIndex[taskName]
-			if !indexOK {
-				klog.V(logErrorLev).Infof("%s %s get rankIndex failed.", PluginName, taskName)
-				continue
-			}
-
-			useNPUs, npuOK := tmpFaultNPUJob.taskUseNPUs[taskName]
-			if !npuOK {
-				klog.V(logErrorLev).Infof("%s %s get use NPUs failed.", PluginName, taskName)
-				continue
-			}
-			tmpTask.NodeNames[taskName] = nodeName
-			tmpTask.TaskUseNPUs[taskName] = useNPUs
-			tmpTask.RankIndexes[taskName] = rankIndex
-			tmpTask.Time[taskName] = time2.Now().Unix()
-		}
-
-		if err := recordNPUFaultJobToBuffer(jobs, tmpFaultNPUJob, tmpTask); err != nil {
-			klog.V(logErrorLev).Infof("%s recordNPUFaultJobToBuffer :%v.", PluginName, err)
-			return err
-		}
-	}
-
-	return nil
-}
-
 func checkNPUResourceStable(node *vapi.NodeInfo) error {
 	// default is the npu task
-	nodeNPUIdleNumFromTop, err := getNodeNPUNumFromOthers(node)
+	nodeNPUIdleNumFromTop, err := getNodeNPUNumFromAnnotation(node)
 	if err != nil {
 		return fmt.Errorf("getNodeNPUNumFromAnnotation %s : %s", nodesNoMeetNPUReqError, err)
 	}
@@ -317,17 +190,17 @@ func clusterNodePredicateFn(task *api.TaskInfo, ssn *framework.Session) error {
 		return nil
 	}
 	// 2.Determine if it is a NPUFault jobs.
-	if !isNPUFaultTask(task) {
+	if !rescheduling.IsNPUFaultTask(task) {
 		klog.V(logDebugLev).Infof("%s %s is not npu fault job.", PluginName, task.Name)
 		return nil
 	}
 	// 3.Whether the job is distributed
-	if isDistributedJob(job) {
+	if rescheduling.IsDistributedJob(job) {
 		klog.V(logDebugLev).Infof("%s %s is distributed job.", PluginName, job.Name)
 		return nil
 	}
 	// 4.Get the task uses node.
-	node, err := getTaskUseNodeInfo(task, ssn)
+	node, err := rescheduling.GetFaultTaskUseNodeInfo(task, ssn)
 	if err != nil {
 		klog.V(logErrorLev).Infof("%s %s get nil use node.", PluginName, task.Name)
 		return nil
@@ -345,4 +218,31 @@ func clusterNodePredicateFn(task *api.TaskInfo, ssn *framework.Session) error {
 	}
 
 	return nil
+}
+
+func isMyNode(node *vapi.NodeInfo) error {
+	_, err := hwutil.GetNodeNPUAllocCards(node, npu800And9000CardName)
+	if err != nil {
+		return fmt.Errorf("%s %s", node.Name, jobNoNPUCard)
+	}
+
+	if hwutil.IsCardModeNode(node) {
+		return fmt.Errorf("%s is card mode", node.Name)
+	}
+
+	return nil
+}
+
+func getUsableTopFromNode(node *api.NodeInfo, distributeFlag bool) []int {
+	nodeNPUTopology := hwutil.GetTopFromNode(node, npu800And9000CardName, npu910CardPreName)
+	if !distributeFlag {
+		return nodeNPUTopology
+	}
+	// Network unhealthy Cards affect only distribution job.
+	netUnhealthyCards := rescheduling.GetNetworkUnhealthyCards(node)
+	if netUnhealthyCards == nil {
+		return nodeNPUTopology
+	}
+
+	return rescheduling.GetDistributeUsableNPUTop(nodeNPUTopology, netUnhealthyCards)
 }

@@ -301,13 +301,5 @@ func buildNPUNode(cNode VCNodeInfo) *vapi.NodeInfo {
 	setNodeLabel(v1node, archSelector, cNode.nodeArch)
 
 	node := vapi.NewNodeInfo(v1node)
-	setNodeOthers(node)
 	return node
-}
-
-func setNodeOthers(node *vapi.NodeInfo) {
-	node.Others = make(map[string]interface{}, 1)
-	for k, v := range node.Node.Annotations {
-		node.Others[k] = v
-	}
 }

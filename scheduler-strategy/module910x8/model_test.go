@@ -23,10 +23,8 @@ package module910x8
 
 import (
 	. "github.com/smartystreets/goconvey/convey"
-	v1 "k8s.io/api/core/v1"
 	"testing"
 	vapi "volcano.sh/volcano/pkg/scheduler/api"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 func testInsertNodeInPriGroup1PTasks(
@@ -206,141 +204,6 @@ func TestMNPUJudgeNodeAndTaskNPU(t *testing.T) {
 		Convey("judgeNodeAndTaskNPU() should return er when req num is invalid", func() {
 			err := judgeNodeAndTaskNPU(7, []int{0, 1, 2, 3, 4, 5, 6, 7})
 			So(err, ShouldBeError)
-		})
-	})
-}
-
-// TestMNPUCheckFaultJobNode
-func TestMNPUCheckFaultJobNode(t *testing.T) {
-	Convey("Test module910x8 checkFaultJobNode", t, func() {
-		rst := &util.ReSchedulerTasks{NodeNames: map[string]string{"fake_task": nodeName}}
-		task := vapi.NewTaskInfo(buildNPUPod(MPodInfo{namespace: "default", groupName: "group-M-model-0",
-			podName: "npu-test-M-model-0", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
-			reqNPUType: npu800And9000CardName, reqNpuNum: "4"}))
-		anotherTask := vapi.NewTaskInfo(buildNPUPod(MPodInfo{namespace: "default", groupName: "group-M-model-1",
-			podName: "npu-test-M-model-1", nodeName: nodeName, reqCPUNum: "40", reqMem: "10Gi",
-			reqNPUType: npu800And9000CardName, reqNpuNum: "1"}))
-		node := buildNPUNode(MNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-			"4", "Ascend910-4,Ascend910-6,Ascend910-7,Ascend910-5"})
-		Convey("checkFaultJobNode() should return nil if task is in reschedule map", func() {
-			util.ReSchedulerJobs[task.Job] = *rst
-			err := checkFaultJobNode(task, node)
-			So(err, ShouldBeNil)
-		})
-		Convey("checkFaultJobNode() should return error if node is in reschedule map", func() {
-			delete(util.ReSchedulerJobs, task.Job)
-			util.ReSchedulerJobs[anotherTask.Job] = *rst
-			err := checkFaultJobNode(task, node)
-			So(err, ShouldBeError)
-		})
-		Convey("checkFaultJobNode() should return nil if node isn't in reschedule map", func() {
-			newNode := buildNPUNode(MNodeInfo{"newNode", huaweiArchArm, "192", "755Gi",
-				"6", "Ascend910-4,Ascend910-6,Ascend910-7,Ascend910-5,Ascend910-1,Ascend910-2"})
-			err := checkFaultJobNode(task, newNode)
-			So(err, ShouldBeNil)
-		})
-	})
-}
-
-// TestMNPUGetJobUsedNodes
-func TestMNPUGetJobUsedNodes(t *testing.T) {
-	Convey("Test module910x8 getJobUsedNodes", t, func() {
-		uid := vapi.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxx102")
-		tasks := []*vapi.TaskInfo{}
-		tasks = append(tasks, vapi.NewTaskInfo(buildNPUPod(
-			MPodInfo{namespace: "default", groupName: "group-M-model-2",
-				podName: "npu-test-M-model-2", nodeName: nodeName, reqCPUNum: "10", reqMem: "10Gi",
-				reqNPUType: npu800And9000CardName, reqNpuNum: "4"})))
-		job := vapi.NewJobInfo(uid, tasks...)
-		job.PodGroup = &vapi.PodGroup{}
-		Convey("getJobUsedNodes() should return error when job is not in running state", func() {
-			job.PodGroup.Status.Phase = "Unknown"
-			_, err := getJobUsedNodes(job)
-			So(err, ShouldBeError)
-		})
-		job.PodGroup.Status.Phase = "Running"
-		Convey("getJobUsedNodes() should return a correct nodeName to Pod map", func() {
-			expectedResult := map[string]*v1.Pod{
-				nodeName: tasks[0].Pod,
-			}
-			result, err := getJobUsedNodes(job)
-			So(err, ShouldBeNil)
-			So(result, ShouldResemble, expectedResult)
-		})
-	})
-}
-
-// TestMNPUGetNodeIdleNPUIntCardsIncludeFaultTask
-func TestMNPUGetNodeIdleNPUIntCardsIncludeFaultTask(t *testing.T) {
-	Convey("Test module910x8 checkFaultJobNode", t, func() {
-		const (
-			constInt2 = 2
-			constInt4 = 4
-			constInt5 = 5
-			constInt6 = 6
-			constInt7 = 7
-		)
-		node := buildNPUNode(MNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-			"4", "Ascend910-4,Ascend910-6,Ascend910-7,Ascend910-5"})
-		task := vapi.NewTaskInfo(buildNPUPod(MPodInfo{namespace: "default", groupName: "group-M-model-0",
-			podName: "npu-test-M-model-0", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
-			reqNPUType: npu800And9000CardName, reqNpuNum: "4"}))
-		util.ReSchedulerJobs[task.Job] = util.ReSchedulerTasks{
-			TaskUseNPUs: map[string]string{
-				task.Name: "Ascend910-1,Ascend910-2",
-			},
-		}
-		Convey("", func() {
-			setNodeAnnotation(node.Node, faultNPU, "Ascend910-1")
-			result := getNodeIdleNPUIntCardsIncludeFaultTask(task, node)
-			So(result, ShouldResemble, []int{constInt4, constInt6, constInt7, constInt5, constInt2})
-		})
-	})
-}
-
-// TestMNPUIsNodeMeetTaskReqNPUSource
-func TestMNPUIsNodeMeetTaskReqNPUSource(t *testing.T) {
-	Convey("Test module910x8 isNodeMeetTaskReqNPUSource", t, func() {
-		Convey("isNodeMeetTaskReqNPUSource() should return true case 1", func() {
-			node := buildNPUNode(MNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"4", "Ascend910-4,Ascend910-6,Ascend910-7,Ascend910-5"})
-			task := vapi.NewTaskInfo(buildNPUPod(MPodInfo{namespace: "default", groupName: "group-M-model-0",
-				podName: "npu-test-M-model-0", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
-				reqNPUType: npu800And9000CardName, reqNpuNum: "4"}))
-			util.ReSchedulerJobs[task.Job] = util.ReSchedulerTasks{
-				TaskUseNPUs: map[string]string{
-					task.Name: "Ascend910-1,Ascend910-2",
-				},
-			}
-			setNodeAnnotation(node.Node, faultNPU, "Ascend910-1")
-			result := isNodeMeetTaskReqNPUSource(task, node)
-			So(result, ShouldEqual, true)
-		})
-		Convey("isNodeMeetTaskReqNPUSource() should return error case 1", func() {
-			node := buildNPUNode(MNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"8", "Ascend910-4,Ascend910-6,Ascend910-7," +
-					"Ascend910-1,Ascend910-2,Ascend910-3,Ascend910-0"})
-			task := vapi.NewTaskInfo(buildNPUPod(MPodInfo{namespace: "default", groupName: "group-M-model-0",
-				podName: "npu-test-M-model-0", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
-				reqNPUType: npu800And9000CardName, reqNpuNum: "8"}))
-			setNodeAnnotation(node.Node, faultNPU, "Ascend910-5")
-			result := isNodeMeetTaskReqNPUSource(task, node)
-			So(result, ShouldEqual, false)
-		})
-		Convey("isNodeMeetTaskReqNPUSource() should return error case 2", func() {
-			node := buildNPUNode(MNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"2", "Ascend910-0,Ascend910-6"})
-			task := vapi.NewTaskInfo(buildNPUPod(MPodInfo{namespace: "default", groupName: "group-M-model-0",
-				podName: "npu-test-M-model-0", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
-				reqNPUType: npu800And9000CardName, reqNpuNum: "2"}))
-			util.ReSchedulerJobs[task.Job] = util.ReSchedulerTasks{
-				TaskUseNPUs: map[string]string{
-					task.Name: "Ascend910-3,Ascend910-2",
-				},
-			}
-			setNodeAnnotation(node.Node, faultNPU, "Ascend910-3,Ascend910-0")
-			result := isNodeMeetTaskReqNPUSource(task, node)
-			So(result, ShouldEqual, false)
 		})
 	})
 }

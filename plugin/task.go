@@ -73,7 +73,8 @@ func (hwNPU *ScheduleHandler) getReleaseNPUTopology(task *api.TaskInfo) (interfa
 // BatchNodeOrderFn Score nodes, which used by volcano frame.
 func (hwNPU *ScheduleHandler) BatchNodeOrderFn(
 	task *api.TaskInfo,
-	nodes []*api.NodeInfo) (map[string]float64, error) {
+	nodes []*api.NodeInfo,
+	disFlag bool) (map[string]float64, error) {
 	var interPodAffinityScore schedulerApi.HostPriorityList
 
 	klog.V(logInfoLev).Infof("Enter batchNodeOrderFn")
@@ -94,7 +95,7 @@ func (hwNPU *ScheduleHandler) BatchNodeOrderFn(
 	}
 
 	// 2.Get the best node and top by A,B,C,D rules and require numbers.
-	bestNodes, errGet := hwNPU.getNPUAffinityBestNodes(task, nodes)
+	bestNodes, errGet := hwNPU.getNPUAffinityBestNodes(task, nodes, disFlag)
 	if errGet != nil || len(bestNodes) == 0 {
 		// get suitable node failed
 		klog.V(logErrorLev).Infof("%s batchNodeOrderFn task[%s] failed[%v].",
@@ -126,4 +127,21 @@ func GetJobInfoByTask(task *api.TaskInfo, ssn *framework.Session) (*api.JobInfo,
 	}
 
 	return job, nil
+}
+
+// IsDistributeTask To judge whether the distributed task.
+func IsDistributeTask(task *api.TaskInfo, ssn *framework.Session) bool {
+	job, ok := ssn.Jobs[task.Job]
+	if !ok {
+		klog.V(logErrorLev).Infof("IsDistributeTask get %s not in ssn.", task.Job)
+		return false
+	}
+
+	if len(job.Tasks) > 1 {
+		klog.V(logDebugLev).Infof("IsDistributeTask %s get %d tasks.", task.Job, len(job.Tasks))
+		return true
+	}
+
+	klog.V(logDebugLev).Infof("IsDistributeTask %s get %d task.", task.Job, len(job.Tasks))
+	return false
 }

@@ -35,14 +35,14 @@ func initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) error {
 		if !hwutil.IsCardModeNode(node) {
 			continue
 		}
-		topStr, err := hwutil.GetNPUAllocCardsFromNodeAnnotation(node, a300TNPUCardName)
+
+		topStr, err := hwutil.GetNodeNPUAllocCards(node, a300TNPUCardName)
 		if err != nil {
 			klog.V(logDebugLev).Infof("%s initNodesFn :%v", PluginName, err)
 			return nil
 		}
-		if node.Others == nil {
-			node.Others = make(map[string]interface{}, 1)
-		}
+
+		node.Others = make(map[string]interface{}, 1)
 		err = hwutil.SaveTopologyInMap(node.Others, topStr, a300TNPUCardName)
 		if err != nil {
 			return err
@@ -52,8 +52,8 @@ func initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) error {
 	return nil
 }
 
-func getNodeNPUNumFromOthers(nodeInfo *api.NodeInfo) (int, error) {
-	top := hwutil.GetTopFromNodeOthers(nodeInfo, a300TNPUCardName, a300tNPUCardPreName)
+func getNodeNPUNumFromAnnotation(nodeInfo *api.NodeInfo) (int, error) {
+	top := hwutil.GetTopFromNode(nodeInfo, a300TNPUCardName, a300tNPUCardPreName)
 	if top == nil {
 		return 0, fmt.Errorf("nil node(%s) top", nodeInfo.Name)
 	}
@@ -87,7 +87,7 @@ func initPriNodeGroups(task *api.TaskInfo, nodes []*api.NodeInfo) ([]map[string]
 			continue
 		}
 
-		cardIds := hwutil.GetTopFromNodeOthers(node, a300TNPUCardName, a300tNPUCardPreName)
+		cardIds := hwutil.GetTopFromNode(node, a300TNPUCardName, a300tNPUCardPreName)
 		if cardIds == nil {
 			klog.V(logDebugLev).Infof("%s initPriNodeGroups [%s] get node top nil.", PluginName, node.Name)
 			continue

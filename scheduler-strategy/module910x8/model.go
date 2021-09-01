@@ -24,11 +24,10 @@ package module910x8
 import (
 	"errors"
 	"fmt"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 	"strconv"
-	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/rescheduling"
 	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
@@ -291,78 +290,6 @@ func judgeNodeAndTaskNPU(taskNPU int, nodeNPUTopology []int) error {
 	return meetErr
 }
 
-func isNodeInFaultJobUseList(node *api.NodeInfo) bool {
-	for _, jobValue := range hwutil.ReSchedulerJobs {
-		for _, nodeName := range jobValue.NodeNames {
-			if nodeName == node.Name {
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
-// task
-func checkFaultJobNode(task *api.TaskInfo, node *api.NodeInfo) error {
-	if isNPUFaultTask(task) {
-		klog.V(logErrorLev).Infof("%s %s is npu fault job.", PluginName, task.Job)
-		return nil
-	}
-
-	if isNodeInFaultJobUseList(node) {
-		msg := fmt.Errorf("%s is used by npu fault job:%s", node.Name, task.Job)
-		klog.V(logErrorLev).Infof("%s %s.", PluginName, msg)
-		return msg
-	}
-	klog.V(logDebugLev).Infof("%s %s not in fault job use node list.", PluginName, node.Name)
-
-	return nil
-}
-
-func getJobUsedNodes(job *api.JobInfo) (map[string]*v1.Pod, error) {
-	var nodeNames = make(map[string]*v1.Pod, constIntNum3)
-
-	if job.PodGroup.Status.Phase != scheduling.PodGroupRunning {
-		return nil, errors.New("not running job")
-	}
-
-	for _, task := range job.Tasks {
-		nodeNames[task.NodeName] = task.Pod
-	}
-	klog.V(logDebugLev).Infof("%s getJobUsedNodes %s use %v.", PluginName, job.Name, nodeNames)
-	return nodeNames, nil
-}
-
-// Getting the number of NPU chips idle on the node includes the failure task
-func getNodeIdleNPUIntCardsIncludeFaultTask(task *api.TaskInfo, node *api.NodeInfo) []int {
-	var returnNPUs []int
-	nodeNPUTopology := hwutil.GetTopFromNodeOthers(node, npu800And9000CardName, npu910CardPreName)
-	taskNPUTopology := hwutil.GetTaskUseNPUIntCards(task, npu800And9000CardName, npu910CardPreName)
-	allIntNPUs := append(nodeNPUTopology, taskNPUTopology...)
-
-	allNodeFaultNPUs, err := getNodeFaultNPUsByInt(node)
-	if err != nil {
-		return nil
-	}
-
-	// Gets the difference set of slices.
-	for _, card := range allIntNPUs {
-		i := 0
-		for _, fCard := range allNodeFaultNPUs {
-			if card == fCard {
-				i++
-				break
-			}
-		}
-		if i == 0 {
-			returnNPUs = append(returnNPUs, card)
-		}
-	}
-
-	return returnNPUs
-}
-
 func isNodeMeetTaskReqNPUSource(task *api.TaskInfo, node *api.NodeInfo) bool {
 	var meetFlag = false
 
@@ -372,7 +299,7 @@ func isNodeMeetTaskReqNPUSource(task *api.TaskInfo, node *api.NodeInfo) bool {
 		return false
 	}
 	// Getting the number of NPU chips idle on the node includes the failure task
-	idleNPUTopology := getNodeIdleNPUIntCardsIncludeFaultTask(task, node)
+	idleNPUTopology := rescheduling.GetNodeIdleNPUIntCardsIncludeFaultTask(task, node)
 	if len(idleNPUTopology) == 0 {
 		// node has none npu
 		klog.V(logErrorLev).Infof("%s add %s:get npu nil", node.Name, task.Name)

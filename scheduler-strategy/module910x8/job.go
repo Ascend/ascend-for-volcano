@@ -24,12 +24,12 @@ package module910x8
 import (
 	"errors"
 	"fmt"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	vapi "volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/rescheduling"
 	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
@@ -139,41 +139,6 @@ func isMyJob(job *vapi.JobInfo) error {
 	return nil
 }
 
-func getRestartNPUFaultJobs(faultNPUJobs []faultNPUJob, jobs map[string]*api.JobInfo) ([]*api.JobInfo, error) {
-	var restartJobs []*api.JobInfo
-	for _, faultNPUJob := range faultNPUJobs {
-		for _, job := range jobs {
-			if job.Name == faultNPUJob.jobName {
-				restartJobs = append(restartJobs, job)
-			}
-		}
-	}
-
-	if len(restartJobs) == 0 {
-		return nil, errors.New("none restart jobs get")
-	}
-
-	return restartJobs, nil
-}
-
-func restartNPUFaultJob(ssn *framework.Session, faultNPUJobs []faultNPUJob, jobs map[string]*api.JobInfo) error {
-	restartJobs, err := getRestartNPUFaultJobs(faultNPUJobs, jobs)
-	if err != nil {
-		klog.V(logDebugLev).Infof("%s %v.", PluginName, err)
-		return nil
-	}
-
-	for _, restartJob := range restartJobs {
-		klog.V(logInfoLev).Infof("%s %s need restart.", PluginName, restartJob.Name)
-		if err := plugin.RestartJob(ssn, restartJob, jobRestartReasion); err != nil {
-			klog.V(logInfoLev).Infof("%s RestartJob %v.", PluginName, err)
-			return err
-		}
-	}
-
-	return nil
-}
-
 func get910x8Jobs(jobs map[api.JobID]*api.JobInfo) (map[string]*api.JobInfo, error) {
 	var myJobs = make(map[string]*api.JobInfo, constIntNum3)
 	for _, job := range jobs {
@@ -189,65 +154,20 @@ func get910x8Jobs(jobs map[api.JobID]*api.JobInfo) (map[string]*api.JobInfo, err
 	return myJobs, nil
 }
 
-func getFaultNPUJobs(jobs map[string]*api.JobInfo, faultNPUs []nodeFaultNPUs) ([]faultNPUJob, error) {
-	var faultNPUJobs []faultNPUJob
+// restartFaultJob restart fault job.
+func restartFaultJob(ssn *framework.Session, faultJobs []rescheduling.FaultNPUJob, jobs map[string]*api.JobInfo) error {
+	restartJobs, getErr := rescheduling.GetRestartNPUFaultJobs(faultJobs, jobs)
+	if getErr != nil {
+		klog.V(logDebugLev).Infof("restartFaultJob %v.", getErr)
+		return nil
+	}
 
-	for _, job := range jobs {
-		// Get running job used node.
-		nodesTask, err := getJobUsedNodes(job)
-		if err != nil {
-			klog.V(logDebugLev).Infof("%s getJobUsedNodes %s %v.", PluginName, job.Name, err)
-			continue
-		}
-
-		if isJobHasFaultNPU(nodesTask, faultNPUs) {
-			klog.V(logInfoLev).Infof("%s getJobUsedNodes %s use fault NPUs.", PluginName, job.Name)
-			faultJob, err := getFaultNodePODAndRankIndex(job, nodesTask)
-			if err != nil {
-				klog.V(logDebugLev).Infof("%s getFaultNodePODAndRankIndex %s %v.", PluginName, job.Name, err)
-				continue
-			}
-			faultNPUJobs = append(faultNPUJobs, faultJob)
+	for _, restartJob := range restartJobs {
+		klog.V(logInfoLev).Infof("%s need restart.", restartJob.Name)
+		if err := plugin.RestartJob(ssn, restartJob, jobRestartReason); err != nil {
+			klog.V(logInfoLev).Infof("RestartJob %v.", err)
+			return err
 		}
 	}
-
-	if len(faultNPUJobs) == 0 {
-		return nil, errors.New("get none faultNPUJobs")
-	}
-
-	return faultNPUJobs, nil
-}
-
-// Record and curing RankIndex information
-func recordNPUFaultJobToBuffer(jobs map[string]*api.JobInfo, fJob faultNPUJob, task hwutil.ReSchedulerTasks) error {
-	job, ok := jobs[fJob.jobName]
-	if !ok {
-		return fmt.Errorf("%s not found in fault jobs", fJob.jobName)
-	}
-	// Distributed tasks only change the failed POD
-	hwutil.ReSchedulerJobs[job.UID] = task
-
 	return nil
-}
-
-func isJobHasFaultNPU(nodesTask map[string]*v1.Pod, allFaultNPUs []nodeFaultNPUs) bool {
-	for _, nodeFaultNPUs := range allFaultNPUs {
-		taskNPUs, err := getTaskUseNPUs(nodesTask, nodeFaultNPUs.nodeName)
-		if err != nil {
-			klog.V(logErrorLev).Infof("%s getTaskUseNPUs  %v.", PluginName, err)
-			continue
-		}
-		if isTaskHasFaultNPU(taskNPUs, nodeFaultNPUs.faultNPUs) {
-			return true
-		}
-	}
-	return false
-}
-
-func isDistributedJob(job *api.JobInfo) bool {
-	if len(job.Tasks) > 1 {
-		return true
-	}
-
-	return false
 }

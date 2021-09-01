@@ -33,6 +33,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/rescheduling"
 	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
@@ -55,6 +56,15 @@ func updatePodGroupPendingReason(ssn *framework.Session, job *api.JobInfo, reaso
 		Reason:             scheduling.NotEnoughResourcesReason,
 		Message:            reasonTmp,
 	}
+
+	for k, value := range job.PodGroup.Status.Conditions {
+		if value.Message == jc.Message {
+			job.PodGroup.Status.Conditions[k].LastTransitionTime = jc.LastTransitionTime
+			job.PodGroup.Status.Conditions[k].TransitionID = jc.TransitionID
+			return
+		}
+	}
+
 	job.PodGroup.Status.Conditions = append(job.PodGroup.Status.Conditions, jc)
 }
 
@@ -97,18 +107,6 @@ func updateJobPendingReason(ssn *framework.Session, job *api.JobInfo, reason int
 	return nil
 }
 
-func releaseFaultJobTakeNodes(job *api.JobInfo) error {
-	if _, ok := hwutil.ReSchedulerJobs[job.UID]; !ok {
-		klog.V(logErrorLev).Infof("release job(%s) not find in buffer", job.Name)
-		return nil
-	}
-
-	klog.V(logInfoLev).Infof("delete %s from configMap due to pending.", job.UID)
-	delete(hwutil.ReSchedulerJobs, job.UID)
-
-	return nil
-}
-
 // SetJobPendingReason to set job failed and add failed reason
 func SetJobPendingReason(ssn *framework.Session, obj interface{}, reason interface{}) error {
 	job := getJobHandle(obj)
@@ -125,7 +123,7 @@ func SetJobPendingReason(ssn *framework.Session, obj interface{}, reason interfa
 	klog.V(logInfoLev).Infof("set job(%s) to pending, reason:%v.", job.Name, reason)
 	job.PodGroup.Status.Phase = scheduling.PodGroupPhase(vjobs.Pending)
 
-	if err := releaseFaultJobTakeNodes(job); err != nil {
+	if err := rescheduling.ReleaseFaultJobTakeNodes(job); err != nil {
 		return err
 	}
 
