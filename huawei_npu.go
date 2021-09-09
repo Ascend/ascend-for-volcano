@@ -42,6 +42,10 @@ var sHandler *plugin.ScheduleHandler
 
 // Name This need by volcano frame init plugin.
 func (tp *huaweiNPUPlugin) Name() string {
+	name := os.Getenv("pluginName")
+	if name != "" && len(name) < maxPluginName {
+		PluginName = name
+	}
 	return PluginName
 }
 
@@ -52,11 +56,6 @@ func New(arguments framework.Arguments) framework.Plugin {
 
 func init() {
 	sHandler = HandlerStart()
-	name := os.Getenv("pluginName")
-	if name != "" && len(name) < maxPluginName {
-		PluginName = name
-	}
-	klog.V(logInfoLev).Infof("% starting.", PluginName)
 }
 
 // OnSessionOpen HuaWei NPU Plugin's init session for frame.
