@@ -244,6 +244,7 @@ type getDistributeUsableNPUTopTests []struct {
 }
 
 func buildGetDistributeUsableNPUTopTestCases() getDistributeUsableNPUTopTests {
+	const constIntNum7 = 7
 	testCases := getDistributeUsableNPUTopTests{
 		{
 			name: "01-nil node top-test",
@@ -264,10 +265,10 @@ func buildGetDistributeUsableNPUTopTestCases() getDistributeUsableNPUTopTests {
 		{
 			name: "03-normal top-test",
 			args: getDistributeUsableNPUTopArgs{
-				nodeNPUTopology:   []int{0, 1, 2, 5, 7},
+				nodeNPUTopology:   []int{0, 1, constIntNum2, constIntNum3, constIntNum7},
 				netUnhealthyCards: []int{0, 1},
 			},
-			want: []int{2, 5, 7},
+			want: []int{constIntNum2, constIntNum3, constIntNum7},
 		},
 	}
 	return testCases
