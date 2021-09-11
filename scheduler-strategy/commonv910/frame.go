@@ -122,9 +122,9 @@ func (tp *Vnpu) PreCheckNodeFn(task *api.TaskInfo, node *api.NodeInfo, confs []c
 // CheckNPUResourceStableFn check whether the resources on the node are stable
 func (tp *Vnpu) CheckNPUResourceStableFn(node *api.NodeInfo) error {
 	for _, vType := range VnpuType {
-		nodeNPUIdleNumFromTop, err := getNPUNumFromNodeAnnotation(node, vType)
-		if err != nil {
-			klog.V(logInfoLev).Infof("getNodeNPUNumFromAnnotation node %s doesn't have %s.", node.Name, vType)
+		nodeNPUIdleNumFromTop, getErr := getTopStrFromNodeOther(node.Others, vType)
+		if getErr != nil {
+			klog.V(logInfoLev).Infof("getNodeNPUNumFromOthers node %s doesn't have %s.", node.Name, vType)
 			continue
 		}
 
@@ -133,7 +133,7 @@ func (tp *Vnpu) CheckNPUResourceStableFn(node *api.NodeInfo) error {
 			return fmt.Errorf("getNodeNPUNumFromIdle %s : %s", nodesNoMeetNPUReqError, err)
 		}
 
-		if err = hwutil.CheckNodeNPUStabilize(nodeNPUIdleNumFromTop, nodeNPUIdleNumFromIdle); err != nil {
+		if err = hwutil.CheckNodeNPUStabilize(len(nodeNPUIdleNumFromTop), nodeNPUIdleNumFromIdle); err != nil {
 			return fmt.Errorf("node %s %s : %s", node.Name, nodeNotStableWarning, err)
 		}
 	}
@@ -218,7 +218,7 @@ func (tp *Vnpu) GetAllocatedNPUFromTopologyFn(task *api.TaskInfo, node *api.Node
 			continue
 		}
 
-		vNPUByPriority, err := getVCardWithLeastRemainPw(node.Node.Annotations, vType)
+		vNPUByPriority, err := getVCardWithLeastRemainPw(node.Others, vType)
 		if err != nil {
 			klog.V(logErrorLev).Infof("GetAllocatedNPUFromTopologyFn allocate error: %s", err)
 			return allocTopologyVnpus, err

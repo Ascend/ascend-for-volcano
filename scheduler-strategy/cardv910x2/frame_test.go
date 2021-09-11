@@ -301,5 +301,10 @@ func buildNPUNode(cNode VCNodeInfo) *vapi.NodeInfo {
 	setNodeLabel(v1node, archSelector, cNode.nodeArch)
 
 	node := vapi.NewNodeInfo(v1node)
+	if cNode.npuAllocateNum != "0" {
+		node.Others = map[string]interface{}{
+			npuV910CardName16c: cNode.npuTop,
+		}
+	}
 	return node
 }

@@ -32,11 +32,10 @@ const (
 	huaweiArchX86         = "huawei-x86"
 	moduleAcceleratorType = "module"
 	maxNPUNum             = 8
-
-	npuNumPerHccs = 4
-	constIntNum2  = 2
-	constIntNum3  = 3
-	nodeNPUNumber = 8
+	npuNumPerHccs         = 4
+	constIntNum2          = 2
+	constIntNum3          = 3
+	nodeNPUNumber         = 8
 
 	logErrorLev = 1
 	logInfoLev  = 3

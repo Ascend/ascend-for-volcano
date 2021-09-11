@@ -118,8 +118,8 @@ func getNodeHccsArray(nodeTop []int) ([]int, []int) {
 	return leftHccsArray, rightHccsArray
 }
 
-func getNodeNPUNumFromAnnotation(nodeInfo *api.NodeInfo) (int, error) {
-	top := hwutil.GetTopFromNode(nodeInfo, npu800And9000CardName, npu910CardPreName)
+func getNodeNPUNumFromOthers(nodeInfo *api.NodeInfo) (int, error) {
+	top := hwutil.GetTopFromNodeOthers(nodeInfo, npu800And9000CardName, npu910CardPreName)
 	if top == nil {
 		return 0, fmt.Errorf("nil node(%s) top", nodeInfo.Name)
 	}
@@ -139,7 +139,7 @@ func initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) error {
 			continue
 		}
 
-		topStr, err := hwutil.GetNodeNPUAllocCards(node, npu800And9000CardName)
+		topStr, err := hwutil.GetNPUAllocCardsFromNodeAnnotations(node, npu800And9000CardName)
 		if err != nil {
 			klog.V(logDebugLev).Infof("%s initNodesFn :%v.", PluginName, err)
 			return nil
@@ -157,9 +157,9 @@ func initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) error {
 
 func checkNPUResourceStable(node *vapi.NodeInfo) error {
 	// default is the npu task
-	nodeNPUIdleNumFromTop, err := getNodeNPUNumFromAnnotation(node)
+	nodeNPUIdleNumFromTop, err := getNodeNPUNumFromOthers(node)
 	if err != nil {
-		return fmt.Errorf("getNodeNPUNumFromAnnotation %s : %s", nodesNoMeetNPUReqError, err)
+		return fmt.Errorf("getNodeNPUNumFromOthers %s : %s", nodesNoMeetNPUReqError, err)
 	}
 
 	nodeNPUIdleNumFromIdle, err := hwutil.GetNodeNPUNumFromIdle(node, npu800And9000CardName)
@@ -221,7 +221,7 @@ func clusterNodePredicateFn(task *api.TaskInfo, ssn *framework.Session) error {
 }
 
 func isMyNode(node *vapi.NodeInfo) error {
-	_, err := hwutil.GetNodeNPUAllocCards(node, npu800And9000CardName)
+	_, err := hwutil.GetNPUAllocCardsFromNodeOthers(node, npu800And9000CardName)
 	if err != nil {
 		return fmt.Errorf("%s %s", node.Name, jobNoNPUCard)
 	}
@@ -234,7 +234,7 @@ func isMyNode(node *vapi.NodeInfo) error {
 }
 
 func getUsableTopFromNode(node *api.NodeInfo, distributeFlag bool) []int {
-	nodeNPUTopology := hwutil.GetTopFromNode(node, npu800And9000CardName, npu910CardPreName)
+	nodeNPUTopology := hwutil.GetTopFromNodeOthers(node, npu800And9000CardName, npu910CardPreName)
 	if !distributeFlag {
 		return nodeNPUTopology
 	}

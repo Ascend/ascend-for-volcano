@@ -361,3 +361,17 @@ func ReleaseFaultJobTakeNodes(job *api.JobInfo) error {
 
 	return nil
 }
+
+// Record and curing RankIndex information
+func writeFaultJobInfInCache(jobs map[string]*api.JobInfo, fJob FaultNPUJob, task ReSchedulerTasks) error {
+	job, ok := jobs[fJob.jobName]
+	if !ok {
+		return fmt.Errorf("%s not found in fault jobs", fJob.jobName)
+	}
+
+	var jobMap = make(map[api.JobID]ReSchedulerTasks, 1)
+	jobMap[job.UID] = task
+	ReSchedulerCache[CmJobKind] = jobMap
+
+	return nil
+}

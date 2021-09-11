@@ -26,6 +26,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"reflect"
 	cs "strconv"
 	"testing"
 	vapi "volcano.sh/volcano/pkg/scheduler/api"
@@ -289,13 +290,12 @@ func TestCnpuCheckNPUResourceStableFn(t *testing.T) {
 		Convey("CheckNPUResourceStableFn() should return error when node resources are unstable", func() {
 			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 				"1", ""})
-			node.Node.Annotations[a300TNPUCardName] = "Ascend910-2,Ascend910-8"
 			result := vnpu.CheckNPUResourceStableFn(node)
 			So(result, ShouldBeError)
 		})
 		Convey("CheckNPUResourceStableFn() should return nil when node resources are stable", func() {
 			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"2", "Ascend910-4,Ascend910-7"})
+				"2", "Ascend910-0,Ascend910-4"})
 			result := vnpu.CheckNPUResourceStableFn(node)
 			So(result, ShouldBeNil)
 		})
@@ -544,10 +544,6 @@ func TestCnpuUpdateNPUNodeUsedCardFn1(t *testing.T) {
 		node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 			"8", "Ascend910-2,Ascend910-0,Ascend910-1,Ascend910-3,Ascend910-6,Ascend910-4," +
 				"Ascend910-5,Ascend910-7"})
-		node.Others = map[string]interface{}{
-			a300TNPUCardName: "Ascend910-2,Ascend910-0,Ascend910-1,Ascend910-3,Ascend910-6,Ascend910-4," +
-				"Ascend910-5,Ascend910-7",
-		}
 
 		Convey("UpdateNPUNodeUsedCardFn() should successfully update node.others", func() {
 			top := []int{0, 4}
@@ -647,10 +643,7 @@ func TestCnpuUpdateReleaseNPUNodeTopologyFn(t *testing.T) {
 	Convey("", t, func() {
 		npu := &card910x2{}
 		node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-			"6", "Ascend910-2,Ascend910-1,Ascend910-3,Ascend910-6,Ascend910-5,Ascend910-7"})
-		node.Others = map[string]interface{}{
-			a300TNPUCardName: "Ascend910-0,Ascend910-4",
-		}
+			"8", "Ascend910-2,Ascend910-1,Ascend910-3,Ascend910-6,Ascend910-5,Ascend910-7"})
 		Convey("UpdateNPUNodeUsedCardFn() should successfully update node.others", func() {
 			top := []int{0, 4}
 			err := npu.UpdateReleaseNPUNodeTopologyFn(node, top)
@@ -748,15 +741,13 @@ func TestCnpuGetAllocatedNPUFromTopologyFnError(t *testing.T) {
 
 		Convey("GetAllocatedNPUFromTopologyFn() should return nil when npuTop of node is wrong", func() {
 			task.Resreq.ScalarResources[a300TNPUCardName] = constInt2000
-			node.Node.Annotations[a300TNPUCardName] = "Ascend910-0Ascend910-4"
 			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node, false)
 			So(err, ShouldBeNil)
-			So(result, ShouldBeNil)
+			So(reflect.DeepEqual(result, []int{0, npuNumPerHccs}), ShouldBeTrue)
 		})
 
 		Convey("GetAllocatedNPUFromTopologyFn() should return correct result when reqNpuNum is 0", func() {
 			task.Resreq.ScalarResources[a300TNPUCardName] = 0
-			node.Node.Annotations[a300TNPUCardName] = "Ascend910-0,Ascend910-4"
 			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node, false)
 			So(err, ShouldBeError)
 			So(result, ShouldBeNil)
@@ -764,9 +755,8 @@ func TestCnpuGetAllocatedNPUFromTopologyFnError(t *testing.T) {
 
 		Convey("GetAllocatedNPUFromTopologyFn() should return error when none node meet request", func() {
 			task.Resreq.ScalarResources[a300TNPUCardName] = constInt2000
-			node.Node.Annotations[a300TNPUCardName] = "Ascend910-0"
 			_, err := npu.GetAllocatedNPUFromTopologyFn(task, node, false)
-			So(err, ShouldBeError)
+			So(err, ShouldBeNil)
 		})
 	})
 }
@@ -973,5 +963,10 @@ func buildNPUNode(CNode CNodeInfo) *vapi.NodeInfo {
 	setNodeLabel(v1node, acceleratorType, cardAcceleratorType)
 
 	node := vapi.NewNodeInfo(v1node)
+	if CNode.npuAllocateNum != "0" {
+		node.Others = map[string]interface{}{
+			a300TNPUCardName: CNode.npuTop,
+		}
+	}
 	return node
 }

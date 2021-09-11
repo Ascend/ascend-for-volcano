@@ -32,9 +32,10 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/card310x4/util"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
-// This need by frame init plugin.
+// Name This need by frame init plugin.
 func (tp *card310x4) Name() string {
 	return PluginName
 }
@@ -44,7 +45,7 @@ func New(npuName string) plugin.HwNPUSchedulerPlugin {
 	return &card310x4{name: npuName}
 }
 
-// The npu scheduler policy initial and common processing.
+// OnHandlerStart The npu scheduler policy initial and common processing.
 func (tp *card310x4) OnHandlerStart(sHandler *plugin.ScheduleHandler) {
 	klog.V(logDebugLev).Infof("%v start handler.", PluginName)
 	sHandler.AddInitNodesNPUAllocTopology(PluginName, initNodesNPUTopologyFn)
@@ -108,12 +109,12 @@ func (tp *card310x4) PreCheckNodeFn(task *api.TaskInfo, node *api.NodeInfo, conf
 // CheckNPUResourceStableFn Check whether the node's NPU resources are stable.
 func (tp *card310x4) CheckNPUResourceStableFn(node *api.NodeInfo) error {
 	// default is the npu task
-	nodeNPUIdleNumFromTop, err := getNodeNPUNumFromAnnotation(node)
+	nodeNPUIdleNumFromTop, err := getNodeNPUNumFromOthers(node)
 	if err != nil {
-		return fmt.Errorf("getNodeNPUNumFromAnnotation %s : %s", nodesNoMeetNPUReqError, err)
+		return fmt.Errorf("getNodeNPUNumFromOthers %s : %s", nodesNoMeetNPUReqError, err)
 	}
 
-	nodeNPUIdleNumFromIdle, err := hwutil.GetNodeNPUNumFromIdle(node, a310NPUCardName)
+	nodeNPUIdleNumFromIdle, err := util.GetNodeNPUNumFromIdle(node, a310NPUCardName)
 	if err != nil {
 		return fmt.Errorf("getNodeNPUNumFromIdle %s : %s", nodesNoMeetNPUReqError, err)
 	}
@@ -132,8 +133,8 @@ func (tp *card310x4) CheckNodeNPUByTaskFn(task *api.TaskInfo, node *api.NodeInfo
 		return fmt.Errorf("getTaskNPUNum %s : %s", nodesNoMeetNPUReqError, taskError)
 	}
 
-	nodeNPUTopology := hwutil.GetTopFromNode(node, a310NPUCardName, a310NPUCardPreName)
-	if len(nodeNPUTopology) == 0 {
+	nodeNPUTopology := util.GetTopFromNodeOthers(node, a310NPUCardName, a310NPUCardPreName)
+	if nodeNPUTopology == nil {
 		// node has none npu
 		klog.V(logInfoLev).Infof("%s checkNodeNPUByTask nil,node name:%s(top:%v),task req npu:%d",
 			PluginName, node.Name, nodeNPUTopology, taskNPU)
@@ -172,8 +173,8 @@ func (tp *card310x4) GetNPUAffinityBestNodesFn(task *api.TaskInfo,
 // ScoreBestNPUNodesFn Used for score candidate nodes.
 func (tp *card310x4) ScoreBestNPUNodesFn(scoreMap map[string]float64,
 	bestNodes map[string]int,
-	task *api.TaskInfo,
-	nodes []*api.NodeInfo) (map[string]float64, error) {
+	_ *api.TaskInfo,
+	_ []*api.NodeInfo) (map[string]float64, error) {
 	var nodeWeight = 1.0
 
 	// parameters check
@@ -199,20 +200,20 @@ func (tp *card310x4) UpdateNPUNodeUsedCardFn(node *api.NodeInfo, top interface{}
 	}
 
 	// get node available top
-	nodeDeviceIDs := hwutil.GetDeviceIDsFromNodeOther(node.Others, a310NPUCardName, a310NPUCardPreName)
-	if nodeDeviceIDs == nil {
+	nodeDeviceIDs := util.GetTopFromNodeOthers(node, a310NPUCardName, a310NPUCardPreName)
+	if len(nodeDeviceIDs) == 0 {
 		klog.V(logErrorLev).Infof("%s useAnnotation node(%s) top nil.", PluginName, node.Name)
 		return errors.New("nodeDeviceIDs nil")
 	}
 
 	// delete the use top
 	klog.V(logInfoLev).Infof("%s useAnnotation %s:%v , will use: %v.", PluginName, node.Name, nodeDeviceIDs, useTop)
-	newNodeTopStr := hwutil.GetRealTopAfterAlloc(nodeDeviceIDs, useTop, a310NPUCardPreName)
+	newNodeTopStr := util.GetRealTopAfterAlloc(nodeDeviceIDs, useTop, a310NPUCardPreName)
 	if newNodeTopStr == "" {
 		klog.V(logDebugLev).Infof("%s getRealTopAfterAlloc all top has allocated .", PluginName)
 	}
 
-	err := hwutil.ReloadNewTopToNodeOther(node, newNodeTopStr, a310NPUCardName)
+	err := util.ReloadNewTopToNodeOther(node, newNodeTopStr, a310NPUCardName)
 	if err != nil {
 		klog.V(logErrorLev).Infof("%s reloadNewTopToNode failed.", PluginName)
 		return err
@@ -242,7 +243,7 @@ func (tp *card310x4) UpdateReleaseNPUNodeTopologyFn(node *api.NodeInfo, top inte
 	}
 
 	// get node available top
-	nodeDeviceIDs := hwutil.GetDeviceIDsFromNodeOther(node.Others, a310NPUCardName, a310NPUCardPreName)
+	nodeDeviceIDs := util.GetTopFromNodeOthers(node, a310NPUCardName, a310NPUCardPreName)
 	if nodeDeviceIDs == nil {
 		klog.V(logErrorLev).Infof("%s useAnnotation node(%s) top nil", PluginName, node.Name)
 		return fmt.Errorf("%s has nil npu", node.Name)
@@ -254,7 +255,7 @@ func (tp *card310x4) UpdateReleaseNPUNodeTopologyFn(node *api.NodeInfo, top inte
 		return fmt.Errorf("%s release nil npu", node.Name)
 	}
 
-	err := hwutil.ReloadNewTopToNodeOther(node, newNodeTopStr, a310NPUCardName)
+	err := util.ReloadNewTopToNodeOther(node, newNodeTopStr, a310NPUCardName)
 	if err != nil {
 		klog.V(logErrorLev).Infof("%s reloadNewTopToNode failed", PluginName)
 		return err
@@ -280,7 +281,7 @@ func (tp *card310x4) GetAllocatedNPUFromTopologyFn(task *api.TaskInfo, node *api
 		return allocTopologyHccl, err
 	}
 
-	nodeTop := hwutil.GetTopFromNode(node, a310NPUCardName, a310NPUCardPreName)
+	nodeTop := util.GetTopFromNodeOthers(node, a310NPUCardName, a310NPUCardPreName)
 	if nodeTop == nil {
 		klog.V(logErrorLev).Infof("not npu node[%s], no need to continue.", node.Name)
 		return allocTopologyHccl, err
@@ -296,7 +297,7 @@ func (tp *card310x4) GetAllocatedNPUFromTopologyFn(task *api.TaskInfo, node *api
 	}
 	klog.V(logDebugLev).Infof("%s %s get top %v.", PluginName, task.Name, allocTopologyHccl)
 
-	allocTopologyNPUs, err = hwutil.GetNPUTopFromHccs(taskNPUNumber, allocTopologyHccl)
+	allocTopologyNPUs, err = util.GetNPUTopFromHccs(taskNPUNumber, allocTopologyHccl)
 	if err != nil {
 		return allocTopologyNPUs, err
 	}
@@ -339,7 +340,7 @@ func (tp *card310x4) IsMyTask(task *api.TaskInfo) error {
 
 // IsMyNode Determine if it is the NPU node of your plug-in.
 func (tp *card310x4) IsMyNode(node *api.NodeInfo) error {
-	_, err := hwutil.GetNodeNPUAllocCards(node, a310NPUCardName)
+	_, err := util.GetNPUAllocCardsFromNodeOthers(node, a310NPUCardName)
 	if err != nil {
 		return errors.New(jobNoNPUCard + err.Error())
 	}

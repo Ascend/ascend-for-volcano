@@ -27,8 +27,7 @@ const (
 	// PluginName the modulev910x8's plugin name.
 	PluginName = "A800-9000-VNpu"
 
-	maxNPUNum = 8
-
+	maxNPUNum   = 8
 	logDebugLev = 4
 )
 

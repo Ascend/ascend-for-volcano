@@ -73,6 +73,13 @@ func getCMNodeWriteData(nodeData interface{}) (string, error) {
 	return string(dataBuffer), nil
 }
 
+func getInt64Abs(num int64) int64 {
+	if num < 0 {
+		return -num
+	}
+	return num
+}
+
 func isNodeHealth(node *api.NodeInfo) bool {
 	// If the Time exceeds 15 seconds, the fault occurs.
 	heartbeatTime, err := getNodeHeartbeat(node)
@@ -83,7 +90,7 @@ func isNodeHealth(node *api.NodeInfo) bool {
 	}
 
 	nowTime := time.Now().Unix()
-	if nowTime-heartbeatTime > nodeUpdateTime {
+	if getInt64Abs(nowTime-heartbeatTime) > nodeUpdateTime {
 		klog.V(logErrorLev).Infof(" %s Time over [%d-%d],not health.", node.Name, nowTime, heartbeatTime)
 		return false
 	}

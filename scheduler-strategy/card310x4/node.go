@@ -28,12 +28,13 @@ import (
 	"reflect"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/card310x4/util"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 func initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) error {
 	for _, node := range nodes {
 
-		topStr, err := hwutil.GetNodeNPUAllocCards(node, a310NPUCardName)
+		topStr, err := util.GetNPUAllocCardsFromNodeAnnotations(node, a310NPUCardName)
 		if err != nil {
 			klog.V(logDebugLev).Infof("%s initNodesFn :%v", PluginName, err)
 			return nil
@@ -50,8 +51,8 @@ func initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) error {
 	return nil
 }
 
-func getNodeNPUNumFromAnnotation(nodeInfo *api.NodeInfo) (int, error) {
-	top := hwutil.GetTopFromNode(nodeInfo, a310NPUCardName, a310NPUCardPreName)
+func getNodeNPUNumFromOthers(nodeInfo *api.NodeInfo) (int, error) {
+	top := util.GetTopFromNodeOthers(nodeInfo, a310NPUCardName, a310NPUCardPreName)
 	if top == nil {
 		return 0, fmt.Errorf("nil node(%s) top", nodeInfo.Name)
 	}
@@ -81,7 +82,7 @@ func initPriNodeGroups(task *api.TaskInfo, nodes []*api.NodeInfo) ([]map[string]
 		if reflect.ValueOf(node).IsNil() {
 			continue
 		}
-		cardIds := hwutil.GetTopFromNode(node, a310NPUCardName, a310NPUCardPreName)
+		cardIds := util.GetTopFromNodeOthers(node, a310NPUCardName, a310NPUCardPreName)
 		if cardIds == nil {
 			klog.V(logDebugLev).Infof("%s initPriNodeGroups [%s] get node top nil.", PluginName, node.Name)
 			continue

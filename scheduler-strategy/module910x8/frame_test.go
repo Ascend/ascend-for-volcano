@@ -111,8 +111,7 @@ func TestMNPUIsMyNode(t *testing.T) {
 
 		Convey("IsMyNode() should return error when node has no 	npu annotation", func() {
 			node := buildNPUNode(MNodeInfo{nodeName, huaweiArchArm, "192", "755Gi",
-				"1", "Ascend910-11"})
-			setNodeAnnotation(node.Node, npu800And9000CardName, "")
+				"0", "0"})
 			result := npu.IsMyNode(node)
 			So(result, ShouldBeError)
 		})
@@ -704,5 +703,10 @@ func buildNPUNode(MNode MNodeInfo) *vapi.NodeInfo {
 	setNodeLabel(v1node, archSelector, MNode.nodeArch)
 
 	node := vapi.NewNodeInfo(v1node)
+	if MNode.npuAllocateNum != "0" {
+		node.Others = map[string]interface{}{
+			npu800And9000CardName: MNode.npuTop,
+		}
+	}
 	return node
 }
