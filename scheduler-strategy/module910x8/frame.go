@@ -275,7 +275,7 @@ func (tp *module910x8) UpdateNPUNodeUsedCardFn(node *vapi.NodeInfo, top interfac
 
 	// get node available top
 	nodeDeviceIDs := npuutil.GetTopFromNodeOthers(node, npu800And9000CardName, npu910CardPreName)
-	if nodeDeviceIDs == nil {
+	if len(nodeDeviceIDs) == 0 {
 		klog.V(logErrorLev).Infof("%s useAnnotation node(%s) top nil.", PluginName, node.Name)
 		return errors.New("nodeDeviceIDs nil")
 	}
