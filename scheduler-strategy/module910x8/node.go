@@ -223,7 +223,7 @@ func clusterNodePredicateFn(task *api.TaskInfo, ssn *framework.Session) error {
 func isMyNode(node *vapi.NodeInfo) error {
 	_, err := hwutil.GetNPUAllocCardsFromNodeOthers(node, npu800And9000CardName)
 	if err != nil {
-		return fmt.Errorf("%s %s", node.Name, jobNoNPUCard)
+		return fmt.Errorf("%s %s", node.Name, nodeNoFitNPUWarning)
 	}
 
 	if hwutil.IsCardModeNode(node) {

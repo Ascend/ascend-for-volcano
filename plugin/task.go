@@ -39,7 +39,11 @@ func updatePodPendingReason(task *api.TaskInfo, reasonTmp string) {
 		Reason:  v1.PodReasonUnschedulable,
 		Message: reasonTmp,
 	}
-
+	for _, tmp := range task.Pod.Status.Conditions {
+		if reflect.DeepEqual(tmp, condition) {
+			return
+		}
+	}
 	task.Pod.Status.Conditions = append(task.Pod.Status.Conditions, condition)
 }
 
