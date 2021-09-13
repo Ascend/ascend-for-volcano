@@ -201,7 +201,7 @@ func (tp *card310x4) UpdateNPUNodeUsedCardFn(node *api.NodeInfo, top interface{}
 
 	// get node available top
 	nodeDeviceIDs := util.GetTopFromNodeOthers(node, a310NPUCardName, a310NPUCardPreName)
-	if len(nodeDeviceIDs) == 0 {
+	if nodeDeviceIDs == nil {
 		klog.V(logErrorLev).Infof("%s useAnnotation node(%s) top nil.", PluginName, node.Name)
 		return errors.New("nodeDeviceIDs nil")
 	}

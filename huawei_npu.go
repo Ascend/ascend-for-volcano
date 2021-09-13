@@ -60,8 +60,8 @@ func init() {
 
 // OnSessionOpen HuaWei NPU Plugin's init session for frame.
 func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
-	klog.V(logDebugLev).Infof("enter %s OnSessionOpen.", PluginName)
-	defer klog.V(logDebugLev).Infof("leave %s OnSessionOpen.", PluginName)
+	klog.V(logInfoLev).Infof("enter %s OnSessionOpen.", PluginName)
+	defer klog.V(logInfoLev).Infof("leave %s OnSessionOpen.", PluginName)
 
 	if ssn == nil {
 		klog.V(logErrorLev).Infof("%s OnSessionOpen got a null session hence doing nothing.", PluginName)
