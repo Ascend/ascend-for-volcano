@@ -274,8 +274,8 @@ func (tp *module910x8) UpdateNPUNodeUsedCardFn(node *vapi.NodeInfo, top interfac
 	}
 
 	// get node available top
-	nodeDeviceIDs := npuutil.GetDeviceIDsFromNodeOther(node.Others, npu800And9000CardName, npu910CardPreName)
-	if nodeDeviceIDs == nil {
+	nodeDeviceIDs := npuutil.GetTopFromNodeOthers(node, npu800And9000CardName, npu910CardPreName)
+	if len(nodeDeviceIDs) == 0 {
 		klog.V(logErrorLev).Infof("%s useAnnotation node(%s) top nil.", PluginName, node.Name)
 		return errors.New("nodeDeviceIDs nil")
 	}
@@ -318,7 +318,7 @@ func (tp *module910x8) UpdateReleaseNPUNodeTopologyFn(node *vapi.NodeInfo, top i
 	}
 
 	// get node available top
-	nodeDeviceIDs := npuutil.GetDeviceIDsFromNodeOther(node.Others, npu800And9000CardName, npu910CardPreName)
+	nodeDeviceIDs := npuutil.GetTopFromNodeOthers(node, npu800And9000CardName, npu910CardPreName)
 	if nodeDeviceIDs == nil {
 		klog.V(logErrorLev).Infof("%s useAnnotation node(%s) top nil.", PluginName, node.Name)
 		return fmt.Errorf("%s has nil npu", node.Name)

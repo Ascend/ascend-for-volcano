@@ -330,16 +330,14 @@ func TestVnpuCheckNPUResourceStableFn(t *testing.T) {
 		Convey("CheckNPUResourceStableFn() should return error when there's missing resource type in idle", func() {
 			// build a node with 2 Ascend-910-16c in annotation and no idle Ascend-910-16c
 			node := buildNPUNode(VNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"0", ""})
-			node.Node.Annotations[npuV910CardName16c] = "Ascend910-16c-142-1,Ascend910-16c-143-1"
+				"3", "Ascend910-16c-142-1,Ascend910-16c-143-1"})
 			result := vnpu.CheckNPUResourceStableFn(node)
 			So(result, ShouldBeError)
 		})
 		Convey("CheckNPUResourceStableFn() should return error when node resources are unstable", func() {
 			// build a node with 2 Ascend-910-16c in annotation and 1 idle Ascend-910-16c
 			node := buildNPUNode(VNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"1", ""})
-			node.Node.Annotations[npuV910CardName16c] = "Ascend910-16c-144-1,Ascend910-16c-145-1"
+				"1", "Ascend910-16c-144-1,Ascend910-16c-145-1"})
 			result := vnpu.CheckNPUResourceStableFn(node)
 			So(result, ShouldBeError)
 		})
@@ -522,7 +520,7 @@ func TestVnpuUpdateNPUNodeUsedCardFn(t *testing.T) {
 			So(result, ShouldBeError)
 		})
 		Convey("UpdateNPUNodeUsedCardFn() should return error when no certain vnpu type in node.Others", func() {
-			top := []string{"Ascend910-16c-113-0"}
+			top := []string{"Ascend910-2c-113-0"}
 			result := vnpu.UpdateNPUNodeUsedCardFn(node, top)
 			So(result, ShouldBeError)
 		})
@@ -710,5 +708,10 @@ func buildNPUNode(nodeInfo VNodeInfo) *vapi.NodeInfo {
 	setNodeLabel(v1node, archSelector, nodeInfo.nodeArch)
 
 	node := vapi.NewNodeInfo(v1node)
+	if nodeInfo.npuAllocateNum != "0" {
+		node.Others = map[string]interface{}{
+			npuV910CardName16c: nodeInfo.npuTop,
+		}
+	}
 	return node
 }

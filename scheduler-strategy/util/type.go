@@ -30,6 +30,7 @@ const (
 	logDebugLev            = 4
 	npuNumPerHccs          = 4
 	npuHex                 = 1000
+	maxTaskNPUNum          = 10000
 	archSelector           = "host-arch"
 	huaweiArchArm          = "huawei-arm"
 	huaweiArchX86          = "huawei-x86"

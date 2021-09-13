@@ -26,6 +26,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"reflect"
 	cs "strconv"
 	"testing"
 	vapi "volcano.sh/volcano/pkg/scheduler/api"
@@ -574,9 +575,6 @@ func TestCnpuUpdateReleaseNPUNodeTopologyFn(t *testing.T) {
 		npu := &chip310x4{}
 		node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 			"4", "Ascend310-0,Ascend310-2,Ascend310-61,Ascend310-1"})
-		node.Others = map[string]interface{}{
-			a310NPUChipName: "Ascend310-0,Ascend310-2",
-		}
 		Convey("UpdateNPUNodeUsedCardFn() should successfully update node.others", func() {
 			top := []int{1, 61}
 			err := npu.UpdateReleaseNPUNodeTopologyFn(node, top)
@@ -671,10 +669,9 @@ func TestCnpuGetAllocatedNPUFromTopologyFnError(t *testing.T) {
 
 		Convey("GetAllocatedNPUFromTopologyFn() should return nil when npuTop of node is wrong", func() {
 			task.Resreq.ScalarResources[a310NPUChipName] = constInt2000
-			node.Node.Annotations[a310NPUChipName] = "Ascend310-0Ascend310-4"
 			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node, false)
 			So(err, ShouldBeNil)
-			So(result, ShouldBeNil)
+			So(reflect.DeepEqual(result, []int{0, cardNPUNumber}), ShouldBeTrue)
 		})
 
 		Convey("GetAllocatedNPUFromTopologyFn() should return correct result when reqNpuNum is 0", func() {
@@ -687,7 +684,7 @@ func TestCnpuGetAllocatedNPUFromTopologyFnError(t *testing.T) {
 
 		Convey("GetAllocatedNPUFromTopologyFn() should return error when none node meet request", func() {
 			task.Resreq.ScalarResources[a310NPUChipName] = constInt2000
-			node.Node.Annotations[a310NPUChipName] = "Ascend310-0"
+			node.Others[a310NPUChipName] = "Ascend310-0"
 			_, err := npu.GetAllocatedNPUFromTopologyFn(task, node, false)
 			So(err, ShouldBeError)
 		})
@@ -857,5 +854,10 @@ func buildNPUNode(CNode CNodeInfo) *vapi.NodeInfo {
 	setNodeLabel(v1node, archSelector, CNode.nodeArch)
 
 	node := vapi.NewNodeInfo(v1node)
+	if CNode.npuAllocateNum != "0" {
+		node.Others = map[string]interface{}{
+			a310NPUChipName: CNode.npuTop,
+		}
+	}
 	return node
 }

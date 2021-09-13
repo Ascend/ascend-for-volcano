@@ -29,6 +29,7 @@ import (
 	"strings"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 // ChangeTopToIntArray Change npu card ids from string to int array.
@@ -200,10 +201,10 @@ func GetRealTopAfterRelease(nodeDeviceIDs []int, taskDeviceIDs []int, npuCardPre
 }
 
 // IsSelectorMeetNode Determines whether the selectors of the task and node are equal.
-func IsSelectorMeetNode(task *api.TaskInfo, node *api.NodeInfo, defaultConf, conf map[string]string, cardName string) error {
+func IsSelectorMeetNode(task *api.TaskInfo, node *api.NodeInfo, defaultConf, conf map[string]string, _ string) error {
 
 	// task has selector, so node should have
-	nodeSelector, errNode := GetNodeSelector(node)
+	nodeSelector, errNode := util.GetNodeSelector(node)
 	if errNode != nil {
 		klog.V(logErrorLev).Infof("GetNodeSelector task[%s] on node(%s) %v.", task.Name, node.Name, errNode)
 		return errors.New(nodeNoFitSelectorError)

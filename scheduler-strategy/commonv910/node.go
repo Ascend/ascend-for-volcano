@@ -223,7 +223,7 @@ func updateNPUNodeTopology(node *api.NodeInfo, top interface{}, updateFn func([]
 
 // return a slice of string of virtual card to be allocated
 // sorted based on rules of try to allocate from physical card with the least remaining compute power
-func getVCardWithLeastRemainPw(annotations map[string]string, vType string) ([]string, error) {
+func getVCardWithLeastRemainPw(annotations map[string]interface{}, vType string) ([]string, error) {
 	vAnno, exist := annotations[vType]
 	if !exist {
 		klog.V(logErrorLev).Infof("%v.", annotations)
@@ -249,8 +249,13 @@ func getVCardWithLeastRemainPw(annotations map[string]string, vType string) ([]s
 }
 
 // return a map of physical card ID(int) to certain vNPUs(slice of string) belong to that card
-func getVNPUByEachCard(vAnno string) (map[int][]string, error) {
+func getVNPUByEachCard(tmpData interface{}) (map[int][]string, error) {
 	vNPUEachCard := map[int][]string{}
+
+	vAnno, ok := tmpData.(string)
+	if !ok {
+		return nil, fmt.Errorf("%v not string", tmpData)
+	}
 
 	vAnnoList := strings.Split(vAnno, ",")
 	for _, vAnnoInstance := range vAnnoList {
@@ -292,12 +297,27 @@ func getSortedRemainPwSlice(remainPw map[int]int) []int {
 	return cardsSorted
 }
 
+func getVNPUsFromNodeByType(tmpData interface{}, vType string) (string, error) {
+	vAnno, ok := tmpData.(string)
+	if !ok {
+		return "", fmt.Errorf("%v not strings", tmpData)
+	}
+
+	if _, exist := vnpuCoefficients[vType]; !exist || len(vAnno) == 0 {
+		return "", fmt.Errorf("no %v npus", vType)
+	}
+
+	return vAnno, nil
+}
+
 // Get the sorted card ids, sort from least to most according to the remaining compute power of the card
-func getCardIDInAscRemainPwOrder(annotations map[string]string) ([]int, error) {
+func getCardIDInAscRemainPwOrder(annotations map[string]interface{}) ([]int, error) {
 	remainPower := map[int]int{}
 
-	for vType, vAnno := range annotations {
-		if _, exist := vnpuCoefficients[vType]; !exist || len(vAnno) == 0 {
+	for vType, tmp := range annotations {
+		vAnno, err := getVNPUsFromNodeByType(tmp, vType)
+		if err != nil {
+			klog.V(logDebugLev).Infof("getVNPUsFromNodeByType %v.", err)
 			continue
 		}
 		cPowerList := strings.Split(vType, "-")

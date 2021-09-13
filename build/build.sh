@@ -4,7 +4,7 @@
 
 set -e
 
-DEFAULT_VER='v2.0.2'
+DEFAULT_VER='v2.0.3'
 TOP_DIR=${GOPATH}/src/volcano.sh/volcano/
 BASE_PATH=${GOPATH}/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/
 CMD_PATH=${GOPATH}/src/volcano.sh/volcano/cmd/
@@ -17,7 +17,7 @@ function parse_version() {
     if  [ -f "$version_file" ]; then
       line=$(sed -n '1p' "$version_file" 2>&1)
       version=${line#*:}
-      echo ${version}
+      echo "${version}"
       return
     fi
     echo ${DEFAULT_VER}

@@ -105,20 +105,6 @@ func RecordFaultInfInCache(ssn *framework.Session, npuNumber int) error {
 	return nil
 }
 
-// Record and curing RankIndex information
-func writeFaultJobInfInCache(jobs map[string]*api.JobInfo, fJob FaultNPUJob, task ReSchedulerTasks) error {
-	job, ok := jobs[fJob.jobName]
-	if !ok {
-		return fmt.Errorf("%s not found in fault jobs", fJob.jobName)
-	}
-
-	var jobMap = make(map[api.JobID]ReSchedulerTasks, 1)
-	jobMap[job.UID] = task
-	ReSchedulerCache[CmJobKind] = jobMap
-
-	return nil
-}
-
 // SetFaultInNodeAndJobs Recorded the information about the faulty task in the cache.
 func SetFaultInNodeAndJobs(fNPUJobs []FaultNPUJob, jobs map[string]*api.JobInfo) error {
 	for _, tmpFaultNPUJob := range fNPUJobs {
@@ -159,9 +145,12 @@ func SetFaultInNodeAndJobs(fNPUJobs []FaultNPUJob, jobs map[string]*api.JobInfo)
 // GetNodeIdleNPUIntCardsIncludeFaultTask Getting the number of NPU chips idle on the node includes the failure task
 func GetNodeIdleNPUIntCardsIncludeFaultTask(task *api.TaskInfo, node *api.NodeInfo) []int {
 	var returnNPUs []int
-	nodeNPUTopology := hwutil.GetTopFromNode(node, npu800And9000CardName, npu800And9000CardPreName)
+	var temp []int
+
+	nodeNPUTopology := hwutil.GetTopFromNodeOthers(node, npu800And9000CardName, npu800And9000CardPreName)
 	taskNPUTopology := getTaskUseNPUIntCards(task, npu800And9000CardName, npu800And9000CardPreName)
-	allIntNPUs := append(nodeNPUTopology, taskNPUTopology...)
+	temp = append(temp, nodeNPUTopology...)
+	allIntNPUs := append(temp, taskNPUTopology...)
 
 	allNodeFaultNPUs, err := getNodeFaultNPUsByInt(node)
 	if err != nil {

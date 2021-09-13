@@ -16,7 +16,7 @@ limitations under the License.
 
 /*
 
-Package huaweinpu is using for HuaWei Ascend pin affinity schedule.
+Package main is using for HuaWei Ascend pin affinity schedule.
 
 */
 package main
