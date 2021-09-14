@@ -167,7 +167,7 @@ func evictFaultJob(ssn *framework.Session, job *api.JobInfo, reason string) erro
 	updatePodGroupPendingReason(ssn, job, reason)
 	label, getErr := rescheduling.GetJobFaultRescheduleLabel(job)
 	if getErr != nil {
-		label = rescheduling.JobForceRescheduleLabelValue
+		label = rescheduling.JobOffRescheduleLabelValue
 	}
 
 	var deleteErr error
