@@ -32,6 +32,10 @@ import (
 
 func init() {
 	ReSchedulerCache = make(map[string]interface{}, constIntNum3)
+	reSchedulerJobController = map[string]struct{}{
+		JobGraceRescheduleLabelValue: {},
+		JobForceRescheduleLabelValue: {},
+		JobOffRescheduleLabelValue:   {}}
 }
 
 // Delete expired data.

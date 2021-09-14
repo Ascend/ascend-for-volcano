@@ -235,19 +235,34 @@ func isJobHasFaultNodes(nodesTask map[string]*v1.Pod) bool {
 	return false
 }
 
-// Reschedule switch, no longer refinement.
-func isJobSetFaultRescheduleLabel(job *api.JobInfo) bool {
+// GetJobFaultRescheduleLabel Get job's fault reschedule label.
+func GetJobFaultRescheduleLabel(job *api.JobInfo) (string, error) {
 	value, ok := job.PodGroup.Labels[jobRescheduleLabelKey]
 	if !ok {
+		return "", fmt.Errorf("%s no job reschedule label", job.Name)
+	}
+
+	if _, setOk := reSchedulerJobController[value]; !setOk {
+		msg := fmt.Errorf("%s fault reschedule label %+v not support", job.Name, value)
+		klog.V(logErrorLev).Infof("GetJobFaultRescheduleLabel %+v.", msg)
+		return "", msg
+	}
+	return value, nil
+}
+
+// Reschedule switch, no longer refinement.
+func isJobSetFaultRescheduleLabel(job *api.JobInfo) bool {
+	value, err := GetJobFaultRescheduleLabel(job)
+	if err != nil {
+		klog.V(logDebugLev).Infof("set fault reschedule label %+v.", err)
 		return false
 	}
 
-	if value == jobRescheduleLabelValue {
-		return true
+	if value == JobOffRescheduleLabelValue {
+		klog.V(logInfoLev).Infof("%s set fault reschedule label %+v.", job.UID, value)
+		return false
 	}
-
-	klog.V(logErrorLev).Infof("isJobSetFaultRescheduleLabel %s: %+v not support value.", job.Name, value)
-	return false
+	return true
 }
 
 // IsDistributedJob To judge whether the distributed job.

@@ -27,6 +27,7 @@ import (
 	"fmt"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -287,7 +288,8 @@ func getInoperableNodes(nodes map[string]*api.NodeInfo) ([]FaultNodeState, error
 
 	for _, nodeInfo := range nodes {
 		if !isEnableFaultNode(nodeInfo) {
-			return nil, fmt.Errorf("fault node feature not enable")
+			klog.V(logDebugLev).Infof("%s fault node feature not enable", nodeInfo)
+			continue
 		}
 
 		if isNodeHealth(nodeInfo) {
@@ -330,7 +332,7 @@ func getInoperableNPUCards(nodes map[string]*api.NodeInfo, npuNumber int) ([]Fau
 	}
 
 	if len(faultNPUs) == 0 {
-		return nil, errors.New("nil inoperable NPU")
+		return nil, fmt.Errorf("%v nil inoperable NPU", reflect.ValueOf(nodes).MapKeys())
 	}
 	klog.V(logDebugLev).Infof("getInoperableNPUCards %+v.", faultNPUs)
 
