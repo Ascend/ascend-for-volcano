@@ -42,7 +42,9 @@ func initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) error {
 			return nil
 		}
 
-		node.Others = make(map[string]interface{}, 1)
+		if node.Others == nil {
+			node.Others = make(map[string]interface{}, 1)
+		}
 		err = hwutil.SaveTopologyInMap(node.Others, topStr, a300TNPUCardName)
 		if err != nil {
 			return err

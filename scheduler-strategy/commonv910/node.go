@@ -40,6 +40,9 @@ func initVNodesFn(nodes map[string]*api.NodeInfo) error {
 			if err != nil {
 				continue
 			}
+			if node.Others == nil {
+				node.Others = make(map[string]interface{}, 1)
+			}
 			err = hwutil.SaveTopologyInMap(node.Others, nTopStr, vType)
 			if err != nil {
 				return err
