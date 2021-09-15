@@ -145,7 +145,10 @@ func initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) error {
 			return nil
 		}
 
-		node.Others = make(map[string]interface{}, 1)
+		if node.Others == nil {
+			node.Others = make(map[string]interface{}, 1)
+		}
+
 		err = hwutil.SaveTopologyInMap(node.Others, topStr, npu800And9000CardName)
 		if err != nil {
 			return err
@@ -202,7 +205,7 @@ func clusterNodePredicateFn(task *api.TaskInfo, ssn *framework.Session) error {
 	// 4.Get the task uses node.
 	node, err := rescheduling.GetFaultTaskUseNodeInfo(task, ssn)
 	if err != nil {
-		klog.V(logErrorLev).Infof("%s %s get nil use node.", PluginName, task.Name)
+		klog.V(logErrorLev).Infof("%s %s %v.", PluginName, task.Name, err)
 		return nil
 	}
 	// 5.check node NPU Resource Stable

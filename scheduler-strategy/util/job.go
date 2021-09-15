@@ -99,14 +99,14 @@ func IsJobOfCardMode(job *api.JobInfo) bool {
 		return false
 	}
 
-	acceleratorValue, ok := jobSelectors[acceleratorType]
+	value, ok := jobSelectors[acceleratorType]
 	if !ok {
 		// no acceleratorType means module
 		klog.V(logDebugLev).Infof("job(%s) is module type.", job.Name)
 		return false
 	}
 
-	if acceleratorValue == cardAcceleratorType {
+	if value == cardAcceleratorType {
 		klog.V(logDebugLev).Infof("job(%s) is card type.", job.Name)
 		return true
 	}

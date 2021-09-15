@@ -58,6 +58,15 @@ func BuildNPUPod(pod NPUPod) *v1.Pod {
 	}
 }
 
+// SetTestNPUPodAnnotation set NPU pod annotation for add pod use npu resource.
+func SetTestNPUPodAnnotation(pod *v1.Pod, key string, value string) {
+	if pod.Annotations == nil {
+		pod.Annotations = make(map[string]string, constIntNum3)
+	}
+
+	pod.Annotations[key] = value
+}
+
 // FakeNormalTestTasks fake normal test tasks.
 func FakeNormalTestTasks(num int) []*api.TaskInfo {
 	var tasks []*api.TaskInfo

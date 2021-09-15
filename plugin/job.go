@@ -22,6 +22,7 @@ Package plugin is using for HuaWei Ascend pin affinity schedule frame.
 package plugin
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	v1 "k8s.io/api/core/v1"
@@ -130,6 +131,60 @@ func SetJobPendingReason(ssn *framework.Session, obj interface{}, reason interfa
 	return nil
 }
 
+func forceDeleteFaultJob(ssn *framework.Session, job *api.JobInfo) error {
+	for _, task := range job.Tasks {
+		pod := task.Pod
+		deleteOptions := metav1.DeleteOptions{
+			GracePeriodSeconds: new(int64),
+			Preconditions:      metav1.NewUIDPreconditions(string(pod.UID)),
+		}
+
+		err := ssn.KubeClient().CoreV1().Pods(task.Namespace).Delete(context.TODO(), pod.Name, deleteOptions)
+		if err != nil {
+			klog.V(logErrorLev).Infof("Failed to delete %s: %v", pod.UID, err)
+			updatePodPendingReason(task, err.Error())
+			return err
+		}
+
+		klog.V(logInfoLev).Infof("Pod %q fully terminated and removed from etcd", pod)
+	}
+	return nil
+}
+
+func graceDeleteFaultJob(ssn *framework.Session, job *api.JobInfo, reason string) error {
+	for _, task := range job.Tasks {
+		if err := ssn.Evict(task, reason); err != nil {
+			klog.V(logErrorLev).Infof("%s Failed to restart %s : %v", PluginName, task.UID, err)
+			updatePodPendingReason(task, err.Error())
+			return err
+		}
+	}
+	return nil
+}
+
+func evictFaultJob(ssn *framework.Session, job *api.JobInfo, reason string) error {
+	// Write restart reason into vcjob.
+	updatePodGroupPendingReason(ssn, job, reason)
+	label, getErr := rescheduling.GetJobFaultRescheduleLabel(job)
+	if getErr != nil {
+		label = rescheduling.JobOffRescheduleLabelValue
+	}
+
+	var deleteErr error
+	switch label {
+	case rescheduling.JobForceRescheduleLabelValue:
+		deleteErr = forceDeleteFaultJob(ssn, job)
+	case rescheduling.JobGraceRescheduleLabelValue:
+		deleteErr = graceDeleteFaultJob(ssn, job, reason)
+	case rescheduling.JobOffRescheduleLabelValue:
+		deleteErr = fmt.Errorf("job reschedule %s", label)
+	default:
+		deleteErr = fmt.Errorf("not support %s to reschedule job", label)
+	}
+
+	return deleteErr
+}
+
 // RestartJob set the job restart and the reason.
 func RestartJob(ssn *framework.Session, job *api.JobInfo, obj interface{}) error {
 	var reason string
@@ -150,14 +205,9 @@ func RestartJob(ssn *framework.Session, job *api.JobInfo, obj interface{}) error
 	}
 
 	if job.PodGroup.Status.Phase == scheduling.PodGroupRunning {
-		// Write restart reason into vcjob.
-		updatePodGroupPendingReason(ssn, job, reason)
-		for _, task := range job.Tasks {
-			if err := ssn.Evict(task, reason); err != nil {
-				klog.V(logErrorLev).Infof("%s Failed to restart %s : %v", PluginName, task.UID, err)
-				updatePodPendingReason(task, err.Error())
-				return err
-			}
+		if err := evictFaultJob(ssn, job, reason); err != nil {
+			klog.V(logErrorLev).Infof("%s Failed to restart %s : %v", PluginName, job.UID, err)
+			return err
 		}
 	}
 	return nil

@@ -42,18 +42,23 @@ const (
 	cmNameSpace     = "volcano-system"
 	cmName          = "vcjob-fault-npu-cm"
 	// node inoperable interval time(s)
-	nodeUpdateTime           = 15
-	nodeHeartbeat            = "noded/heartbeat"
-	faultNPU                 = "huawei.com/Ascend910-Unhealthy"
-	networkUnhealthyNPU      = "huawei.com/Ascend910-NetworkUnhealthy"
-	podRankIndex             = "hccl/rankIndex"
-	jobRescheduleLabelKey    = "fault-scheduling"
-	jobRescheduleLabelValue  = "on"
-	nodeDEnableKey           = "nodeDEnable"
-	nodeDEnableOnValue       = "on"
-	nodeDEnableOffValue      = "off"
-	npu800And9000CardName    = "huawei.com/Ascend910"
-	npu800And9000CardPreName = "Ascend910-"
+	nodeUpdateTime        = 15
+	nodeHeartbeat         = "noded/heartbeat"
+	faultNPU              = "huawei.com/Ascend910-Unhealthy"
+	networkUnhealthyNPU   = "huawei.com/Ascend910-NetworkUnhealthy"
+	podRankIndex          = "hccl/rankIndex"
+	jobRescheduleLabelKey = "fault-scheduling"
+	// JobGraceRescheduleLabelValue Grace delete reschedule job.
+	JobGraceRescheduleLabelValue = "grace"
+	// JobForceRescheduleLabelValue Force delete reschedule job.
+	JobForceRescheduleLabelValue = "force"
+	// JobOffRescheduleLabelValue not delete reschedule job.
+	JobOffRescheduleLabelValue = "off"
+	nodeDEnableKey             = "nodeDEnable"
+	nodeDEnableOnValue         = "on"
+	nodeDEnableOffValue        = "off"
+	npu800And9000CardName      = "huawei.com/Ascend910"
+	npu800And9000CardPreName   = "Ascend910-"
 )
 
 // ReSchedulerTasks record the tasks using the failed NPU.
@@ -110,3 +115,5 @@ type FaultNPUJob struct {
 	// task name:task annotation
 	taskUseNPUs map[string]string
 }
+
+var reSchedulerJobController = make(map[string]struct{}, constIntNum3)
