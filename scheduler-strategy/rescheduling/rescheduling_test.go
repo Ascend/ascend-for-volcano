@@ -565,7 +565,7 @@ func buildTestGetNodeIdleNPUIntCardsIncludeFaultTaskTestCases() getNodeIdleNPUIn
 					ascendtest.SetTestNPUNodeAnnotation(nodes[0], faultNPU, nodeFaultNPU)
 				},
 			},
-			want: []int{2, 3},
+			want: []int{constIntNum2, constIntNum3},
 		},
 		{
 			name: "03-task npu include node fault npu-test",
@@ -578,7 +578,7 @@ func buildTestGetNodeIdleNPUIntCardsIncludeFaultTaskTestCases() getNodeIdleNPUIn
 					addTestTaskIntoReSchedulerCache(tasks[0])
 				},
 			},
-			want: []int{2, 3},
+			want: []int{constIntNum2, constIntNum3},
 		},
 	}
 	return testCases
