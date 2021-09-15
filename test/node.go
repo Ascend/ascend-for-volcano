@@ -42,6 +42,24 @@ func SetNPUNodeLabel(node *v1.Node, labelKey string, labelValue string) {
 	node.Labels[labelKey] = labelValue
 }
 
+// SetTestNPUNodeOther set NPU node other for add npu resource.
+func SetTestNPUNodeOther(node *api.NodeInfo, key string, value string) {
+	if node.Others == nil {
+		node.Others = make(map[string]interface{}, constIntNum3)
+	}
+
+	node.Others[key] = value
+}
+
+// SetTestNPUNodeAnnotation set NPU node other for add fault npu resource.
+func SetTestNPUNodeAnnotation(node *api.NodeInfo, key string, value string) {
+	if node.Node.Annotations == nil {
+		node.Node.Annotations = make(map[string]string, constIntNum3)
+	}
+
+	node.Node.Annotations[key] = value
+}
+
 // BuildNPUNode built NPU node object
 func BuildNPUNode(node NPUNode) *v1.Node {
 	return &v1.Node{

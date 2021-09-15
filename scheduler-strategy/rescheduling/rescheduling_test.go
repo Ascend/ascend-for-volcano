@@ -337,7 +337,7 @@ func buildGetFaultNPUJobsTestCases() getFaultNPUJobsTests {
 			name: "02-job not has fault resources-test",
 			args: getFaultNPUJobsArgs{
 				jobs: map[string]*api.JobInfo{jobInf.Name: jobInf}, cacheFun: func() {
-					ascendtest.AddTestJobLabel(jobInf, jobRescheduleLabelKey, jobRescheduleLabelValue)
+					ascendtest.AddTestJobLabel(jobInf, jobRescheduleLabelKey, JobGraceRescheduleLabelValue)
 					initTestReSchedulerCache()
 					addTestNodeIntoReSchedulerCache()
 				},
@@ -348,7 +348,7 @@ func buildGetFaultNPUJobsTestCases() getFaultNPUJobsTests {
 			name: "03-job not has rankIndex-test",
 			args: getFaultNPUJobsArgs{
 				jobs: map[string]*api.JobInfo{jobInf.Name: jobInf}, cacheFun: func() {
-					ascendtest.AddTestJobLabel(jobInf, jobRescheduleLabelKey, jobRescheduleLabelValue)
+					ascendtest.AddTestJobLabel(jobInf, jobRescheduleLabelKey, JobForceRescheduleLabelValue)
 					initTestReSchedulerCache()
 					addTestNodeIntoReSchedulerCache(nodes[0])
 				},
@@ -359,7 +359,7 @@ func buildGetFaultNPUJobsTestCases() getFaultNPUJobsTests {
 			name: "04-job not has rankIndex-test",
 			args: getFaultNPUJobsArgs{
 				jobs: map[string]*api.JobInfo{jobInf.Name: jobInf}, cacheFun: func() {
-					ascendtest.AddTestJobLabel(jobInf, jobRescheduleLabelKey, jobRescheduleLabelValue)
+					ascendtest.AddTestJobLabel(jobInf, jobRescheduleLabelKey, JobForceRescheduleLabelValue)
 					initTestReSchedulerCache()
 					addTestNodeIntoReSchedulerCache(nodes[0])
 					addTestJobRankIndex(jobInf)
@@ -524,6 +524,74 @@ func TestGetNetworkUnhealthyCards(t *testing.T) {
 			tt.args.cacheFun()
 			if got := GetNetworkUnhealthyCards(tt.args.node); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetNetworkUnhealthyCards() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+type getNodeIdleNPUIntCardsIncludeFaultTaskArgs struct {
+	task     *api.TaskInfo
+	node     *api.NodeInfo
+	cacheFun func()
+}
+
+type getNodeIdleNPUIntCardsIncludeFaultTaskTests []struct {
+	name string
+	args getNodeIdleNPUIntCardsIncludeFaultTaskArgs
+	want []int
+}
+
+func buildTestGetNodeIdleNPUIntCardsIncludeFaultTaskTestCases() getNodeIdleNPUIntCardsIncludeFaultTaskTests {
+	nodes := ascendtest.FakeNormalTestNodes(constIntNum2)
+	tasks := ascendtest.FakeNormalTestTasks(constIntNum2)
+	var nodeNPU = "Ascend910-0,Ascend910-1,Ascend910-2,Ascend910-3"
+	var nodeFaultNPU = "Ascend910-0,Ascend910-1"
+	testCases := getNodeIdleNPUIntCardsIncludeFaultTaskTests{
+		{
+			name: "01-no ReSchedulerCache-test",
+			args: getNodeIdleNPUIntCardsIncludeFaultTaskArgs{
+				task: tasks[0], node: nodes[0], cacheFun: func() {
+					initTestReSchedulerCache()
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "02-task npu not include node fault npu-test",
+			args: getNodeIdleNPUIntCardsIncludeFaultTaskArgs{
+				task: tasks[0], node: nodes[0], cacheFun: func() {
+					initTestReSchedulerCache()
+					ascendtest.SetTestNPUNodeOther(nodes[0], npu800And9000CardName, nodeNPU)
+					ascendtest.SetTestNPUNodeAnnotation(nodes[0], faultNPU, nodeFaultNPU)
+				},
+			},
+			want: []int{2, 3},
+		},
+		{
+			name: "03-task npu include node fault npu-test",
+			args: getNodeIdleNPUIntCardsIncludeFaultTaskArgs{
+				task: tasks[0], node: nodes[0], cacheFun: func() {
+					initTestReSchedulerCache()
+					ascendtest.SetTestNPUNodeOther(nodes[0], npu800And9000CardName, nodeNPU)
+					ascendtest.SetTestNPUNodeAnnotation(nodes[0], faultNPU, nodeFaultNPU)
+					ascendtest.SetTestNPUPodAnnotation(tasks[0].Pod, npu800And9000CardName, nodeFaultNPU)
+					addTestTaskIntoReSchedulerCache(tasks[0])
+				},
+			},
+			want: []int{2, 3},
+		},
+	}
+	return testCases
+}
+
+func TestGetNodeIdleNPUIntCardsIncludeFaultTask(t *testing.T) {
+	tests := buildTestGetNodeIdleNPUIntCardsIncludeFaultTaskTestCases()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.args.cacheFun()
+			got := GetNodeIdleNPUIntCardsIncludeFaultTask(tt.args.task, tt.args.node)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetNodeIdleNPUIntCardsIncludeFaultTask() = %v, want %v", got, tt.want)
 			}
 		})
 	}
