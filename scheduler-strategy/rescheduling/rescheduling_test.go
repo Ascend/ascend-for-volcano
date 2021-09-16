@@ -321,7 +321,7 @@ func addTestJobRankIndex(job *api.JobInfo) {
 }
 
 func buildGetFaultNPUJobsTestCases() getFaultNPUJobsTests {
-	jobInf := ascendtest.FakeNormalTestJob("pg1", 2)
+	jobInf := ascendtest.FakeNormalTestJob("pg1", constIntNum2)
 	nodes := ascendtest.FakeNormalTestNodes(1)
 	testCases := getFaultNPUJobsTests{
 		{
@@ -584,6 +584,7 @@ func buildTestGetNodeIdleNPUIntCardsIncludeFaultTaskTestCases() getNodeIdleNPUIn
 	return testCases
 }
 
+// TestGetNodeIdleNPUIntCardsIncludeFaultTask Test GetNodeIdleNPUIntCardsIncludeFaultTask function.
 func TestGetNodeIdleNPUIntCardsIncludeFaultTask(t *testing.T) {
 	tests := buildTestGetNodeIdleNPUIntCardsIncludeFaultTaskTestCases()
 	for _, tt := range tests {
@@ -592,6 +593,246 @@ func TestGetNodeIdleNPUIntCardsIncludeFaultTask(t *testing.T) {
 			got := GetNodeIdleNPUIntCardsIncludeFaultTask(tt.args.task, tt.args.node)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetNodeIdleNPUIntCardsIncludeFaultTask() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+type getRestartNPUFaultJobsArgs struct {
+	faultNPUJobs []FaultNPUJob
+	jobs         map[string]*api.JobInfo
+}
+
+type getRestartNPUFaultJobsTests []struct {
+	name    string
+	args    getRestartNPUFaultJobsArgs
+	want    []*api.JobInfo
+	wantErr error
+}
+
+func addJobIntoFaultNPUJobStruct(job *api.JobInfo) FaultNPUJob {
+	faultJob := FaultNPUJob{
+		faultNPUJobBase: faultNPUJobBase{
+			jobName:          job.Name,
+			namespace:        job.Namespace,
+			taskUseRankIndex: make(map[string]string, constIntNum2),
+			taskUseNode:      make(map[string]string, constIntNum2),
+		},
+		taskUseNPUs: make(map[string]string, constIntNum2),
+	}
+
+	i := 0
+	for _, task := range job.Tasks {
+		faultJob.taskUseRankIndex[task.Name] = strconv.Itoa(i)
+		i++
+		faultJob.taskUseNode[task.Name] = task.NodeName
+		faultJob.taskUseNPUs[task.Name] = task.Pod.Annotations[npu800And9000CardName]
+	}
+
+	return faultJob
+}
+
+func buildTestGetRestartNPUFaultJobsTestCases() getRestartNPUFaultJobsTests {
+	job := ascendtest.FakeNormalTestJob("pg1", constIntNum2)
+	faultJob := addJobIntoFaultNPUJobStruct(job)
+	testCases := getRestartNPUFaultJobsTests{
+		{
+			name: "01-no restart jobs-test",
+			args: getRestartNPUFaultJobsArgs{
+				faultNPUJobs: nil, jobs: map[string]*api.JobInfo{job.Name: job},
+			},
+			want:    nil,
+			wantErr: errors.New("none restart jobs get"),
+		},
+		{
+			name: "02-has restart jobs-test",
+			args: getRestartNPUFaultJobsArgs{
+				faultNPUJobs: []FaultNPUJob{faultJob}, jobs: map[string]*api.JobInfo{job.Name: job},
+			},
+			want:    []*api.JobInfo{job},
+			wantErr: nil,
+		},
+	}
+	return testCases
+}
+
+// TestGetRestartNPUFaultJobs Test GetRestartNPUFaultJobs function.
+func TestGetRestartNPUFaultJobs(t *testing.T) {
+
+	tests := buildTestGetRestartNPUFaultJobsTestCases()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetRestartNPUFaultJobs(tt.args.faultNPUJobs, tt.args.jobs)
+			if !reflect.DeepEqual(err, tt.wantErr) {
+				t.Errorf("GetRestartNPUFaultJobs() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetRestartNPUFaultJobs() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+type isDistributedJobArgs struct {
+	job *api.JobInfo
+}
+
+type isDistributedJobTests []struct {
+	name string
+	args isDistributedJobArgs
+	want bool
+}
+
+func buildsDistributedJobTestCases() isDistributedJobTests {
+	job1 := ascendtest.FakeNormalTestJob("pg1", 1)
+	job2 := ascendtest.FakeNormalTestJob("pg1", constIntNum2)
+	testCases := isDistributedJobTests{
+		{
+			name: "01-not distributed job-test",
+			args: isDistributedJobArgs{
+				job: job1,
+			},
+			want: false,
+		},
+		{
+			name: "02-distributed job-test",
+			args: isDistributedJobArgs{
+				job: job2,
+			},
+			want: true,
+		},
+	}
+	return testCases
+}
+
+// TestIsDistributedJob Test IsDistributedJob function.
+func TestIsDistributedJob(t *testing.T) {
+	tests := buildsDistributedJobTestCases()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsDistributedJob(tt.args.job); got != tt.want {
+				t.Errorf("IsDistributedJob() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+type isNPUFaultTaskArgs struct {
+	task     *api.TaskInfo
+	cacheFun func()
+}
+
+type isNPUFaultTaskTests []struct {
+	name string
+	args isNPUFaultTaskArgs
+	want bool
+}
+
+func buildsIsNPUFaultTaskTestCases() isNPUFaultTaskTests {
+	tasks := ascendtest.FakeNormalTestTasks(constIntNum2)
+	testCases := isNPUFaultTaskTests{
+		{
+			name: "01-no ReSchedulerCache-test",
+			args: isNPUFaultTaskArgs{
+				task: tasks[0], cacheFun: func() {
+					initTestReSchedulerCache()
+				},
+			},
+			want: false,
+		},
+		{
+			name: "02-Not NPU fault task-test",
+			args: isNPUFaultTaskArgs{
+				task: tasks[0], cacheFun: func() {
+					initTestReSchedulerCache()
+					addTestTaskIntoReSchedulerCache(tasks[1])
+				},
+			},
+			want: false,
+		},
+		{
+			name: "03-Has NPU fault task-test",
+			args: isNPUFaultTaskArgs{
+				task: tasks[0], cacheFun: func() {
+					initTestReSchedulerCache()
+					addTestTaskIntoReSchedulerCache(tasks[0])
+				},
+			},
+			want: true,
+		},
+	}
+	return testCases
+}
+
+// TestIsNPUFaultTask Test IsNPUFaultTask function
+func TestIsNPUFaultTask(t *testing.T) {
+	tests := buildsIsNPUFaultTaskTestCases()
+	for _, tt := range tests {
+		tt.args.cacheFun()
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsNPUFaultTask(tt.args.task); got != tt.want {
+				t.Errorf("IsNPUFaultTask() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+type isNodeInFaultNodeListArgs struct {
+	node     *api.NodeInfo
+	cacheFun func()
+}
+
+type isNodeInFaultNodeListTests []struct {
+	name string
+	args isNodeInFaultNodeListArgs
+	want bool
+}
+
+func buildIsNodeInFaultNodeListTestCases() isNodeInFaultNodeListTests {
+	nodes := ascendtest.FakeNormalTestNodes(constIntNum2)
+	testCases := isNodeInFaultNodeListTests{
+		{
+			name: "01-no ReSchedulerCache-test",
+			args: isNodeInFaultNodeListArgs{
+				node: nodes[0], cacheFun: func() {
+					initTestReSchedulerCache()
+				},
+			},
+			want: false,
+		},
+		{
+			name: "02-not NPU fault node-test",
+			args: isNodeInFaultNodeListArgs{
+				node: nodes[0], cacheFun: func() {
+					initTestReSchedulerCache()
+					addTestNodeIntoReSchedulerCache(nodes[1])
+				},
+			},
+			want: false,
+		},
+		{
+			name: "03-has ReSchedulerCache-test",
+			args: isNodeInFaultNodeListArgs{
+				node: nodes[0], cacheFun: func() {
+					initTestReSchedulerCache()
+					addTestNodeIntoReSchedulerCache(nodes[0])
+				},
+			},
+			want: true,
+		},
+	}
+	return testCases
+}
+
+// TestIsNodeInFaultNodeList Test IsNodeInFaultNodeList function.
+func TestIsNodeInFaultNodeList(t *testing.T) {
+	tests := buildIsNodeInFaultNodeListTestCases()
+	for _, tt := range tests {
+		tt.args.cacheFun()
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsNodeInFaultNodeList(tt.args.node); got != tt.want {
+				t.Errorf("IsNodeInFaultNodeList() = %v, want %v", got, tt.want)
 			}
 		})
 	}

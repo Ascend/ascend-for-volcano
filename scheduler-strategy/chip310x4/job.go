@@ -26,7 +26,7 @@ import (
 	"fmt"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/card310x4/util"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 func getCardNPUJobDefaultSelectorConfig() map[string]string {
@@ -50,7 +50,7 @@ func getCardNPUNodeDefaultSelectorConfig() map[string]string {
 
 // For verify npu job must config selector.
 func validNPUJobSelector(job *api.JobInfo) error {
-	jobSelectors := hwutil.GetJobSelectors(job)
+	jobSelectors := util.GetJobSelectors(job)
 	if len(jobSelectors) == 0 {
 		msg := fmt.Errorf("%s %s getJobSelectors nil", PluginName, job.Name)
 		klog.V(logErrorLev).Infof("%s.", msg.Error())
@@ -60,7 +60,7 @@ func validNPUJobSelector(job *api.JobInfo) error {
 	defaultSchedulerConfig := getCardNPUJobDefaultSelectorConfig()
 	klog.V(logDebugLev).Infof("%s card selector: %v default:%v.", job.Name, jobSelectors, defaultSchedulerConfig)
 
-	if err := hwutil.CompareNPUSelector(job, jobSelectors, defaultSchedulerConfig); err != nil {
+	if err := util.CompareNPUSelector(job, jobSelectors, defaultSchedulerConfig); err != nil {
 		klog.V(logErrorLev).Infof("%v.", err)
 		return err
 	}
@@ -74,7 +74,7 @@ func CheckSingleTrainMode(job *api.JobInfo) error {
 	klog.V(logDebugLev).Infof("checkSingleTrainMode job(%s).", job.Name)
 
 	for _, task := range job.Tasks {
-		taskNPU, taskError := hwutil.GetTaskNPUNum(task, a310NPUChipName)
+		taskNPU, taskError := util.GetTaskNPUNum(task, a310NPUChipName)
 		if taskError != nil {
 			return errors.New("no npu task")
 		}
@@ -104,7 +104,7 @@ func validJobModel(job *api.JobInfo) error {
 }
 
 func validJobNPUNum(job *api.JobInfo) error {
-	jobNPU, err := hwutil.GetJobReqNPUNum(job, a310NPUChipName)
+	jobNPU, err := util.GetJobReqNPUNum(job, a310NPUChipName)
 	if err != nil {
 		klog.V(logDebugLev).Infof("job(%s) get npu number failed", job.Name)
 		return err

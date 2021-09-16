@@ -22,20 +22,6 @@ Package util is using for HuaWei Ascend9 pin affinity schedule utilities.
 package util
 
 const (
-	constIntNum2           = 2
-	constIntNum3           = 3
-	nodeNPUNumber          = 8
 	logErrorLev            = 1
-	logInfoLev             = 3
-	logDebugLev            = 4
-	npuHex                 = 1000
-	archSelector           = "host-arch"
-	huaweiArchArm          = "huawei-arm"
-	huaweiArchX86          = "huawei-x86"
-	accelerator            = "accelerator"
-	acceleratorValue       = "huawei-Ascend310"
-	acceleratorType        = "npu-310-strategy"
-	cardAcceleratorType    = "card"
-	chipAcceleratorType    = "chip"
 	nodeNoFitSelectorError = "no matching label on this node"
 )
