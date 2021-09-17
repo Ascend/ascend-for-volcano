@@ -31,7 +31,6 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
-	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/card310x4/util"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
@@ -85,24 +84,21 @@ func (tp *card310x4) ValidNPUJobFn(job *api.JobInfo) *api.ValidateResult {
 	return nil
 }
 
-// PreCheckNodeFn Get the nodes that meet the task requirements.
+// PreCheckNodeFn 310 no need to Distinguish between architecture.
 func (tp *card310x4) PreCheckNodeFn(task *api.TaskInfo, node *api.NodeInfo, confs []conf.Configuration) error {
-	schedulerConf := hwutil.GetSchedulerSelectorConfig(confs)
+	schedulerConf := util.GetSchedulerSelectorConfig(confs)
 	if len(schedulerConf) == 0 {
 		// get scheduler selector configure failed, but need continue
-		klog.V(logErrorLev).Infof("%s JobName: %s get selector nil", PluginName, task.Name)
+		klog.V(logErrorLev).Infof("%s JobName: %s get selector nil.", PluginName, task.Name)
 		return fmt.Errorf("%s get scheduler selector nil", node.Name)
 	}
 
-	defaultSchedulerConfig := getCardNPUNodeDefaultSelectorConfig()
-	klog.V(logDebugLev).Infof("%s card selector: %v default:%v.", node.Name, schedulerConf, defaultSchedulerConfig)
-
-	if err := hwutil.IsSelectorMeetNode(task, node, defaultSchedulerConfig, schedulerConf, a310NPUCardName); err != nil {
+	// select node by architect
+	if err := util.IsSelectorMeetNode(task, node, schedulerConf, a310NPUCardName); err != nil {
 		// get scheduler selector configure failed, but need continue
 		klog.V(logErrorLev).Infof("%s taskName: %s ,nodeName %s : %v.", PluginName, task.Name, node.Name, err)
 		return err
 	}
-
 	return nil
 }
 
@@ -119,7 +115,7 @@ func (tp *card310x4) CheckNPUResourceStableFn(node *api.NodeInfo) error {
 		return fmt.Errorf("getNodeNPUNumFromIdle %s : %s", nodesNoMeetNPUReqError, err)
 	}
 
-	if err = hwutil.CheckNodeNPUStabilize(nodeNPUIdleNumFromTop, nodeNPUIdleNumFromIdle); err != nil {
+	if err = util.CheckNodeNPUStabilize(nodeNPUIdleNumFromTop, nodeNPUIdleNumFromIdle); err != nil {
 		return fmt.Errorf("%s : %s", nodeNotStableWarning, err)
 	}
 
@@ -128,7 +124,7 @@ func (tp *card310x4) CheckNPUResourceStableFn(node *api.NodeInfo) error {
 
 // CheckNodeNPUByTaskFn Check whether the requested resource exists and are sufficient on the node.
 func (tp *card310x4) CheckNodeNPUByTaskFn(task *api.TaskInfo, node *api.NodeInfo, _ bool) error {
-	taskNPU, taskError := hwutil.GetTaskNPUNum(task, a310NPUCardName)
+	taskNPU, taskError := util.GetTaskNPUNum(task, a310NPUCardName)
 	if taskError != nil {
 		return fmt.Errorf("getTaskNPUNum %s : %s", nodesNoMeetNPUReqError, taskError)
 	}
@@ -226,7 +222,7 @@ func (tp *card310x4) UpdateNPUNodeUsedCardFn(node *api.NodeInfo, top interface{}
 // GetReleaseNPUTopologyFn Get the release npu card id from task(pod).
 func (tp *card310x4) GetReleaseNPUTopologyFn(task *api.TaskInfo) (interface{}, error) {
 	// get task use top
-	taskDeviceIDs := hwutil.GetDeviceIDsFromAnnotations(task.Pod.Annotations, a310NPUCardName, a310NPUCardPreName)
+	taskDeviceIDs := util.GetDeviceIDsFromAnnotations(task.Pod.Annotations, a310NPUCardName, a310NPUCardPreName)
 	if taskDeviceIDs == nil {
 		klog.V(logErrorLev).Infof("%s releaseAnnotation failed task:%s", PluginName, task.Name)
 		return nil, fmt.Errorf("%s get npu nil", task.Name)
@@ -249,7 +245,7 @@ func (tp *card310x4) UpdateReleaseNPUNodeTopologyFn(node *api.NodeInfo, top inte
 		return fmt.Errorf("%s has nil npu", node.Name)
 	}
 	// delete the use top
-	newNodeTopStr := hwutil.GetRealTopAfterRelease(nodeDeviceIDs, taskDeviceIDs, a310NPUCardPreName)
+	newNodeTopStr := util.GetRealTopAfterRelease(nodeDeviceIDs, taskDeviceIDs, a310NPUCardPreName)
 	if newNodeTopStr == "" {
 		klog.V(logErrorLev).Infof("%s getRealTopAfterRelease top failed", PluginName)
 		return fmt.Errorf("%s release nil npu", node.Name)
@@ -271,7 +267,7 @@ func (tp *card310x4) GetAllocatedNPUFromTopologyFn(task *api.TaskInfo, node *api
 	var allocTopologyHccl []int
 	var allocTopologyNPUs []int
 
-	taskNPUNumber, taskError := hwutil.GetTaskNPUNum(task, a310NPUCardName)
+	taskNPUNumber, taskError := util.GetTaskNPUNum(task, a310NPUCardName)
 	if taskError != nil {
 		return nil, errors.New("no npu task")
 	}
@@ -315,7 +311,7 @@ func (tp *card310x4) SetNPUTopologyToPodFn(task *api.TaskInfo, top interface{}) 
 		return errors.New(argumentError)
 	}
 
-	topologyStr = hwutil.ChangeIntArrToStr(intTop, a310NPUCardPreName)
+	topologyStr = util.ChangeIntArrToStr(intTop, a310NPUCardPreName)
 	task.Pod.Annotations[a310NPUCardName] = topologyStr
 	// to device-plugin judge pending pod.
 	task.Pod.Annotations[podPredicateTime] = strconv.FormatInt(time.Now().UnixNano(), 10)
@@ -326,12 +322,12 @@ func (tp *card310x4) SetNPUTopologyToPodFn(task *api.TaskInfo, top interface{}) 
 
 // IsMyTask Determine if it is the NPU task of your plug-in.
 func (tp *card310x4) IsMyTask(task *api.TaskInfo) error {
-	_, err := hwutil.GetTaskNPUNum(task, a310NPUCardName)
+	_, err := util.GetTaskNPUNum(task, a310NPUCardName)
 	if err != nil {
 		return errors.New(jobNoNPUCard)
 	}
 
-	if !hwutil.IsTaskOfCardMode(task) {
+	if !IsTaskOfCardModeFromLabel(task) {
 		return errors.New(modeNotCard)
 	}
 
@@ -350,12 +346,12 @@ func (tp *card310x4) IsMyNode(node *api.NodeInfo) error {
 
 // IsMyJob Determine if it is the NPU job of your plug-in.
 func (tp *card310x4) IsMyJob(job *api.JobInfo) error {
-	_, err := hwutil.GetJobReqNPUNum(job, a310NPUCardName)
+	_, err := util.GetJobReqNPUNum(job, a310NPUCardName)
 	if err != nil {
 		return errors.New(jobNoNPUCard)
 	}
 
-	if !hwutil.IsJobOfCardMode(job) {
+	if !IsJobOfCardModeFromLabel(job) {
 		return errors.New(modeNotCard)
 	}
 

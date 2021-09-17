@@ -26,7 +26,7 @@ import (
 	"fmt"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/card310x4/util"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 func getCardNPUJobDefaultSelectorConfig() map[string]string {
@@ -50,9 +50,9 @@ func getCardNPUNodeDefaultSelectorConfig() map[string]string {
 
 // For verify npu job must config selector.
 func validNPUJobSelector(job *api.JobInfo) error {
-	jobSelectors := hwutil.GetJobSelectors(job)
+	jobSelectors := util.GetJobLabels(job)
 	if len(jobSelectors) == 0 {
-		msg := fmt.Errorf("%s %s getJobSelectors nil", PluginName, job.Name)
+		msg := fmt.Errorf("%s %s GetJobLabels nil", PluginName, job.Name)
 		klog.V(logErrorLev).Infof("%s.", msg.Error())
 		return msg
 	}
@@ -60,7 +60,7 @@ func validNPUJobSelector(job *api.JobInfo) error {
 	defaultSchedulerConfig := getCardNPUJobDefaultSelectorConfig()
 	klog.V(logDebugLev).Infof("%s card selector: %v default:%v.", job.Name, jobSelectors, defaultSchedulerConfig)
 
-	if err := hwutil.CompareNPUSelector(job, jobSelectors, defaultSchedulerConfig); err != nil {
+	if err := util.CompareNPUSelector(job, jobSelectors, defaultSchedulerConfig); err != nil {
 		klog.V(logErrorLev).Infof("%v.", err)
 		return err
 	}
@@ -74,7 +74,7 @@ func CheckSingleTrainMode(job *api.JobInfo) error {
 	klog.V(logDebugLev).Infof("checkSingleTrainMode job(%s).", job.Name)
 
 	for _, task := range job.Tasks {
-		taskNPU, taskError := hwutil.GetTaskNPUNum(task, a310NPUCardName)
+		taskNPU, taskError := util.GetTaskNPUNum(task, a310NPUCardName)
 		if taskError != nil {
 			return errors.New("no npu task")
 		}
@@ -96,7 +96,7 @@ func checkCardDistributeTrainMode(job *api.JobInfo, nodeNPU int) error {
 	klog.V(logDebugLev).Infof("%s check Card Mode %s has %d tasks.", PluginName, job.Name, taskNum)
 
 	for _, task := range job.Tasks {
-		taskNPU, taskError := hwutil.GetTaskNPUNum(task, a310NPUCardName)
+		taskNPU, taskError := util.GetTaskNPUNum(task, a310NPUCardName)
 		if taskError != nil {
 			return errors.New("no npu task")
 		}
@@ -131,7 +131,7 @@ func validJobModel(job *api.JobInfo) error {
 }
 
 func validJobNPUNum(job *api.JobInfo) error {
-	jobNPU, err := hwutil.GetJobReqNPUNum(job, a310NPUCardName)
+	jobNPU, err := util.GetJobReqNPUNum(job, a310NPUCardName)
 	if err != nil {
 		klog.V(logDebugLev).Infof("job(%s) get npu number failed", job.Name)
 		return err
@@ -143,4 +143,15 @@ func validJobNPUNum(job *api.JobInfo) error {
 	}
 
 	return fmt.Errorf("illegal req_npu num: %d in %s mode", jobNPU, cardAcceleratorType)
+}
+
+// IsJobOfCardModeFromLabel judge job is card mode or card mod by label.
+func IsJobOfCardModeFromLabel(job *api.JobInfo) bool {
+	jobSelectors := util.GetJobLabels(job)
+	if len(jobSelectors) == 0 {
+		klog.V(logErrorLev).Infof("job(%s) has no selectors.", job.Name)
+		return false
+	}
+
+	return util.ValidStringMapKeyAndValue(jobSelectors, acceleratorType, cardAcceleratorType)
 }

@@ -27,7 +27,6 @@ import (
 	"k8s.io/klog"
 	"reflect"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/card310x4/util"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
@@ -42,7 +41,7 @@ func initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) error {
 		if node.Others == nil {
 			node.Others = make(map[string]interface{}, 1)
 		}
-		err = hwutil.SaveTopologyInMap(node.Others, topStr, a310NPUCardName)
+		err = util.SaveTopologyInMap(node.Others, topStr, a310NPUCardName)
 		if err != nil {
 			return err
 		}

@@ -31,6 +31,7 @@ import (
 	"testing"
 	vapi "volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
+	ascendtest "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
 	"volcano.sh/volcano/pkg/scheduler/util"
 )
 
@@ -117,7 +118,7 @@ func TestCNPUIsMyTask(t *testing.T) {
 			pod := buildNPUPod(CPodInfo{namespace: "default", groupName: "npu-group-101",
 				podName: "npu-test-101", nodeName: nodeName, reqCPUNum: "10", reqMem: "10Gi",
 				reqNPUType: a310NPUChipName, reqNpuNum: "1"})
-			setPodSelector(pod, acceleratorType, cardAcceleratorType)
+			setPodLabel(pod, acceleratorType, cardAcceleratorType)
 			task := vapi.NewTaskInfo(pod)
 			result := npu.IsMyTask(task)
 			So(result, ShouldBeError)
@@ -197,8 +198,8 @@ func TestCNPUValidNPUJobFnInvalidSelector(t *testing.T) {
 			pod := buildNPUPod(CPodInfo{namespace: "default", groupName: "npu-group-12",
 				podName: "npu-test-35", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: a310NPUChipName, reqNpuNum: "1"})
-			setPodSelector(pod, acceleratorType, "")
-			setPodSelector(pod, invalidSelectorKey, invalidSelectorValue)
+			setPodLabel(pod, acceleratorType, "")
+			setPodLabel(pod, invalidSelectorKey, invalidSelectorValue)
 			tasks = append(tasks, vapi.NewTaskInfo(pod))
 			job := vapi.NewJobInfo(uid, tasks...)
 			setJobResourceReq(job, a310NPUChipName, float64(validNum2))
@@ -209,7 +210,7 @@ func TestCNPUValidNPUJobFnInvalidSelector(t *testing.T) {
 			pod := buildNPUPod(CPodInfo{namespace: "default", groupName: "npu-group-13",
 				podName: "npu-test-36", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: a310NPUChipName, reqNpuNum: "1"})
-			setPodSelector(pod, acceleratorType, invalidSelectorValue)
+			setPodLabel(pod, acceleratorType, invalidSelectorValue)
 			tasks = append(tasks, vapi.NewTaskInfo(pod))
 			job := vapi.NewJobInfo(uid, tasks...)
 			result := npu.ValidNPUJobFn(job)
@@ -775,7 +776,7 @@ func TestCnpuSetNPUTopologyToPodFn(t *testing.T) {
 	})
 }
 
-func setPodSelector(CPod *v1.Pod, selectorKey string, selectorValue string) {
+func setPodLabel(CPod *v1.Pod, selectorKey string, selectorValue string) {
 	if selectorValue == "" {
 		delete(CPod.Labels, selectorKey)
 		return
@@ -803,8 +804,9 @@ func buildNPUPod(podInfo CPodInfo) *v1.Pod {
 		podInfo.groupName, make(map[string]string, constIntNum2),
 		make(map[string]string, constIntNum2))
 
-	setPodSelector(pod, archSelector, huaweiArchX86)
-	setPodSelector(pod, acceleratorType, chipAcceleratorType)
+	setPodLabel(pod, archSelector, huaweiArchX86)
+	ascendtest.SetTestNPUPodSelector(pod, archSelector, huaweiArchX86)
+	setPodLabel(pod, acceleratorType, chipAcceleratorType)
 
 	return pod
 }
@@ -851,7 +853,7 @@ func buildNPUNode(CNode CNodeInfo) *vapi.NodeInfo {
 		v1node.Annotations[a310NPUChipName] = CNode.npuTop
 	}
 
-	setNodeLabel(v1node, archSelector, CNode.nodeArch)
+	ascendtest.SetNPUNodeLabel(v1node, archSelector, CNode.nodeArch)
 
 	node := vapi.NewNodeInfo(v1node)
 	if CNode.npuAllocateNum != "0" {

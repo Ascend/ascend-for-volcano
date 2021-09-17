@@ -29,7 +29,7 @@ import (
 	"strconv"
 	"time"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/card310x4/util"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 func judgeNodeAndTaskNPU(taskNPU int, nodeNPUTopology []int) error {
@@ -200,7 +200,7 @@ func insertNodeInPriGroup(
 	var err error
 
 	// 1.Get the task's NPU request
-	taskReqNPU, errGet := hwutil.GetTaskNPUNum(task, a310NPUCardName)
+	taskReqNPU, errGet := util.GetTaskNPUNum(task, a310NPUCardName)
 	if errGet != nil {
 		// cannot return error for task is no npu kind possible.
 		klog.V(logErrorLev).Infof("%s batchNodeOrderFn task :%s,%v.", PluginName, task.Name, errGet)

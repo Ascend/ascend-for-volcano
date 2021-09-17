@@ -67,6 +67,15 @@ func SetTestNPUPodAnnotation(pod *v1.Pod, key string, value string) {
 	pod.Annotations[key] = value
 }
 
+// SetTestNPUPodSelector set NPU pod selector.
+func SetTestNPUPodSelector(pod *v1.Pod, key string, value string) {
+	if pod.Spec.NodeSelector == nil {
+		pod.Spec.NodeSelector = make(map[string]string, constIntNum3)
+	}
+
+	pod.Spec.NodeSelector[key] = value
+}
+
 // FakeNormalTestTasks fake normal test tasks.
 func FakeNormalTestTasks(num int) []*api.TaskInfo {
 	var tasks []*api.TaskInfo

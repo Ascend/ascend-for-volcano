@@ -60,11 +60,3 @@ const (
 type chip310x4 struct {
 	name string
 }
-
-type npuPriNodeInf struct {
-	// the priority for NPU top
-	Name     string
-	nodeName string
-}
-
-type initPriNodeGroupFn func(priNodeGroup map[string]*npuPriNodeInf, groupName string)
