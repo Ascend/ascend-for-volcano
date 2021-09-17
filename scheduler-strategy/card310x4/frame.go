@@ -31,7 +31,6 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
-	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/card310x4/util"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
@@ -85,24 +84,21 @@ func (tp *card310x4) ValidNPUJobFn(job *api.JobInfo) *api.ValidateResult {
 	return nil
 }
 
-// PreCheckNodeFn Get the nodes that meet the task requirements.
+// PreCheckNodeFn 310 no need to Distinguish between architecture.
 func (tp *card310x4) PreCheckNodeFn(task *api.TaskInfo, node *api.NodeInfo, confs []conf.Configuration) error {
 	schedulerConf := util.GetSchedulerSelectorConfig(confs)
 	if len(schedulerConf) == 0 {
 		// get scheduler selector configure failed, but need continue
-		klog.V(logErrorLev).Infof("%s JobName: %s get selector nil", PluginName, task.Name)
+		klog.V(logErrorLev).Infof("%s JobName: %s get selector nil.", PluginName, task.Name)
 		return fmt.Errorf("%s get scheduler selector nil", node.Name)
 	}
 
-	defaultSchedulerConfig := getCardNPUNodeDefaultSelectorConfig()
-	klog.V(logDebugLev).Infof("%s card selector: %v default:%v.", node.Name, schedulerConf, defaultSchedulerConfig)
-
-	if err := hwutil.IsSelectorMeetNode(task, node, defaultSchedulerConfig, schedulerConf, a310NPUCardName); err != nil {
+	// select node by architect
+	if err := util.IsSelectorMeetNode(task, node, schedulerConf, a310NPUCardName); err != nil {
 		// get scheduler selector configure failed, but need continue
 		klog.V(logErrorLev).Infof("%s taskName: %s ,nodeName %s : %v.", PluginName, task.Name, node.Name, err)
 		return err
 	}
-
 	return nil
 }
 
@@ -331,7 +327,7 @@ func (tp *card310x4) IsMyTask(task *api.TaskInfo) error {
 		return errors.New(jobNoNPUCard)
 	}
 
-	if !util.IsTaskOfCardMode(task) {
+	if !IsTaskOfCardModeFromLabel(task) {
 		return errors.New(modeNotCard)
 	}
 
@@ -355,7 +351,7 @@ func (tp *card310x4) IsMyJob(job *api.JobInfo) error {
 		return errors.New(jobNoNPUCard)
 	}
 
-	if !util.IsJobOfCardMode(job) {
+	if !IsJobOfCardModeFromLabel(job) {
 		return errors.New(modeNotCard)
 	}
 

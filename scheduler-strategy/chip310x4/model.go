@@ -39,7 +39,7 @@ func judgeNodeAndTaskNPU(taskNPU int, nodeNPUTopology []int) error {
 	return meetErr
 }
 
-func getNPUAllocPriorityArray(taskNPUNumber int) ([cardNPUNumber]int, error) {
+func getNPUAllocPriorityArray() ([cardNPUNumber]int, error) {
 	var priorityArray [cardNPUNumber]int
 	var err = error(nil)
 	// priority:1>2>3>4

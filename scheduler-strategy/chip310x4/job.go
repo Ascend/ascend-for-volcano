@@ -39,18 +39,9 @@ func getCardNPUJobDefaultSelectorConfig() map[string]string {
 	return defaultSchedulerConfig
 }
 
-func getCardNPUNodeDefaultSelectorConfig() map[string]string {
-	var defaultSchedulerConfig map[string]string
-	defaultSchedulerConfig = make(map[string]string, constIntNum3)
-
-	defaultSchedulerConfig[archSelector] = huaweiArchArm + "|" + huaweiArchX86
-
-	return defaultSchedulerConfig
-}
-
 // For verify npu job must config selector.
 func validNPUJobSelector(job *api.JobInfo) error {
-	jobSelectors := util.GetJobSelectors(job)
+	jobSelectors := util.GetJobLabels(job)
 	if len(jobSelectors) == 0 {
 		msg := fmt.Errorf("%s %s getJobSelectors nil", PluginName, job.Name)
 		klog.V(logErrorLev).Infof("%s.", msg.Error())

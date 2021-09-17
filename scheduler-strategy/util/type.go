@@ -35,9 +35,11 @@ const (
 	huaweiArchArm          = "huawei-arm"
 	huaweiArchX86          = "huawei-x86"
 	accelerator            = "accelerator"
-	acceleratorValue       = "huawei-Ascend910"
+	accelerator910Value    = "huawei-Ascend910"
+	accelerator310Value    = "huawei-Ascend310"
 	acceleratorType        = "accelerator-type"
 	cardAcceleratorType    = "card"
 	moduleAcceleratorType  = "module"
+	chipAcceleratorType    = "chip"
 	nodeNoFitSelectorError = "no matching label on this node"
 )

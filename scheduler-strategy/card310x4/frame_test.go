@@ -30,6 +30,7 @@ import (
 	"testing"
 	vapi "volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
+	ascendtest "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
 	"volcano.sh/volcano/pkg/scheduler/util"
 )
 
@@ -286,7 +287,6 @@ func TestCNPUValidNPUJobFnInvalidModel(t *testing.T) {
 	Convey("Test card310x4 ValidNPUJobFnInvalidModel", t, func() {
 		const (
 			num4 = "4"
-			num2 = "2"
 			num5 = "5"
 			num1 = "1"
 		)
@@ -1083,6 +1083,7 @@ func buildNPUPod(podInfo CPodInfo) *v1.Pod {
 		make(map[string]string, constIntNum2))
 
 	setPodSelector(pod, archSelector, huaweiArchX86)
+	ascendtest.SetTestNPUPodSelector(pod, archSelector, huaweiArchX86)
 	setPodSelector(pod, acceleratorType, cardAcceleratorType)
 
 	return pod

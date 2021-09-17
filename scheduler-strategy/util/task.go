@@ -62,20 +62,7 @@ func IsTaskOfCardMode(task *api.TaskInfo) bool {
 		return false
 	}
 
-	acceleratorValue, ok := taskSelectors[acceleratorType]
-	if !ok {
-		// no acceleratorType means module
-		klog.V(logDebugLev).Infof("task(%s) is module type.", task.Name)
-		return false
-	}
-
-	if acceleratorValue == cardAcceleratorType {
-		klog.V(logDebugLev).Infof("task(%s) is card type.", task.Name)
-		return true
-	}
-
-	klog.V(logDebugLev).Infof("task(%s) is module type.", task.Name)
-	return false
+	return ValidStringMapKeyAndValue(taskSelectors, acceleratorType, cardAcceleratorType)
 }
 
 // GetDeviceIDsFromAnnotations Get npu card ids from Annotations.
@@ -97,4 +84,8 @@ func GetDeviceIDsFromAnnotations(Annotations map[string]string, npuCardName stri
 
 func getTaskSelectors(task *api.TaskInfo) map[string]string {
 	return task.Pod.Spec.NodeSelector
+}
+
+func GetTaskLabels(task *api.TaskInfo) map[string]string {
+	return task.Pod.Labels
 }

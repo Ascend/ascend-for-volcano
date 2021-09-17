@@ -99,20 +99,8 @@ func IsJobOfCardMode(job *api.JobInfo) bool {
 		return false
 	}
 
-	value, ok := jobSelectors[acceleratorType]
-	if !ok {
-		// no acceleratorType means module
-		klog.V(logDebugLev).Infof("job(%s) is module type.", job.Name)
-		return false
-	}
-
-	if value == cardAcceleratorType {
-		klog.V(logDebugLev).Infof("job(%s) is card type.", job.Name)
-		return true
-	}
-
 	klog.V(logDebugLev).Infof("job(%s) is module type.", job.Name)
-	return false
+	return ValidStringMapKeyAndValue(jobSelectors, acceleratorType, cardAcceleratorType)
 }
 
 // CheckSingleTrainMode Single Train job has only one task.
@@ -126,4 +114,27 @@ func CheckSingleTrainMode(job *api.JobInfo) error {
 	}
 
 	return nil
+}
+
+func GetJobLabels(job *api.JobInfo) map[string]string {
+	var jobLabel = make(map[string]string, constIntNum3)
+
+	for _, task := range job.Tasks {
+		taskSelector := GetTaskLabels(task)
+		for k, v := range taskSelector {
+			label, ok := jobLabel[k]
+			if !ok {
+				// no task selector
+				jobLabel[k] = v
+				continue
+			}
+			if isSelectorContains(label, v) {
+				// has task selector
+				continue
+			}
+			// use '|' to join tasks
+			jobLabel[k] = label + "|" + v
+		}
+	}
+	return jobLabel
 }

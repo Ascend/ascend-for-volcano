@@ -83,7 +83,7 @@ func (tp *cardv910x2) IsMyTask(task *api.TaskInfo) error {
 	return errors.New("task doesn't use card type Vnpu")
 }
 
-// determine whether the node is a 910-300T node
+// IsMyNode determine whether the node is a 910-300T node
 func (tp *cardv910x2) IsMyNode(node *api.NodeInfo) error {
 	var vCardExist bool
 

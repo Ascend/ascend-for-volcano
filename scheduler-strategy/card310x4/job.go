@@ -50,9 +50,9 @@ func getCardNPUNodeDefaultSelectorConfig() map[string]string {
 
 // For verify npu job must config selector.
 func validNPUJobSelector(job *api.JobInfo) error {
-	jobSelectors := util.GetJobSelectors(job)
+	jobSelectors := util.GetJobLabels(job)
 	if len(jobSelectors) == 0 {
-		msg := fmt.Errorf("%s %s getJobSelectors nil", PluginName, job.Name)
+		msg := fmt.Errorf("%s %s GetJobLabels nil", PluginName, job.Name)
 		klog.V(logErrorLev).Infof("%s.", msg.Error())
 		return msg
 	}
@@ -143,4 +143,14 @@ func validJobNPUNum(job *api.JobInfo) error {
 	}
 
 	return fmt.Errorf("illegal req_npu num: %d in %s mode", jobNPU, cardAcceleratorType)
+}
+
+func IsJobOfCardModeFromLabel(job *api.JobInfo) bool {
+	jobSelectors := util.GetJobLabels(job)
+	if len(jobSelectors) == 0 {
+		klog.V(logErrorLev).Infof("job(%s) has no selectors.", job.Name)
+		return false
+	}
+
+	return util.ValidStringMapKeyAndValue(jobSelectors, acceleratorType, cardAcceleratorType)
 }

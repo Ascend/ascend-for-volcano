@@ -92,8 +92,9 @@ func getDefaultSchedulerSelectorConfig() map[string]string {
 	defaultSchedulerConfig = make(map[string]string, constIntNum3)
 
 	defaultSchedulerConfig[archSelector] = huaweiArchArm + "|" + huaweiArchX86
-	defaultSchedulerConfig[accelerator] = acceleratorValue
-	defaultSchedulerConfig[acceleratorType] = cardAcceleratorType + "|" + moduleAcceleratorType
+	defaultSchedulerConfig[accelerator] = accelerator910Value + "|" + accelerator310Value
+	defaultSchedulerConfig[acceleratorType] = cardAcceleratorType + "|" + moduleAcceleratorType +
+		"|" + chipAcceleratorType
 
 	return defaultSchedulerConfig
 }
@@ -270,4 +271,22 @@ func CompareNPUSelector(job *api.JobInfo, jobS map[string]string, defaultS map[s
 		}
 	}
 	return nil
+}
+
+// ValidStringMapKeyAndValue Valid map key and value.
+func ValidStringMapKeyAndValue(tmpMap map[string]string, key, value string) bool {
+	tmpValue, ok := tmpMap[key]
+	if !ok {
+		// no acceleratorType means module
+		klog.V(logDebugLev).Infof("no %s.", acceleratorType)
+		return false
+	}
+
+	if tmpValue == value {
+		klog.V(logDebugLev).Infof("%s not equal.", accelerator910Value)
+		return true
+	}
+
+	klog.V(logDebugLev).Infof("valid ok .")
+	return false
 }
