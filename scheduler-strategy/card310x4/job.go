@@ -145,6 +145,7 @@ func validJobNPUNum(job *api.JobInfo) error {
 	return fmt.Errorf("illegal req_npu num: %d in %s mode", jobNPU, cardAcceleratorType)
 }
 
+// IsJobOfCardModeFromLabel judge job is card mode or card mod by label.
 func IsJobOfCardModeFromLabel(job *api.JobInfo) bool {
 	jobSelectors := util.GetJobLabels(job)
 	if len(jobSelectors) == 0 {

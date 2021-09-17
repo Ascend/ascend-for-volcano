@@ -86,6 +86,7 @@ func getTaskSelectors(task *api.TaskInfo) map[string]string {
 	return task.Pod.Spec.NodeSelector
 }
 
+// GetTaskLabels Get task labels from pod label.
 func GetTaskLabels(task *api.TaskInfo) map[string]string {
 	return task.Pod.Labels
 }

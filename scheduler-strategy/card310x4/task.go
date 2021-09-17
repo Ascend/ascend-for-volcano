@@ -46,6 +46,7 @@ func getBestNodesMap(priNodeGroups []map[string]*npuPriNodeInf) (map[string]int,
 	return bestNodesMap, nil
 }
 
+// IsTaskOfCardModeFromLabel judge task is card mode or card mod by label.
 func IsTaskOfCardModeFromLabel(task *api.TaskInfo) bool {
 	taskSelectors := util.GetTaskLabels(task)
 	if len(taskSelectors) == 0 {

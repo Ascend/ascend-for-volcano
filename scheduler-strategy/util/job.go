@@ -116,6 +116,7 @@ func CheckSingleTrainMode(job *api.JobInfo) error {
 	return nil
 }
 
+// GetJobLabels Get job labels.
 func GetJobLabels(job *api.JobInfo) map[string]string {
 	var jobLabel = make(map[string]string, constIntNum3)
 
