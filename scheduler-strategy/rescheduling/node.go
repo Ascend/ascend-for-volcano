@@ -266,13 +266,15 @@ func getNodeHeartbeatInterval(node *api.NodeInfo) (int, error) {
 }
 
 func getNodeHeartbeat(node *api.NodeInfo) (int64, error) {
+	const constNumber10 = 10
+	const constNumber64 = 64
 	value, ok := node.Node.Annotations[nodeHeartbeat]
 	if !ok || len(value) == 0 {
 		klog.V(logErrorLev).Infof("isNodeHealth %s no [%s].", node.Name, nodeHeartbeat)
 		return 0, fmt.Errorf("getFaultNodeState %s nil", node.Name)
 	}
 
-	heartbeatTime, err := strconv.ParseInt(value, 10, 64)
+	heartbeatTime, err := strconv.ParseInt(value, constNumber10, constNumber64)
 	if err != nil {
 		klog.V(logErrorLev).Infof("%s cover %s to int64 failed [%v].", node.Name, value, err)
 		return 0, err
