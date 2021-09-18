@@ -90,9 +90,16 @@ func isNodeHealth(node *api.NodeInfo) bool {
 		return true
 	}
 
+	heartbeatInterval, intervalErr := getNodeHeartbeatInterval(node)
+	if intervalErr != nil {
+		klog.V(logErrorLev).Infof("getNodeHeartbeatInterval %v, will use %d.", err, nodeUpdateTime)
+	}
+	maxInterval := int64(heartbeatInterval) * constIntNum3
+
 	nowTime := time.Now().Unix()
-	if getInt64Abs(nowTime-heartbeatTime) > nodeUpdateTime {
-		klog.V(logErrorLev).Infof(" %s Time over [%d-%d],not health.", node.Name, nowTime, heartbeatTime)
+	if getInt64Abs(nowTime-heartbeatTime) > maxInterval {
+		klog.V(logErrorLev).Infof(" %s Time over %d [%d-%d],not health.",
+			node.Name, heartbeatInterval, nowTime, maxInterval)
 		return false
 	}
 
@@ -235,15 +242,39 @@ func getNodeFaultNPUsByInt(node *api.NodeInfo) ([]int, error) {
 	return topInt, nil
 }
 
+func getNodeHeartbeatInterval(node *api.NodeInfo) (int, error) {
+	var heartbeatInterval = nodeUpdateTime
+	var err error
+	value, ok := node.Node.Annotations[nodeHeartbeatInterval]
+	if !ok || len(value) == 0 {
+		klog.V(logErrorLev).Infof("isNodeHealth %s no [%s].", node.Name, nodeHeartbeat)
+		return heartbeatInterval, fmt.Errorf("getFaultNodeState %s nil", node.Name)
+	}
+
+	// If the Time exceeds, the fault occurs.
+	heartbeatInterval, err = strconv.Atoi(value)
+	if err != nil {
+		klog.V(logErrorLev).Infof("%s cover %s to int64 failed [%v].", node.Name, value, err)
+		return heartbeatInterval, err
+	}
+
+	if heartbeatInterval > maxIntervalTime || heartbeatInterval < 1 {
+		klog.V(logErrorLev).Infof("%s's heartbeatInterval %d over limit, will use %d.",
+			node.Name, heartbeatInterval, nodeUpdateTime)
+	}
+	return heartbeatInterval, nil
+}
+
 func getNodeHeartbeat(node *api.NodeInfo) (int64, error) {
+	const constNumber10 = 10
+	const constNumber64 = 64
 	value, ok := node.Node.Annotations[nodeHeartbeat]
 	if !ok || len(value) == 0 {
 		klog.V(logErrorLev).Infof("isNodeHealth %s no [%s].", node.Name, nodeHeartbeat)
 		return 0, fmt.Errorf("getFaultNodeState %s nil", node.Name)
 	}
 
-	// If the Time exceeds 15 seconds, the fault occurs.
-	heartbeatTime, err := strconv.ParseInt(value, 10, 64)
+	heartbeatTime, err := strconv.ParseInt(value, constNumber10, constNumber64)
 	if err != nil {
 		klog.V(logErrorLev).Infof("%s cover %s to int64 failed [%v].", node.Name, value, err)
 		return 0, err
@@ -258,11 +289,17 @@ func getFaultNodeState(node *api.NodeInfo) (FaultNodeState, error) {
 		return FaultNodeState{}, err
 	}
 
+	heartbeatInterval, intervalErr := getNodeHeartbeatInterval(node)
+	if intervalErr != nil {
+		klog.V(logErrorLev).Infof("getNodeHeartbeatInterval %v, will use %d.", err, nodeUpdateTime)
+	}
+
 	return FaultNodeState{
-		NodeName:   node.Name,
-		HealthCode: 0,
-		UpdateTime: time.Now().Unix(),
-		Heartbeat:  heartbeatTime,
+		NodeName:          node.Name,
+		HealthCode:        0,
+		UpdateTime:        time.Now().Unix(),
+		Heartbeat:         heartbeatTime,
+		HeartbeatInterval: heartbeatInterval,
 	}, nil
 }
 

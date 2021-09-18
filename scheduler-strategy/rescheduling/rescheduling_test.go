@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -147,10 +148,11 @@ func addTestNodeIntoReSchedulerCache(nodes ...*api.NodeInfo) {
 
 	if len(nodes) == 0 {
 		faultNode["hahaNode"] = FaultNodeState{
-			NodeName:   "nil",
-			HealthCode: 0,
-			UpdateTime: time.Now().Unix(),
-			Heartbeat:  testHeartBeat1,
+			NodeName:          "nil",
+			HealthCode:        0,
+			UpdateTime:        time.Now().Unix(),
+			Heartbeat:         testHeartBeat1,
+			HeartbeatInterval: nodeUpdateTime,
 		}
 		ReSchedulerCache[CmNodeKind] = faultNode
 		return
@@ -158,10 +160,11 @@ func addTestNodeIntoReSchedulerCache(nodes ...*api.NodeInfo) {
 
 	for _, node := range nodes {
 		faultNode[node.Name] = FaultNodeState{
-			NodeName:   node.Name,
-			HealthCode: 0,
-			UpdateTime: time.Now().Unix(),
-			Heartbeat:  testHeartBeat1,
+			NodeName:          node.Name,
+			HealthCode:        0,
+			UpdateTime:        time.Now().Unix(),
+			Heartbeat:         testHeartBeat1,
+			HeartbeatInterval: nodeUpdateTime,
 		}
 	}
 
@@ -833,6 +836,86 @@ func TestIsNodeInFaultNodeList(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := IsNodeInFaultNodeList(tt.args.node); got != tt.want {
 				t.Errorf("IsNodeInFaultNodeList() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+type recordFaultInfInCacheArgs struct {
+	ssn       *framework.Session
+	npuNumber int
+	cacheFun  func()
+}
+
+type recordFaultInfInCacheTests []struct {
+	name    string
+	args    recordFaultInfInCacheArgs
+	wantErr error
+}
+
+func setTestNodeNPUFaultInSSN(ssn *framework.Session, fNPU FaultNPUsOnNode) {
+	for nodeName := range ssn.Nodes {
+		if fNPU.NodeName == nodeName {
+			ssn.Nodes[nodeName].Node.Annotations[faultNPU] = strings.Join(fNPU.FaultNPUs, ",")
+			ssn.Nodes[nodeName].Node.Annotations[networkUnhealthyNPU] = strings.Join(fNPU.NetworkUnhealthyNPUs, ",")
+			return
+		}
+	}
+}
+
+func setTestNodeSateFaultInSSN(ssn *framework.Session, fNode FaultNodeState) {
+	const constNumber10 = 10
+	for nodeName := range ssn.Nodes {
+		if fNode.NodeName == nodeName {
+			ssn.Nodes[nodeName].Node.Annotations[faultNPU] = strconv.FormatInt(fNode.Heartbeat, constNumber10)
+			ssn.Nodes[nodeName].Node.Annotations[nodeHeartbeatInterval] = strconv.Itoa(fNode.HeartbeatInterval)
+			return
+		}
+	}
+}
+
+func setTestSsnNode(ssn *framework.Session, setData interface{}) {
+	switch value := setData.(type) {
+	case FaultNPUsOnNode:
+		setTestNodeNPUFaultInSSN(ssn, value)
+	case FaultNodeState:
+		setTestNodeSateFaultInSSN(ssn, value)
+	default:
+		ascendtest.PrintError("not support type:%+v", setData)
+	}
+}
+
+func buildRecordFaultInfInCacheTestCases() recordFaultInfInCacheTests {
+	const constNumber64 = 12345677
+	ssnTest := ascendtest.FakeNormalSSN()
+	fNPUs := FaultNPUsOnNode{NodeName: "node1", FaultNPUs: []string{"Ascend910-0", "Ascend910-1", "Ascend910-1"},
+		NetworkUnhealthyNPUs: []string{}, UpdateTime: constNumber64}
+	fNode := FaultNodeState{NodeName: "node1", HealthCode: 0, UpdateTime: constNumber64, Heartbeat: constNumber64,
+		HeartbeatInterval: nodeUpdateTime}
+	testCases := recordFaultInfInCacheTests{
+		{
+			name: "01-record fault success-test",
+			args: recordFaultInfInCacheArgs{
+				ssn: ssnTest, npuNumber: node910X8NPUNum, cacheFun: func() {
+					initTestReSchedulerCache()
+					setTestSsnNode(ssnTest, fNPUs)
+					setTestSsnNode(ssnTest, fNode)
+				},
+			},
+			wantErr: nil,
+		},
+	}
+	return testCases
+}
+
+func TestRecordFaultInfInCache(t *testing.T) {
+	tests := buildRecordFaultInfInCacheTestCases()
+	for _, tt := range tests {
+		tt.args.cacheFun()
+		t.Run(tt.name, func(t *testing.T) {
+			err := RecordFaultInfInCache(tt.args.ssn, tt.args.npuNumber)
+			if !reflect.DeepEqual(err, tt.wantErr) {
+				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
