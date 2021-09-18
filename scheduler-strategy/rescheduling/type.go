@@ -44,6 +44,7 @@ const (
 	// node inoperable interval time(s)
 	nodeUpdateTime        = 15
 	nodeHeartbeat         = "noded/heartbeat"
+	nodeHeartbeatInterval = "noded/heartbeat-interval"
 	faultNPU              = "huawei.com/Ascend910-Unhealthy"
 	networkUnhealthyNPU   = "huawei.com/Ascend910-NetworkUnhealthy"
 	podRankIndex          = "hccl/rankIndex"
@@ -82,6 +83,8 @@ type FaultNodeState struct {
 	UpdateTime int64
 	// nodeD record Time.
 	Heartbeat int64
+	// nodeD Heartbeat interval time.
+	HeartbeatInterval int
 }
 
 // FaultNPUsOnNode Record the node's corresponding fault chips.
