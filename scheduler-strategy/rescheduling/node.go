@@ -272,7 +272,6 @@ func getNodeHeartbeat(node *api.NodeInfo) (int64, error) {
 		return 0, fmt.Errorf("getFaultNodeState %s nil", node.Name)
 	}
 
-	// If the Time exceeds 15 seconds, the fault occurs.
 	heartbeatTime, err := strconv.ParseInt(value, 10, 64)
 	if err != nil {
 		klog.V(logErrorLev).Infof("%s cover %s to int64 failed [%v].", node.Name, value, err)
