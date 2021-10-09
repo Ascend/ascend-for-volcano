@@ -908,6 +908,7 @@ func buildRecordFaultInfInCacheTestCases() recordFaultInfInCacheTests {
 	return testCases
 }
 
+// TestRecordFaultInfInCache test RecordFaultInfInCache function.
 func TestRecordFaultInfInCache(t *testing.T) {
 	tests := buildRecordFaultInfInCacheTestCases()
 	for _, tt := range tests {
@@ -916,6 +917,205 @@ func TestRecordFaultInfInCache(t *testing.T) {
 			err := RecordFaultInfInCache(tt.args.ssn, tt.args.npuNumber)
 			if !reflect.DeepEqual(err, tt.wantErr) {
 				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+type releaseFaultJobTakeNodesArgs struct {
+	job      *api.JobInfo
+	cacheFun func()
+}
+
+type releaseFaultJobTakeNodesTests []struct {
+	name    string
+	args    releaseFaultJobTakeNodesArgs
+	wantErr error
+}
+
+func addTestJobIntoReSchedulerCache(job *api.JobInfo) {
+	var reJobs = make(map[api.JobID]ReSchedulerTasks, constIntNum2)
+
+	if job == nil {
+		reJobs = map[api.JobID]ReSchedulerTasks{
+			"hahaTask": {nil, nil, nil, nil, ""}}
+		ReSchedulerCache[CmJobKind] = reJobs
+		return
+	}
+	for _, task := range job.Tasks {
+		reJobs[task.Job] = ReSchedulerTasks{
+			NodeNames:   map[string]string{task.Name: task.NodeName},
+			RankIndexes: map[string]string{task.Name: task.Pod.Annotations[podRankIndex]},
+			Time:        nil,
+			TaskUseNPUs: map[string]string{task.Name: task.Pod.Annotations[npu800And9000CardName]},
+			NameSpace:   "vcjob"}
+	}
+
+	ReSchedulerCache[CmJobKind] = reJobs
+}
+
+func buildReleaseFaultJobTakeNodesTestCases() releaseFaultJobTakeNodesTests {
+	fakeJob := ascendtest.FakeNormalTestJob("pg", constIntNum3)
+	fakeJob1 := ascendtest.FakeNormalTestJob("pg", constIntNum3)
+	testCases := releaseFaultJobTakeNodesTests{
+		{
+			name: "01-no record fault Cache-test",
+			args: releaseFaultJobTakeNodesArgs{
+				job: fakeJob, cacheFun: func() {
+					initTestReSchedulerCache()
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "02-job not in fault Cache-test",
+			args: releaseFaultJobTakeNodesArgs{
+				job: fakeJob, cacheFun: func() {
+					initTestReSchedulerCache()
+					addTestJobIntoReSchedulerCache(fakeJob1)
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "03-release job from fault Cache-test",
+			args: releaseFaultJobTakeNodesArgs{
+				job: fakeJob, cacheFun: func() {
+					initTestReSchedulerCache()
+					addTestJobIntoReSchedulerCache(fakeJob)
+				},
+			},
+			wantErr: nil,
+		},
+	}
+	return testCases
+}
+
+// TestReleaseFaultJobTakeNodes test ReleaseFaultJobTakeNodes function.
+func TestReleaseFaultJobTakeNodes(t *testing.T) {
+	tests := buildReleaseFaultJobTakeNodesTestCases()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.args.cacheFun()
+			err := ReleaseFaultJobTakeNodes(tt.args.job)
+			if !reflect.DeepEqual(err, tt.wantErr) {
+				t.Errorf("ReleaseFaultJobTakeNodes() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+type setFaultJobPodIndexArgs struct {
+	task     *api.TaskInfo
+	cacheFun func()
+}
+
+type setFaultJobPodIndexTests []struct {
+	name    string
+	args    setFaultJobPodIndexArgs
+	wantErr error
+}
+
+func buildSetFaultJobPodIndexTestCases() setFaultJobPodIndexTests {
+	tasks := ascendtest.FakeNormalTestTasks(constIntNum3)
+	testCases := setFaultJobPodIndexTests{
+		{
+			name: "01-no record fault Cache-test",
+			args: setFaultJobPodIndexArgs{
+				task: tasks[0], cacheFun: func() {
+					initTestReSchedulerCache()
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "02-not in record fault Cache-test",
+			args: setFaultJobPodIndexArgs{
+				task: tasks[0], cacheFun: func() {
+					initTestReSchedulerCache()
+					addTestTaskIntoReSchedulerCache(tasks[1])
+				},
+			},
+			wantErr: fmt.Errorf("no %v in jobMap", tasks[0].Job),
+		},
+		{
+			name: "03-in record fault Cache-test",
+			args: setFaultJobPodIndexArgs{
+				task: tasks[0], cacheFun: func() {
+					initTestReSchedulerCache()
+					addTestTaskIntoReSchedulerCache(tasks[0])
+				},
+			},
+			wantErr: nil,
+		},
+	}
+	return testCases
+}
+
+// TestSetFaultJobPodIndex test SetFaultJobPodIndex function.
+func TestSetFaultJobPodIndex(t *testing.T) {
+	tests := buildSetFaultJobPodIndexTestCases()
+	for _, tt := range tests {
+		tt.args.cacheFun()
+		t.Run(tt.name, func(t *testing.T) {
+			err := SetFaultJobPodIndex(tt.args.task)
+			if !reflect.DeepEqual(err, tt.wantErr) {
+				t.Errorf("SetFaultJobPodIndex() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+type setFaultInNodeAndJobsArgs struct {
+	fNPUJobs []FaultNPUJob
+	jobs     map[string]*api.JobInfo
+	cacheFun func()
+}
+
+type setFaultInNodeAndJobsTests []struct {
+	name    string
+	args    setFaultInNodeAndJobsArgs
+	wantErr error
+}
+
+func buildSetFaultInNodeAndJobsTestCases() setFaultInNodeAndJobsTests {
+	fakeJob1 := ascendtest.FakeNormalTestJob("pg", constIntNum3)
+	fakeJob2 := ascendtest.FakeNormalTestJob("pg1", constIntNum3)
+	mapJob1 := map[string]*api.JobInfo{fakeJob1.Name: fakeJob1}
+	mapJob2 := map[string]*api.JobInfo{fakeJob2.Name: fakeJob2}
+	faultJob1 := addJobIntoFaultNPUJobStruct(fakeJob1)
+	testCases := setFaultInNodeAndJobsTests{
+		{
+			name: "01-job not in record fault Cache-test",
+			args: setFaultInNodeAndJobsArgs{
+				jobs: mapJob2, fNPUJobs: []FaultNPUJob{faultJob1}, cacheFun: func() {
+					initTestReSchedulerCache()
+				},
+			},
+			wantErr: fmt.Errorf("%s not found in fault jobs", faultJob1.jobName),
+		},
+		{
+			name: "02-write in fault Cache success-test",
+			args: setFaultInNodeAndJobsArgs{
+				jobs: mapJob1, fNPUJobs: []FaultNPUJob{faultJob1}, cacheFun: func() {
+					initTestReSchedulerCache()
+				},
+			},
+			wantErr: nil,
+		},
+	}
+	return testCases
+}
+
+// TestSetFaultInNodeAndJobs test SetFaultInNodeAndJobs function.
+func TestSetFaultInNodeAndJobs(t *testing.T) {
+	tests := buildSetFaultInNodeAndJobsTestCases()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.args.cacheFun()
+			err := SetFaultInNodeAndJobs(tt.args.fNPUJobs, tt.args.jobs)
+			if !reflect.DeepEqual(err, tt.wantErr) {
+				t.Errorf("SetFaultInNodeAndJobs() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

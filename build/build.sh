@@ -10,7 +10,7 @@ BASE_PATH=${GOPATH}/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-
 CMD_PATH=${GOPATH}/src/volcano.sh/volcano/cmd/
 PKG_PATH=volcano.sh/volcano/pkg
 DATE=$(date "+%Y-%m-%d %H:%M:%S")
-BASE_VER=v1.3.0
+BASE_VER=v1.4.0
 
 function parse_version() {
     version_file="${TOP_DIR}"/service_config.ini

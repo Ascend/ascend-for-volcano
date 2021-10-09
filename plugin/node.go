@@ -265,7 +265,7 @@ func (hwNPU *ScheduleHandler) ClusterNodePredicate(task *api.TaskInfo, ssn *fram
 // NodePredicate Predicate node by volcano frame.
 func (hwNPU *ScheduleHandler) NodePredicate(task *api.TaskInfo, node *api.NodeInfo, ssn *framework.Session) error {
 	klog.V(logInfoLev).Infof("enter node predicate")
-	defer klog.V(logInfoLev).Infof("leave NodePredicate")
+	defer klog.V(logInfoLev).Infof("leave node predicate")
 
 	if task == nil || node == nil {
 		klog.V(logErrorLev).Infof("%s got null parameter(s), which is invalid", PluginName)

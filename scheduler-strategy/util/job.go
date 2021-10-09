@@ -84,7 +84,7 @@ func GetJobSelectors(job *api.JobInfo) map[string]string {
 func GetJobReqNPUNum(job *api.JobInfo, npuCardName string) (int, error) {
 	jobNPU, ok := job.TotalRequest.ScalarResources[v1.ResourceName(npuCardName)]
 	if !ok || int(jobNPU/npuHex) == 0 {
-		klog.V(logDebugLev).Infof("%s npu:%v %+v .", job.Name, v1.ResourceName(npuCardName), job.TotalRequest)
+		klog.V(logDebugLev).Infof("%s no npu(%v) total:[%+v].", job.Name, npuCardName, job.TotalRequest)
 		return 0, errors.New("job no use npu")
 	}
 
