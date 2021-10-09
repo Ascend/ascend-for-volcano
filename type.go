@@ -27,7 +27,7 @@ import (
 )
 
 // PluginName use in frame
-var PluginName = "volcano-npu-v2.0.2"
+var PluginName = "volcano-npu-v2.0.3"
 
 const (
 	logErrorLev   = 1

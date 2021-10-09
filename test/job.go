@@ -65,6 +65,6 @@ func AddTestJobLabel(job *api.JobInfo, key, value string) {
 func FakeNormalTestJob(jobName string, taskNum int) *api.JobInfo {
 	tasks := FakeNormalTestTasks(taskNum)
 	job := api.NewJobInfo(api.JobID("vcjob/"+jobName), tasks...)
-
+	job.Name = jobName
 	return job
 }
