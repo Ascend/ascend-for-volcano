@@ -30,6 +30,17 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/api"
 )
 
+// GetNodeIdleNPUNum Get node npu idle number
+func GetNodeIdleNPUNum(node *api.NodeInfo, npuCardName string) (int, error) {
+	nodeNPUIdleNumber, ok := node.Idle.ScalarResources[v1.ResourceName(npuCardName)]
+	if !ok {
+		return 0, errors.New("not npu node")
+	}
+
+	nodeNPU := int(nodeNPUIdleNumber / npuHex)
+	return nodeNPU, nil
+}
+
 // GetTopFromNodeOthers Get npu card ids like（int[]） from node info.
 func GetTopFromNodeOthers(node *api.NodeInfo, npuCardName string, npuCardPreName string) []int {
 	topStr, err := GetNPUAllocCardsFromNodeOthers(node, npuCardName)

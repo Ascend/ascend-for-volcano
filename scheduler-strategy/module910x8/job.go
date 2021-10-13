@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"k8s.io/klog"
+	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	vapi "volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
@@ -139,9 +140,25 @@ func isMyJob(job *vapi.JobInfo) error {
 	return nil
 }
 
-func get910x8Jobs(jobs map[api.JobID]*api.JobInfo) (map[string]*api.JobInfo, error) {
+func isMyTask(task *vapi.TaskInfo) error {
+	_, err := hwutil.GetTaskNPUNum(task, npu800And9000CardName)
+	if err != nil {
+		return errors.New(jobNoNPUCard)
+	}
+
+	if hwutil.IsTaskOfCardMode(task) {
+		return errors.New("task is card mode")
+	}
+
+	return nil
+}
+
+func get910x8RunningJobs(jobs map[api.JobID]*api.JobInfo) (map[string]*api.JobInfo, error) {
 	var myJobs = make(map[string]*api.JobInfo, constIntNum3)
 	for _, job := range jobs {
+		if job.PodGroup.Status.Phase != scheduling.PodGroupRunning {
+			continue
+		}
 		if err := isMyJob(job); err == nil {
 			myJobs[job.Name] = job
 		}

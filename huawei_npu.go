@@ -118,7 +118,8 @@ func (tp *huaweiNPUPlugin) OnSessionClose(ssn *framework.Session) {
 	// 3、Handle other post-dispatch issues.
 	for _, job := range ssn.Jobs {
 		// deal pending job
-		if job.PodGroup.Status.Phase == scheduling.PodGroupInqueue {
+		if job.PodGroup.Status.Phase == scheduling.PodGroupInqueue ||
+			job.PodGroup.Status.Phase == scheduling.PodGroupPending {
 			// if all nodes not meet job require failed
 			plugin.SetJobPendReasonByNodesCase(ssn, ssn.Nodes, job)
 		}

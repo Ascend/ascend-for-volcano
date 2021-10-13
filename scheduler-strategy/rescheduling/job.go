@@ -118,17 +118,13 @@ func synReSchedulerJobCache(ssn *framework.Session, tmpValue interface{}) error 
 	return nil
 }
 
-func getJobUsedNodes(job *api.JobInfo) (map[string]*v1.Pod, error) {
+func getRunningJobUsedNodes(job *api.JobInfo) (map[string]*v1.Pod, error) {
 	var nodeNames = make(map[string]*v1.Pod, constIntNum3)
-
-	if job.PodGroup.Status.Phase != scheduling.PodGroupRunning {
-		return nil, errors.New("not running job")
-	}
 
 	for _, task := range job.Tasks {
 		nodeNames[task.NodeName] = task.Pod
 	}
-	klog.V(logDebugLev).Infof("getJobUsedNodes %s use %v.", job.Name, len(nodeNames))
+	klog.V(logDebugLev).Infof("getRunningJobUsedNodes %s use %v.", job.Name, len(nodeNames))
 
 	if len(nodeNames) == 0 {
 		return nil, fmt.Errorf("%s no tasks,no use node", job.Name)
@@ -274,18 +270,18 @@ func IsDistributedJob(job *api.JobInfo) bool {
 	return false
 }
 
-func isJobHasFaultResources(nodesTask map[string]*v1.Pod, job *api.JobInfo) bool {
-	if isJobHasFaultNodes(nodesTask) {
+func isJobHasFaultResources(nodeAndPods map[string]*v1.Pod, job *api.JobInfo) bool {
+	if isJobHasFaultNodes(nodeAndPods) {
 		klog.V(logDebugLev).Infof("isJobHasFaultNodes %s use fault node.", job.Name)
 		return true
 	}
 
-	if isJobHasFaultNPU(nodesTask) {
+	if isJobHasFaultNPU(nodeAndPods) {
 		klog.V(logDebugLev).Infof("isJobHasFaultNPU %s use fault npu.", job.Name)
 		return true
 	}
 
-	if isJobHasNetworkUnhealthyNPU(nodesTask, job) {
+	if isJobHasNetworkUnhealthyNPU(nodeAndPods, job) {
 		klog.V(logDebugLev).Infof("isJobHasNetworkUnhealthyNPU %s use NetworkUnhealthy npu.", job.Name)
 		return true
 	}
@@ -295,7 +291,7 @@ func isJobHasFaultResources(nodesTask map[string]*v1.Pod, job *api.JobInfo) bool
 	return false
 }
 
-// GetFaultNPUJobs Obtain information about the task that uses the faulty resource.
+// GetFaultNPUJobs Obtain information about the running jobs that uses the faulty resource.
 func GetFaultNPUJobs(jobs map[string]*api.JobInfo) ([]FaultNPUJob, error) {
 	var faultNPUJobs []FaultNPUJob
 
@@ -306,19 +302,19 @@ func GetFaultNPUJobs(jobs map[string]*api.JobInfo) ([]FaultNPUJob, error) {
 		}
 		klog.V(logInfoLev).Infof("%s set rescheduleLabel, has fault reschedule feature.", job.Name)
 		// Get running job used node.
-		nodesTask, getErr := getJobUsedNodes(job)
+		nodeAndPods, getErr := getRunningJobUsedNodes(job)
 		if getErr != nil {
 			klog.V(logDebugLev).Infof("GetFaultNPUJobs %s %v.", job.Name, getErr)
 			continue
 		}
 
-		if !isJobHasFaultResources(nodesTask, job) {
+		if !isJobHasFaultResources(nodeAndPods, job) {
 			klog.V(logDebugLev).Infof("isJobHasFaultResources %s has no fault resources.", job.Name)
 			continue
 		}
 
 		klog.V(logDebugLev).Infof("GetFaultNPUJobs %s use fault resource.", job.Name)
-		faultJob, err := getFaultNodePODAndRankIndex(job, nodesTask)
+		faultJob, err := getFaultNodePODAndRankIndex(job, nodeAndPods)
 		if err != nil {
 			klog.V(logDebugLev).Infof("GetFaultNPUJobs %s %v.", job.Name, err)
 			continue
@@ -370,11 +366,29 @@ func ReleaseFaultJobTakeNodes(job *api.JobInfo) error {
 		return nil
 	}
 
-	klog.V(logInfoLev).Infof("delete %s from configMap due to pending.", job.UID)
-	delete(jobMap, job.UID)
-	ReSchedulerCache[CmJobKind] = jobMap
+	if job.PodGroup.Status.Phase == scheduling.PodGroupPending {
+		klog.V(logInfoLev).Infof("delete %s from configMap due to pending.", job.UID)
+		delete(jobMap, job.UID)
+		ReSchedulerCache[CmJobKind] = jobMap
+	}
 
 	return nil
+}
+
+func isFaultJobInCache(job *api.JobInfo) bool {
+	jobMaps, ok := ReSchedulerCache[CmJobKind]
+	if !ok {
+		return false
+	}
+	faultJobs, covertOk := jobMaps.(map[api.JobID]ReSchedulerTasks)
+	if !covertOk {
+		return false
+	}
+	_, getOK := faultJobs[job.UID]
+	if !getOK {
+		return false
+	}
+	return true
 }
 
 // Record and curing RankIndex information
@@ -382,6 +396,10 @@ func writeFaultJobInfInCache(jobs map[string]*api.JobInfo, fJob FaultNPUJob, tas
 	job, ok := jobs[fJob.jobName]
 	if !ok {
 		return fmt.Errorf("%s not found in fault jobs", fJob.jobName)
+	}
+
+	if isFaultJobInCache(job) {
+		return fmt.Errorf("%s already in fault jobs cache", job.UID)
 	}
 
 	var jobMap = make(map[api.JobID]ReSchedulerTasks, 1)
