@@ -270,7 +270,7 @@ func (hwNPU *ScheduleHandler) ClusterNodePredicate(task *api.TaskInfo, ssn *fram
 
 // NodePredicate Predicate node by volcano frame.
 func (hwNPU *ScheduleHandler) NodePredicate(task *api.TaskInfo, node *api.NodeInfo, ssn *framework.Session) error {
-	klog.V(logInfoLev).Infof("enter node(%s) predicate %+v===>%v===>%v =%v", node.Name, node.Idle.ScalarResources, ssn.Nodes[node.Name].Idle.ScalarResources, node.Others, node.Node.Annotations)
+	klog.V(logInfoLev).Infof("enter node(%s) predicate", node.Name)
 	defer klog.V(logInfoLev).Infof("leave node(%s) predicate", node.Name)
 
 	if task == nil || node == nil {

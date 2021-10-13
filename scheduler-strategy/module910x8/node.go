@@ -175,8 +175,8 @@ func checkNPUResourceStable(node *vapi.NodeInfo) error {
 // The reason for not considering nodes passed in by the current framework is
 // fault node
 func clusterNodePredicateFn(task *api.TaskInfo, ssn *framework.Session) error {
-	klog.V(logDebugLev).Infof("%s enter clusterNodePredicateFn.", PluginName)
-	defer klog.V(logDebugLev).Infof("%s leave clusterNodePredicateFn.", PluginName)
+	klog.V(logDebugLev).Infof("%s enter %s clusterNodePredicateFn.", PluginName, task.Name)
+	defer klog.V(logDebugLev).Infof("%s leave %s clusterNodePredicateFn.", PluginName, task.Name)
 
 	// 1.Determine if it is a 910 jobs.
 	if err := isMyTask(task); err != nil {
