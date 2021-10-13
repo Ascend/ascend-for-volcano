@@ -278,12 +278,10 @@ func ValidStringMapKeyAndValue(tmpMap map[string]string, key, value string) bool
 	tmpValue, ok := tmpMap[key]
 	if !ok {
 		// no acceleratorType means module
-		klog.V(logDebugLev).Infof("no %s.", acceleratorType)
 		return false
 	}
 
 	if tmpValue == value {
-		klog.V(logDebugLev).Infof("%s not equal.", accelerator910Value)
 		return true
 	}
 

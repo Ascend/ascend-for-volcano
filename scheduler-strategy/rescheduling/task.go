@@ -29,7 +29,6 @@ import (
 	"strconv"
 	"strings"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 func isTaskHasFaultNPU(taskNPUs []string, nodeFaultNPUs []string) bool {
@@ -148,42 +147,4 @@ func SetFaultJobPodIndex(task *api.TaskInfo) error {
 		}
 	}
 	return nil
-}
-
-func getFaultTaskNPUUseCards(task *api.TaskInfo) (string, error) {
-	value, err := getReSchedulerTasksFromCache(task)
-	if err != nil {
-		return "", err
-	}
-
-	topStr, ok := value.TaskUseNPUs[task.Name]
-	if !ok {
-		msg := fmt.Errorf("%s npu card nil", task.Name)
-		klog.V(logDebugLev).Infof("%v.", msg)
-		return "", msg
-	}
-
-	klog.V(logDebugLev).Infof("getFaultTaskNPUUseCards %s use:%v.", task.Name, topStr)
-	return topStr, nil
-}
-
-// getTaskUseNPUIntCards get task use NPU int cards.
-func getTaskUseNPUIntCards(task *api.TaskInfo, npuCardName string, npuCardPreName string) []int {
-	var topInt []int
-
-	topStr, err := getFaultTaskNPUUseCards(task)
-	if err != nil {
-		klog.V(logErrorLev).Infof("Get Top from task top nil:%v.", err)
-		return nil
-	}
-
-	// cannot judge len(topInt) is 0, for pipelined state
-	topInt = util.ChangeTopToIntArray(topStr, npuCardPreName)
-	if topInt == nil {
-		klog.V(logInfoLev).Infof("%s getTop from %s nil(%s).", npuCardName, task.Name, topStr)
-		return nil
-	}
-
-	klog.V(logDebugLev).Infof("%s GetTaskUseNPUIntCards int: %v, s: %s.", npuCardName, topInt, topStr)
-	return topInt
 }

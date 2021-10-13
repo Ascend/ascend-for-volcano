@@ -33,17 +33,14 @@ import (
 )
 
 func initVNodesFn(nodes map[string]*api.NodeInfo) error {
-	for _, node := range nodes {
-		node.Others = make(map[string]interface{}, 1)
+	for key := range nodes {
 		for _, vType := range VnpuType {
-			nTopStr, err := getResourceFromAnnotationFn(node.Node.Annotations, vType)
+			nTopStr, err := getResourceFromAnnotationFn(nodes[key].Node.Annotations, vType)
 			if err != nil {
+				klog.V(logDebugLev).Infof("%s initVNodesFn %s %v", nodes[key].Name, vType, err)
 				continue
 			}
-			if node.Others == nil {
-				node.Others = make(map[string]interface{}, 1)
-			}
-			err = hwutil.SaveTopologyInMap(node.Others, nTopStr, vType)
+			err = hwutil.SaveTopologyInMap(nodes[key].Others, nTopStr, vType)
 			if err != nil {
 				return err
 			}
@@ -64,8 +61,7 @@ func getResourceFromAnnotationFn(Annotations map[string]string, resourceName str
 	// node annotation with a value of empty string. If topStr is empty, an error should be returned so that that type
 	// of resource will be ignored.
 	if !ok || topStr == "" {
-		klog.V(logDebugLev).Infof("getResourceFromNodeAnnotationFn failed.")
-		return "", errors.New("requested resource does not exist")
+		return "", fmt.Errorf("requested %s does not exist", resourceName)
 	}
 
 	return topStr, nil

@@ -27,7 +27,6 @@ import (
 	time2 "time"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
-	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 func init() {
@@ -144,36 +143,4 @@ func SetFaultInNodeAndJobs(fNPUJobs []FaultNPUJob, jobs map[string]*api.JobInfo)
 	}
 
 	return nil
-}
-
-// GetNodeIdleNPUIntCardsIncludeFaultTask Getting the number of NPU chips idle on the node includes the failure task
-func GetNodeIdleNPUIntCardsIncludeFaultTask(task *api.TaskInfo, node *api.NodeInfo) []int {
-	var returnNPUs []int
-	var temp []int
-
-	nodeNPUTopology := hwutil.GetTopFromNodeOthers(node, npu800And9000CardName, npu800And9000CardPreName)
-	taskNPUTopology := getTaskUseNPUIntCards(task, npu800And9000CardName, npu800And9000CardPreName)
-	temp = append(temp, nodeNPUTopology...)
-	allIntNPUs := append(temp, taskNPUTopology...)
-
-	allNodeFaultNPUs, err := getNodeFaultNPUsByInt(node)
-	if err != nil {
-		return nil
-	}
-
-	// Gets the difference set of slices.
-	for _, card := range allIntNPUs {
-		i := 0
-		for _, fCard := range allNodeFaultNPUs {
-			if card == fCard {
-				i++
-				break
-			}
-		}
-		if i == 0 {
-			returnNPUs = append(returnNPUs, card)
-		}
-	}
-
-	return returnNPUs
 }

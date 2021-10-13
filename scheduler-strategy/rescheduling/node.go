@@ -217,31 +217,6 @@ func isNodeHasFaultNPUs(node *api.NodeInfo) bool {
 	return true
 }
 
-func getNodeFaultNPUsByInt(node *api.NodeInfo) ([]int, error) {
-	var topInt []int
-
-	npusStrSlice, err := getNodeFaultNPUs(node, node910X8NPUNum)
-	if err != nil {
-		klog.V(logDebugLev).Infof("getNodeFaultNPUsByInt err:%v.", err)
-		return nil, err
-	}
-
-	for _, cardStr := range npusStrSlice {
-		// cannot use strings 's Trim
-		value := strings.TrimPrefix(cardStr, npu800And9000CardPreName)
-		klog.V(logDebugLev).Infof("getNodeFaultNPUsByInt after TrimPrefix %s.", value)
-		cardInt, err := strconv.Atoi(value)
-		if err != nil {
-			klog.V(logErrorLev).Infof("getNodeFaultNPUsByInt convert failed %v.", err)
-			return nil, err
-		}
-
-		topInt = append(topInt, cardInt)
-	}
-
-	return topInt, nil
-}
-
 func getNodeHeartbeatInterval(node *api.NodeInfo) (int, error) {
 	var heartbeatInterval = nodeUpdateTime
 	var err error
@@ -325,7 +300,7 @@ func getInoperableNodes(nodes map[string]*api.NodeInfo) ([]FaultNodeState, error
 
 	for _, nodeInfo := range nodes {
 		if !isEnableFaultNode(nodeInfo) {
-			klog.V(logDebugLev).Infof("%s fault node feature not enable", nodeInfo)
+			klog.V(logDebugLev).Infof("%s fault feature[%+v] not enable", nodeInfo.Name, nodeInfo.Node.Labels)
 			continue
 		}
 
@@ -455,7 +430,7 @@ func GetFaultTaskUseNodeInfo(task *api.TaskInfo, ssn *framework.Session) (*api.N
 	return node, nil
 }
 
-// IsNodeInFaultNodeList Check whether the node is in the faulty node list.
+// IsNodeInFaultNodeList Check whether the node is in the faulty node list, used for noded.
 func IsNodeInFaultNodeList(node *api.NodeInfo) bool {
 	nodeMap, ok := ReSchedulerCache[CmNodeKind]
 	if !ok {

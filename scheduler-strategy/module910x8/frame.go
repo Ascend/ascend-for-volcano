@@ -374,7 +374,7 @@ func preHandleFaultNPUFn(ssn *framework.Session) error {
 		klog.V(logDebugLev).Infof("%s preHandleFaultNPUFn %v.", PluginName, err)
 	}
 	// 2.Determine if it is a 910 jobs.
-	jobs, jobGetErr := get910x8Jobs(ssn.Jobs)
+	jobs, jobGetErr := get910x8RunningJobs(ssn.Jobs)
 	if jobGetErr != nil {
 		klog.V(logDebugLev).Infof("%s get910x8Jobs: %v.", PluginName, jobGetErr)
 		return nil

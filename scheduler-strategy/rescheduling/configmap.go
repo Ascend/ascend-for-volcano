@@ -83,7 +83,6 @@ func createOrUpdateConfigMap(k8s kubernetes.Interface, cm *v1.ConfigMap) error {
 
 func convertToReSchedulerJobsMapFromCM(buffer string) (map[string]ReSchedulerTasks, error) {
 	reSchedulerJob := map[string]ReSchedulerTasks{}
-
 	if unmarshalErr := json.Unmarshal([]byte(buffer), &reSchedulerJob); unmarshalErr != nil {
 		return nil, unmarshalErr
 	}

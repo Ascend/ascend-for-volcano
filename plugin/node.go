@@ -34,12 +34,19 @@ import (
 // Init hw npu nodes, used in npu plugins.
 func (hwNPU *ScheduleHandler) initNodesNPUAllocTopology(nodes map[string]*api.NodeInfo) error {
 	for cardName, initNodes := range hwNPU.InitNodesNPUAllocTopologyFns {
+		for key := range nodes {
+			node := nodes[key]
+			if node.Others == nil {
+				node.Others = make(map[string]interface{}, 1)
+				nodes[key] = node
+			}
+		}
+
 		if err := initNodes(nodes); err != nil {
 			klog.V(logErrorLev).Infof("%s InitNodesNPUAllocTopology :%v.", cardName, err)
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -246,7 +253,6 @@ func (hwNPU *ScheduleHandler) checkNPUResourceStable(task *api.TaskInfo, node *a
 	if curNPUPlugin == nil {
 		return errors.New(noneNPUPlugin)
 	}
-
 	return curNPUPlugin.CheckNPUResourceStableFn(node)
 }
 
@@ -264,8 +270,8 @@ func (hwNPU *ScheduleHandler) ClusterNodePredicate(task *api.TaskInfo, ssn *fram
 
 // NodePredicate Predicate node by volcano frame.
 func (hwNPU *ScheduleHandler) NodePredicate(task *api.TaskInfo, node *api.NodeInfo, ssn *framework.Session) error {
-	klog.V(logInfoLev).Infof("enter node predicate")
-	defer klog.V(logInfoLev).Infof("leave node predicate")
+	klog.V(logInfoLev).Infof("enter node(%s) predicate", node.Name)
+	defer klog.V(logInfoLev).Infof("leave node(%s) predicate", node.Name)
 
 	if task == nil || node == nil {
 		klog.V(logErrorLev).Infof("%s got null parameter(s), which is invalid", PluginName)

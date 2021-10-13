@@ -27,7 +27,6 @@ import (
 	"k8s.io/klog"
 	"strconv"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/rescheduling"
 	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
@@ -290,44 +289,23 @@ func judgeNodeAndTaskNPU(taskNPU int, nodeNPUTopology []int) error {
 	return meetErr
 }
 
-func isNodeMeetTaskReqNPUSource(task *api.TaskInfo, node *api.NodeInfo) bool {
-	var meetFlag = false
-
+func isUnstableNodeMeetTaskReqNPUSource(task *api.TaskInfo, node *api.NodeInfo) bool {
 	taskNPU, taskError := hwutil.GetTaskNPUNum(task, npu800And9000CardName)
 	if taskError != nil {
 		klog.V(logErrorLev).Infof("getTaskNPUNum %s : %s", nodesNoMeetNPUReqError, taskError)
 		return false
 	}
-	// Getting the number of NPU chips idle on the node includes the failure task
-	idleNPUTopology := rescheduling.GetNodeIdleNPUIntCardsIncludeFaultTask(task, node)
-	if len(idleNPUTopology) == 0 {
-		// node has none npu
-		klog.V(logErrorLev).Infof("%s add %s:get npu nil", node.Name, task.Name)
+
+	nodeNPU, nodeError := hwutil.GetNodeIdleNPUNum(node, npu800And9000CardName)
+	if nodeError != nil {
+		klog.V(logErrorLev).Infof("getNodeIdleNPUNum %s : %s", nodesNoMeetNPUReqError, nodeError)
 		return false
 	}
 
-	leftCardNum, rightCardNum := hwutil.GetNodeHccsCardNum(idleNPUTopology)
-
-	switch taskNPU {
-	case 0:
-		return true
-	case 1:
-		meetFlag = (leftCardNum > 0) || (rightCardNum > 0)
-	case constIntNum2:
-		meetFlag = (leftCardNum > 1) || (rightCardNum > 1)
-	case npuNumPerHccs:
-		meetFlag = (leftCardNum == npuNumPerHccs) || (rightCardNum == npuNumPerHccs)
-	case nodeNPUNumber:
-		meetFlag = (leftCardNum + rightCardNum) == nodeNPUNumber
-	default:
-		klog.V(logErrorLev).Infof("%s %s get wrong %v NPU number.", PluginName, task.Name, taskNPU)
-	}
-
-	if meetFlag {
-		klog.V(logInfoLev).Infof("%s %s %v meet req %d.", PluginName, node.Name, idleNPUTopology, taskNPU)
+	if nodeNPU >= taskNPU {
+		klog.V(logInfoLev).Infof("%s %s %d meet req %d.", PluginName, node.Name, nodeNPU, taskNPU)
 		return true
 	}
-
-	klog.V(logErrorLev).Infof("%s %v not meet req %d.", PluginName, idleNPUTopology, taskNPU)
+	klog.V(logErrorLev).Infof("%s %s %d not meet req %d.", PluginName, node.Name, nodeNPU, taskNPU)
 	return false
 }

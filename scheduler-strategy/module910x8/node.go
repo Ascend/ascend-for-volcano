@@ -29,7 +29,6 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/api"
 	vapi "volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/rescheduling"
 	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
@@ -134,27 +133,22 @@ func getNodeNPUNumFromOthers(nodeInfo *api.NodeInfo) (int, error) {
 }
 
 func initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) error {
-	for _, node := range nodes {
-		if hwutil.IsCardModeNode(node) {
+	for key := range nodes {
+		if hwutil.IsCardModeNode(nodes[key]) {
 			continue
 		}
 
-		topStr, err := hwutil.GetNPUAllocCardsFromNodeAnnotations(node, npu800And9000CardName)
+		topStr, err := hwutil.GetNPUAllocCardsFromNodeAnnotations(nodes[key], npu800And9000CardName)
 		if err != nil {
 			klog.V(logDebugLev).Infof("%s initNodesFn :%v.", PluginName, err)
 			return nil
 		}
 
-		if node.Others == nil {
-			node.Others = make(map[string]interface{}, 1)
-		}
-
-		err = hwutil.SaveTopologyInMap(node.Others, topStr, npu800And9000CardName)
+		err = hwutil.SaveTopologyInMap(nodes[key].Others, topStr, npu800And9000CardName)
 		if err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -178,17 +172,14 @@ func checkNPUResourceStable(node *vapi.NodeInfo) error {
 }
 
 // Pre-select cluster processing.
+// The reason for not considering nodes passed in by the current framework is
+// fault node
 func clusterNodePredicateFn(task *api.TaskInfo, ssn *framework.Session) error {
-	klog.V(logDebugLev).Infof("%s enter clusterNodePredicateFn.", PluginName)
-	defer klog.V(logDebugLev).Infof("%s leave clusterNodePredicateFn.", PluginName)
+	klog.V(logDebugLev).Infof("%s enter %s clusterNodePredicateFn.", PluginName, task.Name)
+	defer klog.V(logDebugLev).Infof("%s leave %s clusterNodePredicateFn.", PluginName, task.Name)
 
-	job, err := plugin.GetJobInfoByTask(task, ssn)
-	if err != nil {
-		klog.V(logErrorLev).Infof("%s get910x8Jobs: %v.", PluginName, err)
-		return nil
-	}
 	// 1.Determine if it is a 910 jobs.
-	if err := isMyJob(job); err != nil {
+	if err := isMyTask(task); err != nil {
 		klog.V(logDebugLev).Infof("%s get910x8Jobs: %v.", PluginName, err)
 		return nil
 	}
@@ -197,28 +188,24 @@ func clusterNodePredicateFn(task *api.TaskInfo, ssn *framework.Session) error {
 		klog.V(logDebugLev).Infof("%s %s is not npu fault job.", PluginName, task.Name)
 		return nil
 	}
-	// 3.Whether the job is distributed
-	if rescheduling.IsDistributedJob(job) {
-		klog.V(logDebugLev).Infof("%s %s is distributed job.", PluginName, job.Name)
-		return nil
-	}
-	// 4.Get the task uses node.
+	// 3.Get the task uses node.
 	node, err := rescheduling.GetFaultTaskUseNodeInfo(task, ssn)
 	if err != nil {
 		klog.V(logErrorLev).Infof("%s %s %v.", PluginName, task.Name, err)
 		return nil
 	}
-	// 5.check node NPU Resource Stable
+	// 4.check node NPU Resource Stable
 	stableErr := checkNPUResourceStable(node)
 	if stableErr == nil {
 		klog.V(logDebugLev).Infof("%s %s NPU Resource Stable.", PluginName, node.Name)
 		return nil
 	}
 	klog.V(logInfoLev).Infof("%s %s %v.", PluginName, node.Name, stableErr)
-	// 6.Instability requires a decision on whether to continue to wait this node..
-	if isNodeMeetTaskReqNPUSource(task, node) {
+	// 5.Instability requires a decision on whether to continue to wait this node..
+	if isUnstableNodeMeetTaskReqNPUSource(task, node) {
 		return fmt.Errorf("%s is meet npu fault task %s, need continue using this node", node.Name, task.Name)
 	}
+	klog.V(logInfoLev).Infof("%s %s not meet %s req.", PluginName, node.Name, task.Name)
 
 	return nil
 }

@@ -31,21 +31,18 @@ import (
 )
 
 func initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) error {
-	for _, node := range nodes {
-		if !hwutil.IsCardModeNode(node) {
+	for key := range nodes {
+		if !hwutil.IsCardModeNode(nodes[key]) {
 			continue
 		}
 
-		topStr, err := hwutil.GetNPUAllocCardsFromNodeAnnotations(node, a300TNPUCardName)
+		topStr, err := hwutil.GetNPUAllocCardsFromNodeAnnotations(nodes[key], a300TNPUCardName)
 		if err != nil {
 			klog.V(logDebugLev).Infof("%s initNodesFn :%v", PluginName, err)
 			return nil
 		}
 
-		if node.Others == nil {
-			node.Others = make(map[string]interface{}, 1)
-		}
-		err = hwutil.SaveTopologyInMap(node.Others, topStr, a300TNPUCardName)
+		err = hwutil.SaveTopologyInMap(nodes[key].Others, topStr, a300TNPUCardName)
 		if err != nil {
 			return err
 		}

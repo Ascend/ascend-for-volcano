@@ -146,7 +146,7 @@ func forceDeleteFaultJob(ssn *framework.Session, job *api.JobInfo) error {
 			return err
 		}
 
-		klog.V(logInfoLev).Infof("Pod %q fully terminated and removed from etcd", pod)
+		klog.V(logInfoLev).Infof("%s force terminated and removed from etcd", pod.Name)
 	}
 	return nil
 }
@@ -278,6 +278,12 @@ func isJobInitial(job *api.JobInfo) bool {
 	if job.ValidTaskNum() < job.MinAvailable {
 		return false
 	}
+
+	if job.PodGroup.Status.Phase != scheduling.PodGroupRunning {
+		klog.V(logInfoLev).Infof("%s not running", job.UID)
+		return false
+	}
+
 	return true
 }
 
