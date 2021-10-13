@@ -40,9 +40,6 @@ func initVNodesFn(nodes map[string]*api.NodeInfo) error {
 				klog.V(logDebugLev).Infof("%s initVNodesFn %s %v", nodes[key].Name, vType, err)
 				continue
 			}
-			if nodes[key].Others == nil {
-				nodes[key].Others = make(map[string]interface{}, 1)
-			}
 			err = hwutil.SaveTopologyInMap(nodes[key].Others, nTopStr, vType)
 			if err != nil {
 				return err

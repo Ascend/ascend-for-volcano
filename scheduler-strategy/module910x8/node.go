@@ -205,7 +205,7 @@ func clusterNodePredicateFn(task *api.TaskInfo, ssn *framework.Session) error {
 	if isUnstableNodeMeetTaskReqNPUSource(task, node) {
 		return fmt.Errorf("%s is meet npu fault task %s, need continue using this node", node.Name, task.Name)
 	}
-	klog.V(logInfoLev).Infof("%s not meet %s req.", PluginName, node.Name, task.Name)
+	klog.V(logInfoLev).Infof("%s %s not meet %s req.", PluginName, node.Name, task.Name)
 
 	return nil
 }
