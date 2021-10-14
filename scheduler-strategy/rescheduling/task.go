@@ -139,7 +139,6 @@ func SetFaultJobPodIndex(job *api.JobInfo) error {
 			klog.V(logInfoLev).Infof("SetFaultJobPodIndex %s %v.", task.Name, err)
 			return err
 		}
-		klog.V(logInfoLev).Infof("哈哈 %+v.", ReSchedulerCache[CmJobKind])
 		klog.V(logDebugLev).Infof("%s SetFaultJobPodIndex from buffer: %v.", task.Job, tmpValue)
 		for taskName, rankIndex := range tmpValue.RankIndexes {
 			if taskName == task.Name {
