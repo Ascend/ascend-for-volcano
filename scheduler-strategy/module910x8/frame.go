@@ -257,12 +257,6 @@ func (tp *module910x8) SetNPUTopologyToPodFn(task *vapi.TaskInfo, top interface{
 	// to device-plugin judge pending pod.
 	task.Pod.Annotations[podPredicateTime] = strconv.FormatInt(time.Now().UnixNano(), 10)
 	klog.V(logInfoLev).Infof("%s setNPUTopologyToPod %s top:%s.", PluginName, task.Name, topologyStr)
-
-	if err := rescheduling.SetFaultJobPodIndex(task); err != nil {
-		klog.V(logInfoLev).Infof("%s setFaultJobPodIndex %s %v.", PluginName, task.Name, err)
-		return err
-	}
-
 	return nil
 }
 

@@ -66,5 +66,10 @@ func FakeNormalTestJob(jobName string, taskNum int) *api.JobInfo {
 	tasks := FakeNormalTestTasks(taskNum)
 	job := api.NewJobInfo(api.JobID("vcjob/"+jobName), tasks...)
 	job.Name = jobName
+	for _, task := range tasks {
+		task.Job = job.UID
+	}
+	job.PodGroup = new(api.PodGroup)
+	job.PodGroup.Status.Phase = scheduling.PodGroupPending
 	return job
 }
