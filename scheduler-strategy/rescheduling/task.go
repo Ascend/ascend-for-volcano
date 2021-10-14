@@ -131,19 +131,22 @@ func AddScoreByFaultNPUTask(task *api.TaskInfo, scoreMap map[string]float64) (ma
 }
 
 // SetFaultJobPodIndex Set the rankIndex of all pods of the failed task
-func SetFaultJobPodIndex(task *api.TaskInfo) error {
-	tmpValue, err := getReSchedulerTasksFromCache(task)
-	if err != nil {
-		klog.V(logInfoLev).Infof("SetFaultJobPodIndex %s %v.", task.Name, err)
-		return err
-	}
-
-	klog.V(logDebugLev).Infof("%s SetFaultJobPodIndex from buffer: %v.", task.Job, tmpValue)
-	for taskName, rankIndex := range tmpValue.RankIndexes {
-		if taskName == task.Name {
-			klog.V(logInfoLev).Infof("set %s rankIndex %v.", task.Pod.Name, rankIndex)
-			task.Pod.Annotations[podRankIndex] = rankIndex
-			break
+// For there are gaps in the status of the volcano update podgroup, so set fault job rankIndex by job not task.
+func SetFaultJobPodIndex(job *api.JobInfo) error {
+	for _, task := range job.Tasks {
+		tmpValue, err := getReSchedulerTasksFromCache(task)
+		if err != nil {
+			klog.V(logInfoLev).Infof("SetFaultJobPodIndex %s %v.", task.Name, err)
+			return err
+		}
+		klog.V(logInfoLev).Infof("哈哈 %+v.", ReSchedulerCache[CmJobKind])
+		klog.V(logDebugLev).Infof("%s SetFaultJobPodIndex from buffer: %v.", task.Job, tmpValue)
+		for taskName, rankIndex := range tmpValue.RankIndexes {
+			if taskName == task.Name {
+				klog.V(logInfoLev).Infof("set %s rankIndex %v.", task.Pod.Name, rankIndex)
+				task.Pod.Annotations[podRankIndex] = rankIndex
+				break
+			}
 		}
 	}
 	return nil
