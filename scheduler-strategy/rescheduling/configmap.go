@@ -84,6 +84,7 @@ func createOrUpdateConfigMap(k8s kubernetes.Interface, cm *v1.ConfigMap) error {
 func convertToReSchedulerJobsMapFromCM(buffer string) (map[string]ReSchedulerTasks, error) {
 	reSchedulerJob := map[string]ReSchedulerTasks{}
 	if unmarshalErr := json.Unmarshal([]byte(buffer), &reSchedulerJob); unmarshalErr != nil {
+		klog.V(logErrorLev).Infof("convertToReSchedulerJobsMapFromCM: %v %v.", buffer, unmarshalErr)
 		return nil, unmarshalErr
 	}
 	return reSchedulerJob, nil
@@ -134,6 +135,18 @@ func updateFaultCardFromCM(tmpData string) error {
 	return nil
 }
 
+func updateNodeHeartbeatFromCM(tmpData string) error {
+	heartbeat, covErr := convertToNodeHeartbeatMapFromCM(tmpData)
+	if covErr != nil {
+		klog.V(logErrorLev).Infof("convertToNodeHeartbeatMapFromCM: %v.", covErr)
+		return covErr
+	}
+
+	ReSchedulerCache[CmNodeHeartbeatKind] = heartbeat
+
+	return nil
+}
+
 func updateReSchedulerData(cmData *v1.ConfigMap) error {
 	if len(cmData.Data) == 0 {
 		klog.V(logDebugLev).Infof("updateFaultNodeFromCM cmData is nil, nothing to do.")
@@ -158,6 +171,10 @@ func updateReSchedulerData(cmData *v1.ConfigMap) error {
 		case CmCardKind:
 			if err := updateFaultCardFromCM(buffer); err != nil {
 				klog.V(logErrorLev).Infof("updateFaultCardFromCM: %v.", err)
+			}
+		case CmNodeHeartbeatKind:
+			if err := updateNodeHeartbeatFromCM(buffer); err != nil {
+				klog.V(logErrorLev).Infof("updateNodeHeartbeatFromCM: %v.", err)
 			}
 		default:
 			klog.V(logErrorLev).Infof("updateReSchedulerData no support type:%v", dataID)
@@ -219,12 +236,19 @@ func getCMWriteDate(ssn *framework.Session, reSchedulerData map[string]interface
 			}
 			data[CmNodeKind] = data[CmNodeKind] + nodeData
 		case CmCardKind:
-			nodeData, err := getCMCardWriteData(faultData)
+			cardData, err := getCMCardWriteData(faultData)
 			if err != nil {
 				klog.V(logDebugLev).Infof("getCMCardWriteData :%v.", err)
 				continue
 			}
-			data[CmCardKind] = data[CmCardKind] + nodeData
+			data[CmCardKind] = data[CmCardKind] + cardData
+		case CmNodeHeartbeatKind:
+			heartbeatData, err := getCMHeartbeatWriteData(faultData)
+			if err != nil {
+				klog.V(logDebugLev).Infof("getCMHeartbeatWriteData :%v.", err)
+				continue
+			}
+			data[CmNodeHeartbeatKind] = data[CmNodeHeartbeatKind] + heartbeatData
 		default:
 			klog.V(logErrorLev).Infof("getCMWriteDate not support %T.", dataKind)
 		}

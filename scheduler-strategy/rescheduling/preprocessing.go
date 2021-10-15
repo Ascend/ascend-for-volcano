@@ -57,6 +57,11 @@ func updateReSchedulerDataFromSession(ssn *framework.Session) error {
 				klog.V(logDebugLev).Infof("synReSchedulerDataAndCache %v.", err)
 			}
 			continue
+		case CmNodeHeartbeatKind:
+			if err := synNodeHeartbeatCache(ssn, tmpValue); err != nil {
+				klog.V(logDebugLev).Infof("synReSchedulerDataAndCache %v.", err)
+			}
+			continue
 		default:
 			klog.V(logErrorLev).Infof("not support %v.", dataID)
 		}

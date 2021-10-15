@@ -74,12 +74,7 @@ func getCMJobWriteData(ssn *framework.Session, jobData interface{}) (string, err
 		data[job.Namespace+"_"+job.Name] = string(buffer)
 	}
 
-	dataBuffer, err := json.Marshal(data)
-	if err != nil {
-		klog.V(logErrorLev).Infof("getCMJobWriteData Marshal data err: %v.", err)
-		return "", err
-	}
-	return string(dataBuffer), nil
+	return marshalCacheDataToString(data)
 }
 
 // Delete expired job data.
