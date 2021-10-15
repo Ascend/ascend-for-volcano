@@ -55,51 +55,88 @@ func convertToReSchedulerCardsMapFromCM(buffer string) (map[string]FaultNPUsOnNo
 	return faultNodeNPUs, nil
 }
 
-func getCMCardWriteData(nodeData interface{}) (string, error) {
-	dataBuffer, err := json.Marshal(nodeData)
-	if err != nil {
-		klog.V(logErrorLev).Infof("getCMCardWriteData Marshal data err: %v.", err)
-		return "", err
+func convertToNodeHeartbeatMapFromCM(buffer string) (map[string]NormalNodeHeartbeat, error) {
+	heartbeat := map[string]NormalNodeHeartbeat{}
+
+	if unmarshalErr := json.Unmarshal([]byte(buffer), &heartbeat); unmarshalErr != nil {
+		return nil, unmarshalErr
 	}
 
+	return heartbeat, nil
+}
+
+func getCMCardWriteData(nodeData interface{}) (string, error) {
+	return marshalCacheDataToString(nodeData)
+}
+
+func getCMHeartbeatWriteData(nodeData interface{}) (string, error) {
+	return marshalCacheDataToString(nodeData)
+}
+
+func marshalCacheDataToString(data interface{}) (string, error) {
+	dataBuffer, err := json.Marshal(data)
+	if err != nil {
+		klog.V(logErrorLev).Infof("marshalCacheDataToString err: %v.", err)
+		return "", err
+	}
 	return string(dataBuffer), nil
 }
 
 func getCMNodeWriteData(nodeData interface{}) (string, error) {
-	dataBuffer, err := json.Marshal(nodeData)
-	if err != nil {
-		klog.V(logErrorLev).Infof("getCMNodeWriteData Marshal data err: %v.", err)
-		return "", err
-	}
-	return string(dataBuffer), nil
+	return marshalCacheDataToString(nodeData)
 }
 
-func getInt64Abs(num int64) int64 {
-	if num < 0 {
-		return -num
+func getNodeHeartbeatInfoFromCache(node *api.NodeInfo) (NormalNodeHeartbeat, error) {
+	tmp, mapOK := ReSchedulerCache[CmNodeHeartbeatKind]
+	if !mapOK {
+		return NormalNodeHeartbeat{}, fmt.Errorf("ReSchedulerCache no kind of %v", CmNodeHeartbeatKind)
 	}
-	return num
+	nodesHeartBeat, ok := tmp.(map[string]NormalNodeHeartbeat)
+	if !ok {
+		return NormalNodeHeartbeat{}, fmt.Errorf("getNodeHeartbeatFromCache assert %v failed", tmp)
+	}
+	nodeHeartBeat, getOk := nodesHeartBeat[node.Name]
+	if !getOk {
+		return NormalNodeHeartbeat{}, fmt.Errorf("getNodeHeartbeatFromCache %s nonexistent", node.Name)
+	}
+
+	return nodeHeartBeat, nil
+}
+
+func getNodeHeartbeatIntervalAndUpdateTimeFromCache(node *api.NodeInfo) (int64, int64, error) {
+	heartbeatInfo, err := getNodeHeartbeatInfoFromCache(node)
+	if err != nil {
+		klog.V(logErrorLev).Infof("isNodeHealth %v.", err)
+		return 0, 0, err
+	}
+
+	heartbeatInterval := heartbeatInfo.HeartbeatInterval
+	maxInterval := int64(heartbeatInterval) * constIntNum3
+
+	updateHeartbeatTime := heartbeatInfo.UpdateHeartbeatTime
+	return maxInterval, updateHeartbeatTime, nil
 }
 
 func isNodeHealth(node *api.NodeInfo) bool {
-	// If the Time exceeds 15 seconds, the fault occurs.
-	heartbeatTime, err := getNodeHeartbeat(node)
-	if err != nil {
-		klog.V(logErrorLev).Infof("isNodeHealth %v.", err)
-		// No Heartbeat, no need rectify.
+	if !isEnableFaultNode(node) {
+		klog.V(logDebugLev).Infof("isNodeHealth %s fault feature[%+v] not enable", node.Name, node.Node.Labels)
 		return true
 	}
 
-	heartbeatInterval, intervalErr := getNodeHeartbeatInterval(node)
-	if intervalErr != nil {
-		klog.V(logErrorLev).Infof("getNodeHeartbeatInterval %v, will use %d.", err, nodeUpdateTime)
+	maxInterval, updateHeartbeatTime, err := getNodeHeartbeatIntervalAndUpdateTimeFromCache(node)
+	if err != nil {
+		return false
 	}
-	maxInterval := int64(heartbeatInterval) * constIntNum3
 
 	nowTime := time.Now().Unix()
-	if getInt64Abs(nowTime-heartbeatTime) > maxInterval {
+	margin := nowTime - updateHeartbeatTime
+	if margin < 0 {
+		klog.V(logErrorLev).Infof(" isNodeHealth %s cache Time is newer[%d-%d], confused, skip.",
+			node.Name, nowTime, updateHeartbeatTime)
+	}
+	if margin > maxInterval {
 		klog.V(logErrorLev).Infof(" %s Time over %d [%d-%d],not health.",
-			node.Name, heartbeatInterval, nowTime, maxInterval)
+			node.Name, maxInterval, nowTime, updateHeartbeatTime)
 		return false
 	}
 
@@ -138,6 +175,82 @@ func synReSchedulerNodeCache(ssn *framework.Session, tmpValue interface{}) error
 		}
 	}
 	ReSchedulerCache[CmNodeKind] = nodeMap
+
+	return nil
+}
+
+func updateNodeIntoNodesHeartbeatTmp(ssn *framework.Session) error {
+	nodesHeartbeat := make(map[string]NormalNodeHeartbeat, constIntNum3)
+	temp, ok := ReSchedulerCache[CmNodeHeartbeatKind]
+	if ok {
+		nodesHeartbeat, ok = temp.(map[string]NormalNodeHeartbeat)
+		if !ok {
+			klog.V(logDebugLev).Infof("updateNodeIntoNodesHeartbeatTmp assert failed %v", temp)
+			return fmt.Errorf("assert map[string]NormalNodeHeartbeat failed")
+		}
+	}
+
+	for _, nodeInfo := range ssn.Nodes {
+		if !isEnableFaultNode(nodeInfo) {
+			klog.V(logDebugLev).Infof("%s fault feature not enable, not add in cache", nodeInfo.Name)
+			continue
+		}
+		// 2.get node heartbeat
+		updateTime := time.Now().Unix()
+		oldHeartBeat := int64(-1)
+		updateHeartbeatTime := updateTime
+		nodeHeartBeat, ok := nodesHeartbeat[nodeInfo.Name]
+		if ok {
+			oldHeartBeat = nodeHeartBeat.NodeDHeartbeat
+		}
+
+		newHeartBeat, heartBeatErr := getNodeHeartbeat(nodeInfo)
+		if heartBeatErr != nil {
+			newHeartBeat = oldHeartBeat
+			klog.V(logErrorLev).Infof("getNodeHeartbeat %v.", heartBeatErr)
+		}
+		if oldHeartBeat == newHeartBeat {
+			updateHeartbeatTime = nodeHeartBeat.UpdateHeartbeatTime
+		}
+		// 3.get node HeartbeatInterval
+		heartbeatInterval, intervalErr := getNodeHeartbeatInterval(nodeInfo)
+		if intervalErr != nil {
+			klog.V(logErrorLev).Infof("getNodeHeartbeatInterval %v, will use %d.", intervalErr, nodeUpdateTime)
+		}
+		// 4.add or update NodeHeartbeat
+		newNodeHeartbeat := NormalNodeHeartbeat{
+			NodeDHeartbeat:      newHeartBeat,
+			UpdateHeartbeatTime: updateHeartbeatTime,
+			HeartbeatInterval:   heartbeatInterval,
+			UpdateTime:          updateTime,
+		}
+		nodesHeartbeat[nodeInfo.Name] = newNodeHeartbeat
+	}
+	ReSchedulerCache[CmNodeHeartbeatKind] = nodesHeartbeat
+	return nil
+}
+
+// Delete expired heartbeat data.
+func synNodeHeartbeatCache(ssn *framework.Session, tmpValue interface{}) error {
+	nodesHeartbeat, assertOk := tmpValue.(map[string]NormalNodeHeartbeat)
+	if !assertOk {
+		msg := fmt.Errorf("assert %v to map[string]NormalNodeHeartbeat failed", tmpValue)
+		klog.V(logErrorLev).Infof("synNodeHeartbeatCache %v.", msg)
+		return msg
+	}
+
+	// delete nonexistent node
+	for nodeName := range nodesHeartbeat {
+		// 	No info
+		_, ok := ssn.Nodes[nodeName]
+		if !ok {
+			klog.V(logErrorLev).Infof("delete %s from heartbeat due to not existence.", nodeName)
+			delete(nodesHeartbeat, nodeName)
+			continue
+		}
+	}
+
+	ReSchedulerCache[CmNodeHeartbeatKind] = nodesHeartbeat
 
 	return nil
 }
@@ -299,10 +412,6 @@ func getInoperableNodes(nodes map[string]*api.NodeInfo) ([]FaultNodeState, error
 	var faultNPUNodes []FaultNodeState
 
 	for _, nodeInfo := range nodes {
-		if !isEnableFaultNode(nodeInfo) {
-			klog.V(logDebugLev).Infof("%s fault feature[%+v] not enable", nodeInfo.Name, nodeInfo.Node.Labels)
-			continue
-		}
 
 		if isNodeHealth(nodeInfo) {
 			continue

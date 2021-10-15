@@ -44,22 +44,31 @@ func updateReSchedulerDataFromSession(ssn *framework.Session) error {
 		switch dataID {
 		case CmJobKind:
 			if err := synReSchedulerJobCache(ssn, tmpValue); err != nil {
-				klog.V(logDebugLev).Infof("synReSchedulerDataAndCache %v.", err)
+				klog.V(logDebugLev).Infof("synReSchedulerJobCache %v.", err)
 			}
 			continue
 		case CmNodeKind:
 			if err := synReSchedulerNodeCache(ssn, tmpValue); err != nil {
-				klog.V(logDebugLev).Infof("synReSchedulerDataAndCache %v.", err)
+				klog.V(logDebugLev).Infof("synReSchedulerNodeCache %v.", err)
 			}
 			continue
 		case CmCardKind:
 			if err := synReSchedulerCardCache(ssn, tmpValue); err != nil {
-				klog.V(logDebugLev).Infof("synReSchedulerDataAndCache %v.", err)
+				klog.V(logDebugLev).Infof("synReSchedulerCardCache %v.", err)
+			}
+			continue
+		case CmNodeHeartbeatKind:
+			if err := synNodeHeartbeatCache(ssn, tmpValue); err != nil {
+				klog.V(logDebugLev).Infof("synNodeHeartbeatCache %v.", err)
 			}
 			continue
 		default:
 			klog.V(logErrorLev).Infof("not support %v.", dataID)
 		}
+	}
+	// 2.add new node
+	if err := updateNodeIntoNodesHeartbeatTmp(ssn); err != nil {
+		klog.V(logErrorLev).Infof("updateNodeIntoNodesHeartbeatTmp %v.", err)
 	}
 
 	return nil

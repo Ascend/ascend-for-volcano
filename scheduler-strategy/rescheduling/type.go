@@ -27,22 +27,21 @@ const (
 	// CmNodeKind the fault node data record in configmap.
 	CmNodeKind = "node"
 	// CmCardKind the fault card data record in configmap.
-	CmCardKind      = "card"
-	logErrorLev     = 1
-	logInfoLev      = 3
-	logDebugLev     = 4
-	constIntNum2    = 2
-	constIntNum3    = 3
-	node910X8NPUNum = 8
-	maxIntervalTime = 300
-	maxRankIndex    = 1000
-	archSelector    = "host-arch"
-	huaweiArchX86   = "huawei-x86"
-	huaweiArchArm   = "huawei-arm"
-	cmNameSpace     = "volcano-system"
-	cmName          = "vcjob-fault-npu-cm"
+	CmCardKind = "card"
+	// CmNodeHeartbeatKind the node  heartbeat record in configmap.
+	CmNodeHeartbeatKind = "heartbeat"
+	logErrorLev         = 1
+	logInfoLev          = 3
+	logDebugLev         = 4
+	constIntNum2        = 2
+	constIntNum3        = 3
+	node910X8NPUNum     = 8
+	maxIntervalTime     = 300
+	maxRankIndex        = 1000
+	cmNameSpace         = "volcano-system"
+	cmName              = "vcjob-fault-npu-cm"
 	// node inoperable interval time(s)
-	nodeUpdateTime        = 15
+	nodeUpdateTime        = 5
 	nodeHeartbeat         = "noded/heartbeat"
 	nodeHeartbeatInterval = "noded/heartbeat-interval"
 	faultNPU              = "huawei.com/Ascend910-Unhealthy"
@@ -117,6 +116,19 @@ type FaultNPUJob struct {
 	faultNPUJobBase
 	// task name:task annotation
 	taskUseNPUs map[string]string
+}
+
+// NormalNodeHeartbeat Record the heartbeat of a node to determine whether it is healthy.
+// map key is nodeName.
+type NormalNodeHeartbeat struct {
+	// nodeD send.
+	NodeDHeartbeat int64
+	// The time recorded by the node where volcano is located when NodeDHeartbeat changed.
+	UpdateHeartbeatTime int64
+	// nodeD Heartbeat interval time, need multiply by 3.
+	HeartbeatInterval int
+	// The time recorded last update.
+	UpdateTime int64
 }
 
 var reSchedulerJobController = make(map[string]struct{}, constIntNum3)
