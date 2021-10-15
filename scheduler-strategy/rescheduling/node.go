@@ -179,21 +179,10 @@ func synReSchedulerNodeCache(ssn *framework.Session, tmpValue interface{}) error
 	return nil
 }
 
-func deleteNonexistentNodeInNodesHeartbeatTmp(ssn *framework.Session, nodesHeartbeat map[string]NormalNodeHeartbeat) {
-	for nodeName := range nodesHeartbeat {
-		// 	No info
-		_, ok := ssn.Nodes[nodeName]
-		if !ok {
-			klog.V(logErrorLev).Infof("delete %s from heartbeat due to not existence.", nodeName)
-			delete(nodesHeartbeat, nodeName)
-			continue
-		}
-	}
-}
-
-func updateNodeIntoNodesHeartbeatTmp(ssn *framework.Session, nodesHeartbeat map[string]NormalNodeHeartbeat) error {
+func updateNodeIntoNodesHeartbeatTmp(ssn *framework.Session) error {
+	nodesHeartbeat := make(map[string]NormalNodeHeartbeat, constIntNum3)
 	for _, nodeInfo := range ssn.Nodes {
-		if isEnableFaultNode(nodeInfo) {
+		if !isEnableFaultNode(nodeInfo) {
 			klog.V(logDebugLev).Infof("%s fault feature not enable, not add in cache", nodeInfo.Name)
 			continue
 		}
@@ -228,6 +217,7 @@ func updateNodeIntoNodesHeartbeatTmp(ssn *framework.Session, nodesHeartbeat map[
 		}
 		nodesHeartbeat[nodeInfo.Name] = newNodeHeartbeat
 	}
+	ReSchedulerCache[CmNodeHeartbeatKind] = nodesHeartbeat
 	return nil
 }
 
@@ -240,14 +230,18 @@ func synNodeHeartbeatCache(ssn *framework.Session, tmpValue interface{}) error {
 		return msg
 	}
 
-	// 1.delete nonexistent node
-	deleteNonexistentNodeInNodesHeartbeatTmp(ssn, nodesHeartbeat)
-	// 2.add new node
-	if err := updateNodeIntoNodesHeartbeatTmp(ssn, nodesHeartbeat); err == nil {
-		klog.V(logErrorLev).Infof("updateNodeIntoNodesHeartbeatTmp %v.", err)
+	// delete nonexistent node
+	for nodeName := range nodesHeartbeat {
+		// 	No info
+		_, ok := ssn.Nodes[nodeName]
+		if !ok {
+			klog.V(logErrorLev).Infof("delete %s from heartbeat due to not existence.", nodeName)
+			delete(nodesHeartbeat, nodeName)
+			continue
+		}
 	}
 
-	ReSchedulerCache[CmCardKind] = nodesHeartbeat
+	ReSchedulerCache[CmNodeHeartbeatKind] = nodesHeartbeat
 
 	return nil
 }
