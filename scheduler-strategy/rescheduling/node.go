@@ -181,6 +181,15 @@ func synReSchedulerNodeCache(ssn *framework.Session, tmpValue interface{}) error
 
 func updateNodeIntoNodesHeartbeatTmp(ssn *framework.Session) error {
 	nodesHeartbeat := make(map[string]NormalNodeHeartbeat, constIntNum3)
+	temp, ok := ReSchedulerCache[CmNodeHeartbeatKind]
+	if ok {
+		nodesHeartbeat, ok = temp.(map[string]NormalNodeHeartbeat)
+		if !ok {
+			klog.V(logDebugLev).Infof("updateNodeIntoNodesHeartbeatTmp assert failed %v", temp)
+			return fmt.Errorf("assert map[string]NormalNodeHeartbeat failed")
+		}
+	}
+
 	for _, nodeInfo := range ssn.Nodes {
 		if !isEnableFaultNode(nodeInfo) {
 			klog.V(logDebugLev).Infof("%s fault feature not enable, not add in cache", nodeInfo.Name)
@@ -188,7 +197,7 @@ func updateNodeIntoNodesHeartbeatTmp(ssn *framework.Session) error {
 		}
 		// 2.get node heartbeat
 		updateTime := time.Now().Unix()
-		oldHeartBeat := int64(0)
+		oldHeartBeat := int64(-1)
 		updateHeartbeatTime := updateTime
 		nodeHeartBeat, ok := nodesHeartbeat[nodeInfo.Name]
 		if ok {
@@ -198,11 +207,11 @@ func updateNodeIntoNodesHeartbeatTmp(ssn *framework.Session) error {
 		newHeartBeat, heartBeatErr := getNodeHeartbeat(nodeInfo)
 		if heartBeatErr != nil {
 			newHeartBeat = oldHeartBeat
+			klog.V(logErrorLev).Infof("getNodeHeartbeat %v.", heartBeatErr)
 		}
 		if oldHeartBeat == newHeartBeat {
 			updateHeartbeatTime = nodeHeartBeat.UpdateHeartbeatTime
 		}
-
 		// 3.get node HeartbeatInterval
 		heartbeatInterval, intervalErr := getNodeHeartbeatInterval(nodeInfo)
 		if intervalErr != nil {
