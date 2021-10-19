@@ -522,7 +522,7 @@ func TestGetNetworkUnhealthyCards(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.args.cacheFun()
-			if got := GetNetworkUnhealthyCards(tt.args.node); !reflect.DeepEqual(got, tt.want) {
+			if got := GetNetworkUnhealthyCards(tt.args.node.Name); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetNetworkUnhealthyCards() = %v, want %v", got, tt.want)
 			}
 		})
@@ -934,7 +934,8 @@ func TestReleaseFaultJobTakeNodes(t *testing.T) {
 }
 
 type setFaultJobPodIndexArgs struct {
-	job      *api.JobInfo
+	task     *api.TaskInfo
+	node     *api.NodeInfo
 	cacheFun func()
 }
 
@@ -945,13 +946,13 @@ type setFaultJobPodIndexTests []struct {
 }
 
 func buildSetFaultJobPodIndexTestCases() setFaultJobPodIndexTests {
-	job1 := ascendtest.FakeNormalTestJob("pg1", constIntNum3)
-	job2 := ascendtest.FakeNormalTestJob("pg2", constIntNum3)
+	tasks := ascendtest.FakeNormalTestTasks(constIntNum2)
+	nodes := ascendtest.FakeNormalTestNodes(constIntNum2)
 	testCases := setFaultJobPodIndexTests{
 		{
 			name: "01-no record fault Cache-test",
 			args: setFaultJobPodIndexArgs{
-				job: job1, cacheFun: func() {
+				task: tasks[0], node: nodes[0], cacheFun: func() {
 					initTestReSchedulerCache()
 				},
 			},
@@ -960,19 +961,19 @@ func buildSetFaultJobPodIndexTestCases() setFaultJobPodIndexTests {
 		{
 			name: "02-not in record fault Cache-test",
 			args: setFaultJobPodIndexArgs{
-				job: job1, cacheFun: func() {
+				task: tasks[0], node: nodes[1], cacheFun: func() {
 					initTestReSchedulerCache()
-					addTestJobIntoReSchedulerCache(job2)
+					addTestTaskIntoReSchedulerCache(tasks[1])
 				},
 			},
-			wantErr: fmt.Errorf("no %v in jobMap", job1.UID),
+			wantErr: fmt.Errorf("no %v in jobMap", tasks[0].Job),
 		},
 		{
 			name: "03-in record fault Cache-test",
 			args: setFaultJobPodIndexArgs{
-				job: job1, cacheFun: func() {
+				task: tasks[0], node: nodes[0], cacheFun: func() {
 					initTestReSchedulerCache()
-					addTestJobIntoReSchedulerCache(job1)
+					addTestTaskIntoReSchedulerCache(tasks[0])
 				},
 			},
 			wantErr: nil,
@@ -987,7 +988,7 @@ func TestSetFaultJobPodIndex(t *testing.T) {
 	for _, tt := range tests {
 		tt.args.cacheFun()
 		t.Run(tt.name, func(t *testing.T) {
-			err := SetFaultJobPodIndex(tt.args.job)
+			err := SetFaultJobPodIndex(tt.args.task, tt.args.node)
 			if !reflect.DeepEqual(err, tt.wantErr) {
 				t.Errorf("SetFaultJobPodIndex() error = %v, wantErr %v", err, tt.wantErr)
 			}

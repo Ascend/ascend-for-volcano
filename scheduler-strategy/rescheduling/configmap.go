@@ -180,7 +180,6 @@ func updateReSchedulerData(cmData *v1.ConfigMap) error {
 			klog.V(logErrorLev).Infof("updateReSchedulerData no support type:%v", dataID)
 		}
 	}
-
 	return nil
 }
 
@@ -197,7 +196,7 @@ func updateFaultNPUInfFromCM(ssn *framework.Session) error {
 		return updateErr
 	}
 
-	klog.V(logDebugLev).Infof("updateFaultNPUInfFromCM success.")
+	klog.V(logDebugLev).Infof("updateFaultNPUInfFromCM success: %+v.", ReSchedulerCache)
 	return nil
 }
 

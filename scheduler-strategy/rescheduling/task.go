@@ -26,8 +26,10 @@ import (
 	"fmt"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
+	"reflect"
 	"strconv"
 	"strings"
+	"time"
 	"volcano.sh/volcano/pkg/scheduler/api"
 )
 
@@ -130,23 +132,92 @@ func AddScoreByFaultNPUTask(task *api.TaskInfo, scoreMap map[string]float64) (ma
 	return scoreMap, nil
 }
 
+func getOldTaskNodeAndIndexList(rTask ReSchedulerTasks) (map[string]string, error) {
+	var nodeAndIndexList = make(map[string]string, 1)
+	for taskName, rankIndex := range rTask.RankIndexes {
+		nodeName, ok := rTask.NodeNames[taskName]
+		if !ok {
+			return nil, fmt.Errorf("%s not in ReSchedulerCache\n", taskName)
+		}
+		nodeAndIndexList[nodeName] = rankIndex
+	}
+	return nodeAndIndexList, nil
+}
+
+func setOnOldNodeTaskRankIndex(rTask ReSchedulerTasks, task *api.TaskInfo, node *api.NodeInfo) error {
+	nodeAndIndexList, getOldErr := getOldTaskNodeAndIndexList(rTask)
+	if getOldErr != nil {
+		klog.V(logErrorLev).Infof("getOldTaskNodeAndIndexList: %v.", getOldErr)
+	}
+
+	now := time.Now().Unix()
+	if rankIndex, ok := nodeAndIndexList[node.Name]; ok {
+		klog.V(logInfoLev).Infof("%d: %s set old %s rankIndex %v.", now, task.Pod.Name, node.Name, rankIndex)
+		task.Pod.Annotations[podRankIndex] = rankIndex
+		return nil
+	}
+	return fmt.Errorf("%s not the previously used by the %s", node.Name, task.UID)
+}
+
+func setOnNewNodeTaskRankIndex(task *api.TaskInfo, node *api.NodeInfo) error {
+	rankIndexData, ok := ReSchedulerCache[TmpAllocRankIndexKind]
+	if !ok {
+		return fmt.Errorf("no rankIndex cache")
+	}
+	rankIndexJobMap, assertOk := rankIndexData.(map[api.JobID]TaskUsedRankIndex)
+	if !assertOk {
+		return fmt.Errorf("%v assert to map[api.JobID]TaskUsedRankIndex failed", rankIndexData)
+	}
+	rankIndexMap, mapOk := rankIndexJobMap[task.Job]
+	if !mapOk {
+		return fmt.Errorf("no rankIndex in rankIndexMap")
+	}
+
+	now := time.Now().Unix()
+	for rankIndex := range rankIndexMap.FaultNodeRankIndex {
+		klog.V(logInfoLev).Infof("%d: %s set new %s rankIndex %v.", now, task.Pod.Name, node.Name, rankIndex)
+		task.Pod.Annotations[podRankIndex] = rankIndex
+		// Delete after use
+		delete(rankIndexMap.FaultNodeRankIndex, rankIndex)
+		rankIndexJobMap[task.Job] = rankIndexMap
+		ReSchedulerCache[TmpAllocRankIndexKind] = rankIndexJobMap
+		return nil
+	}
+
+	return fmt.Errorf("%s set rankIndex failed", task.UID)
+}
+
+func setReSchedulerTaskRankIndex(rTask ReSchedulerTasks, task *api.TaskInfo, node *api.NodeInfo) error {
+	klog.V(logDebugLev).Infof("%s SetFaultJobPodIndex from: %+v.", task.Job, rTask)
+
+	setOldNodeErr := setOnOldNodeTaskRankIndex(rTask, task, node)
+	if setOldNodeErr == nil {
+		return nil
+	}
+	klog.V(logInfoLev).Infof("setReSchedulerTaskRankIndex %v.", setOldNodeErr)
+
+	setNewNodeErr := setOnNewNodeTaskRankIndex(task, node)
+	if setNewNodeErr != nil {
+		klog.V(logInfoLev).Infof("setReSchedulerTaskRankIndex %v.", setNewNodeErr)
+		return setNewNodeErr
+	}
+
+	klog.V(logInfoLev).Infof("setReSchedulerTaskRankIndex %s on %s success.", task.Name, node.Name)
+	return nil
+}
+
 // SetFaultJobPodIndex Set the rankIndex of all pods of the failed task
 // For there are gaps in the status of the volcano update podgroup, so set fault job rankIndex by job not task.
-func SetFaultJobPodIndex(job *api.JobInfo) error {
-	for _, task := range job.Tasks {
-		tmpValue, err := getReSchedulerTasksFromCache(task)
-		if err != nil {
-			klog.V(logInfoLev).Infof("SetFaultJobPodIndex %s %v.", task.Name, err)
-			return err
-		}
-		klog.V(logDebugLev).Infof("%s SetFaultJobPodIndex from buffer: %v.", task.Job, tmpValue)
-		for taskName, rankIndex := range tmpValue.RankIndexes {
-			if taskName == task.Name {
-				klog.V(logInfoLev).Infof("set %s rankIndex %v.", task.Pod.Name, rankIndex)
-				task.Pod.Annotations[podRankIndex] = rankIndex
-				break
-			}
-		}
+func SetFaultJobPodIndex(task *api.TaskInfo, node *api.NodeInfo) error {
+	tmpValue, err := getReSchedulerTasksFromCache(task)
+	if err != nil || reflect.DeepEqual(tmpValue, ReSchedulerTasks{}) {
+		klog.V(logInfoLev).Infof("SetFaultJobPodIndex %s %v.", task.Name, err)
+		return err
+	}
+
+	if setErr := setReSchedulerTaskRankIndex(tmpValue, task, node); setErr != nil {
+		klog.V(logInfoLev).Infof("setReSchedulerTaskRankIndex %s %v.", task.Name, err)
+		return err
 	}
 	return nil
 }

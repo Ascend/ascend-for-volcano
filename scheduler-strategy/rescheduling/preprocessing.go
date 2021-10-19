@@ -39,7 +39,6 @@ func init() {
 
 // Delete expired data.
 func updateReSchedulerDataFromSession(ssn *framework.Session) error {
-	klog.V(logDebugLev).Infof("updateReSchedulerDataFromSession get buffer %v.", ReSchedulerCache)
 	for dataID, tmpValue := range ReSchedulerCache {
 		switch dataID {
 		case CmJobKind:
@@ -70,7 +69,6 @@ func updateReSchedulerDataFromSession(ssn *framework.Session) error {
 	if err := updateNodeIntoNodesHeartbeatTmp(ssn); err != nil {
 		klog.V(logErrorLev).Infof("updateNodeIntoNodesHeartbeatTmp %v.", err)
 	}
-
 	return nil
 }
 

@@ -47,11 +47,9 @@ func convertToReSchedulerNodesMapFromCM(buffer string) (map[string]FaultNodeStat
 
 func convertToReSchedulerCardsMapFromCM(buffer string) (map[string]FaultNPUsOnNode, error) {
 	faultNodeNPUs := map[string]FaultNPUsOnNode{}
-
 	if unmarshalErr := json.Unmarshal([]byte(buffer), &faultNodeNPUs); unmarshalErr != nil {
 		return nil, unmarshalErr
 	}
-
 	return faultNodeNPUs, nil
 }
 
@@ -581,10 +579,10 @@ func isNodeInFaultJobUseList(node *api.NodeInfo) bool {
 }
 
 // GetNetworkUnhealthyCards Get the network Unhealthy npu Cards in a node.
-func GetNetworkUnhealthyCards(node *api.NodeInfo) []int {
+func GetNetworkUnhealthyCards(nodeName string) []int {
 	tmpData, ok := ReSchedulerCache[CmCardKind]
 	if !ok {
-		klog.V(logDebugLev).Infof("GetNetworkUnhealthyCards %s not in cache.", node.Name)
+		klog.V(logDebugLev).Infof("GetNetworkUnhealthyCards %s not in cache.", nodeName)
 		return nil
 	}
 	faultNPUMap, cardErr := tmpData.(map[string]FaultNPUsOnNode)
@@ -592,9 +590,9 @@ func GetNetworkUnhealthyCards(node *api.NodeInfo) []int {
 		klog.V(logErrorLev).Infof("GetNetworkUnhealthyCards %v convert to FaultNPUsOnNode map failed.", tmpData)
 		return nil
 	}
-	faultNPUs, getErr := faultNPUMap[node.Name]
+	faultNPUs, getErr := faultNPUMap[nodeName]
 	if !getErr {
-		klog.V(logDebugLev).Infof("GetNetworkUnhealthyCards FaultNPUsOnNode no %s.", node.Name)
+		klog.V(logDebugLev).Infof("GetNetworkUnhealthyCards FaultNPUsOnNode no %s.", nodeName)
 		return nil
 	}
 
