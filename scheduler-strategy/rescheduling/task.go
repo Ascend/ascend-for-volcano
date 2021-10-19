@@ -26,6 +26,7 @@ import (
 	"fmt"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -209,7 +210,7 @@ func setReSchedulerTaskRankIndex(rTask ReSchedulerTasks, task *api.TaskInfo, nod
 // For there are gaps in the status of the volcano update podgroup, so set fault job rankIndex by job not task.
 func SetFaultJobPodIndex(task *api.TaskInfo, node *api.NodeInfo) error {
 	tmpValue, err := getReSchedulerTasksFromCache(task)
-	if err != nil {
+	if err != nil || reflect.DeepEqual(tmpValue, ReSchedulerTasks{}) {
 		klog.V(logInfoLev).Infof("SetFaultJobPodIndex %s %v.", task.Name, err)
 		return err
 	}
