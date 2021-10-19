@@ -229,7 +229,7 @@ func getUsableTopFromNode(node *api.NodeInfo, distributeFlag bool) []int {
 		return nodeNPUTopology
 	}
 	// Network unhealthy Cards affect only distribution job.
-	netUnhealthyCards := rescheduling.GetNetworkUnhealthyCards(node)
+	netUnhealthyCards := rescheduling.GetNetworkUnhealthyCards(node.Name)
 	if netUnhealthyCards == nil {
 		return nodeNPUTopology
 	}

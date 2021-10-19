@@ -30,16 +30,18 @@ const (
 	CmCardKind = "card"
 	// CmNodeHeartbeatKind the node  heartbeat record in configmap.
 	CmNodeHeartbeatKind = "heartbeat"
-	logErrorLev         = 1
-	logInfoLev          = 3
-	logDebugLev         = 4
-	constIntNum2        = 2
-	constIntNum3        = 3
-	node910X8NPUNum     = 8
-	maxIntervalTime     = 300
-	maxRankIndex        = 1000
-	cmNameSpace         = "volcano-system"
-	cmName              = "vcjob-fault-npu-cm"
+	// TmpAllocRankIndexKind used for allocated rankIndex in one session.
+	TmpAllocRankIndexKind = "allocRankIndex"
+	logErrorLev           = 1
+	logInfoLev            = 3
+	logDebugLev           = 4
+	constIntNum2          = 2
+	constIntNum3          = 3
+	node910X8NPUNum       = 8
+	maxIntervalTime       = 300
+	maxRankIndex          = 1000
+	cmNameSpace           = "volcano-system"
+	cmName                = "vcjob-fault-npu-cm"
 	// node inoperable interval time(s)
 	nodeUpdateTime        = 5
 	nodeHeartbeat         = "noded/heartbeat"
@@ -127,6 +129,15 @@ type NormalNodeHeartbeat struct {
 	UpdateHeartbeatTime int64
 	// nodeD Heartbeat interval time, need multiply by 3.
 	HeartbeatInterval int
+	// The time recorded last update.
+	UpdateTime int64
+}
+
+// TaskUsedRankIndex Record the fault node used rankIndex.
+// This is used for write pod's rankIndex when task used new node.
+type TaskUsedRankIndex struct {
+	// nodeD Heartbeat interval time, need multiply by 3.
+	FaultNodeRankIndex map[string]struct{}
 	// The time recorded last update.
 	UpdateTime int64
 }

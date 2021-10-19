@@ -134,18 +134,7 @@ func getTaskUseNPUs(nodesTask map[string]*v1.Pod, nodeName string) ([]string, er
 		return nil, fmt.Errorf("not use %s", nodeName)
 	}
 
-	strNpu, npuOK := tmpPod.Annotations[npu800And9000CardName]
-	if !npuOK {
-		return nil, fmt.Errorf("%s has no NPU", tmpPod.Name)
-	}
-
-	taskNPUs := strings.Split(strNpu, ",")
-	if len(taskNPUs) > node910X8NPUNum {
-		err := fmt.Errorf("get err %s npus %v", tmpPod.Name, taskNPUs)
-		return nil, err
-	}
-
-	return taskNPUs, nil
+	return getPodUsedNPUS(tmpPod, npu800And9000CardName, node910X8NPUNum)
 }
 
 func getFaultCardsFromCache() (map[string]FaultNPUsOnNode, error) {
@@ -342,6 +331,13 @@ func GetRestartNPUFaultJobs(faultNPUJobs []FaultNPUJob, jobs map[string]*api.Job
 	return restartJobs, nil
 }
 
+func deleteJobRankIndex(job *api.JobInfo) {
+	for _, task := range job.Tasks {
+		delete(task.Pod.Annotations, podRankIndex)
+		klog.V(logDebugLev).Infof("delete %s rankIndex %+v for job pending.", task.UID, task.Pod.Annotations)
+	}
+}
+
 // ReleaseFaultJobTakeNodes Release the node occupied by the faulty task.
 func ReleaseFaultJobTakeNodes(job *api.JobInfo) error {
 	jobInterface, getErr := ReSchedulerCache[CmJobKind]
@@ -365,6 +361,7 @@ func ReleaseFaultJobTakeNodes(job *api.JobInfo) error {
 		klog.V(logInfoLev).Infof("delete %s from configMap due to pending.", job.UID)
 		delete(jobMap, job.UID)
 		ReSchedulerCache[CmJobKind] = jobMap
+		deleteJobRankIndex(job)
 	}
 
 	return nil
@@ -386,6 +383,97 @@ func isFaultJobInCache(job *api.JobInfo) bool {
 	return true
 }
 
+func getPodUsedNPUS(pod *v1.Pod, cardName string, cardMaxNum int) ([]string, error) {
+	strNpu, npuOK := pod.Annotations[cardName]
+	if !npuOK {
+		return nil, fmt.Errorf("%s has no NPU", pod.Name)
+	}
+
+	taskNPUs := strings.Split(strNpu, ",")
+	if len(taskNPUs) > cardMaxNum {
+		err := fmt.Errorf("get err %s npus %v", pod.Name, taskNPUs)
+		return nil, err
+	}
+	return taskNPUs, nil
+}
+
+func getRunningTaskUseNPUs(nowTask *api.TaskInfo) ([]string, error) {
+	return getPodUsedNPUS(nowTask.Pod, npu800And9000CardName, node910X8NPUNum)
+}
+
+func getTaskInfFromJobByTaskName(taskName string, job *api.JobInfo) *api.TaskInfo {
+	var nowTask *api.TaskInfo
+	for _, taskInfo := range job.Tasks {
+		if taskInfo.Name == taskName {
+			nowTask = taskInfo
+			break
+		}
+	}
+	return nowTask
+}
+
+func isTaskUseFaultNode(task *api.TaskInfo) bool {
+	allFaultNodes, _ := getFaultNodesFromCache()
+	if _, ok := allFaultNodes[task.NodeName]; ok {
+		return true
+	}
+	return false
+}
+
+func isTaskUseFaultNPU(task *api.TaskInfo, job *api.JobInfo) bool {
+	taskUseNPUs, err := getRunningTaskUseNPUs(task)
+	if err != nil {
+		klog.V(logInfoLev).Infof("getRunningTaskUseNPUs %v.", err)
+		return false
+	}
+
+	allFaultNPUs, _ := getFaultCardsFromCache()
+	if nodeFaultNPUs, ok := allFaultNPUs[task.NodeName]; ok {
+		if isTaskHasFaultNPU(taskUseNPUs, nodeFaultNPUs.FaultNPUs) {
+			return true
+		}
+		if IsDistributedJob(job) {
+			isTaskHasFaultNPU(taskUseNPUs, nodeFaultNPUs.NetworkUnhealthyNPUs)
+			return true
+		}
+	}
+	return false
+}
+
+func isFailedTaskInFaultJob(taskName string, job *api.JobInfo) bool {
+	nowTask := getTaskInfFromJobByTaskName(taskName, job)
+	if nowTask == nil {
+		return false
+	}
+	// 1.Check whether a faulty node is used
+	if isTaskUseFaultNode(nowTask) {
+		return true
+	}
+	// 2.Check whether faulty NPUs is used
+	if isTaskUseFaultNPU(nowTask, job) {
+		return true
+	}
+	return false
+}
+
+func recordReSchedulerTaskRankIndexInCache(task ReSchedulerTasks, jobInf *api.JobInfo) error {
+	var rankIndexSlice = make(map[string]struct{}, 1)
+	for taskName, rankIndex := range task.RankIndexes {
+		if isFailedTaskInFaultJob(taskName, jobInf) {
+			rankIndexSlice[rankIndex] = struct{}{}
+		}
+	}
+	var rankIndexMap = map[api.JobID]TaskUsedRankIndex{
+		jobInf.UID: {
+			FaultNodeRankIndex: rankIndexSlice,
+			UpdateTime:         time2.Now().Unix(),
+		},
+	}
+	ReSchedulerCache[TmpAllocRankIndexKind] = rankIndexMap
+	klog.V(logDebugLev).Infof("set abnormal job used rankIndex %+v.", rankIndexMap)
+	return nil
+}
+
 // Record and curing RankIndex information
 func writeFaultJobInfInCache(jobs map[string]*api.JobInfo, fJob FaultNPUJob, task ReSchedulerTasks) error {
 	job, ok := jobs[fJob.jobName]
@@ -401,5 +489,5 @@ func writeFaultJobInfInCache(jobs map[string]*api.JobInfo, fJob FaultNPUJob, tas
 	jobMap[job.UID] = task
 	ReSchedulerCache[CmJobKind] = jobMap
 
-	return nil
+	return recordReSchedulerTaskRankIndexInCache(task, job)
 }
