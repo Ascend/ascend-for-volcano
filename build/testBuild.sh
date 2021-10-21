@@ -10,6 +10,7 @@ export GONOSUMDB="*"
 export PATH=$GOPATH/bin:$PATH
 
 cd "${GOPATH}"/src/volcano.sh/volcano
+go get github.com/agiledragon/gomonkey/v2@v2.3.0
 go mod vendor
 
 file_input='testVolcano.txt'
