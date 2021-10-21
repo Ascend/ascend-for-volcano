@@ -24,6 +24,10 @@ package rescheduling
 import (
 	"errors"
 	"fmt"
+	"github.com/agiledragon/gomonkey/v2"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"reflect"
 	"strconv"
 	"strings"
@@ -479,7 +483,7 @@ type getNetworkUnhealthyCardsTests []struct {
 	want []int
 }
 
-func addTestCardIntoReSchedulerCache(nodeName string, faultCards []string, netUnhealthyCards []string) {
+func addTestCardIntoReSchedulerCache(nodeName string, faultCards, netUnhealthyCards []string) {
 	var reCard = make(map[string]FaultNPUsOnNode, constIntNum2)
 
 	reCard[nodeName] = FaultNPUsOnNode{
@@ -1047,6 +1051,154 @@ func TestSetFaultInNodeAndJobs(t *testing.T) {
 			if !reflect.DeepEqual(err, tt.wantErr) {
 				t.Errorf("SetFaultInNodeAndJobs() error = %v, wantErr %v", err, tt.wantErr)
 			}
+		})
+	}
+}
+
+type readFaultNPUJobsFromCMArgs struct {
+	ssn            *framework.Session
+	cacheFunBefore func()
+	cacheFunAfter  func()
+}
+
+type readFaultNPUJobsFromCMTests []struct {
+	name    string
+	args    readFaultNPUJobsFromCMArgs
+	wantErr error
+}
+
+func fakeCmDataWithoutCmNodeHeartbeat(_ kubernetes.Interface, _, _ string) *v1.ConfigMap {
+	var data = make(map[string]string, 1)
+	data[CmJobKind] = `{"vcjob/pg1":"{\"NodeNames\":{\"pg1\":\"node0\"},\"RankIndexes\":{\"pg1\":\"0\"},\"Time\":
+						{\"pg1\":1634782292,\"TaskUseNPUs\":{\"pg1\":\"Ascend910-1\"},\"NameSpace\":\"vcjob\"}"}`
+	data[CmNodeKind] = `{"node0":{"NodeName":"node0","HealthCode":0,"UpdateTime":1634782870,"Heartbeat":1634782117,
+						"HeartbeatInterval":5}}`
+	data[CmCardKind] = `{"node0":{"NodeName":"node0","FaultNPUs":["Ascend910-2"],"NetworkUnhealthyNPUs":
+						["Ascend910-1"],"UpdateTime":1634731710}}`
+	var faultNPUConfigMap = &v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cmName,
+			Namespace: cmNameSpace,
+		},
+		Data: data,
+	}
+	return faultNPUConfigMap
+}
+
+func fakeErrorHeartbeatCmData(_ kubernetes.Interface, _, _ string) (*v1.ConfigMap, error) {
+	faultNPUConfigMap := fakeCmDataWithoutCmNodeHeartbeat(nil, "", "")
+	faultNPUConfigMap.Data[CmNodeHeartbeatKind] = `"haha"`
+	return faultNPUConfigMap, nil
+}
+
+func buildReadFaultNPUJobsFromCMTestCases() readFaultNPUJobsFromCMTests {
+	testSsn := ascendtest.FakeNormalSSN()
+	job1 := ascendtest.FakeNormalTestJob("pg1", constIntNum2)
+	nodes := ascendtest.FakeNormalTestNodes(1)
+	addTestNodeIntoReSchedulerCache(nodes[0])
+	ascendtest.SetNPUNodeLabel(testSsn.Nodes[nodes[0].Name].Node, nodeDEnableKey, nodeDEnableOnValue)
+
+	var tmpPatche *gomonkey.Patches
+	testCases := readFaultNPUJobsFromCMTests{
+		{
+			name: "01-read from config map success Cache-test",
+			args: readFaultNPUJobsFromCMArgs{
+				ssn: testSsn, cacheFunBefore: func() {
+					initTestReSchedulerCache()
+					addTestJobIntoReSchedulerCache(job1)
+					tmpPatche = gomonkey.ApplyFunc(getConfigMapWithRetry, fakeErrorHeartbeatCmData)
+				}, cacheFunAfter: func() {
+					tmpPatche.Reset()
+				},
+			},
+			wantErr: nil,
+		},
+	}
+	return testCases
+}
+
+// TestReadFaultNPUJobsFromCM test ReadFaultNPUJobsFromCM function
+func TestReadFaultNPUJobsFromCM(t *testing.T) {
+	tests := buildReadFaultNPUJobsFromCMTestCases()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.args.cacheFunBefore()
+			err := ReadFaultNPUJobsFromCM(tt.args.ssn)
+			if !reflect.DeepEqual(err, tt.wantErr) {
+				t.Errorf("ReadFaultNPUJobsFromCM() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			tt.args.cacheFunAfter()
+		})
+	}
+}
+
+type writeReSchedulerDataToCMArgs struct {
+	ssn             *framework.Session
+	reSchedulerData map[string]interface{}
+	cacheFunBefore  func()
+	cacheFunAfter   func()
+}
+
+type writeReSchedulerDataToCMTests []struct {
+	name    string
+	args    writeReSchedulerDataToCMArgs
+	wantErr error
+}
+
+func addTestHeartbeatIntoReSchedulerCache(nodeName string) {
+	var reCard = make(map[string]NormalNodeHeartbeat, constIntNum2)
+	const tmpNumber = 123456
+	reCard[nodeName] = NormalNodeHeartbeat{
+		NodeDHeartbeat:      tmpNumber,
+		UpdateHeartbeatTime: tmpNumber,
+		HeartbeatInterval:   tmpNumber,
+		UpdateTime:          time.Now().Unix()}
+
+	ReSchedulerCache[CmNodeHeartbeatKind] = reCard
+}
+
+func buildWriteReSchedulerDataToCMTestCases() writeReSchedulerDataToCMTests {
+	testSsn := ascendtest.FakeNormalSSN()
+	job1 := ascendtest.FakeNormalTestJob("pg1", constIntNum2)
+	nodes := ascendtest.FakeNormalTestNodes(1)
+	ascendtest.SetNPUNodeLabel(testSsn.Nodes[nodes[0].Name].Node, nodeDEnableKey, nodeDEnableOnValue)
+
+	var tmpPatche *gomonkey.Patches
+	testCases := writeReSchedulerDataToCMTests{
+		{
+			name: "01-write data to config map success Cache-test Cache-test",
+			args: writeReSchedulerDataToCMArgs{
+				ssn: testSsn, reSchedulerData: ReSchedulerCache, cacheFunBefore: func() {
+					initTestReSchedulerCache()
+					addTestJobIntoReSchedulerCache(job1)
+					addTestNodeIntoReSchedulerCache(nodes[0])
+					addTestCardIntoReSchedulerCache(nodes[0].Name, nil, []string{"Ascend910-0", "Ascend910-1"})
+					addTestHeartbeatIntoReSchedulerCache(nodes[0].Name)
+					tmpPatche = gomonkey.ApplyFunc(createOrUpdateConfigMap,
+						func(k8s kubernetes.Interface, cm *v1.ConfigMap) error {
+							return nil
+						})
+				}, cacheFunAfter: func() {
+					tmpPatche.Reset()
+				},
+			},
+			wantErr: nil,
+		},
+	}
+	return testCases
+}
+
+// TestWriteReSchedulerDataToCM test WriteReSchedulerDataToCM function
+func TestWriteReSchedulerDataToCM(t *testing.T) {
+	tests := buildWriteReSchedulerDataToCMTestCases()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.args.cacheFunBefore()
+			err := WriteReSchedulerDataToCM(tt.args.ssn, tt.args.reSchedulerData)
+			if !reflect.DeepEqual(err, tt.wantErr) {
+				t.Errorf("WriteReSchedulerDataToCM() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			tt.args.cacheFunAfter()
 		})
 	}
 }

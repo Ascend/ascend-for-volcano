@@ -70,6 +70,6 @@ func FakeNormalTestJob(jobName string, taskNum int) *api.JobInfo {
 		task.Job = job.UID
 	}
 	job.PodGroup = new(api.PodGroup)
-	job.PodGroup.Status.Phase = scheduling.PodGroupPending
+	job.PodGroup.Status.Phase = scheduling.PodGroupRunning
 	return job
 }
