@@ -1067,7 +1067,7 @@ type readFaultNPUJobsFromCMTests []struct {
 	wantErr error
 }
 
-func fakeCmDataWithoutCmNodeHeartbeat(_ kubernetes.Interface, _, _ string) (*v1.ConfigMap, error) {
+func fakeCmDataWithoutCmNodeHeartbeat(_ kubernetes.Interface, _, _ string) *v1.ConfigMap {
 	var data = make(map[string]string, 1)
 	data[CmJobKind] = `{"vcjob/pg1":"{\"NodeNames\":{\"pg1\":\"node0\"},\"RankIndexes\":{\"pg1\":\"0\"},\"Time\":
 						{\"pg1\":1634782292,\"TaskUseNPUs\":{\"pg1\":\"Ascend910-1\"},\"NameSpace\":\"vcjob\"}"}`
@@ -1082,11 +1082,11 @@ func fakeCmDataWithoutCmNodeHeartbeat(_ kubernetes.Interface, _, _ string) (*v1.
 		},
 		Data: data,
 	}
-	return faultNPUConfigMap, nil
+	return faultNPUConfigMap
 }
 
 func fakeErrorHeartbeatCmData(_ kubernetes.Interface, _, _ string) (*v1.ConfigMap, error) {
-	faultNPUConfigMap, _ := fakeCmDataWithoutCmNodeHeartbeat(nil, "", "")
+	faultNPUConfigMap := fakeCmDataWithoutCmNodeHeartbeat(nil, "", "")
 	faultNPUConfigMap.Data[CmNodeHeartbeatKind] = `"haha"`
 	return faultNPUConfigMap, nil
 }
