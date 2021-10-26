@@ -413,7 +413,11 @@ func getTaskInfFromJobByTaskName(taskName string, job *api.JobInfo) *api.TaskInf
 }
 
 func isTaskUseFaultNode(task *api.TaskInfo) bool {
-	allFaultNodes, _ := getFaultNodesFromCache()
+	allFaultNodes, err := getFaultNodesFromCache()
+	if err != nil {
+		return false
+	}
+
 	if _, ok := allFaultNodes[task.NodeName]; ok {
 		return true
 	}
@@ -427,7 +431,12 @@ func isTaskUseFaultNPU(task *api.TaskInfo, job *api.JobInfo) bool {
 		return false
 	}
 
-	allFaultNPUs, _ := getFaultCardsFromCache()
+	allFaultNPUs, cardsErr := getFaultCardsFromCache()
+	if cardsErr != nil {
+		klog.V(logInfoLev).Infof("isTaskUseFaultNPU %v.", err)
+		return false
+	}
+
 	if nodeFaultNPUs, ok := allFaultNPUs[task.NodeName]; ok {
 		if isTaskHasFaultNPU(taskUseNPUs, nodeFaultNPUs.FaultNPUs) {
 			return true
