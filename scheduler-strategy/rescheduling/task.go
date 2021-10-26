@@ -137,7 +137,7 @@ func getOldTaskNodeAndIndexList(rTask ReSchedulerTasks) (map[string]string, erro
 	for taskName, rankIndex := range rTask.RankIndexes {
 		nodeName, ok := rTask.NodeNames[taskName]
 		if !ok {
-			return nil, fmt.Errorf("%s not in ReSchedulerCache\n", taskName)
+			return nil, fmt.Errorf("%s not in cache", taskName)
 		}
 		nodeAndIndexList[nodeName] = rankIndex
 	}
