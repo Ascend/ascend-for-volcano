@@ -565,10 +565,10 @@ func isDelayingJobTimeOut(dJob *api.JobInfo) bool {
 	}
 	now := time2.Now().Unix()
 	klog.V(logDebugLev).Infof("isDelayingJobTimeOut now:%v create:%v.", now, rankIDJob.CreatTime)
-	if now-rankIDJob.CreatTime > GraceOverTime {
+	if now-rankIDJob.CreatTime > graceOverTime {
 		return true
 	}
-	if rankIDJob.CreatTime-now > GraceOverTime {
+	if rankIDJob.CreatTime-now > graceOverTime {
 		return true
 	}
 	return false

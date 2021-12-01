@@ -48,7 +48,7 @@ const (
 	cmName                = "vcjob-fault-npu-cm"
 	// node inoperable interval time(s)
 	nodeUpdateTime        = 5
-	GraceOverTime         = 900
+	graceOverTime         = 900
 	nodeHeartbeat         = "noded/heartbeat"
 	nodeHeartbeatInterval = "noded/heartbeat-interval"
 	faultNPU              = "huawei.com/Ascend910-Unhealthy"
