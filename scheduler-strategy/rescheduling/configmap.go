@@ -170,7 +170,7 @@ func updateJobRankIdsFromCM(tmpData string) error {
 		klog.V(logErrorLev).Infof("convertToJobRankIdsMapFromCM: %v.", covErr)
 		return covErr
 	}
-	var rankIdData = make(map[api.JobID]FaultRankIDRecordJobCMData, 1)
+	var rankIDData = make(map[api.JobID]FaultRankIDRecordJobCMData, 1)
 	for dataID, data := range rankIds {
 		jobIDStr := strings.Replace(dataID, "_", "/", -1)
 		if strings.Count(jobIDStr, "/") != 1 {
@@ -178,10 +178,10 @@ func updateJobRankIdsFromCM(tmpData string) error {
 			return countErr
 		}
 
-		rankIdData[api.JobID(jobIDStr)] = data
+		rankIDData[api.JobID(jobIDStr)] = data
 	}
 
-	ReSchedulerCache[CmJobRankIds] = rankIdData
+	ReSchedulerCache[CmJobRankIds] = rankIDData
 
 	return nil
 }
@@ -384,7 +384,7 @@ func getFaultNPUJobCMData(job *api.JobInfo) (*FaultRankIdsJobCMData, error) {
 	return faultRankIds, nil
 }
 
-func getJobFaultNPURankIdCMData(job *api.JobInfo) (map[string]string, error) {
+func getJobFaultNPURankIDCMData(job *api.JobInfo) (map[string]string, error) {
 	faultRankIdsMap := make(map[string]string, constIntNum3)
 
 	faultRankIds, getErr := getFaultNPUJobCMData(job)
@@ -396,12 +396,12 @@ func getJobFaultNPURankIdCMData(job *api.JobInfo) (map[string]string, error) {
 		klog.V(logErrorLev).Infof("marshalCacheDataToString err: %v.", err)
 		return nil, err
 	}
-	faultRankIdsMap[JobFaultRankIdCMDataKey] = string(dataBuffer)
+	faultRankIdsMap[JobFaultRankIDCMDataKey] = string(dataBuffer)
 
 	return faultRankIdsMap, nil
 }
 
-func getJobPodsAndCreateTimeByRankIdJobs(job *api.JobInfo) (FaultRankIDRecordJobCMData, error) {
+func getJobPodsAndCreateTimeByRankIDJobs(job *api.JobInfo) (FaultRankIDRecordJobCMData, error) {
 	var podNames []string
 	var podCreatTimes []int64
 	var podsUID []types.UID
@@ -423,17 +423,17 @@ func WriteJobFaultRankIDIntoCache(job *api.JobInfo) error {
 	if getErr != nil {
 		return getErr
 	}
-	rankIds, podErr := getJobPodsAndCreateTimeByRankIdJobs(job)
+	rankIds, podErr := getJobPodsAndCreateTimeByRankIDJobs(job)
 	if podErr != nil {
 		return podErr
 	}
 	rankIds.CreatTime = faultRankIds.CreatTime
 	rankIds.NameSpace = job.Namespace
 	rankIds.FaultRankIds = faultRankIds.FaultRankIds
-	var rankIdMap = map[api.JobID]FaultRankIDRecordJobCMData{
+	var rankIDMap = map[api.JobID]FaultRankIDRecordJobCMData{
 		job.UID: rankIds,
 	}
-	ReSchedulerCache[CmJobRankIds] = rankIdMap
+	ReSchedulerCache[CmJobRankIds] = rankIDMap
 
 	return nil
 }
@@ -442,7 +442,7 @@ func WriteJobFaultRankIDIntoCache(job *api.JobInfo) error {
 func WriteJobFaultRankIDIntoCM(ssn *framework.Session, job *api.JobInfo, cmData map[string]string) error {
 	var faultRankIdsCM = &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      JobFaultRankIdCMPre + job.Name,
+			Name:      JobFaultRankIDCMPre + job.Name,
 			Namespace: job.Namespace,
 		},
 		Data: cmData,
@@ -461,7 +461,7 @@ func WriteJobFaultRankIDIntoCacheAndCM(ssn *framework.Session, job *api.JobInfo)
 		return errors.New("none job cannot write fault RankID")
 	}
 
-	faultRankIdsMap, getErr := getJobFaultNPURankIdCMData(job)
+	faultRankIdsMap, getErr := getJobFaultNPURankIDCMData(job)
 	if getErr != nil {
 		klog.V(logErrorLev).Infof("getJobFaultNPURankIdCMData : %v.", getErr)
 		return getErr

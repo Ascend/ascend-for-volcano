@@ -83,10 +83,9 @@ func updateReSchedulerDataFromSession(ssn *framework.Session) error {
 func getJobUsedNodeRankIds(job *api.JobInfo, nodeAndPods map[string]*v1.Pod) (
 	map[api.JobID]FaultRankIDRecordJobCMData, error) {
 	nodeRankIds := make(map[api.JobID]FaultRankIDRecordJobCMData, constIntNum3)
-	var PodsName []string
+	var PodsName, rankIds []string
 	var PodsUID []types.UID
 	var PodsCreatTime []int64
-	var rankIds []string
 	for _, task := range job.Tasks {
 		tmpPod, ok := nodeAndPods[task.NodeName]
 		if !ok {
@@ -121,21 +120,19 @@ func getJobUsedNodeRankIds(job *api.JobInfo, nodeAndPods map[string]*v1.Pod) (
 		return nil, err
 	}
 	tmpData := FaultRankIDRecordJobCMData{
-		NameSpace:    job.Namespace,
-		FaultRankIds: string(dataBuffer),
-		// key is podName,value is pod create time
+		NameSpace:     job.Namespace,
+		FaultRankIds:  string(dataBuffer),
 		PodsName:      PodsName,
 		PodsUID:       PodsUID,
 		PodsCreatTime: PodsCreatTime,
-		// this the record create time.
-		CreatTime: time2.Now().Unix(),
+		CreatTime:     time2.Now().Unix(),
 	}
 	nodeRankIds[job.UID] = tmpData
 	return nil, nil
 }
 
 func addJobsRankIdsIntoCache(jobsRankIds map[api.JobID]FaultRankIDRecordJobCMData) error {
-	jobsRankIdsFromCache, getErr := getRankIdJobsFromCache()
+	jobsRankIdsFromCache, getErr := getRankIDJobsFromCache()
 	if getErr != nil {
 		klog.V(logDebugLev).Infof("addJobsRankIdsIntoCache %v.", getErr)
 		return getErr

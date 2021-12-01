@@ -48,7 +48,7 @@ const (
 	cmName                = "vcjob-fault-npu-cm"
 	// node inoperable interval time(s)
 	nodeUpdateTime        = 5
-	GraceOverTime         = 15 * 60
+	GraceOverTime         = 900
 	nodeHeartbeat         = "noded/heartbeat"
 	nodeHeartbeatInterval = "noded/heartbeat-interval"
 	faultNPU              = "huawei.com/Ascend910-Unhealthy"
@@ -61,8 +61,8 @@ const (
 	JobForceRescheduleLabelValue = "force"
 	// JobOffRescheduleLabelValue not delete reschedule job.
 	JobOffRescheduleLabelValue = "off"
-	JobFaultRankIdCMDataKey    = "fault-npus"
-	JobFaultRankIdCMPre        = "fault-config-"
+	JobFaultRankIDCMDataKey    = "fault-npus"
+	JobFaultRankIDCMPre        = "fault-config-"
 	nodeDEnableKey             = "nodeDEnable"
 	nodeDEnableOnValue         = "on"
 	nodeDEnableOffValue        = "off"

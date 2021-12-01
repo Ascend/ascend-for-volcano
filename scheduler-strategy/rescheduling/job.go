@@ -553,28 +553,28 @@ func GetDelayingDeleteJobs(restartJobs map[api.JobID]*api.JobInfo) ([]*api.JobIn
 }
 
 func isDelayingJobTimeOut(dJob *api.JobInfo) bool {
-	jobs, getErr := getRankIdJobsFromCache()
+	jobs, getErr := getRankIDJobsFromCache()
 	if getErr != nil {
 		klog.V(logErrorLev).Infof("isDelayingJobTimeOut %v.", getErr)
 		return false
 	}
-	rankIdJob, ok := jobs[dJob.UID]
+	rankIDJob, ok := jobs[dJob.UID]
 	if !ok {
 		klog.V(logErrorLev).Infof("isDelayingJobTimeOut %s not in cache.", dJob.UID)
 		return false
 	}
 	now := time2.Now().Unix()
-	klog.V(logDebugLev).Infof("isDelayingJobTimeOut now:%v create:%v.", now, rankIdJob.CreatTime)
-	if now-rankIdJob.CreatTime > GraceOverTime {
+	klog.V(logDebugLev).Infof("isDelayingJobTimeOut now:%v create:%v.", now, rankIDJob.CreatTime)
+	if now-rankIDJob.CreatTime > GraceOverTime {
 		return true
 	}
-	if rankIdJob.CreatTime-now > GraceOverTime {
+	if rankIDJob.CreatTime-now > GraceOverTime {
 		return true
 	}
 	return false
 }
 
-func getRankIdJobsFromCache() (map[api.JobID]FaultRankIDRecordJobCMData, error) {
+func getRankIDJobsFromCache() (map[api.JobID]FaultRankIDRecordJobCMData, error) {
 	tmpValue, ok := ReSchedulerCache[CmJobRankIds]
 	if !ok {
 		return nil, fmt.Errorf("")
@@ -592,7 +592,7 @@ func getRankIdJobsFromCache() (map[api.JobID]FaultRankIDRecordJobCMData, error) 
 
 func isJobHasBeenGraceDeleted(ssn *framework.Session, dJob *api.JobInfo) bool {
 	// 1.get all job RankIds.
-	jobsRankIds, getErr := getRankIdJobsFromCache()
+	jobsRankIds, getErr := getRankIDJobsFromCache()
 	if getErr != nil {
 		return false
 	}
@@ -628,19 +628,19 @@ func isJobHasBeenGraceDeleted(ssn *framework.Session, dJob *api.JobInfo) bool {
 
 // GetRecordJobPods Get Job Pods info.
 func GetRecordJobPods(dJob *api.JobInfo) (map[string]int64, map[string]types.UID, error) {
-	rankIdData, ok := ReSchedulerCache[CmJobRankIds]
+	rankIDData, ok := ReSchedulerCache[CmJobRankIds]
 	if !ok {
 		return nil, nil, fmt.Errorf("none %v in cache", CmJobRankIds)
 	}
-	rankIdsMap, covErr := convertToRankIdsMapFromCache(rankIdData)
+	rankIdsMap, covErr := convertToRankIdsMapFromCache(rankIDData)
 	if covErr != nil {
 		klog.V(logDebugLev).Infof("getRecordJobPods: %v.", covErr)
 		return nil, nil, covErr
 	}
-	jobId := api.JobID(dJob.Namespace + "/" + dJob.Name)
-	value, ok := rankIdsMap[jobId]
+	jobID := api.JobID(dJob.Namespace + "/" + dJob.Name)
+	value, ok := rankIdsMap[jobID]
 	if !ok {
-		return nil, nil, fmt.Errorf("none job %v in cache", jobId)
+		return nil, nil, fmt.Errorf("none job %v in cache", jobID)
 	}
 
 	jobPodsTime := make(map[string]int64, constIntNum3)
@@ -677,9 +677,9 @@ func isJobGraceDeletedSuccess(dJob *api.JobInfo) bool {
 	return false
 }
 
-func deleteRedundantRankIdCM(ssn *framework.Session, nameSpace string, dJob api.JobID) error {
+func deleteRedundantRankIDCM(ssn *framework.Session, nameSpace string, dJob api.JobID) error {
 	temp := strings.Split(string(dJob), "/")
-	configMapName := JobFaultRankIdCMPre + temp[1]
+	configMapName := JobFaultRankIDCMPre + temp[1]
 	klog.V(logInfoLev).Infof("deleteRedundantRankIdCM %v:%v.", nameSpace, configMapName)
 	if err := deleteSchedulerConfigMap(ssn, nameSpace, configMapName); err != nil {
 		return err
