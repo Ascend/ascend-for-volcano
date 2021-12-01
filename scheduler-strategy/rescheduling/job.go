@@ -564,7 +564,7 @@ func isDelayingJobTimeOut(dJob *api.JobInfo) bool {
 		return false
 	}
 	now := time2.Now().Unix()
-	klog.V(logDebugLev).Infof("isDelayingJobTimeOut now:% create:%v.", now, rankIdJob.CreatTime)
+	klog.V(logDebugLev).Infof("isDelayingJobTimeOut now:%v create:%v.", now, rankIdJob.CreatTime)
 	if now-rankIdJob.CreatTime > GraceOverTime {
 		return true
 	}
@@ -626,6 +626,7 @@ func isJobHasBeenGraceDeleted(ssn *framework.Session, dJob *api.JobInfo) bool {
 	return false
 }
 
+// GetRecordJobPods Get Job Pods info.
 func GetRecordJobPods(dJob *api.JobInfo) (map[string]int64, map[string]types.UID, error) {
 	rankIdData, ok := ReSchedulerCache[CmJobRankIds]
 	if !ok {
@@ -686,6 +687,7 @@ func deleteRedundantRankIdCM(ssn *framework.Session, nameSpace string, dJob api.
 	return nil
 }
 
+// GetNeedForceDeleteDelayingJobs Get delaying jobs which need be force deleted.
 func GetNeedForceDeleteDelayingJobs(ssn *framework.Session, dJobs []*api.JobInfo) ([]*api.JobInfo, error) {
 	if len(dJobs) == 0 {
 		msg := errors.New("none jobs")

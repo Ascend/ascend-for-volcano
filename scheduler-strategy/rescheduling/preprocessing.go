@@ -109,7 +109,7 @@ func getJobUsedNodeRankIds(job *api.JobInfo, nodeAndPods map[string]*v1.Pod) (
 		}
 		taskUseNPUs := util.ChangeTopToIntArray(strings.Join(taskUseNPUsStr, ","), npu800And9000CardPreName)
 		for _, tmp := range taskUseNPUs {
-			rankIds = append(rankIds, strconv.Itoa(tmp+rankIndex*8))
+			rankIds = append(rankIds, strconv.Itoa(tmp+rankIndex*node910X8NPUNum))
 		}
 		PodsName = append(PodsName, tmpPod.Name)
 		PodsUID = append(PodsUID, tmpPod.UID)

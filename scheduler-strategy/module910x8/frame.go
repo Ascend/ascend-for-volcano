@@ -384,7 +384,8 @@ func forceDeleteTimeOutGraceTask(ssn *framework.Session) error {
 		klog.V(logDebugLev).Infof("GetRecordJobPods: %v=%v.", jobPodsTime, jobPodsUID)
 		for podName := range jobPodsTime {
 			klog.V(logDebugLev).Infof("ForceDeleteFaultPod: %v.", podName)
-			if deleteErr := plugin.ForceDeleteFaultPod(ssn, job.Namespace, podName, jobPodsUID[podName]); deleteErr != nil {
+			deleteErr := plugin.ForceDeleteFaultPod(ssn, job.Namespace, podName, jobPodsUID[podName])
+			if deleteErr != nil {
 				klog.V(logErrorLev).Infof("ForceDeleteFaultPod %s: %v.", podName, deleteErr)
 			}
 		}

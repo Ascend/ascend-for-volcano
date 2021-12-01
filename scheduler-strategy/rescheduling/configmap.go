@@ -87,7 +87,8 @@ func createOrUpdateConfigMap(k8s kubernetes.Interface, cm *v1.ConfigMap) error {
 }
 
 func deleteSchedulerConfigMap(ssn *framework.Session, nameSpace, cmName string) error {
-	if err := ssn.KubeClient().CoreV1().ConfigMaps(nameSpace).Delete(context.TODO(), cmName, metav1.DeleteOptions{}); err != nil {
+	err := ssn.KubeClient().CoreV1().ConfigMaps(nameSpace).Delete(context.TODO(), cmName, metav1.DeleteOptions{})
+	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			klog.V(logErrorLev).Infof("Failed to delete Configmap %v in%v: %v",
 				nameSpace, cmName, err)
@@ -358,7 +359,7 @@ func getJobFaultRankIds(job *api.JobInfo) (string, error) {
 			continue
 		}
 		for _, tmp := range tmpDeviceID {
-			rankIds = append(rankIds, strconv.Itoa(tmp+rankIndex*8))
+			rankIds = append(rankIds, strconv.Itoa(tmp+rankIndex*node910X8NPUNum))
 		}
 	}
 	dataBuffer, err := json.Marshal(rankIds)
