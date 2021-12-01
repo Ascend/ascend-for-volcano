@@ -23,7 +23,6 @@ package main
 
 import (
 	"k8s.io/klog"
-	"os"
 	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
@@ -42,10 +41,6 @@ var sHandler *plugin.ScheduleHandler
 
 // Name This need by volcano frame init plugin.
 func (tp *huaweiNPUPlugin) Name() string {
-	name := os.Getenv("pluginName")
-	if name != "" && len(name) < maxPluginName {
-		PluginName = name
-	}
 	return PluginName
 }
 

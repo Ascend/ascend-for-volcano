@@ -27,13 +27,12 @@ import (
 )
 
 // PluginName use in frame
-var PluginName = "volcano-npu-v2.0.3"
+var PluginName = "volcano-npu-v2.0.4"
 
 const (
-	logErrorLev   = 1
-	logInfoLev    = 3
-	logDebugLev   = 4
-	maxPluginName = 50
+	logErrorLev = 1
+	logInfoLev  = 3
+	logDebugLev = 4
 )
 
 type huaweiNPUPlugin struct {

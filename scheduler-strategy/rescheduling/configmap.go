@@ -24,16 +24,21 @@ package rescheduling
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	"reflect"
+	"strconv"
 	"strings"
+	"time"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 func getConfigMapWithRetry(client kubernetes.Interface, namespace, cmName string) (*v1.ConfigMap, error) {
@@ -76,6 +81,17 @@ func createOrUpdateConfigMap(k8s kubernetes.Interface, cm *v1.ConfigMap) error {
 		_, err := k8s.CoreV1().ConfigMaps(cm.ObjectMeta.Namespace).Update(context.TODO(), cm, metav1.UpdateOptions{})
 		if err != nil {
 			return fmt.Errorf("unable to update ConfigMap:%v", err)
+		}
+	}
+	return nil
+}
+
+func deleteSchedulerConfigMap(ssn *framework.Session, nameSpace, cmName string) error {
+	if err := ssn.KubeClient().CoreV1().ConfigMaps(nameSpace).Delete(context.TODO(), cmName, metav1.DeleteOptions{}); err != nil {
+		if !apierrors.IsNotFound(err) {
+			klog.V(logErrorLev).Infof("Failed to delete Configmap %v in%v: %v",
+				nameSpace, cmName, err)
+			return err
 		}
 	}
 	return nil
@@ -147,6 +163,28 @@ func updateNodeHeartbeatFromCM(tmpData string) error {
 	return nil
 }
 
+func updateJobRankIdsFromCM(tmpData string) error {
+	rankIds, covErr := convertToJobRankIdsMapFromCM(tmpData)
+	if covErr != nil {
+		klog.V(logErrorLev).Infof("convertToJobRankIdsMapFromCM: %v.", covErr)
+		return covErr
+	}
+	var rankIdData = make(map[api.JobID]FaultRankIDRecordJobCMData, 1)
+	for dataID, data := range rankIds {
+		jobIDStr := strings.Replace(dataID, "_", "/", -1)
+		if strings.Count(jobIDStr, "/") != 1 {
+			countErr := fmt.Errorf("%s more than one character '_'", dataID)
+			return countErr
+		}
+
+		rankIdData[api.JobID(jobIDStr)] = data
+	}
+
+	ReSchedulerCache[CmJobRankIds] = rankIdData
+
+	return nil
+}
+
 func updateReSchedulerData(cmData *v1.ConfigMap) error {
 	if len(cmData.Data) == 0 {
 		klog.V(logDebugLev).Infof("updateFaultNodeFromCM cmData is nil, nothing to do.")
@@ -175,6 +213,10 @@ func updateReSchedulerData(cmData *v1.ConfigMap) error {
 		case CmNodeHeartbeatKind:
 			if err := updateNodeHeartbeatFromCM(buffer); err != nil {
 				klog.V(logErrorLev).Infof("updateNodeHeartbeatFromCM: %v.", err)
+			}
+		case CmJobRankIds:
+			if err := updateJobRankIdsFromCM(buffer); err != nil {
+				klog.V(logErrorLev).Infof("updateJobRankIdsFromCM: %v.", err)
 			}
 		default:
 			klog.V(logErrorLev).Infof("updateReSchedulerData no support type:%v", dataID)
@@ -226,30 +268,37 @@ func getCMWriteDate(ssn *framework.Session, reSchedulerData map[string]interface
 				klog.V(logErrorLev).Infof("getCMJobWriteData :%v.", err)
 				continue
 			}
-			data[CmJobKind] = data[CmJobKind] + jobData
+			data[CmJobKind] = jobData
 		case CmNodeKind:
 			nodeData, err := getCMNodeWriteData(faultData)
 			if err != nil {
 				klog.V(logErrorLev).Infof("getCMJobWriteData :%v.", err)
 				continue
 			}
-			data[CmNodeKind] = data[CmNodeKind] + nodeData
+			data[CmNodeKind] = nodeData
 		case CmCardKind:
 			cardData, err := getCMCardWriteData(faultData)
 			if err != nil {
 				klog.V(logDebugLev).Infof("getCMCardWriteData :%v.", err)
 				continue
 			}
-			data[CmCardKind] = data[CmCardKind] + cardData
+			data[CmCardKind] = cardData
 		case CmNodeHeartbeatKind:
 			heartbeatData, err := getCMHeartbeatWriteData(faultData)
 			if err != nil {
 				klog.V(logDebugLev).Infof("getCMHeartbeatWriteData :%v.", err)
 				continue
 			}
-			data[CmNodeHeartbeatKind] = data[CmNodeHeartbeatKind] + heartbeatData
+			data[CmNodeHeartbeatKind] = heartbeatData
+		case CmJobRankIds:
+			rankIdsData, err := getCMRankIdsWriteData(faultData)
+			if err != nil {
+				klog.V(logDebugLev).Infof("getCMRankIdsWriteData :%v.", err)
+				continue
+			}
+			data[CmJobRankIds] = rankIdsData
 		default:
-			klog.V(logErrorLev).Infof("getCMWriteDate not support %T.", dataKind)
+			klog.V(logErrorLev).Infof("getCMWriteDate not support %v %v.", dataKind, faultData)
 		}
 	}
 
@@ -270,6 +319,161 @@ func WriteReSchedulerDataToCM(ssn *framework.Session, reSchedulerData map[string
 	if err := createOrUpdateConfigMap(ssn.KubeClient(), faultNPUConfigMap); err != nil {
 		klog.V(logErrorLev).Infof("createOrUpdateConfigMap : %v.", err)
 		return err
+	}
+
+	return nil
+}
+
+func getJobFaultRankIds(job *api.JobInfo) (string, error) {
+	allFaultNPUs, cacheErr := getFaultCardsFromCache()
+	if cacheErr != nil {
+		klog.V(logErrorLev).Infof("getJobFaultRankIds %s %v.", job.Name, cacheErr)
+		return "", cacheErr
+	}
+
+	klog.V(logDebugLev).Infof("getJobFaultRankIds %s %v.", job.Name, allFaultNPUs)
+	var rankIds []string
+	rankIndexMap, err := getFaultJobPODRankIndexMapFromCache(job)
+	if err != nil {
+		klog.V(logErrorLev).Infof("getJobFaultRankIds %s %v.", job.Name, err)
+		return "", err
+	}
+	for nodeName, rankIndexStr := range rankIndexMap {
+		klog.V(logInfoLev).Infof("getJobFaultRankIds %s %v.", nodeName, rankIndexStr)
+		var faultNPUs []string
+		faultNPUsOnNode, ok := allFaultNPUs[nodeName]
+		if !ok {
+			continue
+		}
+		faultNPUs = append(faultNPUs, faultNPUsOnNode.FaultNPUs...)
+		faultNPUs = append(faultNPUs, faultNPUsOnNode.NetworkUnhealthyNPUs...)
+		tmpDeviceID := util.ChangeTopToIntArray(strings.Join(faultNPUs, ","), npu800And9000CardPreName)
+		if len(tmpDeviceID) == 0 {
+			klog.V(logInfoLev).Infof("%s getTopFromNode %+v nil.", nodeName, faultNPUsOnNode)
+			continue
+		}
+		rankIndex, covertErr := strconv.Atoi(rankIndexStr)
+		if covertErr != nil {
+			klog.V(logErrorLev).Infof("%s getJobFaultRankIds covert %v.", covertErr, rankIndexStr)
+			continue
+		}
+		for _, tmp := range tmpDeviceID {
+			rankIds = append(rankIds, strconv.Itoa(tmp+rankIndex*8))
+		}
+	}
+	dataBuffer, err := json.Marshal(rankIds)
+	if err != nil {
+		klog.V(logErrorLev).Infof("marshalCacheDataToString err: %v.", err)
+		return "", err
+	}
+	return string(dataBuffer), nil
+}
+
+func getFaultNPUJobCMData(job *api.JobInfo) (*FaultRankIdsJobCMData, error) {
+	fRankIds, getErr := getJobFaultRankIds(job)
+	if getErr != nil {
+		klog.V(logErrorLev).Infof("getJobFaultRankIds err: %v.", getErr)
+		return nil, getErr
+	}
+
+	faultRankIds := &FaultRankIdsJobCMData{
+		FaultRankIds: fRankIds,
+		CreatTime:    time.Now().Unix(),
+	}
+	return faultRankIds, nil
+}
+
+func getJobFaultNPURankIdCMData(job *api.JobInfo) (map[string]string, error) {
+	faultRankIdsMap := make(map[string]string, constIntNum3)
+
+	faultRankIds, getErr := getFaultNPUJobCMData(job)
+	if getErr != nil {
+		return nil, getErr
+	}
+	dataBuffer, err := json.Marshal(faultRankIds)
+	if err != nil {
+		klog.V(logErrorLev).Infof("marshalCacheDataToString err: %v.", err)
+		return nil, err
+	}
+	faultRankIdsMap[JobFaultRankIdCMDataKey] = string(dataBuffer)
+
+	return faultRankIdsMap, nil
+}
+
+func getJobPodsAndCreateTimeByRankIdJobs(job *api.JobInfo) (FaultRankIDRecordJobCMData, error) {
+	var podNames []string
+	var podCreatTimes []int64
+	var podsUID []types.UID
+	rankIds := FaultRankIDRecordJobCMData{}
+	for _, task := range job.Tasks {
+		podNames = append(podNames, task.Pod.Name)
+		podCreatTimes = append(podCreatTimes, task.Pod.CreationTimestamp.Unix())
+		podsUID = append(podsUID, task.Pod.UID)
+	}
+	rankIds.PodsName = podNames
+	rankIds.PodsCreatTime = podCreatTimes
+	rankIds.PodsUID = podsUID
+	return rankIds, nil
+}
+
+// WriteJobFaultRankIDIntoCache Record into cache for recording in volcano-cm later.
+func WriteJobFaultRankIDIntoCache(job *api.JobInfo) error {
+	faultRankIds, getErr := getFaultNPUJobCMData(job)
+	if getErr != nil {
+		return getErr
+	}
+	rankIds, podErr := getJobPodsAndCreateTimeByRankIdJobs(job)
+	if podErr != nil {
+		return podErr
+	}
+	rankIds.CreatTime = faultRankIds.CreatTime
+	rankIds.NameSpace = job.Namespace
+	rankIds.FaultRankIds = faultRankIds.FaultRankIds
+	var rankIdMap = map[api.JobID]FaultRankIDRecordJobCMData{
+		job.UID: rankIds,
+	}
+	ReSchedulerCache[CmJobRankIds] = rankIdMap
+
+	return nil
+}
+
+// WriteJobFaultRankIDIntoCM Record into job cm.
+func WriteJobFaultRankIDIntoCM(ssn *framework.Session, job *api.JobInfo, cmData map[string]string) error {
+	var faultRankIdsCM = &v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      JobFaultRankIdCMPre + job.Name,
+			Namespace: job.Namespace,
+		},
+		Data: cmData,
+	}
+	klog.V(logDebugLev).Infof("WriteJobFaultRankIDIntoCacheAndCM cm is : %+v.", faultRankIdsCM)
+	if err := createOrUpdateConfigMap(ssn.KubeClient(), faultRankIdsCM); err != nil {
+		klog.V(logErrorLev).Infof("WriteJobFaultRankIDIntoCacheAndCM : %v.", err)
+		return err
+	}
+	return nil
+}
+
+// WriteJobFaultRankIDIntoCacheAndCM Write job fault RankID into configmap, every job has own cm.
+func WriteJobFaultRankIDIntoCacheAndCM(ssn *framework.Session, job *api.JobInfo) error {
+	if job == nil {
+		return errors.New("none job cannot write fault RankID")
+	}
+
+	faultRankIdsMap, getErr := getJobFaultNPURankIdCMData(job)
+	if getErr != nil {
+		klog.V(logErrorLev).Infof("getJobFaultNPURankIdCMData : %v.", getErr)
+		return getErr
+	}
+	// write into cache
+	if writeErr := WriteJobFaultRankIDIntoCache(job); writeErr != nil {
+		klog.V(logErrorLev).Infof("WriteJobFaultRankIDIntoCache : %v.", writeErr)
+		return writeErr
+	}
+	// write into job cm
+	if writeCMErr := WriteJobFaultRankIDIntoCM(ssn, job, faultRankIdsMap); writeCMErr != nil {
+		klog.V(logErrorLev).Infof("WriteJobFaultRankIDIntoCache : %v.", writeCMErr)
+		return writeCMErr
 	}
 
 	return nil

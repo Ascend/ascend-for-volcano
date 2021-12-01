@@ -359,6 +359,39 @@ func (tp *module910x8) IsMyJob(job *vapi.JobInfo) error {
 	return isMyJob(job)
 }
 
+func forceDeleteTimeOutGraceTask(ssn *framework.Session) error {
+	// 1.get TimeOutGraceTask
+	// 2.Get need delaying deleting jobs.
+	dJobs, delayErr := rescheduling.GetDelayingDeleteJobs(ssn.Jobs)
+	if delayErr != nil {
+		klog.V(logErrorLev).Infof("GetDelayingDeleteJobs %v.", delayErr)
+		return delayErr
+	}
+	// 2.ForceDelete
+	klog.V(logDebugLev).Infof("GetCanGraceDeleteJobs: %v.", len(dJobs))
+	forceJobs, forceErr := rescheduling.GetNeedForceDeleteDelayingJobs(ssn, dJobs)
+	if forceErr != nil {
+		return forceErr
+	}
+	klog.V(logDebugLev).Infof("will force delete: %v.", len(forceJobs))
+
+	for _, job := range forceJobs {
+		jobPodsTime, jobPodsUID, err := rescheduling.GetRecordJobPods(job)
+		if err != nil {
+			klog.V(logErrorLev).Infof("GetRecordJobPods: %v.", err)
+			continue
+		}
+		klog.V(logDebugLev).Infof("GetRecordJobPods: %v=%v.", jobPodsTime, jobPodsUID)
+		for podName := range jobPodsTime {
+			klog.V(logDebugLev).Infof("ForceDeleteFaultPod: %v.", podName)
+			if deleteErr := plugin.ForceDeleteFaultPod(ssn, job.Namespace, podName, jobPodsUID[podName]); deleteErr != nil {
+				klog.V(logErrorLev).Infof("ForceDeleteFaultPod %s: %v.", podName, deleteErr)
+			}
+		}
+	}
+	return nil
+}
+
 func preHandleFaultNPUFn(ssn *framework.Session) error {
 	klog.V(logDebugLev).Infof("%s enter preHandleFaultNPUFn.", PluginName)
 	defer klog.V(logDebugLev).Infof("%s leave preHandleFaultNPUFn.", PluginName)
@@ -367,25 +400,29 @@ func preHandleFaultNPUFn(ssn *framework.Session) error {
 	if err := rescheduling.RecordFaultInfInCache(ssn, nodeNPUNumber); err != nil {
 		klog.V(logDebugLev).Infof("%s preHandleFaultNPUFn %v.", PluginName, err)
 	}
-	// 2.Determine if it is a 910 jobs.
+	// 2.Force delete tasks that gracefully delete cannot be deleted. For job not running
+	if err := forceDeleteTimeOutGraceTask(ssn); err != nil {
+		klog.V(logDebugLev).Infof("%s ForceDeleteGraceTask %v.", PluginName, err)
+	}
+	// 3.Determine if it is a 910 jobs.
 	jobs, jobGetErr := get910x8RunningJobs(ssn.Jobs)
 	if jobGetErr != nil {
 		klog.V(logDebugLev).Infof("%s get910x8Jobs: %v.", PluginName, jobGetErr)
 		return nil
 	}
-	// 3.Get fault vcjobs and its node-rankIndex.
+	// 4.Get fault vcjobs and its node-rankIndex.
 	faultNPUJobs, getFaultErr := rescheduling.GetFaultNPUJobs(jobs)
 	if getFaultErr != nil {
 		klog.V(logDebugLev).Infof("%s getFaultNPUJobs %v.", PluginName, getFaultErr)
 		return nil
 	}
-	// 4.Sets the fault jobs and its index.
+	// 5.Sets the fault jobs and its index.
 	err := rescheduling.SetFaultInNodeAndJobs(faultNPUJobs, jobs)
 	if err != nil {
 		klog.V(logErrorLev).Infof("%s setFaultInNodeAndJobs %v.", PluginName, err)
 		return err
 	}
-	// 5.Restart vcjobs.
+	// 6.Restart vcjobs.
 	err = restartFaultJob(ssn, faultNPUJobs, jobs)
 	if err != nil {
 		klog.V(logErrorLev).Infof("%s restartFaultJob %v.", PluginName, err)
