@@ -27,6 +27,7 @@ import (
 	"fmt"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 	"strings"
 	"volcano.sh/apis/pkg/apis/scheduling"
@@ -131,22 +132,30 @@ func SetJobPendingReason(ssn *framework.Session, obj interface{}, reason interfa
 	return nil
 }
 
+// ForceDeleteFaultPod Force Delete Pod by k8s.
+func ForceDeleteFaultPod(ssn *framework.Session, nameSpace string, podName string, podUID types.UID) error {
+	deleteOptions := metav1.DeleteOptions{
+		GracePeriodSeconds: new(int64),
+		Preconditions:      metav1.NewUIDPreconditions(string(podUID)),
+	}
+
+	err := ssn.KubeClient().CoreV1().Pods(nameSpace).Delete(context.TODO(), podName, deleteOptions)
+	if err != nil {
+		klog.V(logErrorLev).Infof("Failed to delete %s: %v", podUID, err)
+		return err
+	}
+
+	klog.V(logInfoLev).Infof("%s==%v force terminated and removed from etcd", podName, podUID)
+	return nil
+}
+
 func forceDeleteFaultJob(ssn *framework.Session, job *api.JobInfo) error {
 	for _, task := range job.Tasks {
 		pod := task.Pod
-		deleteOptions := metav1.DeleteOptions{
-			GracePeriodSeconds: new(int64),
-			Preconditions:      metav1.NewUIDPreconditions(string(pod.UID)),
-		}
-
-		err := ssn.KubeClient().CoreV1().Pods(task.Namespace).Delete(context.TODO(), pod.Name, deleteOptions)
-		if err != nil {
-			klog.V(logErrorLev).Infof("Failed to delete %s: %v", pod.UID, err)
+		if err := ForceDeleteFaultPod(ssn, task.Namespace, pod.Name, pod.UID); err != nil {
 			updatePodPendingReason(task, err.Error())
-			return err
+			continue
 		}
-
-		klog.V(logInfoLev).Infof("%s force terminated and removed from etcd", pod.Name)
 	}
 	return nil
 }
@@ -162,14 +171,16 @@ func graceDeleteFaultJob(ssn *framework.Session, job *api.JobInfo, reason string
 	return nil
 }
 
-func evictFaultJob(ssn *framework.Session, job *api.JobInfo, reason string) error {
+func evictFaultJob(ssn *framework.Session, job *api.JobInfo, dJobFlag bool, reason string) error {
 	// Write restart reason into vcjob.
 	updatePodGroupPendingReason(ssn, job, reason)
 	label, getErr := rescheduling.GetJobFaultRescheduleLabel(job)
 	if getErr != nil {
 		label = rescheduling.JobOffRescheduleLabelValue
 	}
-
+	if dJobFlag {
+		label = rescheduling.JobForceRescheduleLabelValue
+	}
 	var deleteErr error
 	switch label {
 	case rescheduling.JobForceRescheduleLabelValue:
@@ -186,7 +197,7 @@ func evictFaultJob(ssn *framework.Session, job *api.JobInfo, reason string) erro
 }
 
 // RestartJob set the job restart and the reason.
-func RestartJob(ssn *framework.Session, job *api.JobInfo, obj interface{}) error {
+func RestartJob(ssn *framework.Session, job *api.JobInfo, dJobFlag bool, obj interface{}) error {
 	var reason string
 
 	// for set job not meet case
@@ -205,7 +216,7 @@ func RestartJob(ssn *framework.Session, job *api.JobInfo, obj interface{}) error
 	}
 
 	if job.PodGroup.Status.Phase == scheduling.PodGroupRunning {
-		if err := evictFaultJob(ssn, job, reason); err != nil {
+		if err := evictFaultJob(ssn, job, dJobFlag, reason); err != nil {
 			klog.V(logErrorLev).Infof("%s Failed to restart %s : %v", PluginName, job.UID, err)
 			return err
 		}

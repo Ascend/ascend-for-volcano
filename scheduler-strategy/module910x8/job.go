@@ -172,16 +172,17 @@ func get910x8RunningJobs(jobs map[api.JobID]*api.JobInfo) (map[string]*api.JobIn
 }
 
 // restartFaultJob restart fault job.
-func restartFaultJob(ssn *framework.Session, faultJobs []rescheduling.FaultNPUJob, jobs map[string]*api.JobInfo) error {
-	restartJobs, getErr := rescheduling.GetRestartNPUFaultJobs(faultJobs, jobs)
+func restartFaultJob(ssn *framework.Session, fJobs []rescheduling.FaultNPUJob, jobs map[string]*api.JobInfo) error {
+	// 1.Get fault jobs.
+	restartJobs, getErr := rescheduling.GetRestartNPUFaultJobs(fJobs, jobs)
 	if getErr != nil {
 		klog.V(logDebugLev).Infof("restartFaultJob %v.", getErr)
 		return nil
 	}
-
+	// 2.Restart job.
 	for _, restartJob := range restartJobs {
 		klog.V(logInfoLev).Infof("%s need restart.", restartJob.Name)
-		if err := plugin.RestartJob(ssn, restartJob, jobRestartReason); err != nil {
+		if err := plugin.RestartJob(ssn, restartJob, false, jobRestartReason); err != nil {
 			klog.V(logInfoLev).Infof("RestartJob %v.", err)
 			return err
 		}

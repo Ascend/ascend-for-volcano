@@ -6,7 +6,7 @@ metadata:
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: volcano-monitoring 
+  name: volcano-monitoring
 ---
 # Source: volcano/templates/scheduler.yaml
 apiVersion: v1
@@ -140,9 +140,6 @@ spec:
       containers:
         - name: volcano-scheduler
           image: volcanosh/vc-scheduler:v1.4.0
-          env:
-          - name: pluginName
-            value: "volcano-npu-v2.0.3"
           command: ["/bin/ash"]
           args: ["-c", "umask 027; /vc-scheduler
                   --scheduler-conf=/volcano.scheduler/volcano-scheduler.conf
@@ -165,7 +162,7 @@ spec:
             runAsUser: 9000
             runAsGroup: 9000
             capabilities:
-              drop: ["ALL"]          
+              drop: ["ALL"]
           volumeMounts:
             - name: scheduler-config
               mountPath: /volcano.scheduler
@@ -193,12 +190,12 @@ metadata:
     prometheus.io/port: "8080"
     prometheus.io/scrape: "true"
   name: volcano-scheduler-service
-  namespace: volcano-system 
+  namespace: volcano-system
 spec:
   ports:
-  - port: 8080
-    protocol: TCP
-    targetPort: 8080
+    - port: 8080
+      protocol: TCP
+      targetPort: 8080
   selector:
     app: volcano-scheduler
   type: ClusterIP
@@ -292,43 +289,43 @@ spec:
         masterselector: dls-master-node
       serviceAccount: volcano-controllers
       containers:
-          - name: volcano-controllers
-            image: volcanosh/vc-controller-manager:v1.4.0
-            imagePullPolicy: "IfNotPresent"
-            command: [ "/bin/bash" ]
-            args: [ "-c", "umask 027;/vc-controller-manager
+        - name: volcano-controllers
+          image: volcanosh/vc-controller-manager:v1.4.0
+          imagePullPolicy: "IfNotPresent"
+          command: [ "/bin/ash" ]
+          args: [ "-c", "umask 027;/vc-controller-manager
                      --logtostderr=false
                      --log_dir=/var/log/mindx-dl/volcano-controller
                      --log_file=/var/log/mindx-dl/volcano-controller/volcano-controller.log
                      -v=4 2>&1" ]
-            resources:
-              requests:
-                memory: 3Gi
-                cpu: 500m
-              limits:
-                memory: 3Gi
-                cpu: 500m
-            securityContext:
-              allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: true
-              runAsUser: 9000
-              runAsGroup: 9000
-              capabilities:
-                add: ["DAC_OVERRIDE"]
-                drop: ["ALL"]
-            volumeMounts:
-              - name: device-volcanocontroller
-                mountPath: /var/log/mindx-dl/volcano-controller
-              - name: localtime
-                mountPath: /etc/localtime
+          resources:
+            requests:
+              memory: 3Gi
+              cpu: 500m
+            limits:
+              memory: 3Gi
+              cpu: 500m
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsUser: 9000
+            runAsGroup: 9000
+            capabilities:
+              add: ["DAC_OVERRIDE"]
+              drop: ["ALL"]
+          volumeMounts:
+            - name: device-volcanocontroller
+              mountPath: /var/log/mindx-dl/volcano-controller
+            - name: localtime
+              mountPath: /etc/localtime
       volumes:
-          - name: device-volcanocontroller
-            hostPath:
-              path: /var/log/mindx-dl/volcano-controller
-              type: Directory
-          - name: localtime
-            hostPath:
-              path: /etc/localtime
+        - name: device-volcanocontroller
+          hostPath:
+            path: /var/log/mindx-dl/volcano-controller
+            type: Directory
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
 ---
 # Source: volcano/templates/batch_v1alpha1_job.yaml
 apiVersion: apiextensions.k8s.io/v1beta1
@@ -366,7 +363,7 @@ spec:
           properties:
             runningEstimate:
               description: Running Estimate is a user running duration estimate for job Default to nil.
-              type: string 
+              type: string
             volumes:
               description: The volumes for Job
               items:
@@ -507,8 +504,8 @@ spec:
               additionalProperties:
                 type: string
             runningDuration:
-              description: the length of time from job running to complete 
-              type: string 
+              description: the length of time from job running to complete
+              type: string
             state:
               description: Current state of Job.
               properties:

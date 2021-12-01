@@ -21,6 +21,8 @@ Package rescheduling is using for HuaWei Ascend pin affinity schedule utilities.
 */
 package rescheduling
 
+import "k8s.io/apimachinery/pkg/types"
+
 const (
 	// CmJobKind the fault job data record in configmap.
 	CmJobKind = "job"
@@ -30,6 +32,8 @@ const (
 	CmCardKind = "card"
 	// CmNodeHeartbeatKind the node  heartbeat record in configmap.
 	CmNodeHeartbeatKind = "heartbeat"
+	// CmJobRankIds the jobs rankIds for .
+	CmJobRankIds = "rankIds"
 	// TmpAllocRankIndexKind used for allocated rankIndex in one session.
 	TmpAllocRankIndexKind = "allocRankIndex"
 	logErrorLev           = 1
@@ -44,6 +48,7 @@ const (
 	cmName                = "vcjob-fault-npu-cm"
 	// node inoperable interval time(s)
 	nodeUpdateTime        = 5
+	graceOverTime         = 900
 	nodeHeartbeat         = "noded/heartbeat"
 	nodeHeartbeatInterval = "noded/heartbeat-interval"
 	faultNPU              = "huawei.com/Ascend910-Unhealthy"
@@ -56,11 +61,15 @@ const (
 	JobForceRescheduleLabelValue = "force"
 	// JobOffRescheduleLabelValue not delete reschedule job.
 	JobOffRescheduleLabelValue = "off"
-	nodeDEnableKey             = "nodeDEnable"
-	nodeDEnableOnValue         = "on"
-	nodeDEnableOffValue        = "off"
-	npu800And9000CardName      = "huawei.com/Ascend910"
-	npu800And9000CardPreName   = "Ascend910-"
+	// JobFaultRankIDCMDataKey the job cm value key.
+	JobFaultRankIDCMDataKey = "fault-npus"
+	// JobFaultRankIDCMPre the job cm name prefix.
+	JobFaultRankIDCMPre      = "fault-config-"
+	nodeDEnableKey           = "nodeDEnable"
+	nodeDEnableOnValue       = "on"
+	nodeDEnableOffValue      = "off"
+	npu800And9000CardName    = "huawei.com/Ascend910"
+	npu800And9000CardPreName = "Ascend910-"
 )
 
 // ReSchedulerTasks record the tasks using the failed NPU.
@@ -143,3 +152,21 @@ type TaskUsedRankIndex struct {
 }
 
 var reSchedulerJobController = make(map[string]struct{}, constIntNum3)
+
+// FaultRankIDRecordJobCMData record in volcano fault cm, key is job's uuid.
+type FaultRankIDRecordJobCMData struct {
+	NameSpace    string
+	FaultRankIds string
+	// key is podName,value is pod create time
+	PodsName      []string
+	PodsUID       []types.UID
+	PodsCreatTime []int64
+	// this the record create time.
+	CreatTime int64
+}
+
+// FaultRankIdsJobCMData used by RestoreManager for every job.
+type FaultRankIdsJobCMData struct {
+	FaultRankIds string
+	CreatTime    int64
+}

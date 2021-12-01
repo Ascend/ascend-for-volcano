@@ -4,7 +4,7 @@
 
 set -e
 
-DEFAULT_VER='v2.0.3'
+DEFAULT_VER='v2.0.4'
 TOP_DIR=${GOPATH}/src/volcano.sh/volcano/
 BASE_PATH=${GOPATH}/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/
 CMD_PATH=${GOPATH}/src/volcano.sh/volcano/cmd/
@@ -29,7 +29,8 @@ function parse_arch() {
 }
 
 REL_VERSION=$(parse_version)
-REL_OSARCH=$(parse_arch)
+REL_ARCH=$(parse_arch)
+REL_NPU_PLUGIN=volcano-npu_${REL_VERSION}_linux-${REL_ARCH}
 
 function clean() {
     rm -f "${BASE_PATH}"/output/vc-controller-manager
@@ -38,7 +39,7 @@ function clean() {
 }
 
 function build() {
-    echo "Build Architecture is" "${REL_OSARCH}"
+    echo "Build Architecture is" "${REL_ARCH}"
 
     export GO111MODULE=on
     export PATH=$GOPATH/bin:$PATH
@@ -50,33 +51,30 @@ function build() {
 
     cd "${BASE_PATH}"/output/
 
-    CGO_CFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
-    CGO_CPPFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
-    CGO_ENABLED=0 go build -buildmode=pie -ldflags "-s -linkmode=external -extldflags=-Wl,-z,now
-    -X '${PKG_PATH}/version.Built=${DATE}' -X '${PKG_PATH}/version.Version=${BASE_VER}'" \
-    -o vc-controller-manager "${CMD_PATH}"/controller-manager
+    for name in controller-manager scheduler; do\
+      CGO_CFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
+      CGO_CPPFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
+      CC=/usr/local/musl/bin/musl-gcc CGO_ENABLED=1 \
+      go build -buildmode=pie -ldflags "-s -linkmode=external -extldflags=-Wl,-z,now
+      -X '${PKG_PATH}/version.Built=${DATE}' -X '${PKG_PATH}/version.Version=${BASE_VER}'" \
+      -o vc-$name "${CMD_PATH}"/$name
+    done
 
     CGO_CFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
     CGO_CPPFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
-    CC=/usr/local/musl/bin/musl-gcc \
-    CGO_ENABLED=1 go build -buildmode=pie -ldflags "-s -extldflags=-Wl,-z,now
-    -X '${PKG_PATH}/version.Built=${DATE}' -X '${PKG_PATH}/version.Version=${BASE_VER}'" \
-    -o vc-scheduler "${CMD_PATH}"/scheduler
+    CC=/usr/local/musl/bin/musl-gcc CGO_ENABLED=1 \
+    go build -buildmode=plugin -ldflags "-s -extldflags=-Wl,-z,now
+    -X volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin.PluginName=${REL_NPU_PLUGIN}" \
+    -o "${REL_NPU_PLUGIN}".so "${GOPATH}"/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/
 
-    CGO_CFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
-    CGO_CPPFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
-    CC=/usr/local/musl/bin/musl-gcc CGO_ENABLED=1 go build -buildmode=plugin -ldflags \
-    "-s -extldflags=-Wl,-z,now" -o volcano-npu_"${REL_VERSION}_linux-${REL_OSARCH}".so \
-    "${GOPATH}"/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/
-
-    if [ ! -f "${BASE_PATH}/output/volcano-npu_${REL_VERSION}_linux-${REL_OSARCH}.so" ]
+    if [ ! -f "${BASE_PATH}/output/${REL_NPU_PLUGIN}.so" ]
     then
       echo "fail to find volcano-npu-${REL_VERSION}.so"
       exit 1
     fi
-    sed -i "s/name: volcano-npu-.*/name: volcano-npu_${REL_VERSION}_linux-${REL_OSARCH}/" "${BASE_PATH}"/output/volcano-*.yaml
-    sed -i "s/ value: \"volcano-npu-.*/ value: \"volcano-npu_${REL_VERSION}_linux-${REL_OSARCH}\"/" "${BASE_PATH}"/output/volcano-*.yaml
-    sed -i "s/pluginName=volcano-npu-.*/pluginName=volcano-npu_${REL_VERSION}_linux-${REL_OSARCH}/" "${BASE_PATH}"/output/Dockerfile-scheduler
+
+    sed -i "s/name: volcano-npu-.*/name: ${REL_NPU_PLUGIN}/" "${BASE_PATH}"/output/volcano-*.yaml
+
     chmod 400 "${BASE_PATH}"/output/*.so
     chmod 500 vc-controller-manager vc-scheduler
     chmod 400 "${BASE_PATH}"/output/Dockerfile*

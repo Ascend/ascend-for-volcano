@@ -63,6 +63,15 @@ func convertToNodeHeartbeatMapFromCM(buffer string) (map[string]NormalNodeHeartb
 	return heartbeat, nil
 }
 
+func convertToJobRankIdsMapFromCM(buffer string) (map[string]FaultRankIDRecordJobCMData, error) {
+	jobRankIds := map[string]FaultRankIDRecordJobCMData{}
+	if unmarshalErr := json.Unmarshal([]byte(buffer), &jobRankIds); unmarshalErr != nil {
+		return nil, unmarshalErr
+	}
+
+	return jobRankIds, nil
+}
+
 func getCMCardWriteData(nodeData interface{}) (string, error) {
 	return marshalCacheDataToString(nodeData)
 }
@@ -228,7 +237,7 @@ func updateNodeIntoNodesHeartbeatTmp(ssn *framework.Session) error {
 	return nil
 }
 
-// Delete expired heartbeat data.
+// Delete expired dode heartbeat data.
 func synNodeHeartbeatCache(ssn *framework.Session, tmpValue interface{}) error {
 	nodesHeartbeat, assertOk := tmpValue.(map[string]NormalNodeHeartbeat)
 	if !assertOk {
@@ -249,6 +258,44 @@ func synNodeHeartbeatCache(ssn *framework.Session, tmpValue interface{}) error {
 	}
 
 	ReSchedulerCache[CmNodeHeartbeatKind] = nodesHeartbeat
+
+	return nil
+}
+
+func getJobFaultNPURankIdsByData(tmpValue interface{}) (map[api.JobID]FaultRankIDRecordJobCMData, error) {
+	jobRankIds, assertOk := tmpValue.(map[api.JobID]FaultRankIDRecordJobCMData)
+	if !assertOk {
+		msg := fmt.Errorf("assert %v to map[string]FaultRankIDRecordJobCMData failed", tmpValue)
+		klog.V(logErrorLev).Infof("synJobRankIdsCache %v.", msg)
+		return nil, msg
+	}
+	return jobRankIds, nil
+}
+
+// Delete expired rankIds data.
+func synJobRankIdsCache(ssn *framework.Session, tmpValue interface{}) error {
+	jobRankIds, getErr := getJobFaultNPURankIdsByData(tmpValue)
+	if getErr != nil {
+		msg := fmt.Errorf("assert %v to map[string]FaultRankIDRecordJobCMData failed", tmpValue)
+		klog.V(logErrorLev).Infof("synJobRankIdsCache %v.", msg)
+		return msg
+	}
+	// delete nonexistent rankIds
+	for jobID, value := range jobRankIds {
+		// 	No info
+		_, ok := ssn.Jobs[jobID]
+		if !ok {
+			klog.V(logInfoLev).Infof("delete %s from jobRankIds %+v due to not existence.", jobID, jobRankIds)
+			// only job not existence can delete cm
+			if err := deleteRedundantRankIDCM(ssn, value.NameSpace, jobID); err != nil {
+				klog.V(logErrorLev).Infof("synJobRankIdsCache delete RankIdCM %v.", err)
+			}
+			delete(jobRankIds, jobID)
+			continue
+		}
+	}
+
+	ReSchedulerCache[CmJobRankIds] = jobRankIds
 
 	return nil
 }
