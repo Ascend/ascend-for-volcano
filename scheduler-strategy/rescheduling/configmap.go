@@ -24,7 +24,6 @@ package rescheduling
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -99,9 +98,9 @@ func deleteSchedulerConfigMap(ssn *framework.Session, nameSpace, cmName string) 
 }
 
 func convertToReSchedulerJobsMapFromCM(buffer string) (map[string]ReSchedulerTasks, error) {
-	reSchedulerJob := map[string]ReSchedulerTasks{}
+	reSchedulerJob := make(map[string]ReSchedulerTasks, constIntNum3)
 	if unmarshalErr := json.Unmarshal([]byte(buffer), &reSchedulerJob); unmarshalErr != nil {
-		klog.V(logErrorLev).Infof("convertToReSchedulerJobsMapFromCM: %v %v.", buffer, unmarshalErr)
+		klog.V(logErrorLev).Infof("convertToReSchedulerJobsMapFromCM Unmarshal: %v %v.", buffer, unmarshalErr)
 		return nil, unmarshalErr
 	}
 	return reSchedulerJob, nil
@@ -264,7 +263,7 @@ func getCMWriteDate(ssn *framework.Session, reSchedulerData map[string]interface
 	for dataKind, faultData := range reSchedulerData {
 		switch dataKind {
 		case CmJobKind:
-			jobData, err := getCMJobWriteData(ssn, faultData)
+			jobData, err := getCMJobWriteData(faultData)
 			if err != nil {
 				klog.V(logErrorLev).Infof("getCMJobWriteData :%v.", err)
 				continue
@@ -457,8 +456,8 @@ func WriteJobFaultRankIDIntoCM(ssn *framework.Session, job *api.JobInfo, cmData 
 
 // WriteJobFaultRankIDIntoCacheAndCM Write job fault RankID into configmap, every job has own cm.
 func WriteJobFaultRankIDIntoCacheAndCM(ssn *framework.Session, job *api.JobInfo) error {
-	if job == nil {
-		return errors.New("none job cannot write fault RankID")
+	if !isGraceDeleteJob(job) {
+		return fmt.Errorf("%v not GraceDeleteJob", job.UID)
 	}
 
 	faultRankIdsMap, getErr := getJobFaultNPURankIDCMData(job)

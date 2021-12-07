@@ -69,7 +69,7 @@ func buildAddScoreByFaultNPUTaskTestCases() addScoreByFaultNPUTaskTestTests {
 				cacheFun: func() {
 					ReSchedulerCache = make(map[string]interface{}, constIntNum2)
 					reTask := map[api.JobID]ReSchedulerTasks{
-						"haha": {nil, nil, nil, nil, task1.Namespace}}
+						"haha": {nil, nil, nil, nil, nil, task1.Namespace, false, 1234}}
 					ReSchedulerCache[CmJobKind] = reTask
 				},
 			},
@@ -84,7 +84,7 @@ func buildAddScoreByFaultNPUTaskTestCases() addScoreByFaultNPUTaskTestTests {
 				cacheFun: func() {
 					ReSchedulerCache = make(map[string]interface{}, constIntNum2)
 					reTask := map[api.JobID]ReSchedulerTasks{
-						task1.Job: {nil, nil, nil, nil, task1.Namespace}}
+						task1.Job: {nil, nil, nil, nil, nil, task1.Namespace, false, 12345}}
 					ReSchedulerCache[CmJobKind] = reTask
 				},
 			},
@@ -130,14 +130,15 @@ func addTestTaskIntoReSchedulerCache(tasks ...*api.TaskInfo) {
 
 	if len(tasks) == 0 {
 		reTask = map[api.JobID]ReSchedulerTasks{
-			"hahaTask": {nil, nil, nil, nil, ""}}
+			"hahaTask": {nil, nil, nil, nil, nil, "", false, 1234}}
 		ReSchedulerCache[CmJobKind] = reTask
 		return
 	}
 	for _, task := range tasks {
 		reTask[task.Job] = ReSchedulerTasks{
-			NodeNames:   map[string]string{task.Name: task.NodeName},
-			RankIndexes: nil,
+			TaskName:    []string{task.Name},
+			NodeNames:   []string{task.NodeName},
+			RankIndexes: []string{"1"},
 			Time:        nil,
 			TaskUseNPUs: nil,
 			NameSpace:   ""}
@@ -870,16 +871,17 @@ func addTestJobIntoReSchedulerCache(job *api.JobInfo) {
 
 	if job == nil {
 		reJobs = map[api.JobID]ReSchedulerTasks{
-			"hahaTask": {nil, nil, nil, nil, ""}}
+			"hahaTask": {nil, nil, nil, nil, nil, "", false, 12345}}
 		ReSchedulerCache[CmJobKind] = reJobs
 		return
 	}
 	for _, task := range job.Tasks {
 		reJobs[task.Job] = ReSchedulerTasks{
-			NodeNames:   map[string]string{task.Name: task.NodeName},
-			RankIndexes: map[string]string{task.Name: task.Pod.Annotations[podRankIndex]},
+			TaskName:    []string{task.Name},
+			NodeNames:   []string{task.NodeName},
+			RankIndexes: []string{task.Pod.Annotations[podRankIndex]},
 			Time:        nil,
-			TaskUseNPUs: map[string]string{task.Name: task.Pod.Annotations[npu800And9000CardName]},
+			TaskUseNPUs: []string{task.Pod.Annotations[npu800And9000CardName]},
 			NameSpace:   "vcjob"}
 	}
 
@@ -960,7 +962,7 @@ func buildSetFaultJobPodIndexTestCases() setFaultJobPodIndexTests {
 					initTestReSchedulerCache()
 				},
 			},
-			wantErr: nil,
+			wantErr: fmt.Errorf("no %v in jobMap", tasks[0].Job),
 		},
 		{
 			name: "02-not in record fault Cache-test",
@@ -1007,12 +1009,14 @@ type setFaultInNodeAndJobsArgs struct {
 }
 
 type setFaultInNodeAndJobsTests []struct {
+	ssn     *framework.Session
 	name    string
 	args    setFaultInNodeAndJobsArgs
 	wantErr error
 }
 
 func buildSetFaultInNodeAndJobsTestCases() setFaultInNodeAndJobsTests {
+	testSsn := ascendtest.FakeNormalSSN()
 	fakeJob1 := ascendtest.FakeNormalTestJob("pg", constIntNum3)
 	fakeJob2 := ascendtest.FakeNormalTestJob("pg1", constIntNum3)
 	mapJob1 := map[string]*api.JobInfo{fakeJob1.Name: fakeJob1}
@@ -1020,15 +1024,17 @@ func buildSetFaultInNodeAndJobsTestCases() setFaultInNodeAndJobsTests {
 	faultJob1 := addJobIntoFaultNPUJobStruct(fakeJob1)
 	testCases := setFaultInNodeAndJobsTests{
 		{
+			ssn:  testSsn,
 			name: "01-job not in record fault Cache-test",
 			args: setFaultInNodeAndJobsArgs{
 				jobs: mapJob2, fNPUJobs: []FaultNPUJob{faultJob1}, cacheFun: func() {
 					initTestReSchedulerCache()
 				},
 			},
-			wantErr: fmt.Errorf("%s not found in fault jobs", faultJob1.jobName),
+			wantErr: nil,
 		},
 		{
+			ssn:  testSsn,
 			name: "02-write in fault Cache success-test",
 			args: setFaultInNodeAndJobsArgs{
 				jobs: mapJob1, fNPUJobs: []FaultNPUJob{faultJob1}, cacheFun: func() {
@@ -1047,7 +1053,7 @@ func TestSetFaultInNodeAndJobs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.args.cacheFun()
-			err := SetFaultInNodeAndJobs(tt.args.fNPUJobs, tt.args.jobs)
+			err := SetFaultInNodeAndJobs(tt.ssn, tt.args.fNPUJobs, tt.args.jobs)
 			if !reflect.DeepEqual(err, tt.wantErr) {
 				t.Errorf("SetFaultInNodeAndJobs() error = %v, wantErr %v", err, tt.wantErr)
 			}

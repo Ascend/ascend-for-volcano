@@ -536,19 +536,28 @@ func getFaultNodePODAndRankIndex(job *api.JobInfo, nodes map[string]*v1.Pod) (Fa
 	return faultJob, nil
 }
 
-// For get ReSchedulerTasks from ReSchedulerData
-func getReSchedulerTasksFromCache(task *api.TaskInfo) (ReSchedulerTasks, error) {
+func getReSchedulerJobsMapFromCache() (map[api.JobID]ReSchedulerTasks, error) {
 	jobValue, ok := ReSchedulerCache[CmJobKind]
 	if !ok {
-		klog.V(logErrorLev).Infof("getReSchedulerTasksFromCache no fault task in ReSchedulerCache.")
-		return ReSchedulerTasks{}, nil
+		klog.V(logDebugLev).Infof("getReSchedulerTasksFromCache no fault task in ReSchedulerCache.")
+		return nil, nil
 	}
 
 	jobMap, ok := jobValue.(map[api.JobID]ReSchedulerTasks)
 	if !ok {
 		mgs := fmt.Errorf("not type(map[api.JobID]ReSchedulerTasks) %v ", jobMap)
 		klog.V(logErrorLev).Infof("%v.", mgs)
-		return ReSchedulerTasks{}, mgs
+		return nil, mgs
+	}
+	return jobMap, nil
+}
+
+// For get ReSchedulerTasks from ReSchedulerData
+func getReSchedulerTasksFromCache(task *api.TaskInfo) (ReSchedulerTasks, error) {
+	jobMap, getErr := getReSchedulerJobsMapFromCache()
+	if getErr != nil {
+		klog.V(logErrorLev).Infof("getReSchedulerJobsMapFromCache %v.", getErr)
+		return ReSchedulerTasks{}, getErr
 	}
 
 	value, ok := jobMap[task.Job]
@@ -568,9 +577,15 @@ func GetFaultTaskUseNodeInfo(task *api.TaskInfo, ssn *framework.Session) (*api.N
 		return nil, err
 	}
 
-	nodeName, ok := faultTasks.NodeNames[task.Name]
-	if !ok {
-		return nil, fmt.Errorf("get taskName %s failed", task.Name)
+	nodeName := ""
+	for key, value := range faultTasks.TaskName {
+		if value == task.Name {
+			nodeName = faultTasks.NodeNames[key]
+			break
+		}
+	}
+	if len(nodeName) == 0 {
+		return nil, fmt.Errorf("get %s use node name failed", task.Name)
 	}
 
 	node, ok := ssn.Nodes[nodeName]

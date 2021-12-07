@@ -22,11 +22,9 @@ Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
 package rescheduling
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 	"strconv"
@@ -223,52 +221,67 @@ func RecordFaultInfInCache(ssn *framework.Session, npuNumber int) error {
 	return nil
 }
 
-// SetFaultInNodeAndJobs Recorded the information about the faulty task in the cache.
-func SetFaultInNodeAndJobs(fNPUJobs []FaultNPUJob, jobs map[string]*api.JobInfo) error {
-	for _, tmpFaultNPUJob := range fNPUJobs {
-		tmpTask := ReSchedulerTasks{
-			NodeNames:   make(map[string]string, constIntNum3),
-			RankIndexes: make(map[string]string, constIntNum3),
-			Time:        make(map[string]int64, constIntNum3),
-			TaskUseNPUs: make(map[string]string, constIntNum3),
-			NameSpace:   tmpFaultNPUJob.namespace}
-
-		for taskName, nodeName := range tmpFaultNPUJob.taskUseNode {
-			rankIndex, indexOK := tmpFaultNPUJob.taskUseRankIndex[taskName]
-			if !indexOK {
-				klog.V(logErrorLev).Infof("%s get rankIndex failed.", taskName)
-				continue
-			}
-
-			useNPUs, npuOK := tmpFaultNPUJob.taskUseNPUs[taskName]
-			if !npuOK {
-				klog.V(logErrorLev).Infof("%s get use NPUs failed.", taskName)
-				continue
-			}
-			tmpTask.NodeNames[taskName] = nodeName
-			tmpTask.TaskUseNPUs[taskName] = useNPUs
-			tmpTask.RankIndexes[taskName] = rankIndex
-			tmpTask.Time[taskName] = time2.Now().Unix()
-		}
-
-		if err := writeFaultJobInfInCache(jobs, tmpFaultNPUJob, tmpTask); err != nil {
-			klog.V(logErrorLev).Infof("recordNPUFaultJobToBuffer :%v.", err)
-			return err
-		}
+func isGraceDeleteJob(job *api.JobInfo) bool {
+	label, getErr := GetJobFaultRescheduleLabel(job)
+	if getErr != nil {
+		return false
 	}
-
-	return nil
+	if label == JobGraceRescheduleLabelValue {
+		return true
+	}
+	return false
 }
 
-func getJobPodsInfoFromK8s(ssn *framework.Session, dJob *api.JobInfo) (map[string]*v1.Pod, error) {
-	tmpPods := make(map[string]*v1.Pod, constIntNum3)
-	for _, task := range dJob.Tasks {
-		pod, err := ssn.KubeClient().CoreV1().Pods(dJob.Namespace).Get(context.TODO(),
-			task.Pod.Name, metav1.GetOptions{})
-		if err != nil {
-			return nil, err
+func makeReSchedulerTasksByFaultNPUJob(tmpFaultNPUJob FaultNPUJob, jobInf *api.JobInfo) (ReSchedulerTasks, error) {
+	tmpTask := ReSchedulerTasks{
+		NameSpace:     tmpFaultNPUJob.namespace,
+		GraceTaskFlag: isGraceDeleteJob(jobInf),
+		UpdateTime:    time2.Now().Unix()}
+
+	for taskName, nodeName := range tmpFaultNPUJob.taskUseNode {
+		rankIndex, indexOK := tmpFaultNPUJob.taskUseRankIndex[taskName]
+		if !indexOK {
+			klog.V(logErrorLev).Infof("%s get rankIndex failed.", taskName)
+			continue
 		}
-		tmpPods[pod.Name] = pod
+
+		useNPUs, npuOK := tmpFaultNPUJob.taskUseNPUs[taskName]
+		if !npuOK {
+			klog.V(logErrorLev).Infof("%s get use NPUs failed.", taskName)
+			continue
+		}
+
+		tmpTask.TaskName = append(tmpTask.TaskName, taskName)
+		tmpTask.NodeNames = append(tmpTask.NodeNames, nodeName)
+		tmpTask.TaskUseNPUs = append(tmpTask.TaskUseNPUs, useNPUs)
+		tmpTask.RankIndexes = append(tmpTask.RankIndexes, rankIndex)
+		tmpTask.Time = append(tmpTask.Time, time2.Now().Unix())
 	}
-	return tmpPods, nil
+	return tmpTask, nil
+}
+
+// SetFaultInNodeAndJobs Recorded the information about the faulty task in the cache.
+func SetFaultInNodeAndJobs(ssn *framework.Session, fNPUJobs []FaultNPUJob, jobs map[string]*api.JobInfo) error {
+	for _, tmpFaultNPUJob := range fNPUJobs {
+		jobInf, ok := jobs[tmpFaultNPUJob.jobName]
+		if !ok {
+			klog.V(logErrorLev).Infof("SetFaultInNodeAndJobs %s not found in fault jobs", tmpFaultNPUJob.jobName)
+			continue
+		}
+		tmpTask, makeErr := makeReSchedulerTasksByFaultNPUJob(tmpFaultNPUJob, jobInf)
+		if makeErr != nil {
+			klog.V(logErrorLev).Infof("%s SetFaultInNodeAndJobs %v", jobInf.Name, makeErr)
+			continue
+		}
+		if err := writeFaultJobInfInCache(jobInf, tmpTask); err != nil {
+			klog.V(logErrorLev).Infof("SetFaultInNodeAndJobs :%v.", err)
+			continue
+		}
+		// 3.Record into job-fault-configMap.
+		if cmErr := WriteJobFaultRankIDIntoCacheAndCM(ssn, jobInf); cmErr != nil {
+			klog.V(logErrorLev).Infof("SetFaultInNodeAndJobs %v.", cmErr)
+		}
+	}
+	klog.V(logDebugLev).Infof("SetFaultInNodeAndJobs after %+v.", ReSchedulerCache)
+	return nil
 }

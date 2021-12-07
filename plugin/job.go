@@ -171,16 +171,14 @@ func graceDeleteFaultJob(ssn *framework.Session, job *api.JobInfo, reason string
 	return nil
 }
 
-func evictFaultJob(ssn *framework.Session, job *api.JobInfo, dJobFlag bool, reason string) error {
+func evictFaultJob(ssn *framework.Session, job *api.JobInfo, reason string) error {
 	// Write restart reason into vcjob.
 	updatePodGroupPendingReason(ssn, job, reason)
 	label, getErr := rescheduling.GetJobFaultRescheduleLabel(job)
 	if getErr != nil {
 		label = rescheduling.JobOffRescheduleLabelValue
 	}
-	if dJobFlag {
-		label = rescheduling.JobForceRescheduleLabelValue
-	}
+
 	var deleteErr error
 	switch label {
 	case rescheduling.JobForceRescheduleLabelValue:
@@ -197,7 +195,7 @@ func evictFaultJob(ssn *framework.Session, job *api.JobInfo, dJobFlag bool, reas
 }
 
 // RestartJob set the job restart and the reason.
-func RestartJob(ssn *framework.Session, job *api.JobInfo, dJobFlag bool, obj interface{}) error {
+func RestartJob(ssn *framework.Session, job *api.JobInfo, obj interface{}) error {
 	var reason string
 
 	// for set job not meet case
@@ -216,7 +214,7 @@ func RestartJob(ssn *framework.Session, job *api.JobInfo, dJobFlag bool, obj int
 	}
 
 	if job.PodGroup.Status.Phase == scheduling.PodGroupRunning {
-		if err := evictFaultJob(ssn, job, dJobFlag, reason); err != nil {
+		if err := evictFaultJob(ssn, job, reason); err != nil {
 			klog.V(logErrorLev).Infof("%s Failed to restart %s : %v", PluginName, job.UID, err)
 			return err
 		}

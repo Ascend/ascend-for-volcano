@@ -197,7 +197,6 @@ func (tp *module910x8) ScoreBestNPUNodesFn(scoreMap map[string]float64,
 	tmpScoreMap, err := rescheduling.AddScoreByFaultNPUTask(task, scoreMap)
 	if err != nil {
 		klog.V(logErrorLev).Infof("%s ScoreBestNPUNodesFn: %v.", PluginName, err)
-		return tmpScoreMap, err
 	}
 	return tmpScoreMap, nil
 }
@@ -359,22 +358,7 @@ func (tp *module910x8) IsMyJob(job *vapi.JobInfo) error {
 	return isMyJob(job)
 }
 
-func forceDeleteTimeOutGraceTask(ssn *framework.Session) error {
-	// 1.get TimeOutGraceTask
-	// 2.Get need delaying deleting jobs.
-	dJobs, delayErr := rescheduling.GetDelayingDeleteJobs(ssn.Jobs)
-	if delayErr != nil {
-		klog.V(logErrorLev).Infof("GetDelayingDeleteJobs %v.", delayErr)
-		return delayErr
-	}
-	// 2.ForceDelete
-	klog.V(logDebugLev).Infof("GetCanGraceDeleteJobs: %v.", len(dJobs))
-	forceJobs, forceErr := rescheduling.GetNeedForceDeleteDelayingJobs(ssn, dJobs)
-	if forceErr != nil {
-		return forceErr
-	}
-	klog.V(logDebugLev).Infof("will force delete: %v.", len(forceJobs))
-
+func forceDeleteJobsByPods(ssn *framework.Session, forceJobs []*api.JobInfo) error {
 	for _, job := range forceJobs {
 		jobPodsTime, jobPodsUID, err := rescheduling.GetRecordJobPods(job)
 		if err != nil {
@@ -389,6 +373,31 @@ func forceDeleteTimeOutGraceTask(ssn *framework.Session) error {
 				klog.V(logErrorLev).Infof("ForceDeleteFaultPod %s: %v.", podName, deleteErr)
 			}
 		}
+	}
+	return nil
+}
+
+func forceDeleteTimeOutGraceTask(ssn *framework.Session) error {
+	// 1.Get grace delete jobs from cache.
+	dJobs, delayErr := rescheduling.GetGraceDeleteJobsFromCache()
+	if delayErr != nil {
+		klog.V(logErrorLev).Infof("GetGraceDeleteJobsFromCache %v.", delayErr)
+		return delayErr
+	}
+
+	// 2.Get force delete jobs.
+	klog.V(logDebugLev).Infof("GetCanGraceDeleteJobs: %v.", len(dJobs))
+	forceJobs, forceErr := rescheduling.GetNeedForceDeleteDelayingJobs(ssn, dJobs)
+	if forceErr != nil {
+		return forceErr
+	}
+	klog.V(logDebugLev).Infof("will force delete: %v.", len(forceJobs))
+
+	// 3.Get force delete jobs.
+	deleteErr := forceDeleteJobsByPods(ssn, forceJobs)
+	if deleteErr != nil {
+		klog.V(logDebugLev).Infof("ForceDeleteJobsByPods: %v.", deleteErr)
+		return deleteErr
 	}
 	return nil
 }
@@ -418,7 +427,7 @@ func preHandleFaultNPUFn(ssn *framework.Session) error {
 		return nil
 	}
 	// 5.Sets the fault jobs and its index.
-	err := rescheduling.SetFaultInNodeAndJobs(faultNPUJobs, jobs)
+	err := rescheduling.SetFaultInNodeAndJobs(ssn, faultNPUJobs, jobs)
 	if err != nil {
 		klog.V(logErrorLev).Infof("%s setFaultInNodeAndJobs %v.", PluginName, err)
 		return err
