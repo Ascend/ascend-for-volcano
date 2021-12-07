@@ -75,12 +75,15 @@ const (
 // ReSchedulerTasks record the tasks using the failed NPU.
 // The key in ReSchedulerCache is jobID
 type ReSchedulerTasks struct {
-	// Key is taskName.
-	NodeNames   map[string]string
-	RankIndexes map[string]string
-	Time        map[string]int64
-	TaskUseNPUs map[string]string
-	NameSpace   string
+	// All values are stored in order by taskName.
+	TaskName      []string
+	NodeNames     []string
+	RankIndexes   []string
+	Time          []int64
+	TaskUseNPUs   []string
+	NameSpace     string
+	GraceTaskFlag bool
+	UpdateTime    int64
 }
 
 // FaultNodeState record the inoperable node in k8s.

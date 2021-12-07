@@ -182,7 +182,7 @@ func restartFaultJob(ssn *framework.Session, fJobs []rescheduling.FaultNPUJob, j
 	// 2.Restart job.
 	for _, restartJob := range restartJobs {
 		klog.V(logInfoLev).Infof("%s need restart.", restartJob.Name)
-		if err := plugin.RestartJob(ssn, restartJob, false, jobRestartReason); err != nil {
+		if err := plugin.RestartJob(ssn, restartJob, jobRestartReason); err != nil {
 			klog.V(logInfoLev).Infof("RestartJob %v.", err)
 			return err
 		}

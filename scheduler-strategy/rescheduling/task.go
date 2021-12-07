@@ -119,10 +119,11 @@ func AddScoreByFaultNPUTask(task *api.TaskInfo, scoreMap map[string]float64) (ma
 	}
 
 	klog.V(logDebugLev).Infof("getReSchedulerTasksFromCache :%v.", value)
-	for taskName, nodeName := range value.NodeNames {
+	for key, taskName := range value.TaskName {
 		if taskName != task.Name {
 			continue
 		}
+		nodeName := value.NodeNames[key]
 		if _, ok := scoreMap[nodeName]; !ok {
 			return scoreMap, nil
 		}
@@ -134,11 +135,9 @@ func AddScoreByFaultNPUTask(task *api.TaskInfo, scoreMap map[string]float64) (ma
 
 func getOldTaskNodeAndIndexList(rTask ReSchedulerTasks) (map[string]string, error) {
 	var nodeAndIndexList = make(map[string]string, 1)
-	for taskName, rankIndex := range rTask.RankIndexes {
-		nodeName, ok := rTask.NodeNames[taskName]
-		if !ok {
-			return nil, fmt.Errorf("%s not in cache", taskName)
-		}
+	for key := range rTask.TaskName {
+		nodeName := rTask.NodeNames[key]
+		rankIndex := rTask.RankIndexes[key]
 		nodeAndIndexList[nodeName] = rankIndex
 	}
 	return nodeAndIndexList, nil
