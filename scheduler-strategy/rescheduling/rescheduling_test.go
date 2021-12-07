@@ -54,6 +54,7 @@ type addScoreByFaultNPUTaskTestTests []struct {
 func buildAddScoreByFaultNPUTaskTestCases() addScoreByFaultNPUTaskTestTests {
 	task1 := ascendtest.FakeNormalTestTasks(1)[0]
 	testScoreMap := map[string]float64{task1.NodeName: node910X8NPUNum * node910X8NPUNum}
+	const tmpNumber = 123456
 	testCases := addScoreByFaultNPUTaskTestTests{
 		{
 			name:    "01-scoreMap-nil-test",
@@ -69,7 +70,7 @@ func buildAddScoreByFaultNPUTaskTestCases() addScoreByFaultNPUTaskTestTests {
 				cacheFun: func() {
 					ReSchedulerCache = make(map[string]interface{}, constIntNum2)
 					reTask := map[api.JobID]ReSchedulerTasks{
-						"haha": {nil, nil, nil, nil, nil, task1.Namespace, false, 1234}}
+						"haha": {nil, nil, nil, nil, nil, task1.Namespace, false, tmpNumber}}
 					ReSchedulerCache[CmJobKind] = reTask
 				},
 			},
@@ -84,7 +85,7 @@ func buildAddScoreByFaultNPUTaskTestCases() addScoreByFaultNPUTaskTestTests {
 				cacheFun: func() {
 					ReSchedulerCache = make(map[string]interface{}, constIntNum2)
 					reTask := map[api.JobID]ReSchedulerTasks{
-						task1.Job: {nil, nil, nil, nil, nil, task1.Namespace, false, 12345}}
+						task1.Job: {nil, nil, nil, nil, nil, task1.Namespace, false, tmpNumber}}
 					ReSchedulerCache[CmJobKind] = reTask
 				},
 			},
@@ -127,10 +128,10 @@ type checkFaultJobNodeTests []struct {
 
 func addTestTaskIntoReSchedulerCache(tasks ...*api.TaskInfo) {
 	var reTask = make(map[api.JobID]ReSchedulerTasks, constIntNum2)
-
+	const tmpNumber = 123456
 	if len(tasks) == 0 {
 		reTask = map[api.JobID]ReSchedulerTasks{
-			"hahaTask": {nil, nil, nil, nil, nil, "", false, 1234}}
+			"hahaTask": {nil, nil, nil, nil, nil, "", false, tmpNumber}}
 		ReSchedulerCache[CmJobKind] = reTask
 		return
 	}
@@ -868,10 +869,10 @@ type releaseFaultJobTakeNodesTests []struct {
 
 func addTestJobIntoReSchedulerCache(job *api.JobInfo) {
 	var reJobs = make(map[api.JobID]ReSchedulerTasks, constIntNum2)
-
+	const tmpNumber = 123456
 	if job == nil {
 		reJobs = map[api.JobID]ReSchedulerTasks{
-			"hahaTask": {nil, nil, nil, nil, nil, "", false, 12345}}
+			"hahaTask": {nil, nil, nil, nil, nil, "", false, tmpNumber}}
 		ReSchedulerCache[CmJobKind] = reJobs
 		return
 	}

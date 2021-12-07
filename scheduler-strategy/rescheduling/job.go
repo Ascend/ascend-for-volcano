@@ -34,23 +34,6 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/framework"
 )
 
-func convertToReSchedulerTasksMapFromCache(jobData interface{}) (map[api.JobID]ReSchedulerTasks, error) {
-	reSchedulerJob, reOk := jobData.(map[api.JobID]ReSchedulerTasks)
-	if !reOk {
-		msg := fmt.Errorf("assert %v to ReSchedulerTasks failed", jobData)
-		klog.V(logErrorLev).Infof("%v.", msg)
-		return nil, msg
-	}
-
-	if len(reSchedulerJob) == 0 {
-		msg := fmt.Errorf("ReSchedulerTasks is nil")
-		klog.V(logDebugLev).Infof("convertToReSchedulerTasksMapFromCache: %v.", msg)
-		return nil, msg
-	}
-
-	return reSchedulerJob, nil
-}
-
 func convertToRankIdsMapFromCache(jobData interface{}) (map[api.JobID]FaultRankIDRecordJobCMData, error) {
 	rankIds, reOk := jobData.(map[api.JobID]FaultRankIDRecordJobCMData)
 	if !reOk {
@@ -625,7 +608,8 @@ func deleteRedundantRankIDCM(ssn *framework.Session, nameSpace string, dJob api.
 }
 
 // GetNeedForceDeleteDelayingJobs Get delaying jobs which need be force deleted.
-func GetNeedForceDeleteDelayingJobs(ssn *framework.Session, dJobs map[api.JobID]ReSchedulerTasks) ([]*api.JobInfo, error) {
+func GetNeedForceDeleteDelayingJobs(ssn *framework.Session,
+	dJobs map[api.JobID]ReSchedulerTasks) ([]*api.JobInfo, error) {
 	var forceJobs []*api.JobInfo
 	for jobID := range dJobs {
 		jobInf, ok := ssn.Jobs[jobID]
