@@ -394,8 +394,7 @@ func forceDeleteTimeOutGraceTask(ssn *framework.Session) error {
 	klog.V(logDebugLev).Infof("will force delete: %v.", len(forceJobs))
 
 	// 3.Get force delete jobs.
-	deleteErr := forceDeleteJobsByPods(ssn, forceJobs)
-	if deleteErr != nil {
+	if deleteErr := forceDeleteJobsByPods(ssn, forceJobs); deleteErr != nil {
 		klog.V(logDebugLev).Infof("ForceDeleteJobsByPods: %v.", deleteErr)
 		return deleteErr
 	}
@@ -427,14 +426,12 @@ func preHandleFaultNPUFn(ssn *framework.Session) error {
 		return nil
 	}
 	// 5.Sets the fault jobs and its index.
-	err := rescheduling.SetFaultInNodeAndJobs(ssn, faultNPUJobs, jobs)
-	if err != nil {
+	if err := rescheduling.SetFaultInNodeAndJobs(ssn, faultNPUJobs, jobs); err != nil {
 		klog.V(logErrorLev).Infof("%s setFaultInNodeAndJobs %v.", PluginName, err)
 		return err
 	}
 	// 6.Restart vcjobs.
-	err = restartFaultJob(ssn, faultNPUJobs, jobs)
-	if err != nil {
+	if err := restartFaultJob(ssn, faultNPUJobs, jobs); err != nil {
 		klog.V(logErrorLev).Infof("%s restartFaultJob %v.", PluginName, err)
 		return err
 	}
