@@ -95,7 +95,7 @@ func synReSchedulerJobCache(ssn *framework.Session, tmpValue interface{}) error 
 		for _, preTime := range reSchedulerTasksData.Time {
 			nowTime := time2.Now().Unix()
 			missTime := nowTime - preTime
-			if (missTime > maxIntervalTime) && (missTime > graceOverTime) {
+			if missTime > maxIntervalTime+graceOverTime {
 				klog.V(logErrorLev).Infof("delete %s from CM for overTime %v => %v.", jobID, nowTime, preTime)
 				delete(jobMap, jobID)
 			}
