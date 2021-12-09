@@ -94,7 +94,8 @@ func synReSchedulerJobCache(ssn *framework.Session, tmpValue interface{}) error 
 		// For Node doesn't last too long
 		for _, preTime := range reSchedulerTasksData.Time {
 			nowTime := time2.Now().Unix()
-			if nowTime-preTime > maxIntervalTime {
+			missTime := nowTime - preTime
+			if missTime > maxIntervalTime+graceOverTime {
 				klog.V(logErrorLev).Infof("delete %s from CM for overTime %v => %v.", jobID, nowTime, preTime)
 				delete(jobMap, jobID)
 			}
