@@ -558,13 +558,18 @@ func isJobGraceDeletedSuccess(dJob *api.JobInfo) bool {
 		return false
 	}
 
+	restartNum := 0
 	for _, task := range dJob.Tasks {
 		// The new POD is inconsistent with the old one.
 		if task.Pod.CreationTimestamp.Unix() != jobPodsTime[task.Pod.Name] {
 			klog.V(logDebugLev).Infof("pod restart success[new:%v---old:%v]",
 				task.Pod.CreationTimestamp.Unix(), jobPodsTime[task.Pod.Name])
-			return true
+			restartNum++
 		}
+	}
+	if restartNum == len(dJob.Tasks) {
+		klog.V(logDebugLev).Infof("job all pod %d restart success.", restartNum)
+		return true
 	}
 	return false
 }
