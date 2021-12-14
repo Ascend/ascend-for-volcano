@@ -1,0 +1,58 @@
+/*
+Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+*/
+
+/*
+
+Package chip710 is using for HuaWei A300T Ascend pin affinity schedule.
+
+*/
+package common
+
+import (
+	"volcano.sh/volcano/pkg/scheduler/api"
+)
+
+// common type
+const (
+	NodeNPUNumber = 64
+	ConstIntNum1  = 1
+
+	LogErrorLev = 1
+	LogInfoLev  = 3
+	LogDebugLev = 4
+
+	PodPredicateTime = "predicate-time"
+
+	NodesNoMeetNPUReqError  = "insufficient npus on the schedulable nodes in cluster"
+	NodeNotStableWarning    = "the npus on this node are unstable"
+	NodeNotEnoughNPUWarning = "insufficient number of available npus on this node"
+
+	JobNoNPUCard           = "job no use npu"
+	ArgumentError          = "invalid argument"
+	jobRestartReason       = "restart for NPU malfunction"
+	faultSchedulingLabel   = "fault-scheduling"
+	onFaultSchedulingLabel = "grace"
+)
+
+// CommonScheduler common scheduler
+type CommonScheduler struct {
+	// PluginName plugin name
+	PluginName string
+	// AnnoName annonation map Name
+	AnnoName string
+	// AnnoPreVal annonation pre val
+	AnnoPreVal string
+	// DefaultJobSchedulerConfig label map
+	DefaultJobSchedulerConfig map[string]string
+}
+
+// ReScheduler rescheduler struct
+type ReScheduler struct {
+	// AnnoUnHealthy unhealthy key
+	AnnoUnHealthy string
+	// AnnoName annonation map Name
+	AnnoName string
+	// IsMyJob judge job
+	IsMyJob func(*api.JobInfo) error
+}

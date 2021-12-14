@@ -9,12 +9,14 @@ Package chip310x4 is using for HuaWei A300T Ascend pin affinity schedule.
 */
 package chip310x4
 
+import "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/common"
+
 const (
 	// PluginName the chip310x4's plugin name.
 	PluginName         = "A310-chip"
 	a310NPUChipName    = "huawei.com/Ascend310"
-	podPredicateTime   = "predicate-time"
 	a310NPUCardPreName = "Ascend310-"
+	a310FaultNPUName   = "huawei.com/Ascend310-Unhealthy"
 
 	archSelector  = "host-arch"
 	huaweiArchArm = "huawei-arm"
@@ -24,8 +26,6 @@ const (
 	cardAcceleratorType = "card"
 	chipAcceleratorType = "chip"
 
-	nodeNPUNumber = 64
-	constIntNum1  = 1
 	constIntNum2  = 2
 	constIntNum3  = 3
 	cardNPUNumber = 4
@@ -35,16 +35,10 @@ const (
 	logInfoLev  = 3
 	logDebugLev = 4
 
-	nodesNoMeetNPUReqError     = "insufficient npus on the schedulable nodes in cluster"
-	nodeNotStableWarning       = "the npus on this node are unstable"
-	nodeNotMeetTopologyWarning = "the npus on this node don't satisfy the schedulable topology"
-	nodeNotEnoughNPUWarning    = "insufficient number of available npus on this node"
-
-	jobNoNPUCard  = "job no use npu"
-	modeNotChip   = "no chip mode npu"
-	argumentError = "invalid argument"
+	modeNotChip = "no chip mode npu"
 )
 
 type chip310x4 struct {
-	name string
+	com common.CommonScheduler
+	re  common.ReScheduler
 }

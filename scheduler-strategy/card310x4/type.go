@@ -9,12 +9,15 @@ Package card310x4 is using for HuaWei A300T Ascend pin affinity schedule.
 */
 package card310x4
 
+import "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/common"
+
 const (
 	// PluginName the card310x4's plugin name.
 	PluginName         = "A310-card"
 	a310NPUCardName    = "huawei.com/Ascend310"
 	podPredicateTime   = "predicate-time"
 	a310NPUCardPreName = "Ascend310-"
+	a310FaultNPUName   = "huawei.com/Ascend310-Unhealthy"
 
 	archSelector  = "host-arch"
 	huaweiArchArm = "huawei-arm"
@@ -49,6 +52,8 @@ const (
 
 type card310x4 struct {
 	name string
+	com  common.CommonScheduler
+	re   common.ReScheduler
 }
 
 type npuPriNodeInf struct {

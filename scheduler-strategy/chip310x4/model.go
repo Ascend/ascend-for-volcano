@@ -11,23 +11,12 @@ package chip310x4
 
 import (
 	"errors"
-	"fmt"
 	"k8s.io/klog"
 	"math/rand"
 	"time"
 )
 
-func judgeNodeAndTaskNPU(taskNPU int, nodeNPUTopology []int) error {
-	if len(nodeNPUTopology) >= taskNPU {
-		return nil
-	}
-
-	var meetErr = fmt.Errorf("req npu(%d) illegal", taskNPU)
-	klog.V(logErrorLev).Infof("%s %v.", PluginName, meetErr)
-	return meetErr
-}
-
-func getNPUAllocPriorityArray() ([cardNPUNumber]int, error) {
+func (tp *chip310x4) getNPUAllocPriorityArray() ([cardNPUNumber]int, error) {
 	var priorityArray [cardNPUNumber]int
 	var err = error(nil)
 	// priority:1>2>3>4
@@ -39,7 +28,7 @@ func getNPUAllocPriorityArray() ([cardNPUNumber]int, error) {
 	return priorityArray, nil
 }
 
-// getFitCardFromNodeByPriority get the appropriate card randomly from the Node via Priority
+// GetFitCardFromNodeByPriority get the appropriate card randomly from the Node via Priority
 // for example:
 // nodeTop: [0, 2, 4, 5, 7, 8, 9, 10, 11, 12, 13, 15, 16, 18, 20, 21, 22, 25, 29, 32, 33, 34, 35, 36, 37, 38, 39]
 // cardNumGroups: [2, 3, 4, 3, 2, 3, 1, 1, 4, 4] Each group of four NPU
@@ -48,12 +37,12 @@ func getNPUAllocPriorityArray() ([cardNPUNumber]int, error) {
 // select the chip policy randomly: [5, 7, 8], [13, 15, 16], [20, 21, 22] choose one group,
 // Assume that choice [13, 15, 16] remains: 2
 // select the NPU policy randomly: [5, 7, 8], [20, 21, 22] choose two at random from one of the groups
-func getFitCardFromNodeByPriority(taskNPUNumber int, nodeTop []int, priorityArray [cardNPUNumber]int) ([]int, error) {
+func (tp *chip310x4) GetFitCardFromNodeByPriority(taskNPUNumber int, nodeTop []int, priorityArray [cardNPUNumber]int) ([]int, error) {
 	rand.Seed(time.Now().UnixNano())
-	cardNumGroups := getCardNumGroupsFromTop(nodeTop)
+	cardNumGroups := tp.getCardNumGroupsFromTop(nodeTop)
 	// index: indicates the number of remaining chips in the card，value: index array of the card
-	npuNumberIndex := getNPUIndex(cardNumGroups)
-	selectedCardTop, err := getSelectedCardTop(taskNPUNumber, priorityArray, cardNumGroups, npuNumberIndex)
+	npuNumberIndex := tp.getNPUIndex(cardNumGroups)
+	selectedCardTop, err := tp.getSelectedCardTop(taskNPUNumber, priorityArray, cardNumGroups, npuNumberIndex)
 	if err != nil {
 		klog.V(logErrorLev).Infof("%s getHccsFromNodeByPriority: %v %s.", PluginName, nodeTop, err.Error())
 		return nil, err
@@ -63,7 +52,7 @@ func getFitCardFromNodeByPriority(taskNPUNumber int, nodeTop []int, priorityArra
 
 // getSelectedCardTop get selected card top
 // priority to fill->Randomly chosen card->Select the chips on the cards at random
-func getSelectedCardTop(taskNPUNumber int, priorityArray [4]int, cardNumGroups [][]int,
+func (tp *chip310x4) getSelectedCardTop(taskNPUNumber int, priorityArray [4]int, cardNumGroups [][]int,
 	npuNumberIndex [][]int) ([]int, error) {
 
 	err := errors.New("nodeTop not meet")
@@ -78,12 +67,12 @@ func getSelectedCardTop(taskNPUNumber int, priorityArray [4]int, cardNumGroups [
 		// curGroupNum >  taskNPUNumber: random use of part of the card chip(Use the idea of perfect shuffling)
 		if curGroupNum > taskNPUNumber {
 			cardNum := taskNPUNumber / arrLen
-			cardIndex := getKRandNumFromN(len(curGroup), cardNum+1)
+			cardIndex := tp.getKRandNumFromN(len(curGroup), cardNum+1)
 			for i := 1; i <= cardNum; i++ {
 				selectedNodeTop = append(selectedNodeTop, cardNumGroups[curGroup[cardIndex[i]]]...)
 			}
 			remain := taskNPUNumber - cardNum*arrLen
-			npuIndex := getKRandNumFromN(arrLen, remain)
+			npuIndex := tp.getKRandNumFromN(arrLen, remain)
 			for i := 0; i < len(npuIndex); i++ {
 				selectedNodeTop = append(selectedNodeTop, cardNumGroups[curGroup[cardIndex[0]]][npuIndex[i]])
 			}
@@ -101,7 +90,7 @@ func getSelectedCardTop(taskNPUNumber int, priorityArray [4]int, cardNumGroups [
 }
 
 // getNPUIndex get NPU index by cardNumGroups
-func getNPUIndex(cardNumGroups [][]int) [][]int {
+func (tp *chip310x4) getNPUIndex(cardNumGroups [][]int) [][]int {
 	npuNumberIndex := make([][]int, constIntNum5)
 	for index, cardNumGroup := range cardNumGroups {
 		npuNumberIndex[len(cardNumGroup)] = append(npuNumberIndex[len(cardNumGroup)], index)
@@ -109,7 +98,7 @@ func getNPUIndex(cardNumGroups [][]int) [][]int {
 	return npuNumberIndex
 }
 
-func getKRandNumFromN(n, k int) []int {
+func (tp *chip310x4) getKRandNumFromN(n, k int) []int {
 	arr := make([]int, n)
 	for i := 0; i < n; i++ {
 		arr[i] = i
