@@ -4,7 +4,7 @@ Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
 
 /*
 
-Package chip710 is using for HuaWei A300T Ascend pin affinity schedule.
+Package common is using for HuaWei common infer Ascend pin affinity schedule.
 
 */
 package common
@@ -16,7 +16,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
-func (cn *CommonScheduler) initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) error {
+func (cn *Scheduler) initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) error {
 	for key := range nodes {
 		topStr, err := util.GetNPUAllocCardsFromNodeAnnotations(nodes[key], cn.AnnoName)
 		if err != nil {
@@ -32,7 +32,7 @@ func (cn *CommonScheduler) initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo
 	return nil
 }
 
-func (cn *CommonScheduler) getNodeNPUNumFromOthers(nodeInfo *api.NodeInfo) (int, error) {
+func (cn *Scheduler) getNodeNPUNumFromOthers(nodeInfo *api.NodeInfo) (int, error) {
 	top := util.GetTopFromNodeOthers(nodeInfo, cn.AnnoName, cn.AnnoPreVal)
 	if top == nil {
 		return 0, fmt.Errorf("nil node(%s) top", nodeInfo.Name)

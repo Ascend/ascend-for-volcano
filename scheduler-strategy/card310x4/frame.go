@@ -33,7 +33,7 @@ func New(npuName string) plugin.HwNPUSchedulerPlugin {
 	defaultSchedulerConfig := make(map[string]string, common.ConstIntNum1)
 	defaultSchedulerConfig[archSelector] = huaweiArchArm + "|" + huaweiArchX86
 	defaultSchedulerConfig[acceleratorType] = cardAcceleratorType + "|" + chipAcceleratorType
-	co := common.CommonScheduler{
+	co := common.Scheduler{
 		PluginName:                npuName,
 		AnnoName:                  a310NPUCardName,
 		AnnoPreVal:                a310NPUCardPreName,

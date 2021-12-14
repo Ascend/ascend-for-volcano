@@ -3,7 +3,7 @@ Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-Package common is using for HuaWei A300T Ascend pin affinity schedule.
+Package common is using for HuaWei common infer Ascend pin affinity schedule.
 */
 package common
 
@@ -12,7 +12,7 @@ import (
 	"k8s.io/klog"
 )
 
-func (cn *CommonScheduler) judgeNodeAndTaskNPU(taskNPU int, nodeNPUTopology []int) error {
+func (cn *Scheduler) judgeNodeAndTaskNPU(taskNPU int, nodeNPUTopology []int) error {
 	if len(nodeNPUTopology) >= taskNPU {
 		return nil
 	}

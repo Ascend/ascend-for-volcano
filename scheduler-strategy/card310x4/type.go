@@ -52,7 +52,7 @@ const (
 
 type card310x4 struct {
 	name string
-	com  common.CommonScheduler
+	com  common.Scheduler
 	re   common.ReScheduler
 }
 

@@ -2,7 +2,7 @@
 Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
-// common Common pkg to scheduler infer
+// Package common is using for HuaWei common infer Ascend pin affinity schedule.
 package common
 
 import (

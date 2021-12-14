@@ -24,6 +24,6 @@ const (
 )
 
 type chip710 struct {
-	com common.CommonScheduler
+	com common.Scheduler
 	re  common.ReScheduler
 }

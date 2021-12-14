@@ -684,7 +684,10 @@ func TestCnpuGetAllocatedNPUFromTopologyFnError(t *testing.T) {
 // cardNumGroups: [2, 3, 4, 3, 2, 3, 1, 1, 4, 4] Each group of four NPU
 func TestCnpuGetFitCardFromNodeByPriorityFn(t *testing.T) {
 	npu := New(PluginName)
-	tp, _ := npu.(*chip310x4)
+	tp, ok := npu.(*chip310x4)
+	if !ok {
+		t.Fatalf("TestCnpuGetFitCardFromNodeByPriorityFnNotMatch error")
+	}
 	Convey("Test chip310x4 GetFitCardFromNodeByPriorityFn", t, func() {
 		nodeTop := []int{NPUID0, NPUID2, NPUID4, NPUID5, NPUID7, NPUID8, NPUID9, NPUID10, NPUID11, NPUID12,
 			NPUID13, NPUID15, NPUID16, NPUID18, NPUID20, NPUID21, NPUID22, NPUID25, NPUID29, NPUID32,
@@ -727,8 +730,10 @@ func TestCnpuGetFitCardFromNodeByPriorityFn(t *testing.T) {
 
 func TestCnpuGetFitCardFromNodeByPriorityFnNotMatch(t *testing.T) {
 	npu := New(PluginName)
-	tp, _ := npu.(*chip310x4)
-
+	tp, ok := npu.(*chip310x4)
+	if !ok {
+		t.Fatalf("TestCnpuGetFitCardFromNodeByPriorityFnNotMatch error")
+	}
 	Convey("Test chip310x4 GetFitCardFromNodeByPriorityFn When nodeTop number is 64", t, func() {
 		nodeTop := make([]int, 64)
 		for i := 0; i < 64; i++ {

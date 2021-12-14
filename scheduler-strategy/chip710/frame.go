@@ -4,7 +4,7 @@ Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
 
 /*
 
-Package chip710 is using for HuaWei A300T Ascend pin affinity schedule.
+Package chip710 is using for HuaWei 710 Ascend pin affinity schedule.
 
 */
 package chip710
@@ -25,7 +25,7 @@ func (tp *chip710) Name() string {
 func New(npuName string) plugin.HwNPUSchedulerPlugin {
 	defaultSchedulerConfig := make(map[string]string, common.ConstIntNum1)
 	defaultSchedulerConfig[archSelector] = huaweiArchArm + "|" + huaweiArchX86
-	co := common.CommonScheduler{
+	co := common.Scheduler{
 		PluginName:                npuName,
 		AnnoName:                  a710NPUChipName,
 		AnnoPreVal:                a710NPUCardPreName,
@@ -94,7 +94,8 @@ func (tp *chip710) UpdateReleaseNPUNodeTopologyFn(node *api.NodeInfo, top interf
 }
 
 // GetAllocatedNPUFromTopologyFn Get the pod's npu card to record in node others.
-func (tp *chip710) GetAllocatedNPUFromTopologyFn(task *api.TaskInfo, node *api.NodeInfo, disFlag bool) (interface{}, error) {
+func (tp *chip710) GetAllocatedNPUFromTopologyFn(task *api.TaskInfo, node *api.NodeInfo,
+	disFlag bool) (interface{}, error) {
 	return tp.com.GetAllocatedNPUFromTopologyFn(task, node, disFlag)
 }
 

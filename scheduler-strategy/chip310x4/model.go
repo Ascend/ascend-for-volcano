@@ -37,7 +37,8 @@ func (tp *chip310x4) getNPUAllocPriorityArray() ([cardNPUNumber]int, error) {
 // select the chip policy randomly: [5, 7, 8], [13, 15, 16], [20, 21, 22] choose one group,
 // Assume that choice [13, 15, 16] remains: 2
 // select the NPU policy randomly: [5, 7, 8], [20, 21, 22] choose two at random from one of the groups
-func (tp *chip310x4) GetFitCardFromNodeByPriority(taskNPUNumber int, nodeTop []int, priorityArray [cardNPUNumber]int) ([]int, error) {
+func (tp *chip310x4) GetFitCardFromNodeByPriority(taskNPUNumber int, nodeTop []int,
+	priorityArray [cardNPUNumber]int) ([]int, error) {
 	rand.Seed(time.Now().UnixNano())
 	cardNumGroups := tp.getCardNumGroupsFromTop(nodeTop)
 	// index: indicates the number of remaining chips in the card，value: index array of the card

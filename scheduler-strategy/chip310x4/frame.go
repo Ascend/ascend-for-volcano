@@ -4,7 +4,7 @@ Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
 
 /*
 
-Package chip310x4 is using for HuaWei A300T Ascend pin affinity schedule.
+Package chip310x4 is using for HuaWei 310 Ascend pin affinity schedule.
 
 */
 package chip310x4
@@ -31,7 +31,7 @@ func New(npuName string) plugin.HwNPUSchedulerPlugin {
 	defaultSchedulerConfig := make(map[string]string, common.ConstIntNum1)
 	defaultSchedulerConfig[archSelector] = huaweiArchArm + "|" + huaweiArchX86
 	defaultSchedulerConfig[acceleratorType] = cardAcceleratorType + "|" + chipAcceleratorType
-	co := common.CommonScheduler{
+	co := common.Scheduler{
 		PluginName:                npuName,
 		AnnoName:                  a310NPUChipName,
 		AnnoPreVal:                a310NPUCardPreName,

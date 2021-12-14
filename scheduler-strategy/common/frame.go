@@ -4,7 +4,7 @@ Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
 
 /*
 
-Package chip710 is using for HuaWei A300T Ascend pin affinity schedule.
+Package common is using for HuaWei infer common Ascend pin affinity schedule.
 
 */
 package common
@@ -21,19 +21,19 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
-// PluginName This need by frame init plugin.
-func (cn *CommonScheduler) Name() string {
+// Name This need by frame init plugin.
+func (cn *Scheduler) Name() string {
 	return cn.PluginName
 }
 
-// OnHandlerStart The npu scheduler policy initial and CommonScheduler processing.
-func (cn *CommonScheduler) OnHandlerStart(sHandler *plugin.ScheduleHandler) {
+// OnHandlerStart The npu scheduler policy initial and Scheduler processing.
+func (cn *Scheduler) OnHandlerStart(sHandler *plugin.ScheduleHandler) {
 	klog.V(LogDebugLev).Infof("%s start handler.", cn.PluginName)
 	sHandler.AddInitNodesNPUAllocTopology(cn.PluginName, cn.initNodesNPUTopologyFn)
 }
 
 // ValidNPUJobFn Check the compliance of the selector and resource request numbers of job.
-func (cn *CommonScheduler) ValidNPUJobFn(job *api.JobInfo) *api.ValidateResult {
+func (cn *Scheduler) ValidNPUJobFn(job *api.JobInfo) *api.ValidateResult {
 	// 1.Validate npu job selector.
 	if err := cn.validNPUJobSelector(job); err != nil {
 		klog.V(LogErrorLev).Infof("%s validNPUJobSelector err: %v.", cn.PluginName, err)
@@ -67,7 +67,7 @@ func (cn *CommonScheduler) ValidNPUJobFn(job *api.JobInfo) *api.ValidateResult {
 }
 
 // PreCheckNodeFn 310 no need to Distinguish between architecture.
-func (cn *CommonScheduler) PreCheckNodeFn(task *api.TaskInfo, node *api.NodeInfo, confs []conf.Configuration) error {
+func (cn *Scheduler) PreCheckNodeFn(task *api.TaskInfo, node *api.NodeInfo, confs []conf.Configuration) error {
 	schedulerConf := util.GetSchedulerSelectorConfig(confs)
 	if len(schedulerConf) == 0 {
 		// get scheduler selector configure failed, but need continue
@@ -85,7 +85,7 @@ func (cn *CommonScheduler) PreCheckNodeFn(task *api.TaskInfo, node *api.NodeInfo
 }
 
 // CheckNPUResourceStableFn Check whether the node's NPU resources are stable.
-func (cn *CommonScheduler) CheckNPUResourceStableFn(node *api.NodeInfo) error {
+func (cn *Scheduler) CheckNPUResourceStableFn(node *api.NodeInfo) error {
 	// default is the npu task
 	nodeNPUIdleNumFromTop, err := cn.getNodeNPUNumFromOthers(node)
 	if err != nil {
@@ -105,7 +105,7 @@ func (cn *CommonScheduler) CheckNPUResourceStableFn(node *api.NodeInfo) error {
 }
 
 // CheckNodeNPUByTaskFn Check whether the requested resource exists and are sufficient on the node.
-func (cn *CommonScheduler) CheckNodeNPUByTaskFn(task *api.TaskInfo, node *api.NodeInfo, _ bool) error {
+func (cn *Scheduler) CheckNodeNPUByTaskFn(task *api.TaskInfo, node *api.NodeInfo, _ bool) error {
 	taskNPU, taskError := util.GetTaskNPUNum(task, cn.AnnoName)
 	if taskError != nil {
 		return fmt.Errorf("getTaskNPUNum %s : %s", NodesNoMeetNPUReqError, taskError)
@@ -124,7 +124,7 @@ func (cn *CommonScheduler) CheckNodeNPUByTaskFn(task *api.TaskInfo, node *api.No
 }
 
 // UpdateNPUNodeUsedCardFn Update used npu resources on node.
-func (cn *CommonScheduler) UpdateNPUNodeUsedCardFn(node *api.NodeInfo, top interface{}) error {
+func (cn *Scheduler) UpdateNPUNodeUsedCardFn(node *api.NodeInfo, top interface{}) error {
 	useTop, ok := top.([]int)
 	if !ok {
 		return errors.New(ArgumentError)
@@ -138,7 +138,8 @@ func (cn *CommonScheduler) UpdateNPUNodeUsedCardFn(node *api.NodeInfo, top inter
 	}
 
 	// delete the use top
-	klog.V(LogInfoLev).Infof("%s useAnnotation %s:%v , will use: %v.", cn.PluginName, node.Name, nodeDeviceIDs, useTop)
+	klog.V(LogInfoLev).Infof("%s useAnnotation %s:%v , will use: %v.", cn.PluginName, node.Name,
+		nodeDeviceIDs, useTop)
 	newNodeTopStr := util.GetRealTopAfterAlloc(nodeDeviceIDs, useTop, cn.AnnoPreVal)
 	if newNodeTopStr == "" {
 		klog.V(LogDebugLev).Infof("%s getRealTopAfterAlloc all top has allocated .", cn.PluginName)
@@ -155,7 +156,7 @@ func (cn *CommonScheduler) UpdateNPUNodeUsedCardFn(node *api.NodeInfo, top inter
 }
 
 // GetReleaseNPUTopologyFn Get the release npu card id from task(pod).
-func (cn *CommonScheduler) GetReleaseNPUTopologyFn(task *api.TaskInfo) (interface{}, error) {
+func (cn *Scheduler) GetReleaseNPUTopologyFn(task *api.TaskInfo) (interface{}, error) {
 	// get task use top
 	taskDeviceIDs := util.GetDeviceIDsFromAnnotations(task.Pod.Annotations, cn.AnnoName, cn.AnnoPreVal)
 	if taskDeviceIDs == nil {
@@ -167,7 +168,7 @@ func (cn *CommonScheduler) GetReleaseNPUTopologyFn(task *api.TaskInfo) (interfac
 }
 
 // UpdateReleaseNPUNodeTopologyFn Update the node using npu when release pod's npu.
-func (cn *CommonScheduler) UpdateReleaseNPUNodeTopologyFn(node *api.NodeInfo, top interface{}) error {
+func (cn *Scheduler) UpdateReleaseNPUNodeTopologyFn(node *api.NodeInfo, top interface{}) error {
 	taskDeviceIDs, ok := top.([]int)
 	if !ok {
 		return errors.New(ArgumentError)
@@ -198,7 +199,8 @@ func (cn *CommonScheduler) UpdateReleaseNPUNodeTopologyFn(node *api.NodeInfo, to
 }
 
 // GetAllocatedNPUFromTopologyFn Get the pod's npu card to record in node others.
-func (cn *CommonScheduler) GetAllocatedNPUFromTopologyFn(task *api.TaskInfo, node *api.NodeInfo, _ bool) (interface{}, error) {
+func (cn *Scheduler) GetAllocatedNPUFromTopologyFn(task *api.TaskInfo,
+	node *api.NodeInfo, _ bool) (interface{}, error) {
 	var allocTopologyNPUs []int
 
 	taskNPUNumber, taskError := util.GetTaskNPUNum(task, cn.AnnoName)
@@ -225,7 +227,7 @@ func (cn *CommonScheduler) GetAllocatedNPUFromTopologyFn(task *api.TaskInfo, nod
 }
 
 // SetNPUTopologyToPodFn Set the npu card ids into pod.
-func (cn *CommonScheduler) SetNPUTopologyToPodFn(task *api.TaskInfo, top interface{}) error {
+func (cn *Scheduler) SetNPUTopologyToPodFn(task *api.TaskInfo, top interface{}) error {
 	var topologyStr string
 
 	klog.V(LogInfoLev).Infof("%s setNPUTopologyToPod begin top:%v", cn.PluginName, top)
@@ -244,7 +246,7 @@ func (cn *CommonScheduler) SetNPUTopologyToPodFn(task *api.TaskInfo, top interfa
 }
 
 // IsMyTask Determine if it is the NPU task of your plug-in.
-func (cn *CommonScheduler) IsMyTask(task *api.TaskInfo) error {
+func (cn *Scheduler) IsMyTask(task *api.TaskInfo) error {
 	_, err := util.GetTaskNPUNum(task, cn.AnnoName)
 	if err != nil {
 		return errors.New(JobNoNPUCard)
@@ -254,7 +256,7 @@ func (cn *CommonScheduler) IsMyTask(task *api.TaskInfo) error {
 }
 
 // IsMyNode Determine if it is the NPU node of your plug-in.
-func (cn *CommonScheduler) IsMyNode(node *api.NodeInfo) error {
+func (cn *Scheduler) IsMyNode(node *api.NodeInfo) error {
 	_, err := util.GetNPUAllocCardsFromNodeOthers(node, cn.AnnoName)
 	if err != nil {
 		return errors.New(JobNoNPUCard)
@@ -264,7 +266,7 @@ func (cn *CommonScheduler) IsMyNode(node *api.NodeInfo) error {
 }
 
 // IsMyJob Determine if it is the NPU job of your plug-in.
-func (cn *CommonScheduler) IsMyJob(job *api.JobInfo) error {
+func (cn *Scheduler) IsMyJob(job *api.JobInfo) error {
 	_, err := util.GetJobReqNPUNum(job, cn.AnnoName)
 	if err != nil {
 		return errors.New(JobNoNPUCard)

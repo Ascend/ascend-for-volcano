@@ -39,6 +39,6 @@ const (
 )
 
 type chip310x4 struct {
-	com common.CommonScheduler
+	com common.Scheduler
 	re  common.ReScheduler
 }

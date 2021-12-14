@@ -4,14 +4,12 @@ Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
 
 /*
 
-Package chip710 is using for HuaWei A300T Ascend pin affinity schedule.
+Package common is using for HuaWei common infer Ascend pin affinity schedule.
 
 */
 package common
 
-import (
-	"volcano.sh/volcano/pkg/scheduler/api"
-)
+import "volcano.sh/volcano/pkg/scheduler/api"
 
 // common type
 const (
@@ -35,8 +33,8 @@ const (
 	onFaultSchedulingLabel = "grace"
 )
 
-// CommonScheduler common scheduler
-type CommonScheduler struct {
+// Scheduler common scheduler
+type Scheduler struct {
 	// PluginName plugin name
 	PluginName string
 	// AnnoName annonation map Name
@@ -49,10 +47,10 @@ type CommonScheduler struct {
 
 // ReScheduler rescheduler struct
 type ReScheduler struct {
+	// IsMyJob judge job
+	IsMyJob func(*api.JobInfo) error
 	// AnnoUnHealthy unhealthy key
 	AnnoUnHealthy string
 	// AnnoName annonation map Name
 	AnnoName string
-	// IsMyJob judge job
-	IsMyJob func(*api.JobInfo) error
 }
