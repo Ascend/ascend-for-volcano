@@ -20,6 +20,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/card910x2"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/cardv910x2"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/chip310x4"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/chip710"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/module910x8"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/modulev910x8"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/rescheduling"
@@ -133,6 +134,7 @@ func HandlerStart() *plugin.ScheduleHandler {
 	scheduleHandler.RegisterNPUScheduler(modulev910x8.PluginName, modulev910x8.New)
 	scheduleHandler.RegisterNPUScheduler(card310x4.PluginName, card310x4.New)
 	scheduleHandler.RegisterNPUScheduler(chip310x4.PluginName, chip310x4.New)
+	scheduleHandler.RegisterNPUScheduler(chip710.PluginName, chip710.New)
 	// for npu scheduler start.
 	for _, huaweiNPU := range scheduleHandler.HuaweiNPUs {
 		huaweiNPU.OnHandlerStart(scheduleHandler)
