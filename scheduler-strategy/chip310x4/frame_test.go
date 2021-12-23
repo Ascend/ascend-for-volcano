@@ -80,7 +80,7 @@ const (
 // TestCNPUName
 func TestCNPUName(t *testing.T) {
 	Convey("Test chip310x4 Name", t, func() {
-		npu := &chip310x4{}
+		npu := New(PluginName)
 
 		Convey("Name() should return PluginName defined in const", func() {
 			n := npu.Name()
@@ -92,7 +92,7 @@ func TestCNPUName(t *testing.T) {
 // TestCNPUIsMyTask
 func TestCNPUIsMyTask(t *testing.T) {
 	Convey("Test chip310x4 IsMyTask", t, func() {
-		npu := &chip310x4{}
+		npu := New(PluginName)
 
 		Convey("IsMyTask() should return error when task doesn't request NPU", func() {
 			pod := buildNPUPod(CPodInfo{namespace: "default", groupName: "npu-group-100",
@@ -125,7 +125,7 @@ func TestCNPUIsMyTask(t *testing.T) {
 // TestCNPUIsMyNode
 func TestCNPUIsMyNode(t *testing.T) {
 	Convey("Test chip310x4 IsMyNode", t, func() {
-		npu := &chip310x4{}
+		npu := New(PluginName)
 
 		Convey("IsMyNode() should return error when node has no npu annotation", func() {
 			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchArm, "192", "755Gi",
@@ -145,7 +145,7 @@ func TestCNPUIsMyNode(t *testing.T) {
 // TestCNPUIsMyJob
 func TestCNPUIsMyJob(t *testing.T) {
 	Convey("Test chip310x4 IsMyJob", t, func() {
-		npu := &chip310x4{}
+		npu := New(PluginName)
 		tasks := []*vapi.TaskInfo{}
 		uid := vapi.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx10")
 
@@ -178,7 +178,7 @@ func TestCNPUValidNPUJobFnInvalidSelector(t *testing.T) {
 			invalidSelectorValue = "no-selector"
 			validNum2            = 2000
 		)
-		npu := &chip310x4{}
+		npu := New(PluginName)
 		tasks := []*vapi.TaskInfo{}
 		uid := vapi.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx5")
 
@@ -216,7 +216,7 @@ func TestCNPUValidNPUJobFnInvalidNum(t *testing.T) {
 			validNum1    = "1"
 			validNum64   = "64"
 		)
-		npu := &chip310x4{}
+		npu := New(PluginName)
 		tasks := []*vapi.TaskInfo{}
 		uid := vapi.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx8")
 
@@ -266,7 +266,7 @@ func TestCNPUValidNPUJobFnInvalidModel(t *testing.T) {
 			num4 = "4"
 			num2 = "2"
 		)
-		npu := &chip310x4{}
+		npu := New(PluginName)
 		tasks := []*vapi.TaskInfo{}
 		uid := vapi.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx9")
 
@@ -298,7 +298,7 @@ func TestCNPUValidNPUJobFnInvalidModel(t *testing.T) {
 // TestCnpuPreCheckNodeFnSuccess
 func TestCnpuPreCheckNodeFnSuccess(t *testing.T) {
 	Convey("Test chip310x4 PreCheckNodeFnSuccess", t, func() {
-		npu := &chip310x4{}
+		npu := New(PluginName)
 		confs := []conf.Configuration{}
 		node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 			"1", "Ascend310-6"})
@@ -317,26 +317,26 @@ func TestCnpuPreCheckNodeFnSuccess(t *testing.T) {
 // TestCnpuCheckNPUResourceStableFn
 func TestCnpuCheckNPUResourceStableFn(t *testing.T) {
 	Convey("Test chip310x4 CheckNPUResourceStableFn", t, func() {
-		vnpu := &chip310x4{}
+		npu := New(PluginName)
 
 		Convey("CheckNPUResourceStableFn() should return error when there's missing resource type in idle", func() {
 			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 				"0", ""})
 			node.Node.Annotations[a310NPUChipName] = "Ascend310-2"
-			result := vnpu.CheckNPUResourceStableFn(node)
+			result := npu.CheckNPUResourceStableFn(node)
 			So(result, ShouldBeError)
 		})
 		Convey("CheckNPUResourceStableFn() should return error when node resources are unstable", func() {
 			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 				"1", ""})
 			node.Node.Annotations[a310NPUChipName] = "Ascend310-2,Ascend310-3"
-			result := vnpu.CheckNPUResourceStableFn(node)
+			result := npu.CheckNPUResourceStableFn(node)
 			So(result, ShouldBeError)
 		})
 		Convey("CheckNPUResourceStableFn() should return nil when node resources are stable", func() {
 			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 				"2", "Ascend310-2,Ascend310-3"})
-			result := vnpu.CheckNPUResourceStableFn(node)
+			result := npu.CheckNPUResourceStableFn(node)
 			So(result, ShouldBeNil)
 		})
 	})
@@ -345,7 +345,7 @@ func TestCnpuCheckNPUResourceStableFn(t *testing.T) {
 // TestCnpuCheckNodeNPUByTaskFn
 func TestCnpuCheckNodeNPUByTaskFn(t *testing.T) {
 	Convey("Test job CheckNodeNPUByTaskFn", t, func() {
-		npu := &chip310x4{}
+		npu := New(PluginName)
 		pod := buildNPUPod(CPodInfo{namespace: "default", groupName: "npu-group-15",
 			podName: "npu-test-15", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 			reqNPUType: a310NPUChipName, reqNpuNum: "5"})
@@ -369,7 +369,7 @@ func TestCnpuCheckNodeNPUByTaskFn(t *testing.T) {
 // TestCnpuCheckNodeNPUByTaskFnFail
 func TestCnpuCheckNodeNPUByTaskFnError(t *testing.T) {
 	Convey("Test job CheckNodeNPUByTaskFnError", t, func() {
-		npu := &chip310x4{}
+		npu := New(PluginName)
 
 		Convey("CheckNodeNPUByTaskFn() should return error when the requirement of the task is 0", func() {
 			pod := buildNPUPod(CPodInfo{namespace: "default", groupName: "npu-group-115",
@@ -402,7 +402,7 @@ func TestCnpuGetNPUAffinityBestNodesFnReq1(t *testing.T) {
 			nodeName1 = "centos1"
 			nodeName2 = "centos2"
 		)
-		npu := &chip310x4{}
+		npu := New(PluginName)
 		Convey("GetNPUAffinityBestNodesFn() should return correct result when request NPU num is 1", func() {
 			pod := buildNPUPod(CPodInfo{namespace: "default", groupName: "npu-group-17",
 				podName: "npu-test-17", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
@@ -431,7 +431,7 @@ func TestCnpuScoreBestNPUNodesFn(t *testing.T) {
 			nodeName1 = "euler1"
 			nodeName2 = "euler2"
 		)
-		npu := &chip310x4{}
+		npu := New(PluginName)
 		bestNodes := map[string]int{
 			nodeName1: 0,
 			nodeName2: constIntNum2,
@@ -460,7 +460,7 @@ func TestCnpuScoreBestNPUNodesFn(t *testing.T) {
 // TestCnpuUpdateNPUNodeUsedCardFn1
 func TestCnpuUpdateNPUNodeUsedCardFn1(t *testing.T) {
 	Convey("Test chip310x4 UpdateNPUNodeUsedCardFn", t, func() {
-		npu := &chip310x4{}
+		npu := New(PluginName)
 		node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 			"7", "Ascend310-0,Ascend310-1,Ascend310-2,Ascend310-3,Ascend310-61," +
 				"Ascend310-62,Ascend310-63"})
@@ -483,7 +483,7 @@ func TestCnpuUpdateNPUNodeUsedCardFn1(t *testing.T) {
 // TestCnpuUpdateNPUNodeUsedCardFnError2
 func TestCnpuUpdateNPUNodeUsedCardFn2(t *testing.T) {
 	Convey("Test chip310x4 UpdateNPUNodeUsedCardFn", t, func() {
-		npu := &chip310x4{}
+		npu := New(PluginName)
 
 		Convey("UpdateNPUNodeUsedCardFn() should should successfully update node.others", func() {
 			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
@@ -505,7 +505,7 @@ func TestCnpuUpdateNPUNodeUsedCardFn2(t *testing.T) {
 // TestCnpuUpdateNPUNodeUsedCardFnError
 func TestCnpuUpdateNPUNodeUsedCardFnError1(t *testing.T) {
 	Convey("Test chip310x4 UpdateNPUNodeUsedCardFnError", t, func() {
-		npu := &chip310x4{}
+		npu := New(PluginName)
 
 		Convey("UpdateNPUNodeUsedCardFn() should return error when top's type mismatch", func() {
 			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
@@ -529,7 +529,7 @@ func TestCnpuUpdateNPUNodeUsedCardFnError1(t *testing.T) {
 // TestCnpuGetReleaseNPUTopologyFn
 func TestCnpuGetReleaseNPUTopologyFn(t *testing.T) {
 	Convey("Test chip310x4 GetReleaseNPUTopologyFn", t, func() {
-		npu := &chip310x4{}
+		npu := New(PluginName)
 		task := vapi.NewTaskInfo(buildNPUPod(CPodInfo{namespace: "default", groupName: "npu-group-19",
 			podName: "npu-test-19", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 			reqNPUType: a310NPUChipName, reqNpuNum: "2"}))
@@ -546,7 +546,7 @@ func TestCnpuGetReleaseNPUTopologyFn(t *testing.T) {
 // TestCnpuGetReleaseNPUTopologyFnError
 func TestCnpuGetReleaseNPUTopologyFnError(t *testing.T) {
 	Convey("Test chip310x4 GetReleaseNPUTopologyFnError", t, func() {
-		npu := &chip310x4{}
+		npu := New(PluginName)
 		task := vapi.NewTaskInfo(buildNPUPod(CPodInfo{namespace: "default", groupName: "npu-group-122",
 			podName: "npu-test-122", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 			reqNPUType: a310NPUChipName, reqNpuNum: "2"}))
@@ -561,7 +561,7 @@ func TestCnpuGetReleaseNPUTopologyFnError(t *testing.T) {
 // TestCnpuUpdateReleaseNPUNodeTopologyFn
 func TestCnpuUpdateReleaseNPUNodeTopologyFn(t *testing.T) {
 	Convey("Test chip310x4 UpdateReleaseNPUNodeTopologyFn", t, func() {
-		npu := &chip310x4{}
+		npu := New(PluginName)
 		node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 			"4", "Ascend310-0,Ascend310-2,Ascend310-61,Ascend310-1"})
 		Convey("UpdateNPUNodeUsedCardFn() should successfully update node.others", func() {
@@ -578,7 +578,7 @@ func TestCnpuUpdateReleaseNPUNodeTopologyFn(t *testing.T) {
 // TestCnpuUpdateReleaseNPUNodeTopologyFnError
 func TestCnpuUpdateReleaseNPUNodeTopologyFnError(t *testing.T) {
 	Convey("", t, func() {
-		npu := &chip310x4{}
+		npu := New(PluginName)
 
 		Convey("UpdateNPUNodeUsedCardFn() should return error when top's type is mismatch", func() {
 			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
@@ -607,7 +607,7 @@ func TestCnpuUpdateReleaseNPUNodeTopologyFnError(t *testing.T) {
 // TestCnpuGetAllocatedNPUFromTopologyFn
 func TestCnpuGetAllocatedNPUFromTopologyFn(t *testing.T) {
 	Convey("Test chip310x4 GetAllocatedNPUFromTopologyFn", t, func() {
-		npu := &chip310x4{}
+		npu := New(PluginName)
 		Convey("GetAllocatedNPUFromTopologyFn() should return correct result when reqNpuNum is 2", func() {
 			task := vapi.NewTaskInfo(buildNPUPod(CPodInfo{namespace: "default", groupName: "npu-group-20",
 				podName: "npu-test-20", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
@@ -635,7 +635,7 @@ func TestCnpuGetAllocatedNPUFromTopologyFn(t *testing.T) {
 // TestCnpuGetAllocatedNPUFromTopologyFnError
 func TestCnpuGetAllocatedNPUFromTopologyFnError(t *testing.T) {
 	Convey("Test chip310x4 GetAllocatedNPUFromTopologyFnError", t, func() {
-		npu := &chip310x4{}
+		npu := New(PluginName)
 
 		pod := buildNPUPod(CPodInfo{namespace: "default", groupName: "npu-group-123",
 			podName: "npu-test-123", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
@@ -683,6 +683,11 @@ func TestCnpuGetAllocatedNPUFromTopologyFnError(t *testing.T) {
 // nodeTop: [0, 2, 4, 5, 7, 8, 9, 10, 11, 12, 13, 15, 16, 18, 20, 21, 22, 25, 29, 32, 33, 34, 35, 36, 37, 38, 39]
 // cardNumGroups: [2, 3, 4, 3, 2, 3, 1, 1, 4, 4] Each group of four NPU
 func TestCnpuGetFitCardFromNodeByPriorityFn(t *testing.T) {
+	npu := New(PluginName)
+	tp, ok := npu.(*chip310x4)
+	if !ok {
+		t.Fatalf("TestCnpuGetFitCardFromNodeByPriorityFnNotMatch error")
+	}
 	Convey("Test chip310x4 GetFitCardFromNodeByPriorityFn", t, func() {
 		nodeTop := []int{NPUID0, NPUID2, NPUID4, NPUID5, NPUID7, NPUID8, NPUID9, NPUID10, NPUID11, NPUID12,
 			NPUID13, NPUID15, NPUID16, NPUID18, NPUID20, NPUID21, NPUID22, NPUID25, NPUID29, NPUID32,
@@ -692,7 +697,7 @@ func TestCnpuGetFitCardFromNodeByPriorityFn(t *testing.T) {
 		Convey("getFitCardFromNodeByPriorityFn() should return correct result "+
 			"when taskNPUNumber is 6", func() {
 			taskNPUNumber := 6
-			result, err := getFitCardFromNodeByPriority(taskNPUNumber, nodeTop, priorityArray)
+			result, err := tp.GetFitCardFromNodeByPriority(taskNPUNumber, nodeTop, priorityArray)
 			So(err, ShouldBeNil)
 			So(result, ShouldNotBeNil)
 		})
@@ -700,7 +705,7 @@ func TestCnpuGetFitCardFromNodeByPriorityFn(t *testing.T) {
 		Convey("getFitCardFromNodeByPriorityFn() should return correct result "+
 			"when taskNPUNumber is 7", func() {
 			taskNPUNumber := 7
-			result, err := getFitCardFromNodeByPriority(taskNPUNumber, nodeTop, priorityArray)
+			result, err := tp.GetFitCardFromNodeByPriority(taskNPUNumber, nodeTop, priorityArray)
 			So(err, ShouldBeNil)
 			So(result, ShouldNotBeNil)
 		})
@@ -708,7 +713,7 @@ func TestCnpuGetFitCardFromNodeByPriorityFn(t *testing.T) {
 		Convey("getFitCardFromNodeByPriorityFn() should return correct result "+
 			"when taskNPUNumber is 20", func() {
 			taskNPUNumber := 21
-			result, err := getFitCardFromNodeByPriority(taskNPUNumber, nodeTop, priorityArray)
+			result, err := tp.GetFitCardFromNodeByPriority(taskNPUNumber, nodeTop, priorityArray)
 			So(err, ShouldBeNil)
 			So(result, ShouldNotBeNil)
 		})
@@ -716,7 +721,7 @@ func TestCnpuGetFitCardFromNodeByPriorityFn(t *testing.T) {
 		Convey("getFitCardFromNodeByPriorityFn() should return correct result "+
 			"when taskNPUNumber is 27", func() {
 			taskNPUNumber := 27
-			result, err := getFitCardFromNodeByPriority(taskNPUNumber, nodeTop, priorityArray)
+			result, err := tp.GetFitCardFromNodeByPriority(taskNPUNumber, nodeTop, priorityArray)
 			So(err, ShouldBeNil)
 			So(result, ShouldNotBeNil)
 		})
@@ -724,6 +729,11 @@ func TestCnpuGetFitCardFromNodeByPriorityFn(t *testing.T) {
 }
 
 func TestCnpuGetFitCardFromNodeByPriorityFnNotMatch(t *testing.T) {
+	npu := New(PluginName)
+	tp, ok := npu.(*chip310x4)
+	if !ok {
+		t.Fatalf("TestCnpuGetFitCardFromNodeByPriorityFnNotMatch error")
+	}
 	Convey("Test chip310x4 GetFitCardFromNodeByPriorityFn When nodeTop number is 64", t, func() {
 		nodeTop := make([]int, 64)
 		for i := 0; i < 64; i++ {
@@ -734,7 +744,7 @@ func TestCnpuGetFitCardFromNodeByPriorityFnNotMatch(t *testing.T) {
 			"when nodeTop number is 64", func() {
 			priorityArray := [cardNPUNumber]int{NPUID1, NPUID2, NPUID3, NPUID4}
 			taskNPUNumber := 64
-			result, err := getFitCardFromNodeByPriority(taskNPUNumber, nodeTop, priorityArray)
+			result, err := tp.GetFitCardFromNodeByPriority(taskNPUNumber, nodeTop, priorityArray)
 			So(err, ShouldBeNil)
 			So(result, ShouldNotBeNil)
 		})
@@ -744,7 +754,7 @@ func TestCnpuGetFitCardFromNodeByPriorityFnNotMatch(t *testing.T) {
 // TestCnpuSetNPUTopologyToPodFn
 func TestCnpuSetNPUTopologyToPodFn(t *testing.T) {
 	Convey("Test chip310x4 SetNPUTopologyToPodFn", t, func() {
-		npu := &chip310x4{}
+		npu := New(PluginName)
 		task := vapi.NewTaskInfo(buildNPUPod(CPodInfo{namespace: "default", groupName: "npu-group-22",
 			podName: "npu-test-22", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 			reqNPUType: a310NPUChipName, reqNpuNum: "4"}))
@@ -770,14 +780,6 @@ func setPodLabel(CPod *v1.Pod, selectorKey string, selectorValue string) {
 		return
 	}
 	CPod.Labels[selectorKey] = selectorValue
-}
-
-func setNodeLabel(CNode *v1.Node, labelKey string, labelValue string) {
-	if labelValue == "" {
-		delete(CNode.Labels, labelKey)
-		return
-	}
-	CNode.Labels[labelKey] = labelValue
 }
 
 func setJobResourceReq(CJob *vapi.JobInfo, resource string, num float64) {

@@ -19,6 +19,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/common"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
@@ -29,13 +30,26 @@ func (tp *card310x4) Name() string {
 
 // New return npu plugin.
 func New(npuName string) plugin.HwNPUSchedulerPlugin {
-	return &card310x4{name: npuName}
+	defaultSchedulerConfig := make(map[string]string, common.ConstIntNum1)
+	defaultSchedulerConfig[archSelector] = huaweiArchArm + "|" + huaweiArchX86
+	defaultSchedulerConfig[acceleratorType] = cardAcceleratorType + "|" + chipAcceleratorType
+	co := common.Scheduler{
+		PluginName:                npuName,
+		AnnoName:                  a310NPUCardName,
+		AnnoPreVal:                a310NPUCardPreName,
+		DefaultJobSchedulerConfig: defaultSchedulerConfig,
+	}
+	return &card310x4{
+		com: co,
+		re:  common.ReScheduler{AnnoUnHealthy: a310FaultNPUName, IsMyJob: co.IsMyJob, AnnoName: co.AnnoName},
+	}
 }
 
 // OnHandlerStart The npu scheduler policy initial and common processing.
 func (tp *card310x4) OnHandlerStart(sHandler *plugin.ScheduleHandler) {
 	klog.V(logDebugLev).Infof("%v start handler.", PluginName)
 	sHandler.AddInitNodesNPUAllocTopology(PluginName, initNodesNPUTopologyFn)
+	sHandler.AddPreHandleFaultNPU(tp.com.AnnoName, tp.re.PreHandleFaultNPUFn)
 }
 
 // ValidNPUJobFn Check the compliance of the selector and resource request numbers of job.
