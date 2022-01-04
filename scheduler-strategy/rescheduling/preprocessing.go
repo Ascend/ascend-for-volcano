@@ -114,14 +114,14 @@ func getJobUsedNodeRankIds(job *api.JobInfo, nodeAndPods map[string]*v1.Pod) (
 		CreatTime:     time2.Now().Unix(),
 	}
 	nodeRankIds[job.UID] = tmpData
-	return nil, nil
+	return nodeRankIds, nil
 }
 
 func addJobsRankIdsIntoCache(jobsRankIds map[api.JobID]FaultRankIDRecordJobCMData) error {
 	jobsRankIdsFromCache, getErr := getRankIDJobsFromCache()
 	if getErr != nil {
-		klog.V(logDebugLev).Infof("addJobsRankIdsIntoCache %v.", getErr)
-		return getErr
+		klog.V(logDebugLev).Infof("addJobsRankIdsIntoCache not contain node fault :%v.", getErr)
+		jobsRankIdsFromCache = make(map[api.JobID]FaultRankIDRecordJobCMData, constIntNum3)
 	}
 
 	for jobID, rankIDData := range jobsRankIds {
@@ -129,6 +129,7 @@ func addJobsRankIdsIntoCache(jobsRankIds map[api.JobID]FaultRankIDRecordJobCMDat
 	}
 
 	ReSchedulerCache[CmJobRankIds] = jobsRankIdsFromCache
+	klog.V(logDebugLev).Infof("addJobsRankIdsIntoCache after :%+v.", jobsRankIdsFromCache)
 	return nil
 }
 
@@ -143,7 +144,7 @@ func writeFaultNodeRankIdsByJobInCache(ssn *framework.Session) error {
 			klog.V(logDebugLev).Infof("%s getRunningJobUsedNodes %v.", job.Name, getErr)
 			continue
 		}
-		if isJobHasFaultNodes(nodeAndPods) {
+		if !isJobHasFaultNodes(nodeAndPods) {
 			klog.V(logDebugLev).Infof("%s isJobHasFaultNodes %+v.", job.Name, nodeAndPods)
 			continue
 		}

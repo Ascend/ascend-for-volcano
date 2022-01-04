@@ -73,7 +73,7 @@ func synReSchedulerJobCache(ssn *framework.Session, tmpValue interface{}) error 
 			delete(jobMap, jobID)
 			continue
 		}
-		// For job running
+		// For job running, need delete fault job record.
 		if job.PodGroup.Status.Phase == scheduling.PodGroupRunning {
 			klog.V(logErrorLev).Infof("delete %s from configMap due to job is ok.", jobID)
 			delete(jobMap, jobID)
@@ -120,7 +120,7 @@ func getTaskUseNPUs(nodesTask map[string]*v1.Pod, nodeName string) ([]string, er
 func getFaultCardsFromCache() (map[string]FaultNPUsOnNode, error) {
 	allFaultNPUs, cacheOk := ReSchedulerCache[CmCardKind]
 	if !cacheOk {
-		klog.V(logErrorLev).Infof("getFaultCardsFromCache %+v.", ReSchedulerCache)
+		klog.V(logDebugLev).Infof("getFaultCardsFromCache %+v.", ReSchedulerCache)
 		return nil, errors.New("nil fault NPU cache")
 	}
 	faultCards, ok := allFaultNPUs.(map[string]FaultNPUsOnNode)
@@ -144,7 +144,7 @@ func getFaultNodesFromCache() (map[string]FaultNodeState, error) {
 func isJobHasFaultNPU(nodesTask map[string]*v1.Pod) bool {
 	allFaultNPUs, err := getFaultCardsFromCache()
 	if err != nil {
-		klog.V(logErrorLev).Infof("isJobHasFaultNPU %+v.", err)
+		klog.V(logDebugLev).Infof("isJobHasFaultNPU %+v.", err)
 		return false
 	}
 
@@ -174,7 +174,7 @@ func isJobHasNetworkUnhealthyNPU(nodesTask map[string]*v1.Pod, job *api.JobInfo)
 	for nodeName, nodeFaultNPUs := range allFaultNPUs {
 		taskNPUs, getErr := getTaskUseNPUs(nodesTask, nodeName)
 		if getErr != nil {
-			klog.V(logErrorLev).Infof("getTaskUseNPUs  %v.", err)
+			klog.V(logDebugLev).Infof("getTaskUseNPUs %v.", getErr)
 			continue
 		}
 		if isTaskHasFaultNPU(taskNPUs, nodeFaultNPUs.NetworkUnhealthyNPUs) {
@@ -187,6 +187,7 @@ func isJobHasNetworkUnhealthyNPU(nodesTask map[string]*v1.Pod, job *api.JobInfo)
 func isJobHasFaultNodes(nodesTask map[string]*v1.Pod) bool {
 	allFaultNodes, err := getFaultNodesFromCache()
 	if err != nil {
+		klog.V(logErrorLev).Infof("getFaultNodesFromCache %v.", err)
 		return false
 	}
 
@@ -255,7 +256,7 @@ func isJobHasFaultResources(nodeAndPods map[string]*v1.Pod, job *api.JobInfo) bo
 		return true
 	}
 
-	klog.V(logDebugLev).Infof("isJobHasFaultResources %s no use fault resources.", job.Name)
+	klog.V(logInfoLev).Infof("isJobHasFaultResources %s no use fault resources.", job.Name)
 
 	return false
 }
