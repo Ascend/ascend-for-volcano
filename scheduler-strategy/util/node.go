@@ -113,9 +113,12 @@ func GetNodeHealthNPUNumberByName(nodeName string, nodes []*api.NodeInfo, npuCar
 
 // GetRealTopAfterAlloc Get npu card ids after alloc.
 func GetRealTopAfterAlloc(nodeDeviceIDs []int, useDeviceIDs []int, npuCardName string) string {
+	if len(nodeDeviceIDs) == 0 {
+		return ""
+	}
+
 	var tmpDeviceIDs []int
 	var existFlag bool
-
 	for _, nTopI := range nodeDeviceIDs {
 		existFlag = false
 		for _, tTopI := range useDeviceIDs {
@@ -129,7 +132,7 @@ func GetRealTopAfterAlloc(nodeDeviceIDs []int, useDeviceIDs []int, npuCardName s
 			tmpDeviceIDs = append(tmpDeviceIDs, nTopI)
 		}
 	}
-	klog.V(logDebugLev).Infof("%s getRealTopAfterAlloc ：%v .", npuCardName, tmpDeviceIDs)
+	klog.V(logDebugLev).Infof("%s GetRealTopAfterAlloc : %v .", npuCardName, tmpDeviceIDs)
 	// change int to string
 	return ChangeIntArrToStr(tmpDeviceIDs, npuCardName)
 }

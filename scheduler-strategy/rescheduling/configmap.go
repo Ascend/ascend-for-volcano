@@ -246,7 +246,7 @@ func ReadFaultNPUJobsFromCM(ssn *framework.Session) error {
 	return cmErr
 }
 
-func getCMWriteDate(ssn *framework.Session, reSchedulerData map[string]interface{}) map[string]string {
+func getCMWriteDate(reSchedulerData map[string]interface{}) map[string]string {
 	var data = make(map[string]string, 1)
 	for dataKind, faultData := range reSchedulerData {
 		switch dataKind {
@@ -300,7 +300,7 @@ func WriteReSchedulerDataToCM(ssn *framework.Session, reSchedulerData map[string
 			Name:      cmName,
 			Namespace: cmNameSpace,
 		},
-		Data: getCMWriteDate(ssn, reSchedulerData),
+		Data: getCMWriteDate(reSchedulerData),
 	}
 
 	klog.V(logDebugLev).Infof("Write faultNPUJobs into cm: %+v.", faultNPUConfigMap)
