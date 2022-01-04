@@ -52,12 +52,13 @@ const (
 	// JobFaultRankIDCMDataKey the job cm value key.
 	JobFaultRankIDCMDataKey = "fault-npus"
 	// JobFaultRankIDCMPre the job cm name prefix.
-	JobFaultRankIDCMPre      = "fault-config-"
-	nodeDEnableKey           = "nodeDEnable"
-	nodeDEnableOnValue       = "on"
-	nodeDEnableOffValue      = "off"
-	npu800And9000CardName    = "huawei.com/Ascend910"
-	npu800And9000CardPreName = "Ascend910-"
+	JobFaultRankIDCMPre           = "fault-config-"
+	nodeDEnableKey                = "nodeDEnable"
+	nodeDEnableOnValue            = "on"
+	nodeDEnableOffValue           = "off"
+	npu800And9000CardName         = "huawei.com/Ascend910"
+	npu800And9000CardPreName      = "Ascend910-"
+	faultNpuSynCmWithDevicePlugin = "dl-npu-fault-syn-cm"
 )
 
 // ReSchedulerTasks record the tasks using the failed NPU.

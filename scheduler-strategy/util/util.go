@@ -33,7 +33,6 @@ func ChangeTopToIntArray(topStr string, npuCardPreName string) []int {
 
 	topStrArray = strings.Split(topStr, ",")
 	for _, cardStr = range topStrArray {
-		klog.V(logDebugLev).Infof("ChangeTopToIntArray cardStr %s.", cardStr)
 		// cannot use strings 's Trim
 		v := strings.TrimPrefix(cardStr, npuCardPreName)
 		cardInt, err = strconv.Atoi(v)
@@ -44,7 +43,7 @@ func ChangeTopToIntArray(topStr string, npuCardPreName string) []int {
 
 		topInt = append(topInt, cardInt)
 	}
-
+	klog.V(logDebugLev).Infof("ChangeTopToIntArray %v.", topInt)
 	return topInt
 }
 

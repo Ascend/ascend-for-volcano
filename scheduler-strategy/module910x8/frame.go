@@ -369,7 +369,7 @@ func forceDeleteTimeOutGraceTask(ssn *framework.Session) error {
 	// 1.Get grace delete jobs from cache.
 	dJobs, delayErr := rescheduling.GetGraceDeleteJobsFromCache()
 	if delayErr != nil {
-		klog.V(logErrorLev).Infof("GetGraceDeleteJobsFromCache %v.", delayErr)
+		klog.V(logDebugLev).Infof("GetGraceDeleteJobsFromCache %v.", delayErr)
 		return delayErr
 	}
 
@@ -399,7 +399,7 @@ func preHandleFaultNPUFn(ssn *framework.Session) error {
 	}
 	// 2.Force delete tasks that gracefully delete cannot be deleted. For job not running
 	if err := forceDeleteTimeOutGraceTask(ssn); err != nil {
-		klog.V(logDebugLev).Infof("%s ForceDeleteGraceTask %v.", PluginName, err)
+		klog.V(logInfoLev).Infof("%s ForceDeleteGraceTask %v.", PluginName, err)
 	}
 	// 3.Determine if it is a 910 jobs.
 	jobs, jobGetErr := get910x8RunningJobs(ssn.Jobs)
@@ -418,7 +418,7 @@ func preHandleFaultNPUFn(ssn *framework.Session) error {
 		klog.V(logErrorLev).Infof("%s setFaultInNodeAndJobs %v.", PluginName, err)
 		return err
 	}
-	// 6.Restart vcjobs.
+	// 6.Restart vcJobs.
 	if err := restartFaultJob(ssn, faultNPUJobs, jobs); err != nil {
 		klog.V(logErrorLev).Infof("%s restartFaultJob %v.", PluginName, err)
 		return err
