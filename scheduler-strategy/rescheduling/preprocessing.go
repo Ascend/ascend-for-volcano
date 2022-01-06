@@ -117,7 +117,7 @@ func getJobUsedNodeRankIds(job *api.JobInfo, nodeAndPods map[string]*v1.Pod) (
 	return nodeRankIds, nil
 }
 
-func addJobsRankIdsIntoCache(jobsRankIds map[api.JobID]FaultRankIDRecordJobCMData) error {
+func addJobsRankIdsIntoRankIds(jobsRankIds map[api.JobID]FaultRankIDRecordJobCMData) error {
 	jobsRankIdsFromCache, getErr := getRankIDJobsFromCache()
 	if getErr != nil {
 		klog.V(logDebugLev).Infof("addJobsRankIdsIntoCache not contain node fault :%v.", getErr)
@@ -129,7 +129,34 @@ func addJobsRankIdsIntoCache(jobsRankIds map[api.JobID]FaultRankIDRecordJobCMDat
 	}
 
 	ReSchedulerCache[CmJobRankIds] = jobsRankIdsFromCache
-	klog.V(logDebugLev).Infof("addJobsRankIdsIntoCache after :%+v.", jobsRankIdsFromCache)
+	return nil
+}
+
+// For last words by fault nodes, the NPUs need record.
+func addJobUseNodeNPUsIntoCard(nodeAndPods map[string]*v1.Pod) error {
+	allFaultNodes, err := getFaultNodesFromCache()
+	if err != nil {
+		klog.V(logErrorLev).Infof("getFaultNodesFromCache %v.", err)
+		return err
+	}
+	tmpFaultNPUsMap := make(map[string]FaultNPUsOnNode, constIntNum3)
+	for nodeName, pod := range nodeAndPods {
+		if _, ok := allFaultNodes[nodeName]; !ok {
+			continue
+		}
+		cards, getErr := getPodUsedNPUS(pod, npu800And9000CardName, node910X8NPUNum)
+		if getErr != nil {
+			klog.V(logErrorLev).Infof("getPodUsedNPUS %v.", getErr)
+			continue
+		}
+		tempFaultNPUsOnNode := FaultNPUsOnNode{NodeName: nodeName, FaultNPUs: cards, NetworkUnhealthyNPUs: nil,
+			UpdateTime: time2.Now().Unix(),
+		}
+		tmpFaultNPUsMap[nodeName] = tempFaultNPUsOnNode
+	}
+
+	ReSchedulerCache[CmCardKind] = tmpFaultNPUsMap
+	klog.V(logDebugLev).Infof("addJobUseNodeNPUsIntoCard after :%+v.", tmpFaultNPUsMap)
 	return nil
 }
 
@@ -153,8 +180,12 @@ func writeFaultNodeRankIdsByJobInCache(ssn *framework.Session) error {
 			klog.V(logDebugLev).Infof("%s getJobUsedNodeRankIds %s %+v.", job.Name, nodeAndPods, getRankIdsErr)
 			continue
 		}
-		if addErr := addJobsRankIdsIntoCache(jobsRankIds); addErr != nil {
+		if addErr := addJobsRankIdsIntoRankIds(jobsRankIds); addErr != nil {
 			klog.V(logDebugLev).Infof("%s addJobsRankIdsIntoCache %v %+v.", job.Name, jobsRankIds, addErr)
+			continue
+		}
+		if addNodeErr := addJobUseNodeNPUsIntoCard(nodeAndPods); addNodeErr != nil {
+			klog.V(logDebugLev).Infof("%s addJobUseNodeNPUsIntoCard %v.", job.Name, addNodeErr)
 			continue
 		}
 	}
@@ -188,7 +219,7 @@ func writeFaultResourceInfInCache(ssn *framework.Session, npus []FaultNPUsOnNode
 
 // RecordFaultInfInCache Record the fault information(card/node) in the cache
 func RecordFaultInfInCache(ssn *framework.Session, npuNumber int) error {
-	// 1.Get fault NPUs and its nodes from running vcjob.
+	// 1.Get fault NPUs and its nodes from running vcJob.
 	faultNPUs, npuErr := getInoperableNPUCards(ssn.Nodes, npuNumber)
 	if npuErr != nil {
 		klog.V(logDebugLev).Infof("getInoperableNPUCards %v.", npuErr)

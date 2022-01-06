@@ -376,6 +376,7 @@ func getJobFaultNPURankIDCMData(job *api.JobInfo) (map[string]string, error) {
 
 	faultRankIds, getErr := getFaultNPUJobCMData(job)
 	if getErr != nil {
+		klog.V(logErrorLev).Infof("getFaultNPUJobCMData err: %v.", getErr)
 		return nil, getErr
 	}
 	dataBuffer, err := json.Marshal(faultRankIds)
