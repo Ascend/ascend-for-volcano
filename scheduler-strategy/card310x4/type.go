@@ -27,13 +27,14 @@ const (
 	cardAcceleratorType = "card"
 	chipAcceleratorType = "chip"
 
-	nodeNPUNumber = 64
-	constIntNum0  = 0
-	constIntNum1  = 1
-	constIntNum2  = 2
-	constIntNum3  = 3
-	cardNPUNumber = 4
-	constIntNum5  = 5
+	nodeNPUNumber  = 64
+	constIntNum0   = 0
+	constIntNum1   = 1
+	constIntNum2   = 2
+	constIntNum3   = 3
+	cardNPUNumber  = 4
+	constIntNum5   = 5
+	constNPUWeight = 8.0
 
 	logErrorLev = 1
 	logInfoLev  = 3

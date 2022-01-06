@@ -687,8 +687,8 @@ func TestCnpuScoreBestNPUNodesFn(t *testing.T) {
 		Convey("ScoreBestNPUNodesFn() should return correct result", func() {
 			scoreMap := make(map[string]float64)
 			expectedResult := map[string]float64{
-				nodeName1: 4.00,
-				nodeName2: 2.00,
+				nodeName1: 32.00,
+				nodeName2: 16.00,
 			}
 			result, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
 			So(err, ShouldBeNil)
