@@ -173,7 +173,6 @@ func (tp *card310x4) ScoreBestNPUNodesFn(scoreMap map[string]float64,
 	bestNodes map[string]int,
 	_ *api.TaskInfo,
 	_ []*api.NodeInfo) (map[string]float64, error) {
-	var nodeWeight = 1.0
 
 	// parameters check
 	if reflect.ValueOf(scoreMap).IsNil() {
@@ -182,9 +181,9 @@ func (tp *card310x4) ScoreBestNPUNodesFn(scoreMap map[string]float64,
 		return nil, err
 	}
 
-	// the score value ranges from 1 to 4 (4 is best)
+	// the score value ranges from 1 to 32 (4 is best)
 	for nodeName, priority := range bestNodes {
-		scoreMap[nodeName] = nodeWeight * (cardNPUNumber - float64(priority))
+		scoreMap[nodeName] = constNPUWeight * (cardNPUNumber - float64(priority))
 	}
 
 	return scoreMap, nil
