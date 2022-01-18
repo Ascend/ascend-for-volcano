@@ -175,8 +175,8 @@ func (tp *Vnpu) GetNPUAffinityBestNodesFn(task *api.TaskInfo, nodes []*api.NodeI
 // ScoreBestNPUNodesFn used for score candidate nodes
 func (tp *Vnpu) ScoreBestNPUNodesFn(scoreMap map[string]float64,
 	bestNodes map[string]int,
-	task *api.TaskInfo,
-	nodes []*api.NodeInfo) (float64s map[string]float64, e error) {
+	_ *api.TaskInfo,
+	nodes []*api.NodeInfo) (map[string]float64, error) {
 	if reflect.ValueOf(scoreMap).IsNil() {
 		err := errors.New("scoreBestNPUNodes's scoreMap is nil")
 		klog.V(logInfoLev).Infof("%s %s %v.", nodes, tp.Name(), err)

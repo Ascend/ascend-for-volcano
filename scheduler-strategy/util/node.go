@@ -14,7 +14,6 @@ import (
 	"fmt"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
-	"sort"
 	"volcano.sh/volcano/pkg/scheduler/api"
 )
 
@@ -46,39 +45,6 @@ func GetTopFromNodeOthers(node *api.NodeInfo, npuCardName string, npuCardPreName
 
 	klog.V(logDebugLev).Infof("%s getTopFromNode int: %v, s: %s.", npuCardName, tmpDeviceIDs, topStr)
 	return tmpDeviceIDs
-}
-
-// CheckNPUTopValidity Checks the validity of npu card ids which are read from annotations
-func CheckNPUTopValidity(top []int, maxNumber int) bool {
-	if len(top) == 0 {
-		// node has none npu
-		klog.V(logInfoLev).Infof("CheckTopValidity no NPUSs")
-		return false
-	}
-
-	tmp := make([]int, len(top))
-	for index, v := range top {
-		tmp[index] = v
-	}
-
-	if maxNumber < 0 {
-		maxNumber = maxTaskNPUNum
-	}
-	sort.Ints(tmp)
-	for i, num := range tmp {
-		if i != 0 && num == tmp[i-1] {
-			klog.V(logErrorLev).Infof("duplicated npu(%d)", num)
-			return false
-		}
-
-		if num < 0 || num > maxNumber {
-			klog.V(logErrorLev).Infof("got npu number(%d) out of range [%d, %d]",
-				num, 0, maxNumber)
-			return false
-		}
-	}
-
-	return true
 }
 
 // GetNodeNPUNumFromIdle Get npu top like（int[]） from node idle.

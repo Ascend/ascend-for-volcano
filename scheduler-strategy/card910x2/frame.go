@@ -198,7 +198,8 @@ func (tp *card910x2) UpdateNPUNodeUsedCardFn(node *api.NodeInfo, top interface{}
 	}
 
 	// delete the use top
-	klog.V(logInfoLev).Infof("%s useAnnotation %s:%v , will use: %v.", PluginName, node.Name, nodeDeviceIDs, useTop)
+	klog.V(logInfoLev).Infof("%s useAnnotation %s:%v , will use: %v.", PluginName,
+		node.Name, nodeDeviceIDs, useTop)
 	newNodeTopStr := hwutil.GetRealTopAfterAlloc(nodeDeviceIDs, useTop, a300tNPUCardPreName)
 	if newNodeTopStr == "" {
 		klog.V(logDebugLev).Infof("%s getRealTopAfterAlloc all top has allocated .", PluginName)
@@ -258,7 +259,8 @@ func (tp *card910x2) UpdateReleaseNPUNodeTopologyFn(node *api.NodeInfo, top inte
 }
 
 // GetAllocatedNPUFromTopologyFn Get the pod's npu card to record in node others.
-func (tp *card910x2) GetAllocatedNPUFromTopologyFn(task *api.TaskInfo, node *api.NodeInfo, _ bool) (interface{}, error) {
+func (tp *card910x2) GetAllocatedNPUFromTopologyFn(
+	task *api.TaskInfo, node *api.NodeInfo, _ bool) (interface{}, error) {
 	var allocTopologyHccl []int
 	var allocTopologyNPUs []int
 

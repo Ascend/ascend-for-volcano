@@ -87,9 +87,7 @@ func (hwNPU *ScheduleHandler) checkNodeNPUByTask(task *api.TaskInfo, node *api.N
 }
 
 func (hwNPU *ScheduleHandler) getNPUAffinityBestNodes(
-	task *api.TaskInfo,
-	nodes []*api.NodeInfo,
-	disFlag bool) (map[string]int, error) {
+	task *api.TaskInfo, nodes []*api.NodeInfo, disFlag bool) (map[string]int, error) {
 	curNPUPlugin := hwNPU.getNPUPlugin(task)
 	if curNPUPlugin == nil {
 		return nil, errors.New("get npu plugin nil")
@@ -178,7 +176,7 @@ func (hwNPU *ScheduleHandler) useAnnotation(node *api.NodeInfo, task *api.TaskIn
 		return
 	}
 	// set pod rankIndex
-	if err := rescheduling.SetFaultJobPodIndex(task, node); err != nil {
+	if err = rescheduling.SetFaultJobPodIndex(task, node); err != nil {
 		klog.V(logInfoLev).Infof("%s setFaultJobPodIndex %v.", task.UID, err)
 	}
 	return
@@ -264,7 +262,7 @@ func (hwNPU *ScheduleHandler) NodePredicate(task *api.TaskInfo, node *api.NodeIn
 	klog.V(logInfoLev).Infof("enter node(%s) predicate", node.Name)
 	defer klog.V(logInfoLev).Infof("leave node(%s) predicate", node.Name)
 
-	if task == nil || node == nil {
+	if task == nil || node == nil || ssn == nil {
 		klog.V(logErrorLev).Infof("%s got null parameter(s), which is invalid", PluginName)
 		return fmt.Errorf("got null parameter(s)")
 	}

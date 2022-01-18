@@ -37,7 +37,8 @@ func validNPUJobSelector(job *api.JobInfo) error {
 	}
 
 	defaultSchedulerConfig := getCardNPUJobDefaultSelectorConfig()
-	klog.V(logDebugLev).Infof("%s card selector: %v default:%v.", job.Name, jobSelectors, defaultSchedulerConfig)
+	klog.V(logDebugLev).Infof("%s card selector: %v default:%v.",
+		job.Name, jobSelectors, defaultSchedulerConfig)
 
 	if err := hwutil.CompareNPUSelector(job, jobSelectors, defaultSchedulerConfig); err != nil {
 		klog.V(logErrorLev).Infof("%v.", err)

@@ -34,6 +34,7 @@ const (
 	constIntNum3   = 3
 	cardNPUNumber  = 4
 	constIntNum5   = 5
+	constIntNum10  = 10
 	constNPUWeight = 8.0
 
 	logErrorLev = 1

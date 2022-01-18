@@ -132,12 +132,12 @@ func (re *ReScheduler) isFaultTask(task *api.TaskInfo, nodes []rescheduling.Faul
 		if node.NodeName == task.NodeName {
 			anno, exist := task.Pod.Annotations[re.AnnoName]
 			if !exist {
-				klog.V(LogDebugLev).Infof("Annotations false pod anno info:%s.", anno)
+				klog.V(LogDebugLev).Infof("get %s Annotations %s failed.", task.Pod, re.AnnoName)
 				continue
 			}
-			klog.V(LogDebugLev).Infof("Annotations anno  :%+v.   nodes %+v", anno, node.FaultNPUs)
+			klog.V(LogDebugLev).Infof("isFaultTask  nodes %+v", node.FaultNPUs)
 			if re.checkFaultNPU(anno, node.FaultNPUs) {
-				klog.V(LogDebugLev).Infof("checkFaultNPU false pod anno info:%+v.", anno)
+				klog.V(LogDebugLev).Infof("checkFaultNPU pod annotation.")
 				return true
 			}
 		}
@@ -150,12 +150,12 @@ func (re *ReScheduler) checkFaultNPU(anno string, faultNPUs []string) bool {
 	for _, us := range used {
 		for _, ft := range faultNPUs {
 			if us == ft {
-				klog.V(LogDebugLev).Infof("checkFaultNPU true :%+v.   nodes %+v", anno, faultNPUs)
+				klog.V(LogDebugLev).Infof("checkFaultNPU true, nodes %+v", faultNPUs)
 				return true
 			}
 		}
 	}
-	klog.V(LogDebugLev).Infof("checkFaultNPU false :%+v.   nodes %+v", anno, faultNPUs)
+	klog.V(LogDebugLev).Infof("checkFaultNPU false, nodes %+v", faultNPUs)
 	return false
 }
 
