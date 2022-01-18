@@ -27,15 +27,6 @@ func getCardNPUJobDefaultSelectorConfig() map[string]string {
 	return defaultSchedulerConfig
 }
 
-func getCardNPUNodeDefaultSelectorConfig() map[string]string {
-	var defaultSchedulerConfig map[string]string
-	defaultSchedulerConfig = make(map[string]string, constIntNum3)
-
-	defaultSchedulerConfig[archSelector] = huaweiArchArm + "|" + huaweiArchX86
-
-	return defaultSchedulerConfig
-}
-
 // For verify npu job must config selector.
 func validNPUJobSelector(job *api.JobInfo) error {
 	jobSelectors := util.GetJobLabels(job)
@@ -58,7 +49,6 @@ func validNPUJobSelector(job *api.JobInfo) error {
 
 // CheckSingleTrainMode Single Train job has only one task.
 func CheckSingleTrainMode(job *api.JobInfo) error {
-
 	klog.V(logDebugLev).Infof("checkSingleTrainMode job(%s).", job.Name)
 
 	for _, task := range job.Tasks {

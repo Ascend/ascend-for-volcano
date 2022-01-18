@@ -109,16 +109,16 @@ func (tp *card310x4) CheckNPUResourceStableFn(node *api.NodeInfo) error {
 	// default is the npu task
 	nodeNPUIdleNumFromTop, err := getNodeNPUNumFromOthers(node)
 	if err != nil {
-		return fmt.Errorf("getNodeNPUNumFromOthers %s : %s", nodesNoMeetNPUReqError, err)
+		return fmt.Errorf("getNodeNPUNumFromOthers %s : %v", nodesNoMeetNPUReqError, err)
 	}
 
 	nodeNPUIdleNumFromIdle, err := util.GetNodeNPUNumFromIdle(node, a310NPUCardName)
 	if err != nil {
-		return fmt.Errorf("getNodeNPUNumFromIdle %s : %s", nodesNoMeetNPUReqError, err)
+		return fmt.Errorf("getNodeNPUNumFromIdle %s : %v", nodesNoMeetNPUReqError, err)
 	}
 
 	if err = util.CheckNodeNPUStabilize(nodeNPUIdleNumFromTop, nodeNPUIdleNumFromIdle); err != nil {
-		return fmt.Errorf("%s : %s", nodeNotStableWarning, err)
+		return fmt.Errorf("%s : %v", nodeNotStableWarning, err)
 	}
 
 	return nil
@@ -128,7 +128,7 @@ func (tp *card310x4) CheckNPUResourceStableFn(node *api.NodeInfo) error {
 func (tp *card310x4) CheckNodeNPUByTaskFn(task *api.TaskInfo, node *api.NodeInfo, _ bool) error {
 	taskNPU, taskError := util.GetTaskNPUNum(task, a310NPUCardName)
 	if taskError != nil {
-		return fmt.Errorf("getTaskNPUNum %s : %s", nodesNoMeetNPUReqError, taskError)
+		return fmt.Errorf("getTaskNPUNum %s : %v", nodesNoMeetNPUReqError, taskError)
 	}
 
 	nodeNPUTopology := util.GetTopFromNodeOthers(node, a310NPUCardName, a310NPUCardPreName)
@@ -154,13 +154,13 @@ func (tp *card310x4) GetNPUAffinityBestNodesFn(task *api.TaskInfo,
 	// 1. init 4 prioritized node-list array.
 	priNodeGroups, err := initPriNodeGroups(task, nodes)
 	if err != nil {
-		klog.V(logErrorLev).Infof("%s initPriNodeGroups failed :%s", PluginName, err)
+		klog.V(logErrorLev).Infof("%s initPriNodeGroups failed :%v", PluginName, err)
 		return nil, err
 	}
 	// 2.get the bestNodes map by taskReqNPU
 	bestNodesMap, err := getBestNodesMap(priNodeGroups)
 	if err != nil {
-		klog.V(logErrorLev).Infof("%s getBestNodesMap failed :%s", PluginName, err)
+		klog.V(logErrorLev).Infof("%s getBestNodesMap failed :%v", PluginName, err)
 		return nil, err
 	}
 
@@ -176,7 +176,7 @@ func (tp *card310x4) ScoreBestNPUNodesFn(scoreMap map[string]float64,
 
 	// parameters check
 	if reflect.ValueOf(scoreMap).IsNil() {
-		err := errors.New("scoreBestNPUNodes's scoreMap is nil")
+		err := errors.New("ScoreBestNPUNodesFn scoreMap is nil")
 		klog.V(logInfoLev).Infof("%s %v", PluginName, err)
 		return nil, err
 	}
@@ -225,7 +225,7 @@ func (tp *card310x4) GetReleaseNPUTopologyFn(task *api.TaskInfo) (interface{}, e
 	// get task use top
 	taskDeviceIDs := util.GetDeviceIDsFromAnnotations(task.Pod.Annotations, a310NPUCardName, a310NPUCardPreName)
 	if taskDeviceIDs == nil {
-		klog.V(logErrorLev).Infof("%s releaseAnnotation failed task:%s", PluginName, task.Name)
+		klog.V(logErrorLev).Infof("%s GetReleaseNPUTopologyFn failed task:%s", PluginName, task.Name)
 		return nil, fmt.Errorf("%s get npu nil", task.Name)
 	}
 
@@ -264,13 +264,14 @@ func (tp *card310x4) UpdateReleaseNPUNodeTopologyFn(node *api.NodeInfo, top inte
 }
 
 // GetAllocatedNPUFromTopologyFn Get the pod's npu card to record in node others.
-func (tp *card310x4) GetAllocatedNPUFromTopologyFn(task *api.TaskInfo, node *api.NodeInfo, _ bool) (interface{}, error) {
+func (tp *card310x4) GetAllocatedNPUFromTopologyFn(
+	task *api.TaskInfo, node *api.NodeInfo, _ bool) (interface{}, error) {
 	var allocTopologyHccl []int
 	var allocTopologyNPUs []int
 
 	taskNPUNumber, taskError := util.GetTaskNPUNum(task, a310NPUCardName)
 	if taskError != nil {
-		return nil, errors.New("no npu task")
+		return nil, fmt.Errorf("%s %v", task.Name, taskError)
 	}
 
 	priorityArray, err := getNPUAllocPriorityArray(taskNPUNumber)
@@ -292,7 +293,7 @@ func (tp *card310x4) GetAllocatedNPUFromTopologyFn(task *api.TaskInfo, node *api
 		klog.V(logErrorLev).Infof("%s %s.", PluginName, err.Error())
 		return allocTopologyHccl, err
 	}
-	klog.V(logDebugLev).Infof("%s %s get top %v.", PluginName, task.Name, allocTopologyHccl)
+	klog.V(logDebugLev).Infof("%s %s get alloc %v.", PluginName, task.Name, allocTopologyHccl)
 
 	allocTopologyNPUs, err = util.GetNPUTopFromHccs(taskNPUNumber, allocTopologyHccl)
 	if err != nil {
@@ -315,7 +316,7 @@ func (tp *card310x4) SetNPUTopologyToPodFn(task *api.TaskInfo, top interface{}) 
 	topologyStr = util.ChangeIntArrToStr(intTop, a310NPUCardPreName)
 	task.Pod.Annotations[a310NPUCardName] = topologyStr
 	// to device-plugin judge pending pod.
-	task.Pod.Annotations[podPredicateTime] = strconv.FormatInt(time.Now().UnixNano(), 10)
+	task.Pod.Annotations[podPredicateTime] = strconv.FormatInt(time.Now().UnixNano(), constIntNum10)
 	klog.V(logInfoLev).Infof("%s setNPUTopologyToPod %s top:%s", PluginName, task.Name, topologyStr)
 
 	return nil

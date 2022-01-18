@@ -171,7 +171,7 @@ func setOnNewNodeTaskRankIndex(task *api.TaskInfo, node *api.NodeInfo) error {
 		return nil
 	}
 
-	return fmt.Errorf("%s set rankIndex failed", task.UID)
+	return fmt.Errorf("%s set rankIndex %s failed", task.Name, node.Name)
 }
 
 func setReSchedulerTaskRankIndex(rTask ReSchedulerTasks, task *api.TaskInfo, node *api.NodeInfo) error {
@@ -203,8 +203,8 @@ func SetFaultJobPodIndex(task *api.TaskInfo, node *api.NodeInfo) error {
 	}
 
 	if setErr := setReSchedulerTaskRankIndex(tmpValue, task, node); setErr != nil {
-		klog.V(logInfoLev).Infof("setReSchedulerTaskRankIndex %s %v.", task.Name, err)
-		return err
+		klog.V(logInfoLev).Infof("setReSchedulerTaskRankIndex %s %v.", task.Name, setErr)
+		return setErr
 	}
 	return nil
 }

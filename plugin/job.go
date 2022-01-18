@@ -37,14 +37,14 @@ func getJobHandle(obj interface{}) *api.JobInfo {
 	return job
 }
 
-func updatePodGroupPendingReason(ssn *framework.Session, job *api.JobInfo, reasonTmp string) {
+func updatePodGroupPendingReason(ssn *framework.Session, job *api.JobInfo, reason string) {
 	jc := scheduling.PodGroupCondition{
 		Type:               scheduling.PodGroupUnschedulableType,
 		Status:             v1.ConditionTrue,
 		LastTransitionTime: metav1.Now(),
 		TransitionID:       string(ssn.UID),
 		Reason:             scheduling.NotEnoughResourcesReason,
-		Message:            reasonTmp,
+		Message:            reason,
 	}
 
 	for k, value := range job.PodGroup.Status.Conditions {
@@ -58,9 +58,9 @@ func updatePodGroupPendingReason(ssn *framework.Session, job *api.JobInfo, reaso
 	job.PodGroup.Status.Conditions = append(job.PodGroup.Status.Conditions, jc)
 }
 
-func updatePodsPendingReason(job *api.JobInfo, reasonTmp string) {
+func updatePodsPendingReason(job *api.JobInfo, reason string) {
 	for _, task := range job.Tasks {
-		updatePodPendingReason(task, reasonTmp)
+		updatePodPendingReason(task, reason)
 	}
 }
 
@@ -101,8 +101,8 @@ func updateJobPendingReason(ssn *framework.Session, job *api.JobInfo, reason int
 func SetJobPendingReason(ssn *framework.Session, obj interface{}, reason interface{}) error {
 	job := getJobHandle(obj)
 	if job == nil {
-		message := fmt.Errorf("getJobHandle [%v] failed:%v", obj, reason)
-		klog.V(logErrorLev).Infof(" %v.", message)
+		message := fmt.Errorf("getJobHandle [%v] failed", obj)
+		klog.V(logErrorLev).Infof("%v.", message)
 		return message
 	}
 
@@ -160,7 +160,7 @@ func graceDeleteFaultJob(ssn *framework.Session, job *api.JobInfo, reason string
 }
 
 func evictFaultJob(ssn *framework.Session, job *api.JobInfo, reason string) error {
-	// Write restart reason into vcjob.
+	// Write restart reason into vcJob.
 	updatePodGroupPendingReason(ssn, job, reason)
 	label, getErr := rescheduling.GetJobFaultRescheduleLabel(job)
 	if getErr != nil {

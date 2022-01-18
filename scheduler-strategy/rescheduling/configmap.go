@@ -88,7 +88,7 @@ func deleteSchedulerConfigMap(ssn *framework.Session, nameSpace, cmName string) 
 func convertToReSchedulerJobsMapFromCM(buffer string) (map[string]ReSchedulerTasks, error) {
 	reSchedulerJob := make(map[string]ReSchedulerTasks, constIntNum3)
 	if unmarshalErr := json.Unmarshal([]byte(buffer), &reSchedulerJob); unmarshalErr != nil {
-		klog.V(logErrorLev).Infof("convertToReSchedulerJobsMapFromCM Unmarshal: %v %v.", buffer, unmarshalErr)
+		klog.V(logErrorLev).Infof("convertToReSchedulerJobsMapFromCM Unmarshal: %v.", unmarshalErr)
 		return nil, unmarshalErr
 	}
 	return reSchedulerJob, nil
@@ -226,7 +226,7 @@ func updateFaultNPUInfFromCM(ssn *framework.Session) error {
 		return updateErr
 	}
 
-	klog.V(logDebugLev).Infof("updateFaultNPUInfFromCM success: %+v.", ReSchedulerCache)
+	klog.V(logDebugLev).Infof("updateFaultNPUInfFromCM success.")
 	return nil
 }
 
@@ -286,7 +286,7 @@ func getCMWriteDate(reSchedulerData map[string]interface{}) map[string]string {
 			}
 			data[CmJobRankIds] = rankIdsData
 		default:
-			klog.V(logErrorLev).Infof("getCMWriteDate not support %v %v.", dataKind, faultData)
+			klog.V(logErrorLev).Infof("getCMWriteDate not support %v.", dataKind)
 		}
 	}
 
@@ -303,7 +303,8 @@ func WriteReSchedulerDataToCM(ssn *framework.Session, reSchedulerData map[string
 		Data: getCMWriteDate(reSchedulerData),
 	}
 
-	klog.V(logDebugLev).Infof("Write faultNPUJobs into cm: %+v.", faultNPUConfigMap)
+	klog.V(logDebugLev).Infof("Write faultNPUJobs into cm: %+v/%v.",
+		faultNPUConfigMap.Namespace, faultNPUConfigMap.Name)
 	if err := createOrUpdateConfigMap(ssn.KubeClient(), faultNPUConfigMap); err != nil {
 		klog.V(logErrorLev).Infof("createOrUpdateConfigMap : %v.", err)
 		return err
@@ -435,7 +436,8 @@ func WriteJobFaultRankIDIntoCM(ssn *framework.Session, job *api.JobInfo, cmData 
 		},
 		Data: cmData,
 	}
-	klog.V(logDebugLev).Infof("WriteJobFaultRankIDIntoCacheAndCM cm is : %+v.", faultRankIdsCM)
+	klog.V(logDebugLev).Infof("WriteJobFaultRankIDIntoCacheAndCM cm is : %v/%v.",
+		faultRankIdsCM.Namespace, faultRankIdsCM.Name)
 	if err := createOrUpdateConfigMap(ssn.KubeClient(), faultRankIdsCM); err != nil {
 		klog.V(logErrorLev).Infof("WriteJobFaultRankIDIntoCacheAndCM : %v.", err)
 		return err

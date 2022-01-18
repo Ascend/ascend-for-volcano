@@ -39,7 +39,7 @@ func New(npuName string) plugin.HwNPUSchedulerPlugin {
 	}
 }
 
-// get selector configs of 910-300T
+// GetNpuJobDefaultSelectorConfig get selector configs of 910-300T
 func (tp *cardv910x2) GetNpuJobDefaultSelectorConfig() map[string]string {
 	var defaultSchedulerConfig map[string]string
 	defaultSchedulerConfig = make(map[string]string, mapInitLen)
@@ -50,7 +50,7 @@ func (tp *cardv910x2) GetNpuJobDefaultSelectorConfig() map[string]string {
 	return defaultSchedulerConfig
 }
 
-// determine whether the task is a 910-300T task
+// IsMyTask determine whether the task is a 910-300T task
 func (tp *cardv910x2) IsMyTask(task *api.TaskInfo) error {
 	var vCardExist bool
 
@@ -93,7 +93,7 @@ func (tp *cardv910x2) IsMyNode(node *api.NodeInfo) error {
 	return errors.New("node doesn't have card type Vnpu")
 }
 
-// determine whether the job is a 910-300T job
+// IsMyJob determine whether the job is a 910-300T job
 func (tp *cardv910x2) IsMyJob(job *api.JobInfo) error {
 	var vCardExist bool
 

@@ -99,7 +99,7 @@ func getRunningJobUsedNodes(job *api.JobInfo) (map[string]*v1.Pod, error) {
 	for _, task := range job.Tasks {
 		nodeNames[task.NodeName] = task.Pod
 	}
-	klog.V(logDebugLev).Infof("getRunningJobUsedNodes %s use %v %v.", job.Name, len(nodeNames), job.Tasks)
+	klog.V(logDebugLev).Infof("getRunningJobUsedNodes %s use %v.", job.Name, len(nodeNames))
 
 	if len(nodeNames) == 0 {
 		return nil, fmt.Errorf("%s no tasks,no use node", job.Name)
@@ -187,7 +187,7 @@ func isJobHasNetworkUnhealthyNPU(nodesTask map[string]*v1.Pod, job *api.JobInfo)
 func isJobHasFaultNodes(nodesTask map[string]*v1.Pod) bool {
 	allFaultNodes, err := getFaultNodesFromCache()
 	if err != nil {
-		klog.V(logErrorLev).Infof("getFaultNodesFromCache %v.", err)
+		klog.V(logDebugLev).Infof("getFaultNodesFromCache %v.", err)
 		return false
 	}
 
@@ -205,6 +205,7 @@ func isJobHasFaultNodes(nodesTask map[string]*v1.Pod) bool {
 func GetJobFaultRescheduleLabel(job *api.JobInfo) (string, error) {
 	value, ok := job.PodGroup.Labels[jobRescheduleLabelKey]
 	if !ok {
+		klog.V(logDebugLev).Infof("GetJobFaultRescheduleLabel %+v.", job.PodGroup.Labels)
 		return "", fmt.Errorf("%s no job reschedule label", job.Name)
 	}
 
@@ -320,7 +321,7 @@ func GetRestartNPUFaultJobs(faultNPUJobs []FaultNPUJob, jobs map[string]*api.Job
 func deleteJobRankIndex(job *api.JobInfo) {
 	for _, task := range job.Tasks {
 		delete(task.Pod.Annotations, podRankIndex)
-		klog.V(logDebugLev).Infof("delete %s rankIndex %+v for job pending.", task.UID, task.Pod.Annotations)
+		klog.V(logDebugLev).Infof("delete %s rankIndex for job pending.", task.UID)
 	}
 }
 

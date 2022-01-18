@@ -11,6 +11,7 @@ package util
 
 import (
 	"errors"
+	"fmt"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -20,7 +21,7 @@ import (
 func GetTaskNPUNum(task *api.TaskInfo, npuCardName string) (int, error) {
 	tmpNPU, ok := task.Resreq.ScalarResources[v1.ResourceName(npuCardName)]
 	if !ok || int(tmpNPU/npuHex) == 0 {
-		return 0, errors.New("not npu task")
+		return 0, fmt.Errorf("not %s task", npuCardName)
 	}
 
 	taskNPU := int(tmpNPU / npuHex)

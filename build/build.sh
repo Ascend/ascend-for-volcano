@@ -63,7 +63,7 @@ function build() {
     CGO_CFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
     CGO_CPPFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv" \
     CC=/usr/local/musl/bin/musl-gcc CGO_ENABLED=1 \
-    go build -buildmode=plugin -ldflags "-s -extldflags=-Wl,-z,now
+    go build -buildmode=plugin -ldflags "-s -linkmode=external -extldflags=-Wl,-z,now
     -X volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin.PluginName=${REL_NPU_PLUGIN}" \
     -o "${REL_NPU_PLUGIN}".so "${GOPATH}"/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/
 

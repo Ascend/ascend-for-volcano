@@ -11,7 +11,6 @@ package plugin
 
 import (
 	"errors"
-	"fmt"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 	schedulerApi "k8s.io/kube-scheduler/extender/v1"
@@ -109,16 +108,6 @@ func (hwNPU *ScheduleHandler) BatchNodeOrderFn(
 		task.Namespace, task.Name, scoreMap)
 
 	return scoreMap, nil
-}
-
-// GetJobInfoByTask get job information by task.
-func GetJobInfoByTask(task *api.TaskInfo, ssn *framework.Session) (*api.JobInfo, error) {
-	job, ok := ssn.Jobs[task.Job]
-	if !ok {
-		return nil, fmt.Errorf("get nil job by %s", task.Name)
-	}
-
-	return job, nil
 }
 
 // IsDistributeTask To judge whether the distributed task.

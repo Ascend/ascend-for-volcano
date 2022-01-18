@@ -172,12 +172,12 @@ func writeFaultNodeRankIdsByJobInCache(ssn *framework.Session) error {
 			continue
 		}
 		if !isJobHasFaultNodes(nodeAndPods) {
-			klog.V(logDebugLev).Infof("%s isJobHasFaultNodes %+v.", job.Name, nodeAndPods)
+			klog.V(logDebugLev).Infof("%s isJobHasFaultNodes .", job.Name)
 			continue
 		}
 		jobsRankIds, getRankIdsErr := getJobUsedNodeRankIds(job, nodeAndPods)
 		if getRankIdsErr != nil {
-			klog.V(logDebugLev).Infof("%s getJobUsedNodeRankIds %s %+v.", job.Name, nodeAndPods, getRankIdsErr)
+			klog.V(logDebugLev).Infof("%s getJobUsedNodeRankIds %+v.", job.Name, getRankIdsErr)
 			continue
 		}
 		if addErr := addJobsRankIdsIntoRankIds(jobsRankIds); addErr != nil {
