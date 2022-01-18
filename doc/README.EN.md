@@ -1,8 +1,9 @@
-# NPU Affinity Scheduling Algorithm Design and Development Guide
+# NPU Affinity Scheduling Algorithm Design and Development Guide.en
 -   [Introduction to Ascend-volcano-plugin](#introduction-to-ascend-volcano-plugin.md)
 -   [Affinity Policies](#affinity-policies.md)
 -   [Scheduling Algorithm Design](#scheduling-algorithm-design.md)
 -   [Scheduling Algorithm Implementation](#scheduling-algorithm-implementation.md)
+-   [Directory Structure](#directory-structure.md)
 -   [Compilation Description](#compilation-description.md)
 -   [Version Updates](#version-updates.md)
 <h2 id="introduction-to-ascend-volcano-plugin.md">Introduction to Ascend-volcano-plugin</h2>
@@ -253,6 +254,120 @@ Affinity scheduling of Huawei Ascend AI Processors is based on the plugin mechan
     This function is used to manage the available  Ascend 910 AI Processors of a node in a unified manner. This prevents incorrect allocation in the case of concurrent operations.
 
 
+<h2 id="directory-structure.md">Directory Structure</h2>
+
+```
+├── build                                                    # Continuous integration (CI) build script
+│   ├── build.sh                                            # Binary script for CI build
+│   └── testBuild.sh                                        # Low level test (LLT) startup script
+├── doc                                                      # Description document
+│   ├── figures
+│   │   ├── Affinity-algorithm-design-process-ch.png
+│   │   ├── Affinity-algorithm-design-process-en.png
+│   │   ├── Affinity-program-process-(Volcano-part)-ch.png
+│   │   ├── Affinity-program-process-(Volcano-part)-en.png
+│   │   ├── Ascend-910-AI-Processor-interconnection-topology.png
+│   │   ├── icon-caution.gif
+│   │   ├── icon-danger.gif
+│   │   ├── icon-note.gif
+│   │   ├── icon-notice.gif
+│   │   ├── icon-tip.gif
+│   │   └── icon-warning.gif
+│   ├── README.EN.md
+│   └── README.ZH.md
+├── huawei_npu.go                                           # Entry code of the Ascend-volcano-plugin component
+├── npuinterface                                            # APIs exposed externally
+│   └── interface.go
+├── output                                                  # Directory of CI build results
+│   ├── Dockerfile-controller
+│   ├── Dockerfile-scheduler
+│   └── volcano-v1.4.0.yaml
+├── plugin                                                  # Directory of plugin adaptation code
+│   ├── job.go
+│   ├── node.go
+│   ├── plugin.go
+│   ├── task.go
+│   └── type.go
+├── scheduler-strategy                                      # Directory of scheduling policy code
+│   ├── card310x4                                          # Directory of scheduling policy code for Ascend 310 cards
+│   │   ├── frame.go
+│   │   ├── frame_test.go
+│   │   ├── job.go
+│   │   ├── model.go
+│   │   ├── node.go
+│   │   ├── task.go
+│   │   └── type.go
+│   ├── card910x2                                          # Directory of scheduling policy code for Atlas 300T cards
+│   │   ├── frame.go
+│   │   ├── frame_test.go
+│   │   ├── job.go
+│   │   ├── model.go
+│   │   ├── node.go
+│   │   ├── task.go
+│   │   └── type.go
+│   ├── cardv910x2                                        # Directory of scheduling policy code for Ascend 910 cards (vNPUs)
+│   │   ├── frame.go
+│   │   ├── frame_test.go
+│   │   └── type.go
+│   ├── chip310x4                                         # Directory of scheduling policy code for Ascend 310 AI Processors
+│   │   ├── frame.go
+│   │   ├── frame_test.go
+│   │   ├── model.go
+│   │   ├── node.go
+│   │   └── type.go
+│   ├── chip710                                            # Directory of common code for Ascend 710 AI Processor scheduling
+│   │   ├── frame.go
+│   │   └── type.go
+│   ├── common                                             # Directory of common code for vNPU scheduling
+│   │   ├── frame.go
+│   │   ├── job.go
+│   │   ├── model.go
+│   │   ├── node.go
+│   │   ├── rescheduler.go
+│   │   └── type.go
+│   ├── commonv910                                        #  Directory of scheduling policy code for 800/9000 vNPUs
+│   │   ├── frame.go
+│   │   ├── frame_test.go
+│   │   ├── job.go
+│   │   ├── node.go
+│   │   ├── task.go
+│   │   └── type.go
+│   ├── module910x8                                       # Directory of scheduling policy code for 800/9000
+│   │   ├── frame.go
+│   │   ├── frame_test.go
+│   │   ├── job.go
+│   │   ├── job_test.go
+│   │   ├── model.go
+│   │   ├── model_test.go
+│   │   ├── node.go
+│   │   ├── task.go
+│   │   └── type.go
+│   ├── modulev910x8                                      # Directory of scheduling policy code for 800/9000 vNPUs
+│   │   ├── frame.go
+│   │   └── type.go
+│   ├── rescheduling                                      # Directory of rescheduling policy code
+│   │   ├── configmap.go
+│   │   ├── job.go
+│   │   ├── node.go
+│   │   ├── preprocessing.go
+│   │   ├── rescheduling_test.go
+│   │   ├── task.go
+│   │   └── type.go
+│   └── util                                              # Directory of common code for scheduling policies
+│       ├── job.go
+│       ├── node.go
+│       ├── task.go
+│       ├── type.go
+│       └── util.go
+├── test                                                   # Directory of common basic code for LLTs
+│   ├── frame.go
+│   ├── job.go
+│   ├── node.go
+│   ├── pod.go
+│   └── type.go
+└── type.go
+```
+
 <h2 id="compilation-description.md">Compilation Description</h2>
 
 ## Preparations<a name="section2078393613277"></a>
@@ -332,7 +447,7 @@ Affinity scheduling of Huawei Ascend AI Processors is based on the plugin mechan
 
 Perform operations described in all sections except "Preparing Software Packages" in section "Preparing for Installation" in the  [_MindX DL User Guide_](https://www.hiascend.com/software/mindx-dl).
 
-For details, see "Installation and Deployment \> Preparations Before Installation" in the  _[MindX DL User Guide](https://www.hiascend.com/software/mindx-dl)_.
+For details, see "Installation and Deployment \> Preparations Before Installation" in the  [_MindX DL User Guide_](https://www.hiascend.com/software/mindx-dl).
 
 ## Installing Volcano<a name="section3436132203218"></a>
 
@@ -349,11 +464,18 @@ For details, see "Installation and Deployment \> Installing MindX DL \> Installi
 </th>
 </tr>
 </thead>
-<tbody><tr id="row1851165074015"><td class="cellrowborder" valign="top" width="33.33333333333333%" headers="mcps1.1.4.1.1 "><p id="p135216508401"><a name="p135216508401"></a><a name="p135216508401"></a>v2.0.3</p>
+<tbody><tr id="row20475407015"><td class="cellrowborder" valign="top" width="33.33333333333333%" headers="mcps1.1.4.1.1 "><p id="p13476001109"><a name="p13476001109"></a><a name="p13476001109"></a>v2.0.4</p>
+</td>
+<td class="cellrowborder" valign="top" width="33.33333333333333%" headers="mcps1.1.4.1.2 "><p id="p11476901010"><a name="p11476901010"></a><a name="p11476901010"></a>2022-01-15</p>
+</td>
+<td class="cellrowborder" valign="top" width="33.33333333333333%" headers="mcps1.1.4.1.3 "><a name="ul7682144015113"></a><a name="ul7682144015113"></a><ul id="ul7682144015113"><li>Added the support for dying gasp.</li><li>Added the support for scheduling of Ascend 710 AI processors.</li><li>Fixed some issues.</li></ul>
+</td>
+</tr>
+<tr id="row1851165074015"><td class="cellrowborder" valign="top" width="33.33333333333333%" headers="mcps1.1.4.1.1 "><p id="p135216508401"><a name="p135216508401"></a><a name="p135216508401"></a>v2.0.3</p>
 </td>
 <td class="cellrowborder" valign="top" width="33.33333333333333%" headers="mcps1.1.4.1.2 "><p id="p952650134010"><a name="p952650134010"></a><a name="p952650134010"></a>2021-11-02</p>
 </td>
-<td class="cellrowborder" valign="top" width="33.33333333333333%" headers="mcps1.1.4.1.3 "><a name="ul1621195620416"></a><a name="ul1621195620416"></a><ul id="ul1621195620416"><li>Fixed some issues.</li><li>Supported Volcano v1.4.0.</li></ul>
+<td class="cellrowborder" valign="top" width="33.33333333333333%" headers="mcps1.1.4.1.3 "><a name="ul1621195620416"></a><a name="ul1621195620416"></a><ul id="ul1621195620416"><li>Fixed some issues.</li><li>Added the support for scheduling of Ascend 310 AI processors.</li><li>Added the support for resume training.</li><li>Added the support for Volcano v1.4.0.</li></ul>
 </td>
 </tr>
 <tr id="row1683152117244"><td class="cellrowborder" valign="top" width="33.33333333333333%" headers="mcps1.1.4.1.1 "><p id="p86612143014"><a name="p86612143014"></a><a name="p86612143014"></a>v2.0.2</p>

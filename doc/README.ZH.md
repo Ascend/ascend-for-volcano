@@ -1,8 +1,9 @@
-# NPU亲和性调度算法设计说明与开发指导
+# NPU亲和性调度算法设计说明与开发指导.zh
 -   [Ascend-volcano-plugin介绍](#Ascend-volcano-plugin介绍.md)
 -   [亲和性策略说明](#亲和性策略说明.md)
 -   [调度算法设计说明](#调度算法设计说明.md)
 -   [调度算法实现说明](#调度算法实现说明.md)
+-   [目录结构](#目录结构.md)
 -   [编译说明](#编译说明.md)
 -   [版本更新记录](#版本更新记录.md)
 <h2 id="Ascend-volcano-plugin介绍.md">Ascend-volcano-plugin介绍</h2>
@@ -93,35 +94,35 @@
 **表 1**  亲和性策略场景列表
 
 <a name="table34241172175"></a>
-<table><thead align="left"><tr id="row164241173174"><th class="cellrowborder" valign="top" width="8.28%" id="mcps1.2.8.1.1"><p id="p152201253161715"><a name="p152201253161715"></a><a name="p152201253161715"></a><strong id="b12201553141713"><a name="b12201553141713"></a><a name="b12201553141713"></a>场景序号</strong></p>
+<table><thead align="left"><tr id="row164241173174"><th class="cellrowborder" valign="top" width="8.280000000000001%" id="mcps1.2.8.1.1"><p id="p152201253161715"><a name="p152201253161715"></a><a name="p152201253161715"></a><strong id="b12201553141713"><a name="b12201553141713"></a><a name="b12201553141713"></a>场景序号</strong></p>
 </th>
 <th class="cellrowborder" valign="top" width="11.72%" id="mcps1.2.8.1.2"><p id="p0220115391713"><a name="p0220115391713"></a><a name="p0220115391713"></a><strong id="b13220175311711"><a name="b13220175311711"></a><a name="b13220175311711"></a>任务申请芯片数</strong></p>
 </th>
-<th class="cellrowborder" valign="top" width="16%" id="mcps1.2.8.1.3"><p id="p152201953111710"><a name="p152201953111710"></a><a name="p152201953111710"></a><strong id="b32200535173"><a name="b32200535173"></a><a name="b32200535173"></a>A（节点中处理器剩余数）</strong></p>
+<th class="cellrowborder" valign="top" width="18.860000000000003%" id="mcps1.2.8.1.3"><p id="p152201953111710"><a name="p152201953111710"></a><a name="p152201953111710"></a><strong id="b32200535173"><a name="b32200535173"></a><a name="b32200535173"></a>A（节点中处理器剩余数）</strong></p>
 </th>
-<th class="cellrowborder" valign="top" width="16%" id="mcps1.2.8.1.4"><p id="p32211653191716"><a name="p32211653191716"></a><a name="p32211653191716"></a><strong id="b62211753161717"><a name="b62211753161717"></a><a name="b62211753161717"></a>B</strong></p>
+<th class="cellrowborder" valign="top" width="15.400000000000002%" id="mcps1.2.8.1.4"><p id="p32211653191716"><a name="p32211653191716"></a><a name="p32211653191716"></a><strong id="b62211753161717"><a name="b62211753161717"></a><a name="b62211753161717"></a>B</strong></p>
 </th>
-<th class="cellrowborder" valign="top" width="16%" id="mcps1.2.8.1.5"><p id="p3221175312177"><a name="p3221175312177"></a><a name="p3221175312177"></a><strong id="b1222116535179"><a name="b1222116535179"></a><a name="b1222116535179"></a>C</strong></p>
+<th class="cellrowborder" valign="top" width="13.770000000000001%" id="mcps1.2.8.1.5"><p id="p3221175312177"><a name="p3221175312177"></a><a name="p3221175312177"></a><strong id="b1222116535179"><a name="b1222116535179"></a><a name="b1222116535179"></a>C</strong></p>
 </th>
-<th class="cellrowborder" valign="top" width="16%" id="mcps1.2.8.1.6"><p id="p12221145371719"><a name="p12221145371719"></a><a name="p12221145371719"></a><strong id="b12221175317177"><a name="b12221175317177"></a><a name="b12221175317177"></a>D</strong></p>
+<th class="cellrowborder" valign="top" width="15.970000000000004%" id="mcps1.2.8.1.6"><p id="p12221145371719"><a name="p12221145371719"></a><a name="p12221145371719"></a><strong id="b12221175317177"><a name="b12221175317177"></a><a name="b12221175317177"></a>D</strong></p>
 </th>
-<th class="cellrowborder" valign="top" width="16%" id="mcps1.2.8.1.7"><p id="p0221155316175"><a name="p0221155316175"></a><a name="p0221155316175"></a>备注</p>
+<th class="cellrowborder" valign="top" width="16.000000000000004%" id="mcps1.2.8.1.7"><p id="p0221155316175"><a name="p0221155316175"></a><a name="p0221155316175"></a>备注</p>
 </th>
 </tr>
 </thead>
-<tbody><tr id="row4424317151713"><td class="cellrowborder" valign="top" width="8.28%" headers="mcps1.2.8.1.1 "><p id="p1822165310172"><a name="p1822165310172"></a><a name="p1822165310172"></a>1</p>
+<tbody><tr id="row4424317151713"><td class="cellrowborder" valign="top" width="8.280000000000001%" headers="mcps1.2.8.1.1 "><p id="p1822165310172"><a name="p1822165310172"></a><a name="p1822165310172"></a>1</p>
 </td>
 <td class="cellrowborder" valign="top" width="11.72%" headers="mcps1.2.8.1.2 "><p id="p1122145319175"><a name="p1122145319175"></a><a name="p1122145319175"></a>1</p>
 </td>
-<td class="cellrowborder" valign="top" width="16%" headers="mcps1.2.8.1.3 "><p id="p18221195381715"><a name="p18221195381715"></a><a name="p18221195381715"></a>1~[0、1、2、3、4]</p>
+<td class="cellrowborder" valign="top" width="18.860000000000003%" headers="mcps1.2.8.1.3 "><p id="p18221195381715"><a name="p18221195381715"></a><a name="p18221195381715"></a>1~[0、1、2、3、4]</p>
 </td>
-<td class="cellrowborder" valign="top" width="16%" headers="mcps1.2.8.1.4 "><p id="p5221105315174"><a name="p5221105315174"></a><a name="p5221105315174"></a>3~[0、2、3、4]</p>
+<td class="cellrowborder" valign="top" width="15.400000000000002%" headers="mcps1.2.8.1.4 "><p id="p5221105315174"><a name="p5221105315174"></a><a name="p5221105315174"></a>3~[0、2、3、4]</p>
 </td>
-<td class="cellrowborder" valign="top" width="16%" headers="mcps1.2.8.1.5 "><p id="p122211353121711"><a name="p122211353121711"></a><a name="p122211353121711"></a>2~[0、2、4]</p>
+<td class="cellrowborder" valign="top" width="13.770000000000001%" headers="mcps1.2.8.1.5 "><p id="p122211353121711"><a name="p122211353121711"></a><a name="p122211353121711"></a>2~[0、2、4]</p>
 </td>
-<td class="cellrowborder" valign="top" width="16%" headers="mcps1.2.8.1.6 "><p id="p152210538179"><a name="p152210538179"></a><a name="p152210538179"></a>4~[0、4]</p>
+<td class="cellrowborder" valign="top" width="15.970000000000004%" headers="mcps1.2.8.1.6 "><p id="p152210538179"><a name="p152210538179"></a><a name="p152210538179"></a>4~[0、4]</p>
 </td>
-<td class="cellrowborder" rowspan="3" valign="top" width="16%" headers="mcps1.2.8.1.7 "><p id="p52212053191710"><a name="p52212053191710"></a><a name="p52212053191710"></a>然后选择capacity为7，坏的视为已使用，重复A~D</p>
+<td class="cellrowborder" rowspan="3" valign="top" width="16.000000000000004%" headers="mcps1.2.8.1.7 "><p id="p52212053191710"><a name="p52212053191710"></a><a name="p52212053191710"></a>然后选择capacity为7，坏的视为已使用，重复A~D</p>
 </td>
 </tr>
 <tr id="row8425141731712"><td class="cellrowborder" valign="top" headers="mcps1.2.8.1.1 "><p id="p5221185391719"><a name="p5221185391719"></a><a name="p5221185391719"></a>2</p>
@@ -150,34 +151,34 @@
 <td class="cellrowborder" valign="top" headers="mcps1.2.8.1.6 "><p id="p20222155312171"><a name="p20222155312171"></a><a name="p20222155312171"></a>-</p>
 </td>
 </tr>
-<tr id="row16425917201717"><td class="cellrowborder" valign="top" width="8.28%" headers="mcps1.2.8.1.1 "><p id="p822245351710"><a name="p822245351710"></a><a name="p822245351710"></a>4</p>
+<tr id="row16425917201717"><td class="cellrowborder" valign="top" width="8.280000000000001%" headers="mcps1.2.8.1.1 "><p id="p822245351710"><a name="p822245351710"></a><a name="p822245351710"></a>4</p>
 </td>
 <td class="cellrowborder" valign="top" width="11.72%" headers="mcps1.2.8.1.2 "><p id="p1522295351713"><a name="p1522295351713"></a><a name="p1522295351713"></a>8</p>
 </td>
-<td class="cellrowborder" valign="top" width="16%" headers="mcps1.2.8.1.3 "><p id="p1522215532172"><a name="p1522215532172"></a><a name="p1522215532172"></a>8</p>
+<td class="cellrowborder" valign="top" width="18.860000000000003%" headers="mcps1.2.8.1.3 "><p id="p1522215532172"><a name="p1522215532172"></a><a name="p1522215532172"></a>8</p>
 </td>
-<td class="cellrowborder" valign="top" width="16%" headers="mcps1.2.8.1.4 "><p id="p22221853111716"><a name="p22221853111716"></a><a name="p22221853111716"></a>-</p>
+<td class="cellrowborder" valign="top" width="15.400000000000002%" headers="mcps1.2.8.1.4 "><p id="p22221853111716"><a name="p22221853111716"></a><a name="p22221853111716"></a>-</p>
 </td>
-<td class="cellrowborder" valign="top" width="16%" headers="mcps1.2.8.1.5 "><p id="p5222145311710"><a name="p5222145311710"></a><a name="p5222145311710"></a>-</p>
+<td class="cellrowborder" valign="top" width="13.770000000000001%" headers="mcps1.2.8.1.5 "><p id="p5222145311710"><a name="p5222145311710"></a><a name="p5222145311710"></a>-</p>
 </td>
-<td class="cellrowborder" valign="top" width="16%" headers="mcps1.2.8.1.6 "><p id="p142221353191710"><a name="p142221353191710"></a><a name="p142221353191710"></a>-</p>
+<td class="cellrowborder" valign="top" width="15.970000000000004%" headers="mcps1.2.8.1.6 "><p id="p142221353191710"><a name="p142221353191710"></a><a name="p142221353191710"></a>-</p>
 </td>
-<td class="cellrowborder" valign="top" width="16%" headers="mcps1.2.8.1.7 "><p id="p1622255310172"><a name="p1622255310172"></a><a name="p1622255310172"></a>-</p>
+<td class="cellrowborder" valign="top" width="16.000000000000004%" headers="mcps1.2.8.1.7 "><p id="p1622255310172"><a name="p1622255310172"></a><a name="p1622255310172"></a>-</p>
 </td>
 </tr>
-<tr id="row10426171715174"><td class="cellrowborder" valign="top" width="8.28%" headers="mcps1.2.8.1.1 "><p id="p1122210533177"><a name="p1122210533177"></a><a name="p1122210533177"></a>5</p>
+<tr id="row10426171715174"><td class="cellrowborder" valign="top" width="8.280000000000001%" headers="mcps1.2.8.1.1 "><p id="p1122210533177"><a name="p1122210533177"></a><a name="p1122210533177"></a>5</p>
 </td>
 <td class="cellrowborder" valign="top" width="11.72%" headers="mcps1.2.8.1.2 "><p id="p52222535174"><a name="p52222535174"></a><a name="p52222535174"></a>8*N</p>
 </td>
-<td class="cellrowborder" valign="top" width="16%" headers="mcps1.2.8.1.3 "><p id="p32221753191714"><a name="p32221753191714"></a><a name="p32221753191714"></a>0（8个处理器全部被占用）</p>
+<td class="cellrowborder" valign="top" width="18.860000000000003%" headers="mcps1.2.8.1.3 "><p id="p32221753191714"><a name="p32221753191714"></a><a name="p32221753191714"></a>0（8个处理器全部被占用）</p>
 </td>
-<td class="cellrowborder" valign="top" width="16%" headers="mcps1.2.8.1.4 "><p id="p422255312177"><a name="p422255312177"></a><a name="p422255312177"></a>-</p>
+<td class="cellrowborder" valign="top" width="15.400000000000002%" headers="mcps1.2.8.1.4 "><p id="p422255312177"><a name="p422255312177"></a><a name="p422255312177"></a>-</p>
 </td>
-<td class="cellrowborder" valign="top" width="16%" headers="mcps1.2.8.1.5 "><p id="p2223135321712"><a name="p2223135321712"></a><a name="p2223135321712"></a>-</p>
+<td class="cellrowborder" valign="top" width="13.770000000000001%" headers="mcps1.2.8.1.5 "><p id="p2223135321712"><a name="p2223135321712"></a><a name="p2223135321712"></a>-</p>
 </td>
-<td class="cellrowborder" valign="top" width="16%" headers="mcps1.2.8.1.6 "><p id="p142231353121714"><a name="p142231353121714"></a><a name="p142231353121714"></a>-</p>
+<td class="cellrowborder" valign="top" width="15.970000000000004%" headers="mcps1.2.8.1.6 "><p id="p142231353121714"><a name="p142231353121714"></a><a name="p142231353121714"></a>-</p>
 </td>
-<td class="cellrowborder" valign="top" width="16%" headers="mcps1.2.8.1.7 "><p id="p192231753141710"><a name="p192231753141710"></a><a name="p192231753141710"></a>-</p>
+<td class="cellrowborder" valign="top" width="16.000000000000004%" headers="mcps1.2.8.1.7 "><p id="p192231753141710"><a name="p192231753141710"></a><a name="p192231753141710"></a>-</p>
 </td>
 </tr>
 </tbody>
@@ -190,14 +191,10 @@
 
 图中关键步骤说明如下：
 
-1. <a name="li2081354582012"></a>获取task的昇腾910 AI处理器申请数量。
-
-2. 根据请求的昇腾910 AI处理器数量，按照[资源申请约束](#"亲和性策略说明")选出最优的节点。
-
-3. 从选出的节点中，选择符合要求的昇腾910 AI处理器。
-
-4. 对选出的结果进行保存。
-
+1.  <a name="li2081354582012"></a>获取task的昇腾910 AI处理器申请数量。
+2.  根据请求的昇腾910 AI处理器数量，按照[资源申请约束](#"亲和性策略说明")选出最优的节点。
+3.  从选出的节点中，选择符合要求的昇腾910 AI处理器。
+4.  对选出的结果进行保存。
 5.  <a name="li205713218818"></a>对选出的节点进行加权操作。
 
     >![](figures/icon-note.gif) **说明：** 
@@ -240,9 +237,9 @@
 
 华为昇腾处理器的亲和性调度基于Volcano开源部分提供的的插件机制，实现了插件简化开发。过程中主要实现了volcano-schedule框架中的几个插件函数。当Volcano每次session运行时，实现的函数就会按照编写的规则运行，从而实现处理器的亲和性调度。亲和性调度插件主要实现的函数如下：
 
--   validJobFn：
+- validJobFn：
 
-    该函数主要是拦截申请NPU资源的任务，但申请的数量需要满足亲和性策略。具体要求请参见[亲和性策略说明](#"亲和性策略说明")。
+  该函数主要是拦截申请NPU资源的任务，但申请的数量需要满足亲和性策略。具体要求请参见[亲和性策略说明](#"亲和性策略说明")。
 
 -   AddPredicateFn：
 
@@ -256,6 +253,120 @@
 
     该函数主要是将节点拥有的可用的昇腾910 AI处理器进行统一管理。防止并发情况下的分发错误。
 
+
+<h2 id="目录结构.md">目录结构</h2>
+
+```
+├── build                                                    # CI编译脚本
+│   ├── build.sh                                            # CI构建二进制脚本
+│   └── testBuild.sh                                        # LLT测试启动脚本
+├── doc                                                      # 说明文档
+│   ├── figures
+│   │   ├── Affinity-algorithm-design-process-ch.png
+│   │   ├── Affinity-algorithm-design-process-en.png
+│   │   ├── Affinity-program-process-(Volcano-part)-ch.png
+│   │   ├── Affinity-program-process-(Volcano-part)-en.png
+│   │   ├── Ascend-910-AI-Processor-interconnection-topology.png
+│   │   ├── icon-caution.gif
+│   │   ├── icon-danger.gif
+│   │   ├── icon-note.gif
+│   │   ├── icon-notice.gif
+│   │   ├── icon-tip.gif
+│   │   └── icon-warning.gif
+│   ├── README.EN.md
+│   └── README.ZH.md
+├── huawei_npu.go                                         # ascend-volcano-plugin组件入口代码
+├── npuinterface                                          # 对外接口目录
+│   └── interface.go
+├── output                                                # CI编译结果目录
+│   ├── Dockerfile-controller
+│   ├── Dockerfile-scheduler
+│   └── volcano-v1.4.0.yaml
+├── plugin                                                 # 插件适配代码目录
+│   ├── job.go
+│   ├── node.go
+│   ├── plugin.go
+│   ├── task.go
+│   └── type.go
+├── scheduler-strategy                                      # 调度策略代码目录
+│   ├── card310x4                                          # 310卡调度策略代码目录
+│   │   ├── frame.go
+│   │   ├── frame_test.go
+│   │   ├── job.go
+│   │   ├── model.go
+│   │   ├── node.go
+│   │   ├── task.go
+│   │   └── type.go
+│   ├── card910x2                                          # A300T调度策略代码目录
+│   │   ├── frame.go
+│   │   ├── frame_test.go
+│   │   ├── job.go
+│   │   ├── model.go
+│   │   ├── node.go
+│   │   ├── task.go
+│   │   └── type.go
+│   ├── cardv910x2                                        # VNPU 910卡调度策略代码目录
+│   │   ├── frame.go
+│   │   ├── frame_test.go
+│   │   └── type.go
+│   ├── chip310x4                                         # 310 芯片调度策略代码目录
+│   │   ├── frame.go
+│   │   ├── frame_test.go
+│   │   ├── model.go
+│   │   ├── node.go
+│   │   └── type.go
+│   ├── chip710                                            # 710 芯片调度公共代码目录
+│   │   ├── frame.go
+│   │   └── type.go
+│   ├── common                                             # VNPU调度公共代码目录
+│   │   ├── frame.go
+│   │   ├── job.go
+│   │   ├── model.go
+│   │   ├── node.go
+│   │   ├── rescheduler.go
+│   │   └── type.go
+│   ├── commonv910                                        # 800/9000 VNPU调度策略代码目录
+│   │   ├── frame.go
+│   │   ├── frame_test.go
+│   │   ├── job.go
+│   │   ├── node.go
+│   │   ├── task.go
+│   │   └── type.go
+│   ├── module910x8                                       # 800/9000调度策略代码目录
+│   │   ├── frame.go
+│   │   ├── frame_test.go
+│   │   ├── job.go
+│   │   ├── job_test.go
+│   │   ├── model.go
+│   │   ├── model_test.go
+│   │   ├── node.go
+│   │   ├── task.go
+│   │   └── type.go
+│   ├── modulev910x8                                      # 800/9000 VNPU调度策略代码目录
+│   │   ├── frame.go
+│   │   └── type.go
+│   ├── rescheduling                                      # 故障调度策略代码目录
+│   │   ├── configmap.go
+│   │   ├── job.go
+│   │   ├── node.go
+│   │   ├── preprocessing.go
+│   │   ├── rescheduling_test.go
+│   │   ├── task.go
+│   │   └── type.go
+│   └── util                                              # 调度策略公共代码目录
+│       ├── job.go
+│       ├── node.go
+│       ├── task.go
+│       ├── type.go
+│       └── util.go
+├── test                                                   # llt公共基础代码目录
+│   ├── frame.go
+│   ├── job.go
+│   ├── node.go
+│   ├── pod.go
+│   └── type.go
+└── type.go
+```
 
 <h2 id="编译说明.md">编译说明</h2>
 
@@ -345,6 +456,7 @@
 <h2 id="版本更新记录.md">版本更新记录</h2>
 
 <a name="table7854542104414"></a>
+
 <table><thead align="left"><tr id="row785512423445"><th class="cellrowborder" valign="top" width="26.662666266626662%" id="mcps1.1.4.1.1"><p id="p19856144274419"><a name="p19856144274419"></a><a name="p19856144274419"></a>版本</p>
 </th>
 <th class="cellrowborder" valign="top" width="29.94299429942994%" id="mcps1.1.4.1.2"><p id="p3856134219446"><a name="p3856134219446"></a><a name="p3856134219446"></a>发布日期</p>
@@ -353,11 +465,18 @@
 </th>
 </tr>
 </thead>
-<tbody><tr id="row1851165074015"><td class="cellrowborder" valign="top" width="26.662666266626662%" headers="mcps1.1.4.1.1 "><p id="p135216508401"><a name="p135216508401"></a><a name="p135216508401"></a>v2.0.3</p>
+<tbody><tr id="row20475407015"><td class="cellrowborder" valign="top" width="26.662666266626662%" headers="mcps1.1.4.1.1 "><p id="p13476001109"><a name="p13476001109"></a><a name="p13476001109"></a>v2.0.4</p>
+</td>
+<td class="cellrowborder" valign="top" width="29.94299429942994%" headers="mcps1.1.4.1.2 "><p id="p11476901010"><a name="p11476901010"></a><a name="p11476901010"></a>2022-01-15</p>
+</td>
+<td class="cellrowborder" valign="top" width="43.394339433943394%" headers="mcps1.1.4.1.3 "><a name="ul7682144015113"></a><a name="ul7682144015113"></a><ul id="ul7682144015113"><li>支持临终遗言特性。</li><li>支持710调度。</li><li>修复若干问题。</li></ul>
+</td>
+</tr>
+<tr id="row1851165074015"><td class="cellrowborder" valign="top" width="26.662666266626662%" headers="mcps1.1.4.1.1 "><p id="p135216508401"><a name="p135216508401"></a><a name="p135216508401"></a>v2.0.3</p>
 </td>
 <td class="cellrowborder" valign="top" width="29.94299429942994%" headers="mcps1.1.4.1.2 "><p id="p952650134010"><a name="p952650134010"></a><a name="p952650134010"></a>2021-11-02</p>
 </td>
-<td class="cellrowborder" valign="top" width="43.394339433943394%" headers="mcps1.1.4.1.3 "><a name="ul1621195620416"></a><a name="ul1621195620416"></a><ul id="ul1621195620416"><li>修复若干问题。</li><li>支持volcano对应版本v1.4.0。</li></ul>
+<td class="cellrowborder" valign="top" width="43.394339433943394%" headers="mcps1.1.4.1.3 "><a name="ul1621195620416"></a><a name="ul1621195620416"></a><ul id="ul1621195620416"><li>修复若干问题。</li><li>支持310调度。</li><li>支持断点续训。</li><li>支持volcano对应版本v1.4.0。</li></ul>
 </td>
 </tr>
 <tr id="row1683152117244"><td class="cellrowborder" valign="top" width="26.662666266626662%" headers="mcps1.1.4.1.1 "><p id="p86612143014"><a name="p86612143014"></a><a name="p86612143014"></a>v2.0.2</p>
