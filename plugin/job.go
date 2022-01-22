@@ -271,19 +271,6 @@ func SetJobPendReasonByNodesCase(ssn *framework.Session, nodes map[string]*api.N
 	}
 }
 
-func isJobInitial(job *api.JobInfo) bool {
-	if job.ValidTaskNum() < job.MinAvailable {
-		return false
-	}
-
-	if job.PodGroup.Status.Phase != scheduling.PodGroupRunning {
-		klog.V(logInfoLev).Infof("%s not running", job.UID)
-		return false
-	}
-
-	return true
-}
-
 // ValidJobFn For job preconception, used by volcano frame.
 func (hwNPU *ScheduleHandler) ValidJobFn(obj interface{}, confs []conf.Configuration) *api.ValidateResult {
 	klog.V(logInfoLev).Infof("enter job valid")
@@ -300,8 +287,8 @@ func (hwNPU *ScheduleHandler) ValidJobFn(obj interface{}, confs []conf.Configura
 		}
 	}
 
-	if !isJobInitial(job) {
-		klog.V(logDebugLev).Infof("%s job(%s) is not ready.", PluginName, job.Name)
+	if !hwutil.IsJobInitial(job) {
+		klog.V(logDebugLev).Infof("%s job(%s) not ready:%v.", PluginName, job.Name, job.PodGroup.Status.Phase)
 		return nil
 	}
 

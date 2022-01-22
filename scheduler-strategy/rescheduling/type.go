@@ -138,7 +138,7 @@ type NormalNodeHeartbeat struct {
 // This is used for write pod's rankIndex when task used new node.
 type TaskUsedRankIndex struct {
 	// nodeD Heartbeat interval time, need multiply by 3.
-	FaultNodeRankIndex map[string]struct{}
+	FaultNodeRankIndex map[string]struct{ UpdateTime int64 }
 	// The time recorded last update.
 	UpdateTime int64
 }

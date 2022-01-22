@@ -14,6 +14,7 @@ import (
 	"fmt"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
+	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 )
@@ -126,4 +127,18 @@ func GetJobLabels(job *api.JobInfo) map[string]string {
 		}
 	}
 	return jobLabel
+}
+
+// IsJobInitial Determine if the task is ready.
+func IsJobInitial(job *api.JobInfo) bool {
+	if job.ValidTaskNum() < job.MinAvailable {
+		return false
+	}
+
+	if job.PodGroup.Status.Phase != scheduling.PodGroupRunning {
+		klog.V(logInfoLev).Infof("%s not running %v", job.UID, job.PodGroup.Status.Phase)
+		return false
+	}
+
+	return true
 }
