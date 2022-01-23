@@ -203,6 +203,7 @@ func setReSchedulerTaskRankIndex(rTask ReSchedulerTasks, task *api.TaskInfo, nod
 // SetFaultJobPodIndex Set the rankIndex of all pods of the failed task
 // For there are gaps in the status of the volcano update podgroup, so set fault job rankIndex by job not task.
 func SetFaultJobPodIndex(task *api.TaskInfo, node *api.NodeInfo) error {
+	klog.V(logErrorLev).Infof("这里-2，%+v.", task)
 	tmpValue, err := getReSchedulerTasksFromCache(task)
 	if err != nil || reflect.DeepEqual(tmpValue, ReSchedulerTasks{}) {
 		klog.V(logInfoLev).Infof("SetFaultJobPodIndex %s %v.", task.Name, err)

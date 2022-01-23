@@ -85,6 +85,18 @@ func deleteSchedulerConfigMap(ssn *framework.Session, nameSpace, cmName string) 
 	return nil
 }
 
+func getRealPodByTask(ssn *framework.Session, task *api.TaskInfo) (*v1.Pod, error) {
+	pod, err := ssn.KubeClient().CoreV1().Pods(task.Namespace).Get(context.TODO(), task.Name, metav1.GetOptions{})
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			klog.V(logErrorLev).Infof("Failed to get pod %v in%v: %v",
+				task.Namespace, task.Name, err)
+			return nil, err
+		}
+	}
+	return pod, nil
+}
+
 func convertToReSchedulerJobsMapFromCM(buffer string) (map[string]ReSchedulerTasks, error) {
 	reSchedulerJob := make(map[string]ReSchedulerTasks, constIntNum3)
 	if unmarshalErr := json.Unmarshal([]byte(buffer), &reSchedulerJob); unmarshalErr != nil {

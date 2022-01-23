@@ -57,6 +57,23 @@ func getCMRankIdsWriteData(jobData interface{}) (string, error) {
 	return marshalCacheDataToStringByReplaceSlash(jobData)
 }
 
+func checkJobPodStatusOK(ssn *framework.Session, job *api.JobInfo) bool {
+	for _, task := range job.Tasks {
+		realPod, err := getRealPodByTask(ssn, task)
+		if err != nil {
+			klog.V(logErrorLev).Infof("checkJobPodStatusOK  getRealPodByTask %v %v.", task.Name, err)
+			return false
+		}
+		if realPod.Status.Phase == v1.PodRunning {
+			continue
+		}
+		klog.V(logErrorLev).Infof("checkJobPodStatusOK %v not ok %v.", task.Name, realPod.Status.Phase)
+		return false
+	}
+	klog.V(logInfoLev).Infof("%v checkJobPodStatusOK.", job.Name)
+	return true
+}
+
 // Delete expired job data.
 func synReSchedulerJobCache(ssn *framework.Session, tmpValue interface{}) error {
 	jobMap, assertOk := tmpValue.(map[api.JobID]ReSchedulerTasks)
@@ -74,11 +91,15 @@ func synReSchedulerJobCache(ssn *framework.Session, tmpValue interface{}) error 
 			delete(jobMap, jobID)
 			continue
 		}
+
 		// For job running, need delete fault job record.
 		if util.IsJobInitial(job) {
-			klog.V(logErrorLev).Infof("delete %s from configMap due to job is ok.", jobID)
-			delete(jobMap, jobID)
-			continue
+			if checkJobPodStatusOK(ssn, job) {
+				klog.V(logErrorLev).Infof("delete %s from configMap due to job is ok.", jobID)
+				delete(jobMap, jobID)
+				continue
+			}
+			klog.V(logErrorLev).Infof("%s 's status is ok, but not pod, cannot delete this job.", jobID)
 		}
 
 		// For Node doesn't last too long
