@@ -393,6 +393,10 @@ func preHandleFaultNPUFn(ssn *framework.Session) error {
 	klog.V(logDebugLev).Infof("%s enter preHandleFaultNPUFn.", PluginName)
 	defer klog.V(logDebugLev).Infof("%s leave preHandleFaultNPUFn.", PluginName)
 
+	// 0.init param
+	if err := setGraceOverTime(ssn); err != nil {
+		klog.V(logErrorLev).Infof("%s setGraceOverTime %v.", PluginName, err)
+	}
 	// 1.record fault information.
 	if err := rescheduling.RecordFaultInfInCache(ssn, nodeNPUNumber); err != nil {
 		klog.V(logDebugLev).Infof("%s preHandleFaultNPUFn %v.", PluginName, err)
@@ -423,6 +427,40 @@ func preHandleFaultNPUFn(ssn *framework.Session) error {
 		klog.V(logErrorLev).Infof("%s restartFaultJob %v.", PluginName, err)
 		return err
 	}
+
+	return nil
+}
+
+
+func setGraceOverTime(ssn *framework.Session) error {
+	if len(ssn.Configurations) == 0 {
+		klog.V(logDebugLev).Info("no configurations, GraceOverTime will not be changed.")
+		return nil
+	}
+
+	configuration, err := npuutil.GetConfigFromSchedulerConfigMap(npuutil.CMInitParamKey, ssn.Configurations)
+	if err != nil {
+		klog.V(logDebugLev).Info("cannot get configuration, GraceOverTime will not be changed.")
+		return err
+	}
+	// get grace over time by user configuration
+	overTimeStr, ok := configuration.Arguments[rescheduling.GraceOverTimeKey]
+	if !ok {
+		klog.V(logDebugLev).Info("set GraceOverTime failed and will not be changed, " +
+			"key grace-over-time doesn't exists.")
+		return nil
+	}
+	const constNumber10 = 10
+	const constNumber64 = 64
+	overTime, err := strconv.ParseInt(overTimeStr, constNumber10, constNumber64)
+	if err != nil {
+		klog.V(logDebugLev).Infof("set GraceOverTime failed and will not be changed, "+
+			"grace-over-time is invalid [%#v].", overTimeStr)
+		return err
+	}
+	// use user's configuration to set grace over time
+	rescheduling.GraceOverTime = overTime
+	klog.V(logDebugLev).Infof("set GraceOverTime to new value [%d].", overTime)
 
 	return nil
 }

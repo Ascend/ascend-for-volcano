@@ -18,7 +18,6 @@ const (
 	logDebugLev            = 4
 	npuNumPerHccs          = 4
 	npuHex                 = 1000
-	maxTaskNPUNum          = 10000
 	archSelector           = "host-arch"
 	huaweiArchArm          = "huawei-arm"
 	huaweiArchX86          = "huawei-x86"
@@ -30,4 +29,8 @@ const (
 	moduleAcceleratorType  = "module"
 	chipAcceleratorType    = "chip"
 	nodeNoFitSelectorError = "no matching label on this node"
+	// CMInitParamKey init param key in scheduler configmap
+	CMInitParamKey = "init-params"
+	// CMSelectorKey selector key in scheduler configmap
+	CMSelectorKey = "selector"
 )

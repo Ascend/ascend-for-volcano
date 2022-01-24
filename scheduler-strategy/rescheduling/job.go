@@ -106,7 +106,7 @@ func synReSchedulerJobCache(ssn *framework.Session, tmpValue interface{}) error 
 		for _, preTime := range reSchedulerTasksData.Time {
 			nowTime := time2.Now().Unix()
 			missTime := nowTime - preTime
-			if missTime > maxIntervalTime+graceOverTime {
+			if missTime > maxIntervalTime+GraceOverTime {
 				klog.V(logErrorLev).Infof("delete %s from CM for overTime %v => %v.", jobID, nowTime, preTime)
 				delete(jobMap, jobID)
 			}
@@ -519,10 +519,10 @@ func isDelayingJobTimeOut(dJob *api.JobInfo) bool {
 	}
 	now := time2.Now().Unix()
 	klog.V(logDebugLev).Infof("isDelayingJobTimeOut now:%v create:%v.", now, rankIDJob.CreatTime)
-	if now-rankIDJob.CreatTime > graceOverTime {
+	if now-rankIDJob.CreatTime > GraceOverTime {
 		return true
 	}
-	if rankIDJob.CreatTime-now > graceOverTime {
+	if rankIDJob.CreatTime-now > GraceOverTime {
 		return true
 	}
 	return false
