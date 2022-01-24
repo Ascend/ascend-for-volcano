@@ -161,11 +161,18 @@ func setOnNewNodeTaskRankIndex(task *api.TaskInfo, node *api.NodeInfo) error {
 	}
 
 	now := time.Now().Unix()
-	for rankIndex := range rankIndexMap.FaultNodeRankIndex {
+	for rankIndex, data := range rankIndexMap.FaultNodeRankIndex {
+		if rankIndexMap.UpdateTime == now {
+			if data.UpdateTime == now {
+				klog.V(logInfoLev).Infof("%d %s cannot use %v, has been used.", now, task.Pod.Name, rankIndex)
+				continue
+			}
+		}
 		klog.V(logInfoLev).Infof("%d: %s set new %s rankIndex %v.", now, task.Pod.Name, node.Name, rankIndex)
 		task.Pod.Annotations[podRankIndex] = rankIndex
-		// Delete after use
-		delete(rankIndexMap.FaultNodeRankIndex, rankIndex)
+		rankIndexMap.UpdateTime = now
+		data.UpdateTime = now
+		rankIndexMap.FaultNodeRankIndex[rankIndex] = data
 		rankIndexJobMap[task.Job] = rankIndexMap
 		ReSchedulerCache[TmpAllocRankIndexKind] = rankIndexJobMap
 		return nil
@@ -175,7 +182,7 @@ func setOnNewNodeTaskRankIndex(task *api.TaskInfo, node *api.NodeInfo) error {
 }
 
 func setReSchedulerTaskRankIndex(rTask ReSchedulerTasks, task *api.TaskInfo, node *api.NodeInfo) error {
-	klog.V(logDebugLev).Infof("%s SetFaultJobPodIndex from: %+v.", task.Job, rTask)
+	klog.V(logDebugLev).Infof("%s SetFaultJobPodIndex from: %+v on %v.", task.Name, rTask, node.Name)
 
 	setOldNodeErr := setOnOldNodeTaskRankIndex(rTask, task, node)
 	if setOldNodeErr == nil {
@@ -196,6 +203,7 @@ func setReSchedulerTaskRankIndex(rTask ReSchedulerTasks, task *api.TaskInfo, nod
 // SetFaultJobPodIndex Set the rankIndex of all pods of the failed task
 // For there are gaps in the status of the volcano update podgroup, so set fault job rankIndex by job not task.
 func SetFaultJobPodIndex(task *api.TaskInfo, node *api.NodeInfo) error {
+	klog.V(logErrorLev).Infof("这里-2，%+v.", task)
 	tmpValue, err := getReSchedulerTasksFromCache(task)
 	if err != nil || reflect.DeepEqual(tmpValue, ReSchedulerTasks{}) {
 		klog.V(logInfoLev).Infof("SetFaultJobPodIndex %s %v.", task.Name, err)

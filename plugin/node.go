@@ -177,7 +177,7 @@ func (hwNPU *ScheduleHandler) useAnnotation(node *api.NodeInfo, task *api.TaskIn
 	}
 	// set pod rankIndex
 	if err = rescheduling.SetFaultJobPodIndex(task, node); err != nil {
-		klog.V(logInfoLev).Infof("%s setFaultJobPodIndex %v.", task.UID, err)
+		klog.V(logInfoLev).Infof("%s useAnnotation setFaultJobPodIndex %v.", task.Name, err)
 	}
 	return
 }
@@ -195,7 +195,7 @@ func (hwNPU *ScheduleHandler) NPUAllocateFunc(event *framework.Event, ssn *frame
 	}
 
 	hwNPU.useAnnotation(node, event.Task, IsDistributeTask(event.Task, ssn))
-	klog.V(logDebugLev).Infof("%s useAnnotation node [%s]'s top.", PluginName, nodeName)
+	klog.V(logDebugLev).Infof("%s %v useAnnotation node [%s]'s top.", PluginName, event.Task.Name, nodeName)
 }
 
 func (hwNPU *ScheduleHandler) releaseAnnotation(node *api.NodeInfo, task *api.TaskInfo) {

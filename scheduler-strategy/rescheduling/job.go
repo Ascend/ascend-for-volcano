@@ -20,6 +20,7 @@ import (
 	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 func convertToRankIdsMapFromCache(jobData interface{}) (map[api.JobID]FaultRankIDRecordJobCMData, error) {
@@ -56,6 +57,23 @@ func getCMRankIdsWriteData(jobData interface{}) (string, error) {
 	return marshalCacheDataToStringByReplaceSlash(jobData)
 }
 
+func checkJobPodStatusOK(ssn *framework.Session, job *api.JobInfo) bool {
+	for _, task := range job.Tasks {
+		realPod, err := getRealPodByTask(ssn, task)
+		if err != nil {
+			klog.V(logErrorLev).Infof("checkJobPodStatusOK  getRealPodByTask %v %v.", task.Name, err)
+			return false
+		}
+		if realPod.Status.Phase == v1.PodRunning {
+			continue
+		}
+		klog.V(logErrorLev).Infof("checkJobPodStatusOK %v not ok %v.", task.Name, realPod.Status.Phase)
+		return false
+	}
+	klog.V(logInfoLev).Infof("%v checkJobPodStatusOK.", job.Name)
+	return true
+}
+
 // Delete expired job data.
 func synReSchedulerJobCache(ssn *framework.Session, tmpValue interface{}) error {
 	jobMap, assertOk := tmpValue.(map[api.JobID]ReSchedulerTasks)
@@ -73,12 +91,17 @@ func synReSchedulerJobCache(ssn *framework.Session, tmpValue interface{}) error 
 			delete(jobMap, jobID)
 			continue
 		}
+
 		// For job running, need delete fault job record.
-		if job.PodGroup.Status.Phase == scheduling.PodGroupRunning {
-			klog.V(logErrorLev).Infof("delete %s from configMap due to job is ok.", jobID)
-			delete(jobMap, jobID)
-			continue
+		if util.IsJobInitial(job) {
+			if checkJobPodStatusOK(ssn, job) {
+				klog.V(logErrorLev).Infof("delete %s from configMap due to job is ok.", jobID)
+				delete(jobMap, jobID)
+				continue
+			}
+			klog.V(logErrorLev).Infof("%s 's status is ok, but not pod, cannot delete this job.", jobID)
 		}
+
 		// For Node doesn't last too long
 		for _, preTime := range reSchedulerTasksData.Time {
 			nowTime := time2.Now().Unix()
@@ -453,10 +476,11 @@ func isFailedTaskInFaultJob(taskName string, job *api.JobInfo) bool {
 }
 
 func recordReSchedulerTaskRankIndexInCache(task ReSchedulerTasks, jobInf *api.JobInfo) error {
-	var rankIndexSlice = make(map[string]struct{}, 1)
+	var rankIndexSlice = make(map[string]struct{ UpdateTime int64 }, 1)
+	now := time2.Now().Unix()
 	for key, rankIndex := range task.RankIndexes {
 		if isFailedTaskInFaultJob(task.TaskName[key], jobInf) {
-			rankIndexSlice[rankIndex] = struct{}{}
+			rankIndexSlice[rankIndex] = struct{ UpdateTime int64 }{UpdateTime: now}
 		}
 	}
 	var rankIndexMap = map[api.JobID]TaskUsedRankIndex{
@@ -516,7 +540,7 @@ func getRankIDJobsFromCache() (map[api.JobID]FaultRankIDRecordJobCMData, error) 
 		klog.V(logErrorLev).Infof("synJobRankIdsCache %v.", msg)
 		return nil, msg
 	}
-	klog.V(logDebugLev).Infof("getJobFaultNPURankIdsByData %v.", jobRankIds)
+	klog.V(logDebugLev).Infof("getJobFaultNPURankIdsByData %+v.", jobRankIds)
 	return jobRankIds, nil
 }
 

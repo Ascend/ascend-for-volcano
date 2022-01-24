@@ -551,7 +551,7 @@ func getReSchedulerTasksFromCache(task *api.TaskInfo) (ReSchedulerTasks, error) 
 	value, ok := jobMap[task.Job]
 	if !ok {
 		mgs := fmt.Errorf("no %v in jobMap", task.Job)
-		klog.V(logErrorLev).Infof("%v.", mgs)
+		klog.V(logErrorLev).Infof("getReSchedulerTasksFromCache %v.", mgs)
 		return ReSchedulerTasks{}, mgs
 	}
 
