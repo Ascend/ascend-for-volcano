@@ -92,6 +92,9 @@ func GetSchedulerSelectorConfig(confs []conf.Configuration) map[string]string {
 	customerScheduler = make(map[string]string, constIntNum2)
 
 	configuration, err := GetConfigFromSchedulerConfigMap(CMSelectorKey, confs)
+	if err != nil {
+		klog.V(logDebugLev).Info(err)
+	}
 	if len(confs) != 0 && err == nil {
 		klog.V(logDebugLev).Infof("getSchedulerSelectorConfig ok[%+v].", confs)
 		// get customer config selector
@@ -282,9 +285,7 @@ func ValidStringMapKeyAndValue(tmpMap map[string]string, key, value string) bool
 func GetConfigFromSchedulerConfigMap(configKey string, configurations []conf.Configuration) (*conf.Configuration,
 	error) {
 	if len(configurations) == 0 {
-		err := errors.New("no configurations in scheduler configmap")
-		klog.V(logDebugLev).Info(err)
-		return nil, err
+		return nil, errors.New("no configurations in scheduler configmap")
 	}
 
 	// in the new version, the configuration is obtained based on the configured name field.

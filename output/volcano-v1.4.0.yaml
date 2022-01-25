@@ -24,7 +24,6 @@ data:
       - name: conformance
       - name: volcano-npu-v2.0.4
     - plugins:
-      - name: overcommit
       - name: drf
       - name: predicates
       - name: proportion
