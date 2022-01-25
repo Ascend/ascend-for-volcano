@@ -450,13 +450,23 @@ func setGraceOverTime(ssn *framework.Session) error {
 			"key grace-over-time doesn't exists.")
 		return nil
 	}
-	const constNumber10 = 10
-	const constNumber64 = 64
+	const (
+		constNumber10 = 10
+		constNumber64 = 64
+		minGraceOverTime = 2
+		maxGraceOverTime = 3600
+	)
+
 	overTime, err := strconv.ParseInt(overTimeStr, constNumber10, constNumber64)
 	if err != nil {
 		klog.V(logDebugLev).Infof("set GraceOverTime failed and will not be changed, "+
 			"grace-over-time is invalid [%#v].", overTimeStr)
 		return err
+	}
+	if overTime < minGraceOverTime || overTime > maxGraceOverTime {
+		klog.V(logDebugLev).Infof("GraceOverTime value should be range [2, 3600], configured is [%#v], " +
+			"GraceOverTime will not be changed", overTimeStr)
+		return errors.New("GraceOverTime is out of range")
 	}
 	// use user's configuration to set grace over time
 	rescheduling.GraceOverTime = overTime
