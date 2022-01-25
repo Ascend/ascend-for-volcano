@@ -91,10 +91,11 @@ func GetSchedulerSelectorConfig(confs []conf.Configuration) map[string]string {
 	var customerScheduler map[string]string
 	customerScheduler = make(map[string]string, constIntNum2)
 
-	if len(confs) != 0 {
+	configuration, err := GetConfigFromSchedulerConfigMap(CMSelectorKey, confs)
+	if len(confs) != 0 && err == nil {
 		klog.V(logDebugLev).Infof("getSchedulerSelectorConfig ok[%+v].", confs)
 		// get customer config selector
-		for k, v := range confs[0].Arguments {
+		for k, v := range configuration.Arguments {
 			customerScheduler[k] = v
 		}
 		klog.V(logDebugLev).Infof("add config SchedulerSelector ok[%+v].", customerScheduler)
@@ -274,4 +275,40 @@ func ValidStringMapKeyAndValue(tmpMap map[string]string, key, value string) bool
 
 	klog.V(logDebugLev).Infof("valid ok .")
 	return false
+}
+
+
+// GetConfigFromSchedulerConfigMap get config info from yaml
+func GetConfigFromSchedulerConfigMap(configKey string, configurations []conf.Configuration) (*conf.Configuration,
+	error) {
+	if len(configurations) == 0 {
+		err := errors.New("no configurations in scheduler configmap")
+		klog.V(logDebugLev).Info(err)
+		return nil, err
+	}
+
+	// in the new version, the configuration is obtained based on the configured name field.
+	if config := getConfigurationByKey(configKey, configurations); config != nil {
+		klog.V(logDebugLev).Infof("get the configurations by name [%s] successful.", configKey)
+		return config, nil
+	}
+
+	// compatible with old versions, because of the name field is not configured in the old versions.
+	if configKey == CMSelectorKey {
+		// if user removes configuration name and changes the order, will make mistakes.
+		klog.V(logDebugLev).Info("compatible with old versions, get the selector configuration successful.")
+		return &configurations[0], nil
+	}
+
+	return nil, fmt.Errorf("cannot get configurations by name [%s], name not in configurations", configKey)
+}
+
+func getConfigurationByKey(configKey string, configurations []conf.Configuration) *conf.Configuration {
+	for _, cf := range configurations {
+		if cf.Name == configKey {
+			return &cf
+		}
+	}
+
+	return nil
 }

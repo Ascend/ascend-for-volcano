@@ -36,7 +36,6 @@ const (
 	cmName                = "vcjob-fault-npu-cm"
 	// node inoperable interval time(s)
 	nodeUpdateTime        = 5
-	graceOverTime         = 900
 	nodeHeartbeat         = "noded/heartbeat"
 	nodeHeartbeatInterval = "noded/heartbeat-interval"
 	faultNPU              = "huawei.com/Ascend910-Unhealthy"
@@ -58,8 +57,11 @@ const (
 	nodeDEnableOffValue           = "off"
 	npu800And9000CardName         = "huawei.com/Ascend910"
 	npu800And9000CardPreName      = "Ascend910-"
-	faultNpuSynCmWithDevicePlugin = "dl-npu-fault-syn-cm"
+	// GraceOverTimeKey for GraceOverTime config by user
+	GraceOverTimeKey = "grace-over-time"
 )
+// GraceOverTime for rescheduling units: seconds
+var GraceOverTime int64 = 900
 
 // ReSchedulerTasks record the tasks using the failed NPU.
 // The key in ReSchedulerCache is jobID
