@@ -24,7 +24,6 @@ data:
       - name: conformance
       - name: volcano-npu-v2.0.4
     - plugins:
-      - name: overcommit
       - name: drf
       - name: predicates
       - name: proportion
@@ -77,9 +76,9 @@ rules:
   - apiGroups: [""]
     resources: ["resourcequotas"]
     verbs: ["list", "watch"]
-  - apiGroups: ["storage.k8s.io"]
-    resources: ["storageclasses"]
-    verbs: ["list", "watch"]
+  - apiGroups: [ "storage.k8s.io" ]
+    resources: ["storageclasses", "csinodes", "csidrivers", "csistoragecapacities"]
+    verbs: [ "list", "watch" ]
   - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["list", "watch"]
@@ -311,7 +310,6 @@ spec:
             runAsUser: 9000
             runAsGroup: 9000
             capabilities:
-              add: ["DAC_OVERRIDE"]
               drop: ["ALL"]
           volumeMounts:
             - name: device-volcanocontroller
@@ -420,6 +418,23 @@ spec:
               description: Tasks specifies the task specification of Job
               items:
                 properties:
+                  dependsOn:
+                    description: Specifies the tasks that this task depends on.
+                    properties:
+                      iteration:
+                        description: This field specifies that when there are multiple
+                          dependent tasks, as long as one task becomes the specified
+                          state, the task scheduling is triggered or all tasks must
+                          be changed to the specified state to trigger the task
+                          scheduling
+                        type: string
+                      name:
+                        description: Indicates the name of the tasks that this task
+                          depends on, which can depend on multiple tasks
+                        items:
+                          type: string
+                        type: array
+                    type: object
                   name:
                     description: Name specifies the name of tasks
                     type: string
@@ -470,6 +485,25 @@ spec:
         status:
           description: Current status of Job
           properties:
+            conditions:
+              description: Which conditions caused the current job state.
+              items:
+                description: JobCondition contains details for the current condition
+                  of this job.
+                properties:
+                  lastTransitionTime:
+                    description: Last time the condition transitioned from one phase
+                      to another.
+                    format: date-time
+                    type: string
+                  status:
+                    description: Status is the new phase of job after performing
+                      the state's action.
+                    type: string
+                required:
+                  - status
+                type: object
+              type: array
             succeeded:
               description: The number of pods which reached phase Succeeded.
               format: int32

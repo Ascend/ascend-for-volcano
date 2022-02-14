@@ -48,7 +48,7 @@ func (tp *chip710) ValidNPUJobFn(job *api.JobInfo) *api.ValidateResult {
 	return tp.com.ValidNPUJobFn(job)
 }
 
-// PreCheckNodeFn 310 no need to Distinguish between architecture.
+// PreCheckNodeFn 710 no need to Distinguish between architecture.
 func (tp *chip710) PreCheckNodeFn(task *api.TaskInfo, node *api.NodeInfo, confs []conf.Configuration) error {
 	return tp.com.PreCheckNodeFn(task, node, confs)
 }

@@ -49,7 +49,7 @@ func getNodeNPUNumFromOthers(nodeInfo *api.NodeInfo) (int, error) {
 	return nodeNPUIdleNumFromTop, nil
 }
 
-// Initializes the priority group of the node.
+// initPriNodeGroups the priority group of the node.
 func initPriNodeGroups(task *api.TaskInfo, nodes []*api.NodeInfo) ([]map[string]*npuPriNodeInf, error) {
 	var err error
 	var priNodeGroups []map[string]*npuPriNodeInf
@@ -63,6 +63,7 @@ func initPriNodeGroups(task *api.TaskInfo, nodes []*api.NodeInfo) ([]map[string]
 	// init pri Node group
 	for _, node := range nodes {
 		if reflect.ValueOf(node).IsNil() {
+			klog.V(logErrorLev).Infof("%s initPriNodeGroups get node nil.", PluginName)
 			continue
 		}
 		cardIds := util.GetTopFromNodeOthers(node, a310NPUCardName, a310NPUCardPreName)
@@ -84,6 +85,7 @@ func initPriNodeGroups(task *api.TaskInfo, nodes []*api.NodeInfo) ([]map[string]
 		// insert into group by policy
 		err = insertNodeInPriGroup(task, cardNumGroups, priNodeGroups, addPriNodeGroupFn)
 		if err != nil {
+			klog.V(logErrorLev).Infof("%s insertNodeInPriGroup %v.", PluginName, err)
 			continue
 		}
 	}
