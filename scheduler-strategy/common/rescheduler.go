@@ -80,6 +80,7 @@ func (re *ReScheduler) getInoperableNPUCards(nodes map[string]*api.NodeInfo) ([]
 		npus, err := re.getNodeFaultNPUs(nodeInfo)
 		if err != nil {
 			klog.V(LogDebugLev).Infof("getNodeFaultNPUs err:%v.", err)
+			continue
 		}
 
 		faultNPUs = append(faultNPUs, rescheduling.FaultNPUsOnNode{nodeInfo.Name, npus,

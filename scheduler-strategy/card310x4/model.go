@@ -261,11 +261,12 @@ func getFitCardFromNodeByPriority(nodeTop []int, priorityArray [cardNPUNumber]in
 }
 
 // getSelectedCardTop get selected card top
-func getSelectedCardTop(priorityArray [cardNPUNumber]int, existNPU map[int]bool, npuNumberIndex [][]int) ([]int, error) {
+func getSelectedCardTop(priorityArray [cardNPUNumber]int, existNPU map[int]bool, index [][]int) ([]int, error) {
 	err := errors.New("nodeTop not meet")
 	for _, arrLen := range priorityArray {
-		selectedGroup := npuNumberIndex[arrLen]
-		if selectedGroup == nil {
+		selectedGroup := index[arrLen]
+		if len(selectedGroup) == 0 {
+			klog.V(logErrorLev).Infof("%s getSelectedCardTop %d group %+v.", PluginName, arrLen, priorityArray)
 			continue
 		}
 		randNum := rand.Intn(len(selectedGroup))

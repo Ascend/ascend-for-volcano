@@ -20,14 +20,15 @@ import (
 func isSelectorMeetNode(task *api.TaskInfo, node *api.NodeInfo, conf map[string]string) error {
 	// Get node selectors of task
 	taskSelectors := hwutil.GetTaskSelectors(task)
-	if taskSelectors == nil || len(taskSelectors) == 0 {
+	if len(taskSelectors) == 0 {
 		for _, v := range VnpuType {
 			if err := hwutil.IsNPUTask(task, v); err == nil {
-				// Vnpu task should have node selector
-				klog.V(logErrorLev).Infof("task[%s] no selector in select node[%s].", task.Name, node.Name)
+				// Vnpu task should have selector
+				klog.V(logErrorLev).Infof("isSelectorMeetNode %s no selector by %+v.", task.Name, v)
 				return errors.New(nodeNoFitSelectorError)
 			}
 		}
+		klog.V(logErrorLev).Infof("isSelectorMeetNode %s no selector .", task.Name)
 		return nil
 	}
 

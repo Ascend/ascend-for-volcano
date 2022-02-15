@@ -93,6 +93,7 @@ func initPriNodeGroups(task *api.TaskInfo, nodes []*api.NodeInfo) ([]map[string]
 		// insert into group by policy
 		err = insertNodeInPriGroup(task, cardIds, priNodeGroups, addPriNodeGroupFn)
 		if err != nil {
+			klog.V(logErrorLev).Infof("%s insertNodeInPriGroup %v.", PluginName, err)
 			continue
 		}
 	}

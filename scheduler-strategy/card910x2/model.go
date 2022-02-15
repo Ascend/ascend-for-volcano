@@ -106,7 +106,6 @@ func insertNodeInPriGroup(
 	if errGet != nil {
 		// cannot return error for task is no npu kind possible.
 		klog.V(logErrorLev).Infof("%s batchNodeOrderFn task :%s,%v.", PluginName, task.Name, errGet)
-		// cannot return nil，will panic
 		return nil
 	}
 
@@ -157,6 +156,7 @@ func getHccsFromNodeByPriority(nodeTop []int, priorityArray [npuNumPerHccs]int) 
 	klog.V(logDebugLev).Infof("%s getHccsFromNodeByPriority nodeTop: %v.", PluginName, nodeTop)
 	for _, npuNumber := range priorityArray {
 		if npuNumber == 0 {
+			klog.V(logErrorLev).Infof("%s getHccsFromNodeByPriority npuNumber is 0:.", PluginName)
 			continue
 		}
 

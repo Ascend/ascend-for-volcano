@@ -28,7 +28,7 @@ func (tp *chip310x4) Name() string {
 
 // New return npu plugin.
 func New(npuName string) plugin.HwNPUSchedulerPlugin {
-	defaultSchedulerConfig := make(map[string]string, common.ConstIntNum1)
+	defaultSchedulerConfig := make(map[string]string, constIntNum2)
 	defaultSchedulerConfig[archSelector] = huaweiArchArm + "|" + huaweiArchX86
 	defaultSchedulerConfig[acceleratorType] = cardAcceleratorType + "|" + chipAcceleratorType
 	co := common.Scheduler{

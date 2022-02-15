@@ -83,10 +83,10 @@ func getPodRankIndex(pod *v1.Pod) (string, error) {
 
 	index, err := strconv.Atoi(rankIndex)
 	if err != nil {
-		return "", fmt.Errorf("convert %v:%v", rankIndex, err)
+		return "", fmt.Errorf("convert %#v:%#v", rankIndex, err)
 	}
 
-	if index > maxRankIndex {
+	if index > maxRankIndex || index < 0 {
 		return "", fmt.Errorf("rankIndex:%v out of limit", index)
 	}
 
@@ -203,7 +203,6 @@ func setReSchedulerTaskRankIndex(rTask ReSchedulerTasks, task *api.TaskInfo, nod
 // SetFaultJobPodIndex Set the rankIndex of all pods of the failed task
 // For there are gaps in the status of the volcano update podgroup, so set fault job rankIndex by job not task.
 func SetFaultJobPodIndex(task *api.TaskInfo, node *api.NodeInfo) error {
-	klog.V(logErrorLev).Infof("这里-2，%+v.", task)
 	tmpValue, err := getReSchedulerTasksFromCache(task)
 	if err != nil || reflect.DeepEqual(tmpValue, ReSchedulerTasks{}) {
 		klog.V(logInfoLev).Infof("SetFaultJobPodIndex %s %v.", task.Name, err)

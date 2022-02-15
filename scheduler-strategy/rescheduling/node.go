@@ -495,13 +495,13 @@ func getInoperableNPUCards(nodes map[string]*api.NodeInfo, npuNumber int) ([]Fau
 
 func getFaultNodePODAndRankIndex(job *api.JobInfo, nodes map[string]*v1.Pod) (FaultNPUJob, error) {
 	var faultJob = FaultNPUJob{
-		faultNPUJobBase{
-			job.Name,
-			job.Namespace,
-			make(map[string]string, constIntNum3),
-			make(map[string]string, constIntNum3),
+		faultNPUJobBase: faultNPUJobBase{
+			jobName:          job.Name,
+			namespace:        job.Namespace,
+			taskUseRankIndex: make(map[string]string, constIntNum3),
+			taskUseNode:      make(map[string]string, constIntNum3),
 		},
-		make(map[string]string, constIntNum3),
+		taskUseNPUs: make(map[string]string, constIntNum3),
 	}
 
 	for _, task := range job.Tasks {
@@ -511,9 +511,14 @@ func getFaultNodePODAndRankIndex(job *api.JobInfo, nodes map[string]*v1.Pod) (Fa
 				klog.V(logErrorLev).Infof("getPodRankIndex %s %v.", pod.Name, err)
 				return faultJob, err
 			}
+			npuNumber, getOK := pod.Annotations[npu800And9000CardName]
+			if !getOK {
+				klog.V(logErrorLev).Infof("%s has no %s.", pod.Name, npu800And9000CardName)
+				return faultJob, err
+			}
+			faultJob.taskUseNPUs[task.Name] = npuNumber
 			faultJob.taskUseRankIndex[task.Name] = rankIndex
 			faultJob.taskUseNode[task.Name] = task.NodeName
-			faultJob.taskUseNPUs[task.Name] = pod.Annotations[npu800And9000CardName]
 		}
 	}
 
