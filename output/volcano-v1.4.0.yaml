@@ -133,6 +133,8 @@ spec:
       labels:
         app: volcano-scheduler
     spec:
+      securityContext:
+        fsGroup: 9000
       nodeSelector:
         masterselector: dls-master-node
       serviceAccount: volcano-scheduler
@@ -173,6 +175,7 @@ spec:
         - name: scheduler-config
           configMap:
             name: volcano-scheduler-configmap
+            defaultMode: 0640
         - name: scheduler-config-log
           hostPath:
             path: /var/log/mindx-dl/volcano-scheduler
