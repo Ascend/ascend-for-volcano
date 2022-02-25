@@ -1,0 +1,55 @@
+component: MindXDL
+product: MindXDL
+version: v2.0.2
+volcano_version: 2.0.2
+
+systemEnv:
+  - workspace
+  - GOPATH
+  - processor
+
+BASE_PATH:
+  "{{ systemEnv.GOPATH }}/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/"
+CMD_PATH:
+  "{{ systemEnv.GOPATH }}/src/volcano.sh/volcano/cmd/"
+
+actions:
+  - worker: compile
+    language: go
+    preBuild:
+      operator:
+        makedir:
+          path: "{{ systemEnv.workspace }}/output/"
+        setEnvVariable:
+          GOPROXY: "http://cmc.centralrepo.rnd.huawei.com/go/"
+          GONOSUMDB: "*"
+          GO111MODULE: 'on'
+          PATH: "$echo $GOPATH/bin:$PATH"
+          CGO_CFLAGS: "-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv"
+          CGO_CPPFLAGS: "-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv"
+          CC: "/usr/local/musl/bin/musl-gcc"
+          CGO_ENABLED: "1"
+        commands:
+          - command: cd {{ systemEnv.GOPATH }}/src/volcano.sh/volcano;go mod tidy
+          - command: cd {{ systemEnv.GOPATH }}/src/volcano.sh/volcano;go mod download
+          - command: cd {{ systemEnv.GOPATH }}/src/volcano.sh/volcano;go mod vendor
+    build:
+      buildmode: "plugin"
+      ldflags: '"-s -extldflags=-Wl,-z,now"'
+      o: "{{ BASE_PATH }}/output/volcano-npu-{{ version }}.so" #Volcano在BuildDesign version.yaml中
+      execDir: "{{ BASE_PATH }}"
+
+    postBuild:
+      operator:
+        chmod:
+          - path:
+              - "{{ BASE_PATH }}/output/*.so"
+              - "{{ BASE_PATH }}/output/Dockerfile*"
+              - "{{ BASE_PATH }}/output/volcano-*.yaml"
+            execdir: /
+            mode: 400
+        makeArchive:
+          - src: "{{ BASE_PATH }}/output"
+            des: "{{ systemEnv.workspace }}/output/Ascend-mindxdl-volcano_{{ volcano_version }}_linux"
+            prefix: zip
+            arch: "{{ systemEnv.processor }}"
