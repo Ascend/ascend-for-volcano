@@ -5,7 +5,6 @@
 set -e
 
 export GO111MODULE=on
-export GOPROXY=https://cmc.centralrepo.rnd.huawei.com/go/
 export GONOSUMDB="*"
 export PATH=$GOPATH/bin:$PATH
 
