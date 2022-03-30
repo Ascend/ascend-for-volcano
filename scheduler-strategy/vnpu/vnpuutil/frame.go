@@ -251,6 +251,10 @@ func IsNPUCardNodeByCardName(cardName string, tmpNode *api.NodeInfo) bool {
 
 // IsNPUResourceStableInNode judge the node resource whether is stable.
 func IsNPUResourceStableInNode(kind string, tmpNode *api.NodeInfo) bool {
+	if tmpNode == nil {
+		klog.V(util.LogErrorLev).Infof("IsNPUResourceStableInNode parameters nil.")
+		return false
+	}
 	k8sNum, k8sOK := tmpNode.Allocatable.ScalarResources[v1.ResourceName(kind)]
 	if !k8sOK {
 		klog.V(util.LogErrorLev).Infof("IsNPUResourceStableInNode %s no %v in k8s.", tmpNode.Name, kind)
@@ -288,7 +292,7 @@ func IsVJobRunning(job *api.JobInfo) bool {
 
 // IsVJobPending check whether the job is pending or not.
 func IsVJobPending(job *api.JobInfo) bool {
-	if len(job.Tasks) > 2 {
+	if len(job.Tasks) > util.ConstIntNum2 {
 		klog.V(util.LogErrorLev).Infof("%s has wrong tasks %+v", job.UID, job.Tasks)
 		return false
 	}

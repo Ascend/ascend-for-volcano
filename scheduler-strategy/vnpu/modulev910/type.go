@@ -4,7 +4,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 
 /*
 
-Package modulev910x8 is using for virtual HuaWei Ascend910 schedule.
+Package modulev910 is using for virtual HuaWei Ascend910 schedule.
 
 */
 package modulev910

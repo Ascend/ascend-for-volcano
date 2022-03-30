@@ -165,12 +165,16 @@ func updateTopStrOfNodeOtherRelease(nodeTopStrArr []string, top []string) string
 }
 
 // UpdateNPUNodeTopology Update node info to node.Others
-func (tp *VNPU) UpdateNPUNodeTopology(node *api.NodeInfo, top interface{}, updateFn func([]string, []string) string) error {
+func (tp *VNPU) UpdateNPUNodeTopology(node *api.NodeInfo, top interface{}, updateFn func([]string,
+	[]string) string) error {
 	var vType string
 
 	topArr, ok := top.([]string)
 	if !ok {
 		return errors.New("invalid argument")
+	}
+	if len(topArr) == 0 {
+		return errors.New("top is empty")
 	}
 
 	topInstance := topArr[0]

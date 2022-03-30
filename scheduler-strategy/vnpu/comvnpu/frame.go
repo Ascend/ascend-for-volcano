@@ -109,16 +109,14 @@ func (tp *VNPU) GetVNPUCacheFromCacheCM(ssn *framework.Session) error {
 // PreHandleVNPU Only for abstract VNPU, not v910,v710 and so on.
 func (tp *VNPU) PreHandleVNPU(ssn *framework.Session) error {
 	if getErr := tp.GetVNPUCacheFromCacheCM(ssn); getErr != nil {
-		klog.V(util.LogInfoLev).Infof("GetVNPUCacheFromCacheCM :%v.", getErr)
+		klog.V(util.LogInfoLev).Infof("PreHandleVNPU :%v.", getErr)
 	}
 
-	err := tp.DealNewVNPUJob(ssn)
-	if err != nil {
+	if err := tp.DealNewVNPUJob(ssn); err != nil {
 		klog.V(util.LogInfoLev).Infof("DealNewVNPUJob :%v.", err)
 	}
 
-	npuErr := tp.DealFinishedVNPUJob(ssn)
-	if npuErr != nil {
+	if npuErr := tp.DealFinishedVNPUJob(ssn); npuErr != nil {
 		klog.V(util.LogInfoLev).Infof("DealFinishedVNPUJob :%v.", npuErr)
 	}
 	// no need deal errors.
@@ -547,8 +545,8 @@ func (tp *VNPU) GetVJobNamesFromCache() ([]string, error) {
 
 // CheckVJobCanBeDeleteByName for one vJob has one task.
 func (tp *VNPU) CheckVJobCanBeDeleteByName(vJobName string, ssn *framework.Session) bool {
-	jobUid := api.JobID(vJobName)
-	jobInf, ok := ssn.Jobs[jobUid]
+	jobUID := api.JobID(vJobName)
+	jobInf, ok := ssn.Jobs[jobUID]
 	if !ok {
 		klog.V(util.LogErrorLev).Infof("CheckVJobCanBeDeleteByName %s not exist", vJobName)
 		return true
@@ -561,10 +559,7 @@ func (tp *VNPU) CheckVJobCanBeDeleteByName(vJobName string, ssn *framework.Sessi
 	}
 
 	for _, task := range jobInf.Tasks {
-		if task.Status == api.Succeeded {
-			return true
-		}
-		if task.Status == api.Failed {
+		if task.Status == api.Succeeded || task.Status == api.Failed {
 			return true
 		}
 		klog.V(util.LogDebugLev).Infof("CheckVJobCanBeDeleteByName %s task status %v", task.UID, task.Status)
@@ -688,7 +683,7 @@ func (tp *VNPU) GetNodeListByReqVNPU(jobNeedNPUType string, ssn *framework.Sessi
 	return nodeList, nil
 }
 
-func (tp *VNPU) getChipNameById(id int) string {
+func (tp *VNPU) getChipNameByID(id int) string {
 	name := tp.Attr.AnnoPreVal + "-" + strconv.Itoa(id)
 	return name
 }
@@ -697,12 +692,12 @@ func (tp *VNPU) getChipNameById(id int) string {
 func (tp *VNPU) getTheFillOneFromList(chipCores map[int]int) (string, error) {
 	var min = maxNPUChipCores
 	var selectID = 0
-	for cardId, num := range chipCores {
+	for cardID, num := range chipCores {
 		if min < num {
 			continue
 		}
 		min = num
-		selectID = cardId
+		selectID = cardID
 	}
 	if min == 0 {
 		return "", errors.New("get nil")
@@ -738,6 +733,7 @@ func (tp *VNPU) RecordVJobAllocInfoInCache(nodeInf *api.NodeInfo, chip string, v
 			tmp.UpdateTime = time.Now().Unix()
 			vnpuutil.VNPUAllocData.Cache[k] = tmp
 			changeFlag = true
+			break
 		}
 	}
 	if !changeFlag {
@@ -777,7 +773,7 @@ func (tp *VNPU) AllocCacheVJobIntoCache(vJob *api.JobInfo, res map[string]float6
 	// 5 record alloc info in cache and node.other
 	recordErr := tp.RecordVJobAllocInfoInCache(tmpNode, tmpChip, vJob)
 	if recordErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s RecordVJobAllo.InfofInCache %s %v.", tp.Name(), vJob.Name, recordErr)
+		klog.V(util.LogErrorLev).Infof("%s AllocCacheVJobIntoCache %v.", tp.Name(), recordErr)
 		return nodeErr
 	}
 	return nil
