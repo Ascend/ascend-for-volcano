@@ -1,6 +1,6 @@
 #!/bin/bash
 # Perform  test volcano-huawei-npu-scheduler plugin
-# Copyright @ Huawei Technologies CO., Ltd. 2020-2021. All rights reserved
+# Copyright @ Huawei Technologies CO., Ltd. 2020-2022. All rights reserved
 
 set -e
 

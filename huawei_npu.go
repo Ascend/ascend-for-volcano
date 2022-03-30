@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -10,6 +10,7 @@ Package main is using for HuaWei Ascend pin affinity schedule.
 package main
 
 import (
+	"errors"
 	"k8s.io/klog"
 	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -18,12 +19,9 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/card310x4"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/card910x2"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/cardv910x2"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/chip310x4"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/chip710"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/module910x8"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/modulev910x8"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/rescheduling"
 )
 
 var sHandler *plugin.ScheduleHandler
@@ -42,13 +40,21 @@ func init() {
 	sHandler = HandlerStart()
 }
 
+func checkSession(ssn *framework.Session) error {
+	if ssn == nil {
+		klog.V(logErrorLev).Infof("%s OnSessionOpen got a null session hence doing nothing.", PluginName)
+		return errors.New("nil ssn")
+	}
+	return nil
+}
+
 // OnSessionOpen HuaWei NPU Plugin's init session for frame.
 func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 	klog.V(logInfoLev).Infof("enter %s OnSessionOpen.", PluginName)
 	defer klog.V(logInfoLev).Infof("leave %s OnSessionOpen.", PluginName)
 
-	if ssn == nil {
-		klog.V(logErrorLev).Infof("%s OnSessionOpen got a null session hence doing nothing.", PluginName)
+	if err := checkSession(ssn); err != nil {
+		klog.V(logErrorLev).Infof("%s checkSession : %#v.", PluginName, err)
 		return
 	}
 
@@ -109,16 +115,16 @@ func (tp *huaweiNPUPlugin) OnSessionClose(ssn *framework.Session) {
 		}
 	}
 
-	if err := rescheduling.WriteReSchedulerDataToCM(ssn, rescheduling.ReSchedulerCache); err != nil {
-		klog.V(logInfoLev).Infof("%s writeFaultNPUJobsToCM %v.", PluginName, err)
-		return
-	}
+	sHandler.BeforeCloseHandler(ssn)
 }
 
 // HandlerStart HuaWei NPU plugin start by frame.
 func HandlerStart() *plugin.ScheduleHandler {
 	scheduleHandler := &plugin.ScheduleHandler{
-		HuaweiNPUs: map[string]plugin.HwNPUSchedulerPlugin{},
+		HuaweiNPUs:       map[string]plugin.HwNPUSchedulerPlugin{},
+		PluginEntity:     map[string]plugin.HwEntity{},
+		PreHandleVNPUFns: map[string]npuapi.PreHandleVNPUFn{},
+		VJobRunHandleFns: map[string]npuapi.VNPUJobRunningHandleFn{},
 		// for object funcs
 		InitNodesNPUAllocTopologyFns: map[string]npuapi.InitNodesNPUTopologyFn{},
 		// Handle NPU fault chip functions.
@@ -130,8 +136,6 @@ func HandlerStart() *plugin.ScheduleHandler {
 	// Register new npu scheduler strategy.
 	scheduleHandler.RegisterNPUScheduler(card910x2.PluginName, card910x2.New)
 	scheduleHandler.RegisterNPUScheduler(module910x8.PluginName, module910x8.New)
-	scheduleHandler.RegisterNPUScheduler(cardv910x2.PluginName, cardv910x2.New)
-	scheduleHandler.RegisterNPUScheduler(modulev910x8.PluginName, modulev910x8.New)
 	scheduleHandler.RegisterNPUScheduler(card310x4.PluginName, card310x4.New)
 	scheduleHandler.RegisterNPUScheduler(chip310x4.PluginName, chip310x4.New)
 	scheduleHandler.RegisterNPUScheduler(chip710.PluginName, chip710.New)

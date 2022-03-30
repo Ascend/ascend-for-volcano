@@ -1,11 +1,9 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package card310x4 is using for HuaWei A300T Ascend pin affinity schedule.
-
 */
 package card310x4
 
@@ -18,8 +16,9 @@ import (
 	"testing"
 	vapi "volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 	ascendtest "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
-	"volcano.sh/volcano/pkg/scheduler/util"
+	util2 "volcano.sh/volcano/pkg/scheduler/util"
 )
 
 type CNodeInfo struct {
@@ -127,14 +126,14 @@ func TestCNPUIsMyNode(t *testing.T) {
 		npu := New(PluginName)
 
 		Convey("IsMyNode() should return error when node has no npu annotation", func() {
-			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchArm, "192", "755Gi",
-				"0", ""})
+			node := buildNPUNode(CNodeInfo{nodeName: nodeName, nodeArch: huaweiArchArm, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "0", npuTop: ""})
 			result := npu.IsMyNode(node)
 			So(result, ShouldBeError)
 		})
 		Convey("IsMyNode() should return nil when node has npu annotation", func() {
-			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchArm, "192", "755Gi",
-				"1", "Ascend310-11"})
+			node := buildNPUNode(CNodeInfo{nodeName: nodeName, nodeArch: huaweiArchArm, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "1", npuTop: "Ascend310-11"})
 			result := npu.IsMyNode(node)
 			So(result, ShouldBeNil)
 		})
@@ -145,7 +144,7 @@ func TestCNPUIsMyNode(t *testing.T) {
 func TestCNPUIsMyJob(t *testing.T) {
 	Convey("Test card310x4 IsMyJob", t, func() {
 		npu := New(PluginName)
-		tasks := []*vapi.TaskInfo{}
+		var tasks []*vapi.TaskInfo
 		uid := vapi.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx10")
 
 		Convey("IsMyJob() should return error when job request no npu", func() {
@@ -189,7 +188,7 @@ func TestCNPUValidNPUJobFnInvalidSelector(t *testing.T) {
 			validNum2            = 2000
 		)
 		npu := New(PluginName)
-		tasks := []*vapi.TaskInfo{}
+		var tasks []*vapi.TaskInfo
 		uid := vapi.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx5")
 
 		Convey("ValidNPUJobFn() should return error for job without certain selector key", func() {
@@ -227,7 +226,7 @@ func TestCNPUValidNPUJobFnInvalidNum(t *testing.T) {
 			validNum4   = "4"
 		)
 		npu := New(PluginName)
-		tasks := []*vapi.TaskInfo{}
+		var tasks []*vapi.TaskInfo
 		uid := vapi.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx8")
 
 		Convey("ValidNPUJobFn() should return error for job with invalid request number 0", func() {
@@ -278,7 +277,7 @@ func TestCNPUValidNPUJobFnInvalidModel(t *testing.T) {
 			num1 = "1"
 		)
 		npu := New(PluginName)
-		tasks := []*vapi.TaskInfo{}
+		var tasks []*vapi.TaskInfo
 		uid := vapi.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx9")
 
 		Convey("ValidNPUJobFn() should return error for job with distributed", func() {
@@ -323,7 +322,7 @@ func TestCNPUValidNPUJobFnInvalidModel(t *testing.T) {
 func TestCNPUPreCheckNodeFnTaskError(t *testing.T) {
 	Convey("Test card310x4 PreCheckNodeFnTaskError", t, func() {
 		npu := New(PluginName)
-		confs := []conf.Configuration{}
+		var confs []conf.Configuration
 		node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 			"1", "Ascend310-1"})
 		Convey("PreCheckNodeFn() should return nil when task isn't npu task", func() {
@@ -341,7 +340,7 @@ func TestCNPUPreCheckNodeFnTaskError(t *testing.T) {
 func TestCnpuPreCheckNodeFnSuccess(t *testing.T) {
 	Convey("Test card310x4 PreCheckNodeFnSuccess", t, func() {
 		npu := New(PluginName)
-		confs := []conf.Configuration{}
+		var confs []conf.Configuration
 		node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 			"1", "Ascend310-6"})
 
@@ -362,22 +361,22 @@ func TestCnpuCheckNPUResourceStableFn(t *testing.T) {
 		npu := New(PluginName)
 
 		Convey("CheckNPUResourceStableFn() should return error when there's missing resource type in idle", func() {
-			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"0", ""})
+			node := buildNPUNode(CNodeInfo{nodeName: nodeName, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "0", npuTop: ""})
 			node.Node.Annotations[a310NPUCardName] = "Ascend310-2"
 			result := npu.CheckNPUResourceStableFn(node)
 			So(result, ShouldBeError)
 		})
 		Convey("CheckNPUResourceStableFn() should return error when node resources are unstable", func() {
-			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"1", ""})
+			node := buildNPUNode(CNodeInfo{nodeName: nodeName, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "1", npuTop: ""})
 			node.Node.Annotations[a310NPUCardName] = "Ascend310-2,Ascend310-3"
 			result := npu.CheckNPUResourceStableFn(node)
 			So(result, ShouldBeError)
 		})
 		Convey("CheckNPUResourceStableFn() should return nil when node resources are stable", func() {
-			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"2", "Ascend310-2,Ascend310-3"})
+			node := buildNPUNode(CNodeInfo{nodeName: nodeName, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "2", npuTop: "Ascend310-2,Ascend310-3"})
 			result := npu.CheckNPUResourceStableFn(node)
 			So(result, ShouldBeNil)
 		})
@@ -394,14 +393,14 @@ func TestCnpuCheckNodeNPUByTaskFn(t *testing.T) {
 		task := vapi.NewTaskInfo(pod)
 
 		Convey("CheckNodeNPUByTaskFn() should return error when node doesn't meet task requests", func() {
-			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"3", "Ascend310-3,Ascend310-7,Ascend310-8"})
+			node := buildNPUNode(CNodeInfo{nodeName: nodeName, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "3", npuTop: "Ascend310-3,Ascend310-7,Ascend310-8"})
 			result := npu.CheckNodeNPUByTaskFn(task, node, true)
 			So(result, ShouldBeError)
 		})
 		Convey("CheckNodeNPUByTaskFn() should return error when node meets task requests", func() {
-			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"2", "Ascend310-8,Ascend310-9"})
+			node := buildNPUNode(CNodeInfo{nodeName: nodeName, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "2", npuTop: "Ascend310-8,Ascend310-9"})
 			result := npu.CheckNodeNPUByTaskFn(task, node, true)
 			So(result, ShouldBeNil)
 		})
@@ -418,8 +417,8 @@ func TestCnpuCheckNodeNPUByTaskFnError(t *testing.T) {
 				podName: "npu-test-115", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: a310NPUCardName, reqNpuNum: "0"})
 			task := vapi.NewTaskInfo(pod)
-			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"2", "Ascend310-1,Ascend310-4"})
+			node := buildNPUNode(CNodeInfo{nodeName: nodeName, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "2", npuTop: "Ascend310-1,Ascend310-4"})
 			result := npu.CheckNodeNPUByTaskFn(task, node, true)
 			So(result, ShouldBeError)
 		})
@@ -429,8 +428,8 @@ func TestCnpuCheckNodeNPUByTaskFnError(t *testing.T) {
 				podName: "npu-test-116", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: a310NPUCardName, reqNpuNum: "2"})
 			task := vapi.NewTaskInfo(pod)
-			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"", ""})
+			node := buildNPUNode(CNodeInfo{nodeName: nodeName, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "", npuTop: ""})
 			result := npu.CheckNodeNPUByTaskFn(task, node, true)
 			So(result, ShouldBeError)
 		})
@@ -456,21 +455,21 @@ func TestCnpuGetNPUAffinityBestNodesFnReq1(t *testing.T) {
 				podName: "npu-test-17", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: a310NPUCardName, reqNpuNum: "1"})
 			task := vapi.NewTaskInfo(pod)
-			nodes := []*vapi.NodeInfo{}
-			node1 := buildNPUNode(CNodeInfo{nodeName1, huaweiArchX86, "192", "755Gi",
-				"10", "Ascend310-0,Ascend310-4,Ascend310-6,Ascend310-9,Ascend310-10," +
+			var nodes []*vapi.NodeInfo
+			node1 := buildNPUNode(CNodeInfo{nodeName: nodeName1, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "10", npuTop: "Ascend310-0,Ascend310-4,Ascend310-6,Ascend310-9,Ascend310-10," +
 					"Ascend310-11,Ascend310-20,Ascend310-21,Ascend310-22,Ascend310-23"})
 			nodes = append(nodes, node1)
-			node2 := buildNPUNode(CNodeInfo{nodeName2, huaweiArchX86, "192", "755Gi",
-				"9", "Ascend310-4,Ascend310-6,Ascend310-9,Ascend310-10," +
+			node2 := buildNPUNode(CNodeInfo{nodeName: nodeName2, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "9", npuTop: "Ascend310-4,Ascend310-6,Ascend310-9,Ascend310-10," +
 					"Ascend310-11,Ascend310-20,Ascend310-21,Ascend310-22,Ascend310-23"})
 			nodes = append(nodes, node2)
-			node3 := buildNPUNode(CNodeInfo{nodeName3, huaweiArchX86, "192", "755Gi",
-				"7", "Ascend310-9,Ascend310-10,Ascend310-11,Ascend310-20," +
+			node3 := buildNPUNode(CNodeInfo{nodeName: nodeName3, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "7", npuTop: "Ascend310-9,Ascend310-10,Ascend310-11,Ascend310-20," +
 					"Ascend310-21,Ascend310-22,Ascend310-23"})
 			nodes = append(nodes, node3)
-			node4 := buildNPUNode(CNodeInfo{nodeName4, huaweiArchX86, "192", "755Gi",
-				"4", "Ascend310-20,Ascend310-21,Ascend310-22,Ascend310-23"})
+			node4 := buildNPUNode(CNodeInfo{nodeName: nodeName4, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "4", npuTop: "Ascend310-20,Ascend310-21,Ascend310-22,Ascend310-23"})
 			nodes = append(nodes, node4)
 			result, err := npu.GetNPUAffinityBestNodesFn(task, nodes, false)
 			So(result[nodeName1], ShouldEqual, constNum0)
@@ -502,21 +501,21 @@ func TestCnpuGetNPUAffinityBestNodesFnReq2(t *testing.T) {
 				podName: "npu-test-17", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: a310NPUCardName, reqNpuNum: "2"})
 			task := vapi.NewTaskInfo(pod)
-			nodes := []*vapi.NodeInfo{}
-			node1 := buildNPUNode(CNodeInfo{nodeName1, huaweiArchX86, "192", "755Gi",
-				"10", "Ascend310-0,Ascend310-4,Ascend310-6,Ascend310-9,Ascend310-10," +
+			var nodes []*vapi.NodeInfo
+			node1 := buildNPUNode(CNodeInfo{nodeName: nodeName1, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "10", npuTop: "Ascend310-0,Ascend310-4,Ascend310-6,Ascend310-9,Ascend310-10," +
 					"Ascend310-11,Ascend310-20,Ascend310-21,Ascend310-22,Ascend310-23"})
 			nodes = append(nodes, node1)
-			node2 := buildNPUNode(CNodeInfo{nodeName2, huaweiArchX86, "192", "755Gi",
-				"9", "Ascend310-4,Ascend310-6,Ascend310-9,Ascend310-10," +
+			node2 := buildNPUNode(CNodeInfo{nodeName: nodeName2, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "9", npuTop: "Ascend310-4,Ascend310-6,Ascend310-9,Ascend310-10," +
 					"Ascend310-11,Ascend310-20,Ascend310-21,Ascend310-22,Ascend310-23"})
 			nodes = append(nodes, node2)
-			node3 := buildNPUNode(CNodeInfo{nodeName3, huaweiArchX86, "192", "755Gi",
-				"7", "Ascend310-9,Ascend310-10,Ascend310-11,Ascend310-20," +
+			node3 := buildNPUNode(CNodeInfo{nodeName: nodeName3, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "7", npuTop: "Ascend310-9,Ascend310-10,Ascend310-11,Ascend310-20," +
 					"Ascend310-21,Ascend310-22,Ascend310-23"})
 			nodes = append(nodes, node3)
-			node4 := buildNPUNode(CNodeInfo{nodeName4, huaweiArchX86, "192", "755Gi",
-				"4", "Ascend310-20,Ascend310-21,Ascend310-22,Ascend310-23"})
+			node4 := buildNPUNode(CNodeInfo{nodeName: nodeName4, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "4", npuTop: "Ascend310-20,Ascend310-21,Ascend310-22,Ascend310-23"})
 			nodes = append(nodes, node4)
 			result, err := npu.GetNPUAffinityBestNodesFn(task, nodes, false)
 			So(result[nodeName1], ShouldEqual, constNum0)
@@ -546,21 +545,21 @@ func TestCnpuGetNPUAffinityBestNodesFnReq3(t *testing.T) {
 				podName: "npu-test-17", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: a310NPUCardName, reqNpuNum: "3"})
 			task := vapi.NewTaskInfo(pod)
-			nodes := []*vapi.NodeInfo{}
-			node1 := buildNPUNode(CNodeInfo{nodeName1, huaweiArchX86, "192", "755Gi",
-				"10", "Ascend310-0,Ascend310-4,Ascend310-6,Ascend310-9,Ascend310-10," +
+			var nodes []*vapi.NodeInfo
+			node1 := buildNPUNode(CNodeInfo{nodeName: nodeName1, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "10", npuTop: "Ascend310-0,Ascend310-4,Ascend310-6,Ascend310-9,Ascend310-10," +
 					"Ascend310-11,Ascend310-20,Ascend310-21,Ascend310-22,Ascend310-23"})
 			nodes = append(nodes, node1)
-			node2 := buildNPUNode(CNodeInfo{nodeName2, huaweiArchX86, "192", "755Gi",
-				"9", "Ascend310-4,Ascend310-6,Ascend310-9,Ascend310-10," +
+			node2 := buildNPUNode(CNodeInfo{nodeName: nodeName2, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "9", npuTop: "Ascend310-4,Ascend310-6,Ascend310-9,Ascend310-10," +
 					"Ascend310-11,Ascend310-20,Ascend310-21,Ascend310-22,Ascend310-23"})
 			nodes = append(nodes, node2)
-			node3 := buildNPUNode(CNodeInfo{nodeName3, huaweiArchX86, "192", "755Gi",
-				"7", "Ascend310-9,Ascend310-10,Ascend310-11,Ascend310-20," +
+			node3 := buildNPUNode(CNodeInfo{nodeName: nodeName3, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "7", npuTop: "Ascend310-9,Ascend310-10,Ascend310-11,Ascend310-20," +
 					"Ascend310-21,Ascend310-22,Ascend310-23"})
 			nodes = append(nodes, node3)
-			node4 := buildNPUNode(CNodeInfo{nodeName4, huaweiArchX86, "192", "755Gi",
-				"4", "Ascend310-20,Ascend310-21,Ascend310-22,Ascend310-23"})
+			node4 := buildNPUNode(CNodeInfo{nodeName: nodeName4, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "4", npuTop: "Ascend310-20,Ascend310-21,Ascend310-22,Ascend310-23"})
 			nodes = append(nodes, node4)
 			result, err := npu.GetNPUAffinityBestNodesFn(task, nodes, false)
 			So(result[nodeName1], ShouldEqual, constNum0)
@@ -589,21 +588,21 @@ func TestCnpuGetNPUAffinityBestNodesFnReq4(t *testing.T) {
 				podName: "npu-test-17", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: a310NPUCardName, reqNpuNum: "4"})
 			task := vapi.NewTaskInfo(pod)
-			nodes := []*vapi.NodeInfo{}
-			node1 := buildNPUNode(CNodeInfo{nodeName1, huaweiArchX86, "192", "755Gi",
-				"10", "Ascend310-0,Ascend310-4,Ascend310-6,Ascend310-9,Ascend310-10," +
+			var nodes []*vapi.NodeInfo
+			node1 := buildNPUNode(CNodeInfo{nodeName: nodeName1, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "10", npuTop: "Ascend310-0,Ascend310-4,Ascend310-6,Ascend310-9,Ascend310-10," +
 					"Ascend310-11,Ascend310-20,Ascend310-21,Ascend310-22,Ascend310-23"})
 			nodes = append(nodes, node1)
-			node2 := buildNPUNode(CNodeInfo{nodeName2, huaweiArchX86, "192", "755Gi",
-				"9", "Ascend310-4,Ascend310-6,Ascend310-9,Ascend310-10," +
+			node2 := buildNPUNode(CNodeInfo{nodeName: nodeName2, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "9", npuTop: "Ascend310-4,Ascend310-6,Ascend310-9,Ascend310-10," +
 					"Ascend310-11,Ascend310-20,Ascend310-21,Ascend310-22,Ascend310-23"})
 			nodes = append(nodes, node2)
-			node3 := buildNPUNode(CNodeInfo{nodeName3, huaweiArchX86, "192", "755Gi",
-				"7", "Ascend310-9,Ascend310-10,Ascend310-11,Ascend310-20," +
+			node3 := buildNPUNode(CNodeInfo{nodeName: nodeName3, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "7", npuTop: "Ascend310-9,Ascend310-10,Ascend310-11,Ascend310-20," +
 					"Ascend310-21,Ascend310-22,Ascend310-23"})
 			nodes = append(nodes, node3)
-			node4 := buildNPUNode(CNodeInfo{nodeName4, huaweiArchX86, "192", "755Gi",
-				"4", "Ascend310-20,Ascend310-21,Ascend310-22,Ascend310-23"})
+			node4 := buildNPUNode(CNodeInfo{nodeName: nodeName4, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "4", npuTop: "Ascend310-20,Ascend310-21,Ascend310-22,Ascend310-23"})
 			nodes = append(nodes, node4)
 			result, err := npu.GetNPUAffinityBestNodesFn(task, nodes, false)
 			So(result[nodeName1], ShouldEqual, constNum0)
@@ -628,15 +627,15 @@ func TestCnpuGetNPUAffinityBestNodesFnError(t *testing.T) {
 			podName: "npu-test-117", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 			reqNPUType: a310NPUCardName, reqNpuNum: "2"})
 		task := vapi.NewTaskInfo(pod)
-		nodes := []*vapi.NodeInfo{}
+		var nodes []*vapi.NodeInfo
 
 		Convey("GetNPUAffinityBestNodesFn() should return error when node is empty", func() {
 			_, err := npu.GetNPUAffinityBestNodesFn(task, nodes, false)
 			So(err, ShouldBeError)
 		})
 
-		node := buildNPUNode(CNodeInfo{nodeName1, huaweiArchX86, "192", "755Gi",
-			"1", "Ascend310-0"})
+		node := buildNPUNode(CNodeInfo{nodeName: nodeName1, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+			npuAllocateNum: "1", npuTop: "Ascend310-0"})
 		nodes = append(nodes, node)
 
 		Convey("GetNPUAffinityBestNodesFn() should return error when none bestNodes", func() {
@@ -669,29 +668,26 @@ func TestCnpuScoreBestNPUNodesFn(t *testing.T) {
 		npu := New(PluginName)
 		bestNodes := map[string]int{
 			nodeName1: 0,
-			nodeName2: constIntNum2,
+			nodeName2: util.ConstIntNum2,
 		}
 		pod := buildNPUPod(CPodInfo{namespace: "default", groupName: "npu-group-18",
 			podName: "npu-test-18", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 			reqNPUType: a310NPUCardName, reqNpuNum: "2"})
 		task := vapi.NewTaskInfo(pod)
 
-		nodes := []*vapi.NodeInfo{}
-		node1 := buildNPUNode(CNodeInfo{nodeName1, huaweiArchX86, "192", "755Gi",
-			"4", "Ascend310-0,Ascend310-2"})
+		var nodes []*vapi.NodeInfo
+		node1 := buildNPUNode(CNodeInfo{nodeName: nodeName1, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+			npuAllocateNum: "4", npuTop: "Ascend310-0,Ascend310-2"})
 		nodes = append(nodes, node1)
-		node2 := buildNPUNode(CNodeInfo{nodeName2, huaweiArchArm, "192", "755Gi",
-			"4", "Ascend310-0,Ascend310-2,Ascend310-3,Ascend310-1"})
+		node2 := buildNPUNode(CNodeInfo{nodeName: nodeName2, nodeArch: huaweiArchArm, cpu: "192", mem: "755Gi",
+			npuAllocateNum: "4", npuTop: "Ascend310-0,Ascend310-2,Ascend310-3,Ascend310-1"})
 		nodes = append(nodes, node2)
 
 		Convey("ScoreBestNPUNodesFn() should return correct result", func() {
 			scoreMap := make(map[string]float64)
-			expectedResult := map[string]float64{
-				nodeName1: 32.00,
-				nodeName2: 16.00,
-			}
+			expectedResult := map[string]float64(nil)
 			result, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
-			So(err, ShouldBeNil)
+			So(err, ShouldNotBeNil)
 			So(result, ShouldResemble, expectedResult)
 		})
 	})
@@ -707,19 +703,19 @@ func TestCnpuScoreBestNPUNodesFnError(t *testing.T) {
 		npu := New(PluginName)
 		bestNodes := map[string]int{
 			nodeName1: 0,
-			nodeName2: constIntNum3,
+			nodeName2: util.ConstIntNum3,
 		}
 		pod := buildNPUPod(CPodInfo{namespace: "default", groupName: "npu-group-121",
 			podName: "npu-test-121", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 			reqNPUType: a310NPUCardName, reqNpuNum: "4"})
 		task := vapi.NewTaskInfo(pod)
 
-		nodes := []*vapi.NodeInfo{}
-		node1 := buildNPUNode(CNodeInfo{nodeName1, huaweiArchX86, "192", "755Gi",
-			"4", "Ascend310-0,Ascend310-2,Ascend310-3,Ascend310-1"})
+		var nodes []*vapi.NodeInfo
+		node1 := buildNPUNode(CNodeInfo{nodeName: nodeName1, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+			npuAllocateNum: "4", npuTop: "Ascend310-0,Ascend310-2,Ascend310-3,Ascend310-1"})
 		nodes = append(nodes, node1)
-		node2 := buildNPUNode(CNodeInfo{nodeName2, huaweiArchArm, "192", "755Gi",
-			"4", "Ascend310-0,Ascend310-2,Ascend310-3,Ascend310-1"})
+		node2 := buildNPUNode(CNodeInfo{nodeName: nodeName2, nodeArch: huaweiArchArm, cpu: "192", mem: "755Gi",
+			npuAllocateNum: "4", npuTop: "Ascend310-0,Ascend310-2,Ascend310-3,Ascend310-1"})
 		nodes = append(nodes, node2)
 
 		Convey("ScoreBestNPUNodesFn() should return err when scoreMap is nil", func() {
@@ -734,8 +730,8 @@ func TestCnpuScoreBestNPUNodesFnError(t *testing.T) {
 func TestCnpuUpdateNPUNodeUsedCardFn1(t *testing.T) {
 	Convey("Test card310x4 UpdateNPUNodeUsedCardFn", t, func() {
 		npu := New(PluginName)
-		node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-			"7", "Ascend310-0,Ascend310-1,Ascend310-2,Ascend310-3,Ascend310-61," +
+		node := buildNPUNode(CNodeInfo{nodeName: nodeName, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+			npuAllocateNum: "7", npuTop: "Ascend310-0,Ascend310-1,Ascend310-2,Ascend310-3,Ascend310-61," +
 				"Ascend310-62,Ascend310-63"})
 		node.Others = map[string]interface{}{
 			a310NPUCardName: "Ascend310-0,Ascend310-1,Ascend310-2,Ascend310-3,Ascend310-61,Ascend310-62,Ascend310-63",
@@ -759,8 +755,8 @@ func TestCnpuUpdateNPUNodeUsedCardFn2(t *testing.T) {
 		npu := New(PluginName)
 
 		Convey("UpdateNPUNodeUsedCardFn() should should successfully update node.others", func() {
-			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"4", "Ascend310-0,Ascend310-2,Ascend310-3,Ascend310-1"})
+			node := buildNPUNode(CNodeInfo{nodeName: nodeName, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "4", npuTop: "Ascend310-0,Ascend310-2,Ascend310-3,Ascend310-1"})
 			node.Others = map[string]interface{}{
 				a310NPUCardName: "Ascend310-0,Ascend310-2,Ascend310-3,Ascend310-1",
 			}
@@ -781,16 +777,16 @@ func TestCnpuUpdateNPUNodeUsedCardFnError1(t *testing.T) {
 		npu := New(PluginName)
 
 		Convey("UpdateNPUNodeUsedCardFn() should return error when top's type mismatch", func() {
-			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"4", "Ascend310-0,Ascend310-2,Ascend310-3,Ascend310-1"})
+			node := buildNPUNode(CNodeInfo{nodeName: nodeName, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "4", npuTop: "Ascend310-0,Ascend310-2,Ascend310-3,Ascend310-1"})
 			top := []string{"0", "4"}
 			err := npu.UpdateNPUNodeUsedCardFn(node, top)
 			So(err, ShouldBeError)
 		})
 
 		Convey("UpdateNPUNodeUsedCardFn() should return error when node's npuTop is empty", func() {
-			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"8", ""})
+			node := buildNPUNode(CNodeInfo{nodeName: nodeName, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "8", npuTop: ""})
 			top := []int{0, 4}
 			err := npu.UpdateNPUNodeUsedCardFn(node, top)
 			So(err, ShouldBeError)
@@ -835,8 +831,8 @@ func TestCnpuGetReleaseNPUTopologyFnError(t *testing.T) {
 func TestCnpuUpdateReleaseNPUNodeTopologyFn(t *testing.T) {
 	Convey("Test card310x4 UpdateReleaseNPUNodeTopologyFn", t, func() {
 		npu := New(PluginName)
-		node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-			"4", "Ascend310-0,Ascend310-2,Ascend310-3,Ascend310-1"})
+		node := buildNPUNode(CNodeInfo{nodeName: nodeName, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+			npuAllocateNum: "4", npuTop: "Ascend310-0,Ascend310-2,Ascend310-3,Ascend310-1"})
 		node.Others = map[string]interface{}{
 			a310NPUCardName: "Ascend310-0,Ascend310-2",
 		}
@@ -857,8 +853,8 @@ func TestCnpuUpdateReleaseNPUNodeTopologyFnError(t *testing.T) {
 		npu := New(PluginName)
 
 		Convey("UpdateNPUNodeUsedCardFn() should return error when top's type is mismatch", func() {
-			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"4", "Ascend310-0,Ascend310-2,Ascend310-3,Ascend310-1"})
+			node := buildNPUNode(CNodeInfo{nodeName: nodeName, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "4", npuTop: "Ascend310-0,Ascend310-2,Ascend310-3,Ascend310-1"})
 			node.Others = map[string]interface{}{
 				a310NPUCardName: "Ascend310-0,Ascend310-4",
 			}
@@ -868,8 +864,8 @@ func TestCnpuUpdateReleaseNPUNodeTopologyFnError(t *testing.T) {
 		})
 
 		Convey("UpdateNPUNodeUsedCardFn() should return error when node's others is wrong", func() {
-			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"4", "Ascend310-0,Ascend310-2,Ascend310-3,Ascend310-1"})
+			node := buildNPUNode(CNodeInfo{nodeName: nodeName, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "4", npuTop: "Ascend310-0,Ascend310-2,Ascend310-3,Ascend310-1"})
 			node.Others = map[string]interface{}{
 				a310NPUCardName: "Ascend310-0Ascend310-2",
 			}
@@ -890,8 +886,8 @@ func TestCnpuGetAllocatedNPUFromTopologyFn(t *testing.T) {
 				podName: "npu-test-20", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: a310NPUCardName, reqNpuNum: "2"})
 			task := vapi.NewTaskInfo(pod)
-			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchArm, "192", "755Gi",
-				"2", "Ascend310-0,Ascend310-3"})
+			node := buildNPUNode(CNodeInfo{nodeName: nodeName, nodeArch: huaweiArchArm, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "2", npuTop: "Ascend310-0,Ascend310-3"})
 			expectedResult := []int{0, 3}
 			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node, false)
 			So(err, ShouldBeNil)
@@ -903,8 +899,8 @@ func TestCnpuGetAllocatedNPUFromTopologyFn(t *testing.T) {
 				podName: "npu-test-21", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: a310NPUCardName, reqNpuNum: "1"})
 			task := vapi.NewTaskInfo(pod)
-			node := buildNPUNode(CNodeInfo{nodeName, huaweiArchArm, "192", "755Gi",
-				"2", "Ascend310-0,Ascend310-3"})
+			node := buildNPUNode(CNodeInfo{nodeName: nodeName, nodeArch: huaweiArchArm, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "2", npuTop: "Ascend310-0,Ascend310-3"})
 			expectedResult := []int{0}
 			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node, false)
 			So(err, ShouldBeNil)
@@ -922,8 +918,8 @@ func TestCnpuGetAllocatedNPUFromTopologyFnError(t *testing.T) {
 			podName: "npu-test-123", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 			reqNPUType: a310NPUCardName, reqNpuNum: "2"})
 		task := vapi.NewTaskInfo(pod)
-		node := buildNPUNode(CNodeInfo{nodeName, huaweiArchArm, "192", "755Gi",
-			"2", "Ascend310-0,Ascend310-4"})
+		node := buildNPUNode(CNodeInfo{nodeName: nodeName, nodeArch: huaweiArchArm, cpu: "192", mem: "755Gi",
+			npuAllocateNum: "2", npuTop: "Ascend310-0,Ascend310-4"})
 
 		Convey("GetAllocatedNPUFromTopologyFn() should return error when reqNpuNum of pod is 0", func() {
 			task.Resreq.ScalarResources[a310NPUCardName] = 0
@@ -1026,7 +1022,7 @@ func TestCnpuSetNPUTopologyToPodFn(t *testing.T) {
 			podName: "npu-test-22", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 			reqNPUType: a310NPUCardName, reqNpuNum: "4"}))
 		Convey("SetNPUTopologyToPodFn() should return error when top is of wrong type", func() {
-			top := []string{}
+			var top []string
 			err := npu.SetNPUTopologyToPodFn(task, top)
 			So(err, ShouldBeError)
 			So(task.Pod.Annotations[a310NPUCardName], ShouldEqual, "")
@@ -1063,11 +1059,11 @@ func setJobResourceReq(CJob *vapi.JobInfo, resource string, num float64) {
 
 func buildNPUPod(podInfo CPodInfo) *v1.Pod {
 
-	pod := util.BuildPod(podInfo.namespace, podInfo.podName, podInfo.nodeName, v1.PodPending,
+	pod := util2.BuildPod(podInfo.namespace, podInfo.podName, podInfo.nodeName, v1.PodPending,
 		buildNPUResourceList(podInfo.reqCPUNum, podInfo.reqMem,
 			v1.ResourceName(podInfo.reqNPUType), podInfo.reqNpuNum),
-		podInfo.groupName, make(map[string]string, constIntNum2),
-		make(map[string]string, constIntNum2))
+		podInfo.groupName, make(map[string]string, util.ConstIntNum2),
+		make(map[string]string, util.ConstIntNum2))
 
 	setPodSelector(pod, archSelector, huaweiArchX86)
 	ascendtest.SetTestNPUPodSelector(pod, archSelector, huaweiArchX86)
@@ -1097,10 +1093,10 @@ func buildNPUResourceList(CCpu string, CMemory string, npuResourceType v1.Resour
 }
 
 func buildNPUNode(CNode CNodeInfo) *vapi.NodeInfo {
-	nodeCapacity := buildNPUResourceList(CNode.cpu, CNode.mem, a310NPUCardName, cs.Itoa(constIntNum2))
+	nodeCapacity := buildNPUResourceList(CNode.cpu, CNode.mem, a310NPUCardName, cs.Itoa(util.ConstIntNum2))
 	nodeAlloc := buildNPUResourceList(CNode.cpu, CNode.mem, a310NPUCardName, CNode.npuAllocateNum)
-	labels := make(map[string]string, constIntNum2)
-	ann := make(map[string]string, constIntNum2)
+	labels := make(map[string]string, util.ConstIntNum2)
+	ann := make(map[string]string, util.ConstIntNum2)
 
 	v1node := &v1.Node{
 		ObjectMeta: metav1.ObjectMeta{

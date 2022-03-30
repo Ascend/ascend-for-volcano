@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -30,24 +30,21 @@ func (tp *card310x4) Name() string {
 
 // New return npu plugin.
 func New(npuName string) plugin.HwNPUSchedulerPlugin {
-	defaultSchedulerConfig := make(map[string]string, common.ConstIntNum1)
-	defaultSchedulerConfig[archSelector] = huaweiArchArm + "|" + huaweiArchX86
-	defaultSchedulerConfig[acceleratorType] = cardAcceleratorType + "|" + chipAcceleratorType
-	co := common.Scheduler{
+	pluginCard := card310x4{}
+	pluginCard.com = common.Scheduler{
 		PluginName:                npuName,
-		AnnoName:                  a310NPUCardName,
-		AnnoPreVal:                a310NPUCardPreName,
-		DefaultJobSchedulerConfig: defaultSchedulerConfig,
+		AnnoName:                  pluginCard.GetResourceName(),
+		AnnoPreVal:                pluginCard.GetResourcePreVal(),
+		DefaultJobSchedulerConfig: pluginCard.GetPluginDefaultJobSchedulerConfig(),
 	}
-	return &card310x4{
-		com: co,
-		re:  common.ReScheduler{AnnoUnHealthy: a310FaultNPUName, IsMyJob: co.IsMyJob, AnnoName: co.AnnoName},
-	}
+	pluginCard.re = common.ReScheduler{AnnoUnHealthy: a310FaultNPUName,
+		IsMyJob: pluginCard.com.IsMyJob, AnnoName: pluginCard.com.AnnoName}
+	return &pluginCard
 }
 
 // OnHandlerStart The npu scheduler policy initial and common processing.
 func (tp *card310x4) OnHandlerStart(sHandler *plugin.ScheduleHandler) {
-	klog.V(logDebugLev).Infof("%v start handler.", PluginName)
+	klog.V(util.LogDebugLev).Infof("%v start handler.", PluginName)
 	sHandler.AddInitNodesNPUAllocTopology(PluginName, initNodesNPUTopologyFn)
 	sHandler.AddPreHandleFaultNPU(tp.com.AnnoName, tp.re.PreHandleFaultNPUFn)
 }
@@ -56,7 +53,7 @@ func (tp *card310x4) OnHandlerStart(sHandler *plugin.ScheduleHandler) {
 func (tp *card310x4) ValidNPUJobFn(job *api.JobInfo) *api.ValidateResult {
 	// 1.Validate npu job selector.
 	if err := validNPUJobSelector(job); err != nil {
-		klog.V(logErrorLev).Infof("%s validNPUJobSelector err: %v.", PluginName, err)
+		klog.V(util.LogDebugLev).Infof("%s validNPUJobSelector err: %v.", PluginName, err)
 		return &api.ValidateResult{
 			Pass:    false,
 			Reason:  err.Error(),
@@ -66,7 +63,7 @@ func (tp *card310x4) ValidNPUJobFn(job *api.JobInfo) *api.ValidateResult {
 
 	// 2.Validate job npu number.
 	if jobError := validJobNPUNum(job); jobError != nil {
-		klog.V(logErrorLev).Infof("%s validJobNPUNum err: %v.", PluginName, jobError)
+		klog.V(util.LogDebugLev).Infof("%s validJobNPUNum err: %v.", PluginName, jobError)
 		return &api.ValidateResult{
 			Pass:    false,
 			Reason:  "job require npu number illegal",
@@ -75,7 +72,7 @@ func (tp *card310x4) ValidNPUJobFn(job *api.JobInfo) *api.ValidateResult {
 	}
 	// 3.Validate job scheduler-strategy.
 	if errJob := validJobModel(job); errJob != nil {
-		klog.V(logErrorLev).Infof("%s validJobModel err: %v.", PluginName, errJob)
+		klog.V(util.LogDebugLev).Infof("%s validJobModel err: %v.", PluginName, errJob)
 		return &api.ValidateResult{
 			Pass:    false,
 			Reason:  "job scheduler-strategy error",
@@ -91,14 +88,14 @@ func (tp *card310x4) PreCheckNodeFn(task *api.TaskInfo, node *api.NodeInfo, conf
 	schedulerConf := util.GetSchedulerSelectorConfig(confs)
 	if len(schedulerConf) == 0 {
 		// get scheduler selector configure failed, but need continue
-		klog.V(logErrorLev).Infof("%s JobName: %s get selector nil.", PluginName, task.Name)
+		klog.V(util.LogDebugLev).Infof("%s JobUID: %s get selector nil.", PluginName, task.Name)
 		return fmt.Errorf("%s get scheduler selector nil", node.Name)
 	}
 
 	// select node by architect
 	if err := util.IsSelectorMeetNode(task, node, schedulerConf, a310NPUCardName); err != nil {
 		// get scheduler selector configure failed, but need continue
-		klog.V(logErrorLev).Infof("%s taskName: %s ,nodeName %s : %v.", PluginName, task.Name, node.Name, err)
+		klog.V(util.LogDebugLev).Infof("%s taskName: %s ,nodeName %s : %v.", PluginName, task.Name, node.Name, err)
 		return err
 	}
 	return nil
@@ -134,11 +131,11 @@ func (tp *card310x4) CheckNodeNPUByTaskFn(task *api.TaskInfo, node *api.NodeInfo
 	nodeNPUTopology := util.GetTopFromNodeOthers(node, a310NPUCardName, a310NPUCardPreName)
 	if nodeNPUTopology == nil {
 		// node has none npu
-		klog.V(logInfoLev).Infof("%s checkNodeNPUByTask nil,node name:%s(top:%v),task req npu:%d",
+		klog.V(util.LogInfoLev).Infof("%s checkNodeNPUByTask nil,node name:%s(top:%v),task req npu:%d",
 			PluginName, node.Name, nodeNPUTopology, taskNPU)
 		return fmt.Errorf("%s:get npu nil", nodeNotEnoughNPUWarning)
 	}
-	klog.V(logInfoLev).Infof("%s %s top:%v,req %d", PluginName, node.Name, nodeNPUTopology, taskNPU)
+	klog.V(util.LogInfoLev).Infof("%s %s top:%v,req %d", PluginName, node.Name, nodeNPUTopology, taskNPU)
 
 	err := judgeNodeAndTaskNPU(taskNPU, nodeNPUTopology)
 	if err != nil {
@@ -154,17 +151,17 @@ func (tp *card310x4) GetNPUAffinityBestNodesFn(task *api.TaskInfo,
 	// 1. init 4 prioritized node-list array.
 	priNodeGroups, err := initPriNodeGroups(task, nodes)
 	if err != nil {
-		klog.V(logErrorLev).Infof("%s initPriNodeGroups failed :%v", PluginName, err)
+		klog.V(util.LogDebugLev).Infof("%s initPriNodeGroups failed :%v", PluginName, err)
 		return nil, err
 	}
 	// 2.get the bestNodes map by taskReqNPU
 	bestNodesMap, err := getBestNodesMap(priNodeGroups)
 	if err != nil {
-		klog.V(logErrorLev).Infof("%s getBestNodesMap failed :%v", PluginName, err)
+		klog.V(util.LogDebugLev).Infof("%s getBestNodesMap failed :%v", PluginName, err)
 		return nil, err
 	}
 
-	klog.V(logInfoLev).Infof("%s getNPUAffinityBestNodes %s:%v", PluginName, task.Name, bestNodesMap)
+	klog.V(util.LogInfoLev).Infof("%s getNPUAffinityBestNodes %s:%v", PluginName, task.Name, bestNodesMap)
 	return bestNodesMap, nil
 }
 
@@ -175,9 +172,9 @@ func (tp *card310x4) ScoreBestNPUNodesFn(scoreMap map[string]float64,
 	_ []*api.NodeInfo) (map[string]float64, error) {
 
 	// parameters check
-	if reflect.ValueOf(scoreMap).IsNil() {
+	if len(scoreMap) == 0 || reflect.ValueOf(scoreMap).IsNil() {
 		err := errors.New("ScoreBestNPUNodesFn scoreMap is nil")
-		klog.V(logInfoLev).Infof("%s %v", PluginName, err)
+		klog.V(util.LogInfoLev).Infof("%s %v", PluginName, err)
 		return nil, err
 	}
 
@@ -199,24 +196,24 @@ func (tp *card310x4) UpdateNPUNodeUsedCardFn(node *api.NodeInfo, top interface{}
 	// get node available top
 	nodeDeviceIDs := util.GetTopFromNodeOthers(node, a310NPUCardName, a310NPUCardPreName)
 	if len(nodeDeviceIDs) == 0 {
-		klog.V(logErrorLev).Infof("%s useAnnotation node(%s) top nil.", PluginName, node.Name)
+		klog.V(util.LogDebugLev).Infof("%s useAnnotation node(%s) top nil.", PluginName, node.Name)
 		return errors.New("nodeDeviceIDs nil")
 	}
 
 	// delete the use top
-	klog.V(logInfoLev).Infof("%s useAnnotation %s:%v , will use: %v.", PluginName, node.Name, nodeDeviceIDs, useTop)
+	klog.V(util.LogInfoLev).Infof("%s useAnnotation %s:%v , will use: %v.", PluginName, node.Name, nodeDeviceIDs, useTop)
 	newNodeTopStr := util.GetRealTopAfterAlloc(nodeDeviceIDs, useTop, a310NPUCardPreName)
 	if newNodeTopStr == "" {
-		klog.V(logDebugLev).Infof("%s getRealTopAfterAlloc all top has allocated .", PluginName)
+		klog.V(util.LogDebugLev).Infof("%s getRealTopAfterAlloc all top has allocated .", PluginName)
 	}
 
 	err := util.ReloadNewTopToNodeOther(node, newNodeTopStr, a310NPUCardName)
 	if err != nil {
-		klog.V(logErrorLev).Infof("%s reloadNewTopToNode failed.", PluginName)
+		klog.V(util.LogDebugLev).Infof("%s reloadNewTopToNode failed.", PluginName)
 		return err
 	}
 
-	klog.V(logInfoLev).Infof("%s ReloadNewTopToNode %s to %s successes.", PluginName, newNodeTopStr, node.Name)
+	klog.V(util.LogInfoLev).Infof("%s ReloadNewTopToNode %s to %s successes.", PluginName, newNodeTopStr, node.Name)
 	return nil
 }
 
@@ -225,7 +222,7 @@ func (tp *card310x4) GetReleaseNPUTopologyFn(task *api.TaskInfo) (interface{}, e
 	// get task use top
 	taskDeviceIDs := util.GetDeviceIDsFromAnnotations(task.Pod.Annotations, a310NPUCardName, a310NPUCardPreName)
 	if taskDeviceIDs == nil {
-		klog.V(logErrorLev).Infof("%s GetReleaseNPUTopologyFn failed task:%s", PluginName, task.Name)
+		klog.V(util.LogDebugLev).Infof("%s GetReleaseNPUTopologyFn failed task:%s", PluginName, task.Name)
 		return nil, fmt.Errorf("%s get npu nil", task.Name)
 	}
 
@@ -242,23 +239,23 @@ func (tp *card310x4) UpdateReleaseNPUNodeTopologyFn(node *api.NodeInfo, top inte
 	// get node available top
 	nodeDeviceIDs := util.GetTopFromNodeOthers(node, a310NPUCardName, a310NPUCardPreName)
 	if nodeDeviceIDs == nil {
-		klog.V(logErrorLev).Infof("%s useAnnotation node(%s) top nil", PluginName, node.Name)
+		klog.V(util.LogDebugLev).Infof("%s useAnnotation node(%s) top nil", PluginName, node.Name)
 		return fmt.Errorf("%s has nil npu", node.Name)
 	}
 	// delete the use top
 	newNodeTopStr := util.GetRealTopAfterRelease(nodeDeviceIDs, taskDeviceIDs, a310NPUCardPreName)
 	if newNodeTopStr == "" {
-		klog.V(logErrorLev).Infof("%s getRealTopAfterRelease top failed", PluginName)
+		klog.V(util.LogDebugLev).Infof("%s getRealTopAfterRelease top failed", PluginName)
 		return fmt.Errorf("%s release nil npu", node.Name)
 	}
 
 	err := util.ReloadNewTopToNodeOther(node, newNodeTopStr, a310NPUCardName)
 	if err != nil {
-		klog.V(logErrorLev).Infof("%s reloadNewTopToNode failed", PluginName)
+		klog.V(util.LogDebugLev).Infof("%s reloadNewTopToNode failed", PluginName)
 		return err
 	}
 
-	klog.V(logInfoLev).Infof("%s useAnnotation node(%s) top(%s) successes", PluginName, node.Name, newNodeTopStr)
+	klog.V(util.LogInfoLev).Infof("%s useAnnotation node(%s) top(%s) successes", PluginName, node.Name, newNodeTopStr)
 
 	return nil
 }
@@ -281,25 +278,25 @@ func (tp *card310x4) GetAllocatedNPUFromTopologyFn(
 
 	nodeTop := util.GetTopFromNodeOthers(node, a310NPUCardName, a310NPUCardPreName)
 	if nodeTop == nil {
-		klog.V(logErrorLev).Infof("not npu node[%s], no need to continue.", node.Name)
+		klog.V(util.LogDebugLev).Infof("not npu node[%s], no need to continue.", node.Name)
 		return allocTopologyHccl, err
 	}
-	klog.V(logInfoLev).Infof("%s %s[%d] priority:%v in %v.", PluginName,
+	klog.V(util.LogInfoLev).Infof("%s %s[%d] priority:%v in %v.", PluginName,
 		task.Name, taskNPUNumber, priorityArray, nodeTop)
 
 	allocTopologyHccl, err = getFitCardFromNodeByPriority(nodeTop, priorityArray)
 	if err != nil {
 		err = fmt.Errorf("node %v not meet req: %d", nodeTop, taskNPUNumber)
-		klog.V(logErrorLev).Infof("%s %s.", PluginName, err.Error())
+		klog.V(util.LogDebugLev).Infof("%s %s.", PluginName, err.Error())
 		return allocTopologyHccl, err
 	}
-	klog.V(logDebugLev).Infof("%s %s get alloc %v.", PluginName, task.Name, allocTopologyHccl)
+	klog.V(util.LogDebugLev).Infof("%s %s get alloc %v.", PluginName, task.Name, allocTopologyHccl)
 
 	allocTopologyNPUs, err = util.GetNPUTopFromHccs(taskNPUNumber, allocTopologyHccl)
 	if err != nil {
 		return allocTopologyNPUs, err
 	}
-	klog.V(logInfoLev).Infof("%s %s req:%d alloc %v.", PluginName, task.Name, taskNPUNumber, allocTopologyNPUs)
+	klog.V(util.LogInfoLev).Infof("%s %s req:%d alloc %v.", PluginName, task.Name, taskNPUNumber, allocTopologyNPUs)
 	return allocTopologyNPUs, nil
 }
 
@@ -307,7 +304,7 @@ func (tp *card310x4) GetAllocatedNPUFromTopologyFn(
 func (tp *card310x4) SetNPUTopologyToPodFn(task *api.TaskInfo, top interface{}) error {
 	var topologyStr string
 
-	klog.V(logInfoLev).Infof("%s setNPUTopologyToPod begin top:%v", PluginName, top)
+	klog.V(util.LogInfoLev).Infof("%s setNPUTopologyToPod begin top:%v", PluginName, top)
 	intTop, ok := top.([]int)
 	if !ok {
 		return errors.New(argumentError)
@@ -316,8 +313,8 @@ func (tp *card310x4) SetNPUTopologyToPodFn(task *api.TaskInfo, top interface{}) 
 	topologyStr = util.ChangeIntArrToStr(intTop, a310NPUCardPreName)
 	task.Pod.Annotations[a310NPUCardName] = topologyStr
 	// to device-plugin judge pending pod.
-	task.Pod.Annotations[podPredicateTime] = strconv.FormatInt(time.Now().UnixNano(), constIntNum10)
-	klog.V(logInfoLev).Infof("%s setNPUTopologyToPod %s top:%s", PluginName, task.Name, topologyStr)
+	task.Pod.Annotations[podPredicateTime] = strconv.FormatInt(time.Now().UnixNano(), util.ConstIntNum10)
+	klog.V(util.LogInfoLev).Infof("%s setNPUTopologyToPod %s top:%s", PluginName, task.Name, topologyStr)
 
 	return nil
 }
@@ -358,4 +355,22 @@ func (tp *card310x4) IsMyJob(job *api.JobInfo) error {
 	}
 
 	return nil
+}
+
+// GetResourceName get plugin NPU resource name.
+func (tp *card310x4) GetResourceName() string {
+	return a310NPUCardName
+}
+
+// GetResourcePreVal get plugin NPU resource name prefix.
+func (tp *card310x4) GetResourcePreVal() string {
+	return a310NPUCardPreName
+}
+
+// GetPluginDefaultJobSchedulerConfig get plugin default job scheduler config.
+func (tp *card310x4) GetPluginDefaultJobSchedulerConfig() map[string]string {
+	defaultSchedulerConfig := make(map[string]string, util.ConstIntNum1)
+	defaultSchedulerConfig[archSelector] = huaweiArchArm + "|" + huaweiArchX86
+	defaultSchedulerConfig[acceleratorType] = cardAcceleratorType + "|" + chipAcceleratorType
+	return defaultSchedulerConfig
 }

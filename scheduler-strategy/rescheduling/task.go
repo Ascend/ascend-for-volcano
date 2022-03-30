@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 	"volcano.sh/volcano/pkg/scheduler/api"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 func isTaskHasFaultNPU(taskNPUs []string, nodeFaultNPUs []string) bool {
@@ -36,7 +37,7 @@ func isTaskHasFaultNPU(taskNPUs []string, nodeFaultNPUs []string) bool {
 func IsNPUFaultTask(task *api.TaskInfo) bool {
 	value, valueOk := ReSchedulerCache[CmJobKind]
 	if !valueOk {
-		klog.V(logDebugLev).Infof("isNPUFaultTask: no fault job in ReSchedulerData .")
+		klog.V(util.LogErrorLev).Infof("isNPUFaultTask: no fault job in ReSchedulerData .")
 		return false
 	}
 
@@ -54,23 +55,23 @@ func IsNPUFaultTask(task *api.TaskInfo) bool {
 // CheckFaultJobNode During the pre-selection phase, check whether the node meets the fault task.
 func CheckFaultJobNode(task *api.TaskInfo, node *api.NodeInfo) error {
 	if IsNPUFaultTask(task) {
-		klog.V(logErrorLev).Infof("%s is npu fault job.", task.Job)
+		klog.V(util.LogErrorLev).Infof("%s is npu fault job.", task.Job)
 		return nil
 	}
 
 	if IsNodeInFaultNodeList(node) {
 		msg := fmt.Errorf("%s is in fault node cache", node.Name)
-		klog.V(logErrorLev).Infof("IsNodeInFaultNodeList %v.", msg)
+		klog.V(util.LogErrorLev).Infof("IsNodeInFaultNodeList %v.", msg)
 		return msg
 	}
 
 	if isNodeInFaultJobUseList(node) {
 		msg := fmt.Errorf("%s is used by npu fault job:%s", node.Name, task.Job)
-		klog.V(logErrorLev).Infof("%v.", msg)
+		klog.V(util.LogErrorLev).Infof("%v.", msg)
 		return msg
 	}
 
-	klog.V(logDebugLev).Infof("%s not in fault job use node list.", node.Name)
+	klog.V(util.LogErrorLev).Infof("%s not in fault job use node list.", node.Name)
 
 	return nil
 }
@@ -97,7 +98,7 @@ func getPodRankIndex(pod *v1.Pod) (string, error) {
 func AddScoreByFaultNPUTask(task *api.TaskInfo, scoreMap map[string]float64) (map[string]float64, error) {
 	if len(scoreMap) == 0 {
 		mgs := fmt.Errorf("AddScoreByFaultNPUTask scoreMap is nil")
-		klog.V(logErrorLev).Infof("%v.", mgs)
+		klog.V(util.LogErrorLev).Infof("%v.", mgs)
 		return scoreMap, mgs
 	}
 
@@ -106,7 +107,7 @@ func AddScoreByFaultNPUTask(task *api.TaskInfo, scoreMap map[string]float64) (ma
 		return scoreMap, err
 	}
 
-	klog.V(logDebugLev).Infof("getReSchedulerTasksFromCache :%v.", value)
+	klog.V(util.LogErrorLev).Infof("getReSchedulerTasksFromCache :%v.", value)
 	for key, taskName := range value.TaskName {
 		if taskName != task.Name {
 			continue
@@ -134,12 +135,12 @@ func getOldTaskNodeAndIndexList(rTask ReSchedulerTasks) (map[string]string, erro
 func setOnOldNodeTaskRankIndex(rTask ReSchedulerTasks, task *api.TaskInfo, node *api.NodeInfo) error {
 	nodeAndIndexList, getOldErr := getOldTaskNodeAndIndexList(rTask)
 	if getOldErr != nil {
-		klog.V(logErrorLev).Infof("getOldTaskNodeAndIndexList: %v.", getOldErr)
+		klog.V(util.LogErrorLev).Infof("getOldTaskNodeAndIndexList: %v.", getOldErr)
 	}
 
 	now := time.Now().Unix()
 	if rankIndex, ok := nodeAndIndexList[node.Name]; ok {
-		klog.V(logInfoLev).Infof("%d: %s set old %s rankIndex %v.", now, task.Pod.Name, node.Name, rankIndex)
+		klog.V(util.LogInfoLev).Infof("%d: %s set old %s rankIndex %v.", now, task.Pod.Name, node.Name, rankIndex)
 		task.Pod.Annotations[podRankIndex] = rankIndex
 		return nil
 	}
@@ -164,11 +165,11 @@ func setOnNewNodeTaskRankIndex(task *api.TaskInfo, node *api.NodeInfo) error {
 	for rankIndex, data := range rankIndexMap.FaultNodeRankIndex {
 		if rankIndexMap.UpdateTime == now {
 			if data.UpdateTime == now {
-				klog.V(logInfoLev).Infof("%d %s cannot use %v, has been used.", now, task.Pod.Name, rankIndex)
+				klog.V(util.LogInfoLev).Infof("%d %s cannot use %v, has been used.", now, task.Pod.Name, rankIndex)
 				continue
 			}
 		}
-		klog.V(logInfoLev).Infof("%d: %s set new %s rankIndex %v.", now, task.Pod.Name, node.Name, rankIndex)
+		klog.V(util.LogInfoLev).Infof("%d: %s set new %s rankIndex %v.", now, task.Pod.Name, node.Name, rankIndex)
 		task.Pod.Annotations[podRankIndex] = rankIndex
 		rankIndexMap.UpdateTime = now
 		data.UpdateTime = now
@@ -182,21 +183,21 @@ func setOnNewNodeTaskRankIndex(task *api.TaskInfo, node *api.NodeInfo) error {
 }
 
 func setReSchedulerTaskRankIndex(rTask ReSchedulerTasks, task *api.TaskInfo, node *api.NodeInfo) error {
-	klog.V(logDebugLev).Infof("%s SetFaultJobPodIndex from: %+v on %v.", task.Name, rTask, node.Name)
+	klog.V(util.LogErrorLev).Infof("%s SetFaultJobPodIndex from: %+v on %v.", task.Name, rTask, node.Name)
 
 	setOldNodeErr := setOnOldNodeTaskRankIndex(rTask, task, node)
 	if setOldNodeErr == nil {
 		return nil
 	}
-	klog.V(logInfoLev).Infof("setReSchedulerTaskRankIndex %v.", setOldNodeErr)
+	klog.V(util.LogInfoLev).Infof("setReSchedulerTaskRankIndex %v.", setOldNodeErr)
 
 	setNewNodeErr := setOnNewNodeTaskRankIndex(task, node)
 	if setNewNodeErr != nil {
-		klog.V(logInfoLev).Infof("setReSchedulerTaskRankIndex %v.", setNewNodeErr)
+		klog.V(util.LogInfoLev).Infof("setReSchedulerTaskRankIndex %v.", setNewNodeErr)
 		return setNewNodeErr
 	}
 
-	klog.V(logInfoLev).Infof("setReSchedulerTaskRankIndex %s on %s success.", task.Name, node.Name)
+	klog.V(util.LogInfoLev).Infof("setReSchedulerTaskRankIndex %s on %s success.", task.Name, node.Name)
 	return nil
 }
 
@@ -205,12 +206,12 @@ func setReSchedulerTaskRankIndex(rTask ReSchedulerTasks, task *api.TaskInfo, nod
 func SetFaultJobPodIndex(task *api.TaskInfo, node *api.NodeInfo) error {
 	tmpValue, err := getReSchedulerTasksFromCache(task)
 	if err != nil || reflect.DeepEqual(tmpValue, ReSchedulerTasks{}) {
-		klog.V(logInfoLev).Infof("SetFaultJobPodIndex %s %v.", task.Name, err)
+		klog.V(util.LogInfoLev).Infof("SetFaultJobPodIndex %s %v.", task.Name, err)
 		return err
 	}
 
 	if setErr := setReSchedulerTaskRankIndex(tmpValue, task, node); setErr != nil {
-		klog.V(logInfoLev).Infof("setReSchedulerTaskRankIndex %s %v.", task.Name, setErr)
+		klog.V(util.LogInfoLev).Infof("setReSchedulerTaskRankIndex %s %v.", task.Name, setErr)
 		return setErr
 	}
 	return nil

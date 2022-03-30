@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -8,6 +8,8 @@ Package card910x2 is using for HuaWei A300T Ascend pin affinity schedule.
 
 */
 package card910x2
+
+import "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 
 const (
 	// PluginName the card910x2's plugin name.
@@ -43,7 +45,7 @@ const (
 )
 
 type card910x2 struct {
-	name string
+	plugin.HwEntity
 }
 
 type npuPriNodeInf struct {

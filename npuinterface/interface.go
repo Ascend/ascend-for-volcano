@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -22,3 +22,9 @@ type PreHandleFaultNPUFn func(*framework.Session) error
 
 // ClusterNodePredicateFn pre-select cluster processing.
 type ClusterNodePredicateFn func(*api.TaskInfo, *framework.Session) error
+
+// PreHandleVNPUFn handle VNPU pre schedule.
+type PreHandleVNPUFn func(*framework.Session) error
+
+// VNPUJobRunningHandleFn handle VNPU pre schedule.
+type VNPUJobRunningHandleFn func(*framework.Session) error

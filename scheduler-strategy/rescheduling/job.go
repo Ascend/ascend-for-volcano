@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -10,13 +10,15 @@ Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
 package rescheduling
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
+	"strconv"
 	"strings"
-	time2 "time"
+	"time"
 	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
@@ -27,13 +29,13 @@ func convertToRankIdsMapFromCache(jobData interface{}) (map[api.JobID]FaultRankI
 	rankIds, reOk := jobData.(map[api.JobID]FaultRankIDRecordJobCMData)
 	if !reOk {
 		msg := fmt.Errorf("assert %v to FaultRankIDRecordJobCMData failed", jobData)
-		klog.V(logErrorLev).Infof("%v.", msg)
+		klog.V(util.LogErrorLev).Infof("%v.", msg)
 		return nil, msg
 	}
 
 	if len(rankIds) == 0 {
 		msg := fmt.Errorf("RankIds is nil")
-		klog.V(logDebugLev).Infof("convertToRankIdsMapFromCache: %v.", msg)
+		klog.V(util.LogErrorLev).Infof("convertToRankIdsMapFromCache: %v.", msg)
 		return nil, msg
 	}
 
@@ -41,7 +43,7 @@ func convertToRankIdsMapFromCache(jobData interface{}) (map[api.JobID]FaultRankI
 }
 
 func marshalCacheDataToStringByReplaceSlash(jobData interface{}) (string, error) {
-	data, err := marshalCacheDataToString(jobData)
+	data, err := util.MarshalCacheDataToString(jobData)
 	if err != nil {
 		return "", err
 	}
@@ -59,18 +61,18 @@ func getCMRankIdsWriteData(jobData interface{}) (string, error) {
 
 func checkJobPodStatusOK(ssn *framework.Session, job *api.JobInfo) bool {
 	for _, task := range job.Tasks {
-		realPod, err := getRealPodByTask(ssn, task)
+		realPod, err := util.GetRealPodByTask(ssn, task)
 		if err != nil {
-			klog.V(logErrorLev).Infof("checkJobPodStatusOK  getRealPodByTask %v %v.", task.Name, err)
+			klog.V(util.LogErrorLev).Infof("checkJobPodStatusOK  getRealPodByTask %v %v.", task.Name, err)
 			return false
 		}
 		if realPod.Status.Phase == v1.PodRunning {
 			continue
 		}
-		klog.V(logErrorLev).Infof("checkJobPodStatusOK %v not ok %v.", task.Name, realPod.Status.Phase)
+		klog.V(util.LogErrorLev).Infof("checkJobPodStatusOK %v not ok %v.", task.Name, realPod.Status.Phase)
 		return false
 	}
-	klog.V(logInfoLev).Infof("%v checkJobPodStatusOK.", job.Name)
+	klog.V(util.LogInfoLev).Infof("%v checkJobPodStatusOK.", job.Name)
 	return true
 }
 
@@ -79,7 +81,7 @@ func synReSchedulerJobCache(ssn *framework.Session, tmpValue interface{}) error 
 	jobMap, assertOk := tmpValue.(map[api.JobID]ReSchedulerTasks)
 	if !assertOk {
 		msg := fmt.Errorf("convert %v to map[api.JobID]ReSchedulerTasks failed", tmpValue)
-		klog.V(logErrorLev).Infof("synReSchedulerJobCache %v.", msg)
+		klog.V(util.LogErrorLev).Infof("synReSchedulerJobCache %v.", msg)
 		return msg
 	}
 
@@ -87,7 +89,7 @@ func synReSchedulerJobCache(ssn *framework.Session, tmpValue interface{}) error 
 		// 	No job
 		job, ok := ssn.Jobs[jobID]
 		if !ok {
-			klog.V(logErrorLev).Infof("delete %s from configMap due to not existence.", jobID)
+			klog.V(util.LogErrorLev).Infof("delete %s from configMap due to not existence.", jobID)
 			delete(jobMap, jobID)
 			continue
 		}
@@ -95,19 +97,19 @@ func synReSchedulerJobCache(ssn *framework.Session, tmpValue interface{}) error 
 		// For job running, need delete fault job record.
 		if util.IsJobInitial(job) {
 			if checkJobPodStatusOK(ssn, job) {
-				klog.V(logErrorLev).Infof("delete %s from configMap due to job is ok.", jobID)
+				klog.V(util.LogErrorLev).Infof("delete %s from configMap due to job is ok.", jobID)
 				delete(jobMap, jobID)
 				continue
 			}
-			klog.V(logErrorLev).Infof("%s 's status is ok, but not pod, cannot delete this job.", jobID)
+			klog.V(util.LogErrorLev).Infof("%s 's status is ok, but not pod, cannot delete this job.", jobID)
 		}
 
 		// For Node doesn't last too long
 		for _, preTime := range reSchedulerTasksData.Time {
-			nowTime := time2.Now().Unix()
+			nowTime := time.Now().Unix()
 			missTime := nowTime - preTime
-			if missTime > maxIntervalTime+GraceOverTime {
-				klog.V(logErrorLev).Infof("delete %s from CM for overTime %v => %v.", jobID, nowTime, preTime)
+			if missTime > maxIntervalTime+graceOverTime {
+				klog.V(util.LogErrorLev).Infof("delete %s from CM for overTime %v => %v.", jobID, nowTime, preTime)
 				delete(jobMap, jobID)
 			}
 		}
@@ -117,12 +119,12 @@ func synReSchedulerJobCache(ssn *framework.Session, tmpValue interface{}) error 
 }
 
 func getRunningJobUsedNodes(job *api.JobInfo) (map[string]*v1.Pod, error) {
-	var nodeNames = make(map[string]*v1.Pod, constIntNum3)
+	var nodeNames = make(map[string]*v1.Pod, util.ConstIntNum3)
 
 	for _, task := range job.Tasks {
 		nodeNames[task.NodeName] = task.Pod
 	}
-	klog.V(logDebugLev).Infof("getRunningJobUsedNodes %s use %v.", job.Name, len(nodeNames))
+	klog.V(util.LogErrorLev).Infof("getRunningJobUsedNodes %s use %v.", job.Name, len(nodeNames))
 
 	if len(nodeNames) == 0 {
 		return nil, fmt.Errorf("%s no tasks,no use node", job.Name)
@@ -143,7 +145,7 @@ func getTaskUseNPUs(nodesTask map[string]*v1.Pod, nodeName string) ([]string, er
 func getFaultCardsFromCache() (map[string]FaultNPUsOnNode, error) {
 	allFaultNPUs, cacheOk := ReSchedulerCache[CmCardKind]
 	if !cacheOk {
-		klog.V(logDebugLev).Infof("getFaultCardsFromCache %+v.", ReSchedulerCache)
+		klog.V(util.LogErrorLev).Infof("getFaultCardsFromCache %+v.", ReSchedulerCache)
 		return nil, errors.New("nil fault NPU cache")
 	}
 	faultCards, ok := allFaultNPUs.(map[string]FaultNPUsOnNode)
@@ -167,14 +169,14 @@ func getFaultNodesFromCache() (map[string]FaultNodeState, error) {
 func isJobHasFaultNPU(nodesTask map[string]*v1.Pod) bool {
 	allFaultNPUs, err := getFaultCardsFromCache()
 	if err != nil {
-		klog.V(logDebugLev).Infof("isJobHasFaultNPU %+v.", err)
+		klog.V(util.LogErrorLev).Infof("isJobHasFaultNPU %+v.", err)
 		return false
 	}
 
 	for nodeName, nodeFaultNPUs := range allFaultNPUs {
 		taskNPUs, getErr := getTaskUseNPUs(nodesTask, nodeName)
 		if getErr != nil {
-			klog.V(logDebugLev).Infof("getTaskUseNPUs %v.", getErr)
+			klog.V(util.LogErrorLev).Infof("getTaskUseNPUs %v.", getErr)
 			continue
 		}
 		if isTaskHasFaultNPU(taskNPUs, nodeFaultNPUs.FaultNPUs) {
@@ -197,7 +199,7 @@ func isJobHasNetworkUnhealthyNPU(nodesTask map[string]*v1.Pod, job *api.JobInfo)
 	for nodeName, nodeFaultNPUs := range allFaultNPUs {
 		taskNPUs, getErr := getTaskUseNPUs(nodesTask, nodeName)
 		if getErr != nil {
-			klog.V(logDebugLev).Infof("getTaskUseNPUs %v.", getErr)
+			klog.V(util.LogErrorLev).Infof("getTaskUseNPUs %v.", getErr)
 			continue
 		}
 		if isTaskHasFaultNPU(taskNPUs, nodeFaultNPUs.NetworkUnhealthyNPUs) {
@@ -210,7 +212,7 @@ func isJobHasNetworkUnhealthyNPU(nodesTask map[string]*v1.Pod, job *api.JobInfo)
 func isJobHasFaultNodes(nodesTask map[string]*v1.Pod) bool {
 	allFaultNodes, err := getFaultNodesFromCache()
 	if err != nil {
-		klog.V(logDebugLev).Infof("getFaultNodesFromCache %v.", err)
+		klog.V(util.LogErrorLev).Infof("getFaultNodesFromCache %v.", err)
 		return false
 	}
 
@@ -228,13 +230,13 @@ func isJobHasFaultNodes(nodesTask map[string]*v1.Pod) bool {
 func GetJobFaultRescheduleLabel(job *api.JobInfo) (string, error) {
 	value, ok := job.PodGroup.Labels[jobRescheduleLabelKey]
 	if !ok {
-		klog.V(logDebugLev).Infof("GetJobFaultRescheduleLabel %+v.", job.PodGroup.Labels)
+		klog.V(util.LogErrorLev).Infof("GetJobFaultRescheduleLabel %+v.", job.PodGroup.Labels)
 		return "", fmt.Errorf("%s no job reschedule label", job.Name)
 	}
 
 	if _, setOk := reSchedulerJobController[value]; !setOk {
 		msg := fmt.Errorf("%s fault reschedule label %+v not support", job.Name, value)
-		klog.V(logErrorLev).Infof("GetJobFaultRescheduleLabel %+v.", msg)
+		klog.V(util.LogErrorLev).Infof("GetJobFaultRescheduleLabel %+v.", msg)
 		return "", msg
 	}
 	return value, nil
@@ -244,12 +246,12 @@ func GetJobFaultRescheduleLabel(job *api.JobInfo) (string, error) {
 func isJobSetFaultRescheduleLabel(job *api.JobInfo) bool {
 	value, err := GetJobFaultRescheduleLabel(job)
 	if err != nil {
-		klog.V(logDebugLev).Infof("set fault reschedule label %+v.", err)
+		klog.V(util.LogErrorLev).Infof("set fault reschedule label %+v.", err)
 		return false
 	}
 
 	if value == JobOffRescheduleLabelValue {
-		klog.V(logInfoLev).Infof("%s set fault reschedule label %+v.", job.UID, value)
+		klog.V(util.LogInfoLev).Infof("%s set fault reschedule label %+v.", job.UID, value)
 		return false
 	}
 	return true
@@ -266,21 +268,21 @@ func IsDistributedJob(job *api.JobInfo) bool {
 
 func isJobHasFaultResources(nodeAndPods map[string]*v1.Pod, job *api.JobInfo) bool {
 	if isJobHasFaultNodes(nodeAndPods) {
-		klog.V(logDebugLev).Infof("isJobHasFaultNodes %s use fault node.", job.Name)
+		klog.V(util.LogErrorLev).Infof("isJobHasFaultNodes %s use fault node.", job.Name)
 		return true
 	}
 
 	if isJobHasFaultNPU(nodeAndPods) {
-		klog.V(logDebugLev).Infof("isJobHasFaultNPU %s use fault npu.", job.Name)
+		klog.V(util.LogErrorLev).Infof("isJobHasFaultNPU %s use fault npu.", job.Name)
 		return true
 	}
 
 	if isJobHasNetworkUnhealthyNPU(nodeAndPods, job) {
-		klog.V(logDebugLev).Infof("isJobHasNetworkUnhealthyNPU %s use NetworkUnhealthy npu.", job.Name)
+		klog.V(util.LogErrorLev).Infof("isJobHasNetworkUnhealthyNPU %s use NetworkUnhealthy npu.", job.Name)
 		return true
 	}
 
-	klog.V(logInfoLev).Infof("isJobHasFaultResources %s no use fault resources.", job.Name)
+	klog.V(util.LogInfoLev).Infof("isJobHasFaultResources %s no use fault resources.", job.Name)
 
 	return false
 }
@@ -291,26 +293,26 @@ func GetFaultNPUJobs(jobs map[string]*api.JobInfo) ([]FaultNPUJob, error) {
 
 	for _, job := range jobs {
 		if !isJobSetFaultRescheduleLabel(job) {
-			klog.V(logErrorLev).Infof("%s not set rescheduleLabel, no need reschedule.", job.Name)
+			klog.V(util.LogErrorLev).Infof("%s not set rescheduleLabel, no need reschedule.", job.Name)
 			continue
 		}
-		klog.V(logInfoLev).Infof("%s set rescheduleLabel, has fault reschedule feature.", job.Name)
+		klog.V(util.LogInfoLev).Infof("%s set rescheduleLabel, has fault reschedule feature.", job.Name)
 		// Get running job used node.
 		nodeAndPods, getErr := getRunningJobUsedNodes(job)
 		if getErr != nil {
-			klog.V(logDebugLev).Infof("GetFaultNPUJobs %s %v.", job.Name, getErr)
+			klog.V(util.LogErrorLev).Infof("GetFaultNPUJobs %s %v.", job.Name, getErr)
 			continue
 		}
 
 		if !isJobHasFaultResources(nodeAndPods, job) {
-			klog.V(logDebugLev).Infof("isJobHasFaultResources %s has no fault resources.", job.Name)
+			klog.V(util.LogErrorLev).Infof("isJobHasFaultResources %s has no fault resources.", job.Name)
 			continue
 		}
 
-		klog.V(logDebugLev).Infof("GetFaultNPUJobs %s use fault resource.", job.Name)
+		klog.V(util.LogErrorLev).Infof("GetFaultNPUJobs %s use fault resource.", job.Name)
 		faultJob, err := getFaultNodePODAndRankIndex(job, nodeAndPods)
 		if err != nil {
-			klog.V(logDebugLev).Infof("GetFaultNPUJobs %s %v.", job.Name, err)
+			klog.V(util.LogErrorLev).Infof("GetFaultNPUJobs %s %v.", job.Name, err)
 			continue
 		}
 		faultNPUJobs = append(faultNPUJobs, faultJob)
@@ -344,7 +346,7 @@ func GetRestartNPUFaultJobs(faultNPUJobs []FaultNPUJob, jobs map[string]*api.Job
 func deleteJobRankIndex(job *api.JobInfo) {
 	for _, task := range job.Tasks {
 		delete(task.Pod.Annotations, podRankIndex)
-		klog.V(logDebugLev).Infof("delete %s rankIndex for job pending.", task.UID)
+		klog.V(util.LogErrorLev).Infof("delete %s rankIndex for job pending.", task.UID)
 	}
 }
 
@@ -352,23 +354,23 @@ func deleteJobRankIndex(job *api.JobInfo) {
 func ReleaseFaultJobTakeNodes(job *api.JobInfo) error {
 	jobInterface, getErr := ReSchedulerCache[CmJobKind]
 	if !getErr {
-		klog.V(logDebugLev).Infof("no ReScheduler Tasks")
+		klog.V(util.LogErrorLev).Infof("no ReScheduler Tasks")
 		return nil
 	}
 
 	jobMap, jobErr := jobInterface.(map[api.JobID]ReSchedulerTasks)
 	if !jobErr {
-		klog.V(logDebugLev).Infof("%v not ReSchedulerTasks map", jobInterface)
+		klog.V(util.LogErrorLev).Infof("%v not ReSchedulerTasks map", jobInterface)
 		return nil
 	}
 
 	if _, ok := jobMap[job.UID]; !ok {
-		klog.V(logErrorLev).Infof("release job(%s) not find in buffer", job.Name)
+		klog.V(util.LogErrorLev).Infof("release job(%s) not find in buffer", job.Name)
 		return nil
 	}
 
 	if job.PodGroup.Status.Phase == scheduling.PodGroupPending {
-		klog.V(logInfoLev).Infof("delete %s from configMap due to pending.", job.UID)
+		klog.V(util.LogInfoLev).Infof("delete %s from configMap due to pending.", job.UID)
 		delete(jobMap, job.UID)
 		ReSchedulerCache[CmJobKind] = jobMap
 		deleteJobRankIndex(job)
@@ -437,13 +439,13 @@ func isTaskUseFaultNode(task *api.TaskInfo) bool {
 func isTaskUseFaultNPU(task *api.TaskInfo, job *api.JobInfo) bool {
 	taskUseNPUs, err := getRunningTaskUseNPUs(task)
 	if err != nil {
-		klog.V(logInfoLev).Infof("getRunningTaskUseNPUs %v.", err)
+		klog.V(util.LogInfoLev).Infof("getRunningTaskUseNPUs %v.", err)
 		return false
 	}
 
 	allFaultNPUs, cardsErr := getFaultCardsFromCache()
 	if cardsErr != nil {
-		klog.V(logInfoLev).Infof("isTaskUseFaultNPU %v.", err)
+		klog.V(util.LogInfoLev).Infof("isTaskUseFaultNPU %v.", err)
 		return false
 	}
 
@@ -477,7 +479,7 @@ func isFailedTaskInFaultJob(taskName string, job *api.JobInfo) bool {
 
 func recordReSchedulerTaskRankIndexInCache(task ReSchedulerTasks, jobInf *api.JobInfo) error {
 	var rankIndexSlice = make(map[string]struct{ UpdateTime int64 }, 1)
-	now := time2.Now().Unix()
+	now := time.Now().Unix()
 	for key, rankIndex := range task.RankIndexes {
 		if isFailedTaskInFaultJob(task.TaskName[key], jobInf) {
 			rankIndexSlice[rankIndex] = struct{ UpdateTime int64 }{UpdateTime: now}
@@ -486,11 +488,11 @@ func recordReSchedulerTaskRankIndexInCache(task ReSchedulerTasks, jobInf *api.Jo
 	var rankIndexMap = map[api.JobID]TaskUsedRankIndex{
 		jobInf.UID: {
 			FaultNodeRankIndex: rankIndexSlice,
-			UpdateTime:         time2.Now().Unix(),
+			UpdateTime:         time.Now().Unix(),
 		},
 	}
 	ReSchedulerCache[TmpAllocRankIndexKind] = rankIndexMap
-	klog.V(logDebugLev).Infof("set abnormal job used rankIndex %+v.", rankIndexMap)
+	klog.V(util.LogErrorLev).Infof("set abnormal job used rankIndex %+v.", rankIndexMap)
 	return nil
 }
 
@@ -509,20 +511,20 @@ func writeFaultJobInfInCache(job *api.JobInfo, task ReSchedulerTasks) error {
 func isDelayingJobTimeOut(dJob *api.JobInfo) bool {
 	jobs, getErr := getRankIDJobsFromCache()
 	if getErr != nil {
-		klog.V(logErrorLev).Infof("isDelayingJobTimeOut %v.", getErr)
+		klog.V(util.LogErrorLev).Infof("isDelayingJobTimeOut %v.", getErr)
 		return false
 	}
 	rankIDJob, ok := jobs[dJob.UID]
 	if !ok {
-		klog.V(logErrorLev).Infof("isDelayingJobTimeOut %s not in cache.", dJob.UID)
+		klog.V(util.LogErrorLev).Infof("isDelayingJobTimeOut %s not in cache.", dJob.UID)
 		return false
 	}
-	now := time2.Now().Unix()
-	klog.V(logDebugLev).Infof("isDelayingJobTimeOut now:%v create:%v.", now, rankIDJob.CreatTime)
-	if now-rankIDJob.CreatTime > GraceOverTime {
+	now := time.Now().Unix()
+	klog.V(util.LogErrorLev).Infof("isDelayingJobTimeOut now:%v create:%v.", now, rankIDJob.CreatTime)
+	if now-rankIDJob.CreatTime > graceOverTime {
 		return true
 	}
-	if rankIDJob.CreatTime-now > GraceOverTime {
+	if rankIDJob.CreatTime-now > graceOverTime {
 		return true
 	}
 	return false
@@ -533,14 +535,14 @@ func getRankIDJobsFromCache() (map[api.JobID]FaultRankIDRecordJobCMData, error) 
 	if !ok {
 		return nil, fmt.Errorf("")
 	}
-	klog.V(logDebugLev).Infof("getRankIdJobsFromCache %v.", tmpValue)
+	klog.V(util.LogErrorLev).Infof("getRankIdJobsFromCache %v.", tmpValue)
 	jobRankIds, getErr := getJobFaultNPURankIdsByData(tmpValue)
 	if getErr != nil {
 		msg := fmt.Errorf("assert %v to map[string]FaultRankIDRecordJobCMData failed", tmpValue)
-		klog.V(logErrorLev).Infof("synJobRankIdsCache %v.", msg)
+		klog.V(util.LogErrorLev).Infof("synJobRankIdsCache %v.", msg)
 		return nil, msg
 	}
-	klog.V(logDebugLev).Infof("getJobFaultNPURankIdsByData %+v.", jobRankIds)
+	klog.V(util.LogErrorLev).Infof("getJobFaultNPURankIdsByData %+v.", jobRankIds)
 	return jobRankIds, nil
 }
 
@@ -552,7 +554,7 @@ func GetRecordJobPods(dJob *api.JobInfo) (map[string]int64, map[string]types.UID
 	}
 	rankIdsMap, covErr := convertToRankIdsMapFromCache(rankIDData)
 	if covErr != nil {
-		klog.V(logDebugLev).Infof("getRecordJobPods: %v.", covErr)
+		klog.V(util.LogErrorLev).Infof("getRecordJobPods: %v.", covErr)
 		return nil, nil, covErr
 	}
 	jobID := api.JobID(dJob.Namespace + "/" + dJob.Name)
@@ -561,8 +563,8 @@ func GetRecordJobPods(dJob *api.JobInfo) (map[string]int64, map[string]types.UID
 		return nil, nil, fmt.Errorf("none job %v in cache", jobID)
 	}
 
-	jobPodsTime := make(map[string]int64, constIntNum3)
-	jobPodsUID := make(map[string]types.UID, constIntNum3)
+	jobPodsTime := make(map[string]int64, util.ConstIntNum3)
+	jobPodsUID := make(map[string]types.UID, util.ConstIntNum3)
 	for k, v := range value.PodsName {
 		tmpTime := value.PodsCreatTime[k]
 		tmpUID := value.PodsUID[k]
@@ -575,7 +577,7 @@ func GetRecordJobPods(dJob *api.JobInfo) (map[string]int64, map[string]types.UID
 func isJobGraceDeletedSuccess(dJob *api.JobInfo) bool {
 	if len(dJob.Tasks) == 0 {
 		// old pod has been deleted.
-		klog.V(logDebugLev).Infof("isJobGraceDeletedSuccess: %v pods has been deleted.", dJob.Name)
+		klog.V(util.LogErrorLev).Infof("isJobGraceDeletedSuccess: %v pods has been deleted.", dJob.Name)
 		return true
 	}
 
@@ -588,13 +590,13 @@ func isJobGraceDeletedSuccess(dJob *api.JobInfo) bool {
 	for _, task := range dJob.Tasks {
 		// The new POD is inconsistent with the old one.
 		if task.Pod.CreationTimestamp.Unix() != jobPodsTime[task.Pod.Name] {
-			klog.V(logDebugLev).Infof("pod restart success[new:%v---old:%v]",
+			klog.V(util.LogErrorLev).Infof("pod restart success[new:%v---old:%v]",
 				task.Pod.CreationTimestamp.Unix(), jobPodsTime[task.Pod.Name])
 			restartNum++
 		}
 	}
 	if restartNum == len(dJob.Tasks) {
-		klog.V(logDebugLev).Infof("job all pod %d restart success.", restartNum)
+		klog.V(util.LogErrorLev).Infof("job all pod %d restart success.", restartNum)
 		return true
 	}
 	return false
@@ -602,9 +604,9 @@ func isJobGraceDeletedSuccess(dJob *api.JobInfo) bool {
 
 func getFaultJobRankIDCMNameByJobID(dJob api.JobID) (string, error) {
 	temp := strings.Split(string(dJob), "/")
-	if len(temp) != constIntNum2 {
+	if len(temp) != util.ConstIntNum2 {
 		msg := fmt.Errorf("illegal jobID: %v", dJob)
-		klog.V(logErrorLev).Infof("getFaultJobRankIDCMNameByJobID %v.", msg)
+		klog.V(util.LogErrorLev).Infof("getFaultJobRankIDCMNameByJobID %v.", msg)
 		return "", msg
 	}
 	jobName := temp[1]
@@ -616,12 +618,12 @@ func getFaultJobRankIDCMNameByJobID(dJob api.JobID) (string, error) {
 func deleteRedundantRankIDCM(ssn *framework.Session, nameSpace string, dJob api.JobID) error {
 	configMapName, getErr := getFaultJobRankIDCMNameByJobID(dJob)
 	if getErr != nil {
-		klog.V(logErrorLev).Infof("deleteRedundantRankIDCM %v.", getErr)
+		klog.V(util.LogErrorLev).Infof("deleteRedundantRankIDCM %v.", getErr)
 		return getErr
 	}
 
-	klog.V(logInfoLev).Infof("deleteRedundantRankIdCM %v:%v.", nameSpace, configMapName)
-	if err := deleteSchedulerConfigMap(ssn, nameSpace, configMapName); err != nil {
+	klog.V(util.LogInfoLev).Infof("deleteRedundantRankIdCM %v:%v.", nameSpace, configMapName)
+	if err := util.DeleteSchedulerConfigMap(ssn, nameSpace, configMapName); err != nil {
 		return err
 	}
 	return nil
@@ -634,31 +636,31 @@ func GetNeedForceDeleteDelayingJobs(ssn *framework.Session,
 	for jobID := range dJobs {
 		jobInf, ok := ssn.Jobs[jobID]
 		if !ok {
-			klog.V(logErrorLev).Infof("GetNeedForceDeleteDelayingJobs %v not in ssn.", jobID)
+			klog.V(util.LogErrorLev).Infof("GetNeedForceDeleteDelayingJobs %v not in ssn.", jobID)
 			continue
 		}
 
 		if isJobGraceDeletedSuccess(jobInf) {
-			klog.V(logDebugLev).Infof("%v grace deleted successful.", jobInf.Name)
+			klog.V(util.LogErrorLev).Infof("%v grace deleted successful.", jobInf.Name)
 			continue
 		}
 
 		if !isDelayingJobTimeOut(jobInf) {
 			continue
 		}
-		klog.V(logDebugLev).Infof("%v is time out for delete.", jobInf.Name)
+		klog.V(util.LogErrorLev).Infof("%v is time out for delete.", jobInf.Name)
 		forceJobs = append(forceJobs, jobInf)
 	}
 
 	if len(forceJobs) == 0 {
-		klog.V(logDebugLev).Infof("GetNeedForceDeleteDelayingJobs get nil jobs.")
+		klog.V(util.LogErrorLev).Infof("GetNeedForceDeleteDelayingJobs get nil jobs.")
 		return nil, errors.New("get none jobs")
 	}
 	return forceJobs, nil
 }
 
 func getFaultJobPODRankIndexMapFromCache(restartJob *api.JobInfo) (map[string]string, error) {
-	podRankIndexes := make(map[string]string, constIntNum3)
+	podRankIndexes := make(map[string]string, util.ConstIntNum3)
 	for _, task := range restartJob.Tasks {
 		fTask, getErr := getReSchedulerTasksFromCache(task)
 		if getErr != nil {
@@ -687,11 +689,11 @@ func getFaultJobPODRankIndexMapFromCache(restartJob *api.JobInfo) (map[string]st
 func GetGraceDeleteJobsFromCache() (map[api.JobID]ReSchedulerTasks, error) {
 	jobMap, getErr := getReSchedulerJobsMapFromCache()
 	if getErr != nil {
-		klog.V(logDebugLev).Infof("getReSchedulerJobsMapFromCache %v.", getErr)
+		klog.V(util.LogErrorLev).Infof("getReSchedulerJobsMapFromCache %v.", getErr)
 		return nil, getErr
 	}
 
-	deleteJobMap := make(map[api.JobID]ReSchedulerTasks, constIntNum3)
+	deleteJobMap := make(map[api.JobID]ReSchedulerTasks, util.ConstIntNum3)
 	for jobUID, reSchedulerTasks := range jobMap {
 		if reSchedulerTasks.GraceTaskFlag == true {
 			deleteJobMap[jobUID] = reSchedulerTasks
@@ -702,4 +704,118 @@ func GetGraceDeleteJobsFromCache() (map[api.JobID]ReSchedulerTasks, error) {
 		return nil, errors.New("none grace delete jobs")
 	}
 	return deleteJobMap, nil
+}
+
+func getJobFaultRankIds(job *api.JobInfo) (string, error) {
+	allFaultNPUs, cacheErr := getFaultCardsFromCache()
+	if cacheErr != nil {
+		klog.V(util.LogErrorLev).Infof("getJobFaultRankIds %s %v.", job.Name, cacheErr)
+		return "", cacheErr
+	}
+
+	klog.V(util.LogErrorLev).Infof("getJobFaultRankIds %s %v.", job.Name, allFaultNPUs)
+	var rankIds []string
+	rankIndexMap, err := getFaultJobPODRankIndexMapFromCache(job)
+	if err != nil {
+		klog.V(util.LogErrorLev).Infof("getJobFaultRankIds %s %v.", job.Name, err)
+		return "", err
+	}
+	for nodeName, rankIndexStr := range rankIndexMap {
+		klog.V(util.LogInfoLev).Infof("getJobFaultRankIds %s %v.", nodeName, rankIndexStr)
+		var faultNPUs []string
+		faultNPUsOnNode, ok := allFaultNPUs[nodeName]
+		if !ok {
+			continue
+		}
+		faultNPUs = append(faultNPUs, faultNPUsOnNode.FaultNPUs...)
+		faultNPUs = append(faultNPUs, faultNPUsOnNode.NetworkUnhealthyNPUs...)
+		tmpDeviceID := util.ChangeTopToIntArray(strings.Join(faultNPUs, ","), npu800And9000CardPreName)
+		if len(tmpDeviceID) == 0 {
+			klog.V(util.LogInfoLev).Infof("%s getTopFromNode %+v nil.", nodeName, faultNPUsOnNode)
+			continue
+		}
+		rankIndex, covertErr := strconv.Atoi(rankIndexStr)
+		if covertErr != nil {
+			klog.V(util.LogErrorLev).Infof("%s getJobFaultRankIds covert %v.", covertErr, rankIndexStr)
+			continue
+		}
+		for _, tmp := range tmpDeviceID {
+			rankIds = append(rankIds, strconv.Itoa(tmp+rankIndex*node910X8NPUNum))
+		}
+	}
+	dataBuffer, err := json.Marshal(rankIds)
+	if err != nil {
+		klog.V(util.LogErrorLev).Infof("marshalCacheDataToString err: %v.", err)
+		return "", err
+	}
+	return string(dataBuffer), nil
+}
+
+func getJobPodsAndCreateTimeByRankIDJobs(job *api.JobInfo) (FaultRankIDRecordJobCMData, error) {
+	var podNames []string
+	var podCreatTimes []int64
+	var podsUID []types.UID
+	rankIds := FaultRankIDRecordJobCMData{}
+	for _, task := range job.Tasks {
+		podNames = append(podNames, task.Pod.Name)
+		podCreatTimes = append(podCreatTimes, task.Pod.CreationTimestamp.Unix())
+		podsUID = append(podsUID, task.Pod.UID)
+	}
+	rankIds.PodsName = podNames
+	rankIds.PodsCreatTime = podCreatTimes
+	rankIds.PodsUID = podsUID
+	return rankIds, nil
+}
+
+// WriteJobFaultRankIDIntoCache Record into cache for recording in volcano-cm later.
+func WriteJobFaultRankIDIntoCache(job *api.JobInfo) error {
+	faultRankIds, getErr := getFaultNPUJobCMData(job)
+	if getErr != nil {
+		return getErr
+	}
+	rankIds, podErr := getJobPodsAndCreateTimeByRankIDJobs(job)
+	if podErr != nil {
+		return podErr
+	}
+	rankIds.CreatTime = faultRankIds.CreatTime
+	rankIds.NameSpace = job.Namespace
+	rankIds.FaultRankIds = faultRankIds.FaultRankIds
+	var rankIDMap = map[api.JobID]FaultRankIDRecordJobCMData{
+		job.UID: rankIds,
+	}
+	ReSchedulerCache[CmJobRankIds] = rankIDMap
+
+	return nil
+}
+
+func getFaultNPUJobCMData(job *api.JobInfo) (*FaultRankIdsJobCMData, error) {
+	fRankIds, getErr := getJobFaultRankIds(job)
+	if getErr != nil {
+		klog.V(util.LogErrorLev).Infof("getJobFaultRankIds err: %v.", getErr)
+		return nil, getErr
+	}
+
+	faultRankIds := &FaultRankIdsJobCMData{
+		FaultRankIds: fRankIds,
+		CreatTime:    time.Now().Unix(),
+	}
+	return faultRankIds, nil
+}
+
+func getJobFaultNPURankIDCMData(job *api.JobInfo) (map[string]string, error) {
+	faultRankIdsMap := make(map[string]string, util.ConstIntNum3)
+
+	faultRankIds, getErr := getFaultNPUJobCMData(job)
+	if getErr != nil {
+		klog.V(util.LogErrorLev).Infof("getFaultNPUJobCMData err: %v.", getErr)
+		return nil, getErr
+	}
+	dataBuffer, err := json.Marshal(faultRankIds)
+	if err != nil {
+		klog.V(util.LogErrorLev).Infof("marshalCacheDataToString err: %v.", err)
+		return nil, err
+	}
+	faultRankIdsMap[JobFaultRankIDCMDataKey] = string(dataBuffer)
+
+	return faultRankIdsMap, nil
 }

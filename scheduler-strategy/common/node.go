@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -20,7 +20,7 @@ func (cn *Scheduler) initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) erro
 	for key := range nodes {
 		topStr, err := util.GetNPUAllocCardsFromNodeAnnotations(nodes[key], cn.AnnoName)
 		if err != nil {
-			klog.V(LogDebugLev).Infof("%s initNodesFn :%v", cn.PluginName, err)
+			klog.V(util.LogDebugLev).Infof("%s initNodesFn :%v", cn.PluginName, err)
 			return nil
 		}
 		err = util.SaveTopologyInMap(nodes[key].Others, topStr, cn.AnnoName)
@@ -28,7 +28,7 @@ func (cn *Scheduler) initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) erro
 			return err
 		}
 	}
-	klog.V(LogDebugLev).Infof("All nodes are initialized successfully")
+	klog.V(util.LogDebugLev).Infof("All nodes are initialized successfully")
 	return nil
 }
 

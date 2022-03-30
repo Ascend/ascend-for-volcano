@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -14,6 +14,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/common"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 // Name This need by frame init plugin.
@@ -23,18 +24,17 @@ func (tp *chip710) Name() string {
 
 // New return npu plugin.
 func New(npuName string) plugin.HwNPUSchedulerPlugin {
-	defaultSchedulerConfig := make(map[string]string, common.ConstIntNum1)
-	defaultSchedulerConfig[archSelector] = huaweiArchArm + "|" + huaweiArchX86
-	co := common.Scheduler{
-		PluginName:                npuName,
-		AnnoName:                  a710NPUChipName,
-		AnnoPreVal:                a710NPUCardPreName,
-		DefaultJobSchedulerConfig: defaultSchedulerConfig,
+	var npuPlugin = chip710{}
+	npuPlugin.com = common.Scheduler{
+		PluginName: npuName,
+		AnnoName:   npuPlugin.GetResourceName(),
+		AnnoPreVal: npuPlugin.GetResourcePreVal(),
+
+		DefaultJobSchedulerConfig: npuPlugin.GetPluginDefaultJobSchedulerConfig(),
 	}
-	return &chip710{
-		com: co,
-		re:  common.ReScheduler{AnnoUnHealthy: a710FaultNPUName, AnnoName: co.AnnoName, IsMyJob: co.IsMyJob},
-	}
+	npuPlugin.re = common.ReScheduler{AnnoUnHealthy: a710FaultNPUName,
+		AnnoName: npuPlugin.com.AnnoName, IsMyJob: npuPlugin.com.IsMyJob}
+	return &npuPlugin
 }
 
 // OnHandlerStart The npu scheduler policy initial and common processing.
@@ -117,4 +117,21 @@ func (tp *chip710) IsMyNode(node *api.NodeInfo) error {
 // IsMyJob Determine if it is the NPU job of your plug-in.
 func (tp *chip710) IsMyJob(job *api.JobInfo) error {
 	return tp.com.IsMyJob(job)
+}
+
+// GetResourceName get plugin NPU resource name.
+func (tp *chip710) GetResourceName() string {
+	return a710NPUChipName
+}
+
+// GetResourcePreVal get plugin NPU resource name prefix.
+func (tp *chip710) GetResourcePreVal() string {
+	return a710NPUCardPreName
+}
+
+// GetPluginDefaultJobSchedulerConfig get plugin default job scheduler config.
+func (tp *chip710) GetPluginDefaultJobSchedulerConfig() map[string]string {
+	defaultSchedulerConfig := make(map[string]string, util.ConstIntNum1)
+	defaultSchedulerConfig[archSelector] = huaweiArchArm + "|" + huaweiArchX86
+	return defaultSchedulerConfig
 }

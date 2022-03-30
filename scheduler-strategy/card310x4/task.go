@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -38,7 +38,7 @@ func getBestNodesMap(priNodeGroups []map[string]*npuPriNodeInf) (map[string]int,
 func IsTaskOfCardModeFromLabel(task *api.TaskInfo) bool {
 	taskSelectors := util.GetTaskLabels(task)
 	if len(taskSelectors) == 0 {
-		klog.V(logDebugLev).Infof("task(%s) has no selectors.", task.Name)
+		klog.V(util.LogDebugLev).Infof("task(%s) has no selectors.", task.Name)
 		return false
 	}
 
