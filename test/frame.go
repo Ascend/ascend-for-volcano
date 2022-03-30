@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -31,6 +31,14 @@ func PrintError(format string, args ...interface{}) {
 	fmt.Printf("ERROR:"+format+"\n", args...)
 }
 
+func AddNodeIntoFakeSSN(ssn *framework.Session, info *api.NodeInfo) {
+	ssn.Nodes[info.Name] = info
+}
+
+func AddJobIntoFakeSSN(ssn *framework.Session, info *api.JobInfo) {
+	ssn.Jobs[info.UID] = info
+}
+
 // FakeNormalSSN fake normal test ssn.
 func FakeNormalSSN() *framework.Session {
 	binder := &util.FakeBinder{
@@ -56,7 +64,7 @@ func FakeNormalSSN() *framework.Session {
 	for _, task := range jobInf.Tasks {
 		schedulerCache.AddPod(task.Pod)
 	}
-	addTestJobPodGroup(jobInf)
+	AddTestJobPodGroup(jobInf)
 
 	snapshot := schedulerCache.Snapshot()
 	ssn := &framework.Session{

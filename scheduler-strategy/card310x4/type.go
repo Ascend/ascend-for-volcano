@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -28,18 +28,9 @@ const (
 	chipAcceleratorType = "chip"
 
 	nodeNPUNumber  = 64
-	constIntNum0   = 0
-	constIntNum1   = 1
-	constIntNum2   = 2
-	constIntNum3   = 3
 	cardNPUNumber  = 4
 	constIntNum5   = 5
-	constIntNum10  = 10
 	constNPUWeight = 8.0
-
-	logErrorLev = 1
-	logInfoLev  = 3
-	logDebugLev = 4
 
 	nodesNoMeetNPUReqError     = "insufficient npus on the schedulable nodes in cluster"
 	nodeNotStableWarning       = "the npus on this node are unstable"

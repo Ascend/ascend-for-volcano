@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -32,7 +32,12 @@ func (tp *module910x8) Name() string {
 
 // New return npu plugin.
 func New(npuName string) plugin.HwNPUSchedulerPlugin {
-	return &module910x8{name: npuName}
+	var npuPlugin = module910x8{}
+	npuPlugin.PluginName = npuName
+	npuPlugin.AnnoName = npuPlugin.GetResourceName()
+	npuPlugin.AnnoPreVal = npuPlugin.GetResourcePreVal()
+	npuPlugin.DefaultJobSchedulerConfig = npuPlugin.GetPluginDefaultJobSchedulerConfig()
+	return &npuPlugin
 }
 
 // OnHandlerStart The npu scheduler policy initial and common processing.
@@ -87,7 +92,7 @@ func (tp *module910x8) PreCheckNodeFn(task *vapi.TaskInfo, node *vapi.NodeInfo, 
 	schedulerConf := npuutil.GetSchedulerSelectorConfig(confs)
 	if len(schedulerConf) == 0 {
 		// get scheduler selector configure failed, but need continue
-		klog.V(logErrorLev).Infof("%s JobName: %s get selector nil.", PluginName, task.Name)
+		klog.V(logErrorLev).Infof("%s JobUID: %s get selector nil.", PluginName, task.Name)
 		return fmt.Errorf("%s get scheduler selector nil", node.Name)
 	}
 
@@ -165,7 +170,7 @@ func (tp *module910x8) ScoreBestNPUNodesFn(scoreMap map[string]float64,
 	var nodeWeight = 1.0
 
 	// parameters check
-	if reflect.ValueOf(scoreMap).IsNil() {
+	if len(scoreMap) == 0 || reflect.ValueOf(scoreMap).IsNil() {
 		err := errors.New("scoreBestNPUNodes's scoreMap is nil")
 		klog.V(logInfoLev).Infof("%s %v.", PluginName, err)
 		return nil, err
@@ -393,10 +398,6 @@ func preHandleFaultNPUFn(ssn *framework.Session) error {
 	klog.V(logDebugLev).Infof("%s enter preHandleFaultNPUFn.", PluginName)
 	defer klog.V(logDebugLev).Infof("%s leave preHandleFaultNPUFn.", PluginName)
 
-	// 0.init param
-	if err := setGraceOverTime(ssn); err != nil {
-		klog.V(logErrorLev).Infof("%s setGraceOverTime %v.", PluginName, err)
-	}
 	// 1.record fault information.
 	if err := rescheduling.RecordFaultInfInCache(ssn, nodeNPUNumber); err != nil {
 		klog.V(logDebugLev).Infof("%s preHandleFaultNPUFn %v.", PluginName, err)
@@ -431,46 +432,19 @@ func preHandleFaultNPUFn(ssn *framework.Session) error {
 	return nil
 }
 
+// GetResourceName get plugin NPU resource name.
+func (tp *module910x8) GetResourceName() string {
+	return npu800And9000CardName
+}
 
-func setGraceOverTime(ssn *framework.Session) error {
-	if len(ssn.Configurations) == 0 {
-		klog.V(logDebugLev).Info("no configurations, GraceOverTime will not be changed.")
-		return nil
-	}
+// GetResourcePreVal get plugin NPU resource name prefix.
+func (tp *module910x8) GetResourcePreVal() string {
+	return npu800And9000CardName
+}
 
-	configuration, err := npuutil.GetConfigFromSchedulerConfigMap(npuutil.CMInitParamKey, ssn.Configurations)
-	if err != nil {
-		klog.V(logDebugLev).Info("cannot get configuration, GraceOverTime will not be changed.")
-		return err
-	}
-	// get grace over time by user configuration
-	overTimeStr, ok := configuration.Arguments[rescheduling.GraceOverTimeKey]
-	if !ok {
-		klog.V(logDebugLev).Info("set GraceOverTime failed and will not be changed, " +
-			"key grace-over-time doesn't exists.")
-		return nil
-	}
-	const (
-		constNumber10 = 10
-		constNumber64 = 64
-		minGraceOverTime = 2
-		maxGraceOverTime = 3600
-	)
-
-	overTime, err := strconv.ParseInt(overTimeStr, constNumber10, constNumber64)
-	if err != nil {
-		klog.V(logDebugLev).Infof("set GraceOverTime failed and will not be changed, "+
-			"grace-over-time is invalid [%#v].", overTimeStr)
-		return err
-	}
-	if overTime < minGraceOverTime || overTime > maxGraceOverTime {
-		klog.V(logDebugLev).Infof("GraceOverTime value should be range [2, 3600], configured is [%#v], " +
-			"GraceOverTime will not be changed", overTimeStr)
-		return errors.New("GraceOverTime is out of range")
-	}
-	// use user's configuration to set grace over time
-	rescheduling.GraceOverTime = overTime
-	klog.V(logDebugLev).Infof("set GraceOverTime to new value [%d].", overTime)
-
-	return nil
+// GetPluginDefaultJobSchedulerConfig get plugin default job scheduler config.
+func (tp *module910x8) GetPluginDefaultJobSchedulerConfig() map[string]string {
+	defaultSchedulerConfig := make(map[string]string, npuutil.ConstIntNum1)
+	defaultSchedulerConfig[archSelector] = huaweiArchArm + "|" + huaweiArchX86
+	return defaultSchedulerConfig
 }

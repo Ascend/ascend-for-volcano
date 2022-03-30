@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -14,6 +14,8 @@ import (
 	"fmt"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
+	"strconv"
+	"strings"
 	"volcano.sh/volcano/pkg/scheduler/api"
 )
 
@@ -24,26 +26,49 @@ func GetNodeIdleNPUNum(node *api.NodeInfo, npuCardName string) (int, error) {
 		return 0, errors.New("not npu node")
 	}
 
-	nodeNPU := int(nodeNPUIdleNumber / npuHex)
+	nodeNPU := int(nodeNPUIdleNumber / NPUHex)
 	return nodeNPU, nil
+}
+
+// GetNodeAvailNPUIdsFromAnno Get node npu available number
+func GetNodeAvailNPUIdsFromAnno(node *api.NodeInfo, npuCardName string) (map[int]struct{}, error) {
+	chipStr, getErr := GetNPUAllocCardsFromNodeAnnotations(node, npuCardName)
+	if getErr != nil {
+		klog.V(LogDebugLev).Infof("GetNodeAvailNPUIdsFromAnno :%v", getErr)
+		return nil, getErr
+	}
+
+	idsMap := make(map[int]struct{}, ConstIntNum8)
+	chipSlice := strings.Split(chipStr, ",")
+	for _, chip := range chipSlice {
+		// chip like Ascend710-4
+		cardSlice := strings.Split(chip, "-")
+		cardStr := cardSlice[len(cardSlice)-1]
+		cardId, covErr := strconv.Atoi(cardStr)
+		if covErr != nil {
+			return nil, covErr
+		}
+		idsMap[cardId] = struct{}{}
+	}
+	return idsMap, nil
 }
 
 // GetTopFromNodeOthers Get npu card ids like（int[]） from node info.
 func GetTopFromNodeOthers(node *api.NodeInfo, npuCardName string, npuCardPreName string) []int {
 	topStr, err := GetNPUAllocCardsFromNodeOthers(node, npuCardName)
 	if err != nil {
-		klog.V(logErrorLev).Infof("%s getTopFromNode top nil:%v.", npuCardName, node.Name)
+		klog.V(LogErrorLev).Infof("%s getTopFromNode top nil:%v.", npuCardName, node.Name)
 		return nil
 	}
 
 	// cannot judge len(topInt) is 0, for pipelined state
 	tmpDeviceIDs := ChangeTopToIntArray(topStr, npuCardPreName)
 	if tmpDeviceIDs == nil {
-		klog.V(logInfoLev).Infof("%s getTopFromNode %s nil(%s).", npuCardName, node.Name, topStr)
+		klog.V(LogInfoLev).Infof("%s getTopFromNode %s nil(%s).", npuCardName, node.Name, topStr)
 		return nil
 	}
 
-	klog.V(logDebugLev).Infof("%s getTopFromNode int: %v, s: %s.", npuCardName, tmpDeviceIDs, topStr)
+	klog.V(LogDebugLev).Infof("%s getTopFromNode int: %v, s: %s.", npuCardName, tmpDeviceIDs, topStr)
 	return tmpDeviceIDs
 }
 
@@ -51,11 +76,11 @@ func GetTopFromNodeOthers(node *api.NodeInfo, npuCardName string, npuCardPreName
 func GetNodeNPUNumFromIdle(nodeInfo *api.NodeInfo, npuCardName string) (int, error) {
 	nodeNPUIdleNumFromIdle, ok := nodeInfo.Idle.ScalarResources[v1.ResourceName(npuCardName)]
 	if !ok {
-		klog.V(logErrorLev).Infof("%s getNodeNPUNumFromIdle failed.", npuCardName)
+		klog.V(LogErrorLev).Infof("%s getNodeNPUNumFromIdle failed.", npuCardName)
 		return 0, errors.New("get node idle npu failed")
 	}
 
-	return int(nodeNPUIdleNumFromIdle / npuHex), nil
+	return int(nodeNPUIdleNumFromIdle / NPUHex), nil
 }
 
 // GetNodeHealthNPUNumberByName Get health npu number from node.
@@ -68,10 +93,10 @@ func GetNodeHealthNPUNumberByName(nodeName string, nodes []*api.NodeInfo, npuCar
 		if nodeName == nodeInf.Name {
 			nodeNPUIdleNumFromIdle, ok := nodeInf.Allocatable.ScalarResources[v1.ResourceName(npuCardName)]
 			if !ok {
-				klog.V(logErrorLev).Infof("%s getNodeNPUNumFromIdle failed.", npuCardName)
+				klog.V(LogErrorLev).Infof("%s getNodeNPUNumFromIdle failed.", npuCardName)
 				return 0, errors.New("get node capability npu failed")
 			}
-			return nodeNPUIdleNumFromIdle / npuHex, nil
+			return nodeNPUIdleNumFromIdle / NPUHex, nil
 		}
 	}
 	return 0, errors.New("no found")
@@ -98,7 +123,7 @@ func GetRealTopAfterAlloc(nodeDeviceIDs []int, useDeviceIDs []int, npuCardName s
 			tmpDeviceIDs = append(tmpDeviceIDs, nTopI)
 		}
 	}
-	klog.V(logDebugLev).Infof("%s GetRealTopAfterAlloc : %v .", npuCardName, tmpDeviceIDs)
+	klog.V(LogDebugLev).Infof("%s GetRealTopAfterAlloc : %v .", npuCardName, tmpDeviceIDs)
 	// change int to string
 	return ChangeIntArrToStr(tmpDeviceIDs, npuCardName)
 }
@@ -116,7 +141,7 @@ func ReloadNewTopToNodeOther(node *api.NodeInfo, newNodeTopStr string, npuCardNa
 
 // GetNodeSelector Get node selector.
 func GetNodeSelector(node *api.NodeInfo) (map[string]string, error) {
-	_, ok := node.Node.Labels[archSelector]
+	_, ok := node.Node.Labels[ArchSelector]
 	if !ok {
 		return nil, errors.New("selector is nil")
 	}
@@ -129,14 +154,14 @@ func GetNPUAllocCardsFromNodeOthers(node *api.NodeInfo, npuCardName string) (str
 	valueTmp, ok := node.Others[npuCardName]
 	if !ok {
 		msg := fmt.Errorf("%s npu card nil", node.Name)
-		klog.V(logDebugLev).Infof("%s :%v.", npuCardName, msg.Error())
+		klog.V(LogDebugLev).Infof("%s :%v.", npuCardName, msg.Error())
 		return "", msg
 	}
 
 	mapStr, mapOk := valueTmp.(string)
 	if !mapOk {
 		msg := fmt.Errorf("type is not match")
-		klog.V(logErrorLev).Infof("%s :%v :%v.", npuCardName, valueTmp, msg.Error())
+		klog.V(LogErrorLev).Infof("%s :%v :%v.", npuCardName, valueTmp, msg.Error())
 		return "", msg
 	}
 	return mapStr, nil
@@ -147,7 +172,7 @@ func GetNPUAllocCardsFromNodeAnnotations(node *api.NodeInfo, npuCardName string)
 	valueTmp, ok := node.Node.Annotations[npuCardName]
 	if !ok {
 		msg := fmt.Errorf("%s npu card nil", node.Name)
-		klog.V(logDebugLev).Infof("%s :%v.", npuCardName, msg.Error())
+		klog.V(LogDebugLev).Infof("%s :%v.", npuCardName, msg.Error())
 		return "", msg
 	}
 
@@ -158,23 +183,23 @@ func GetNPUAllocCardsFromNodeAnnotations(node *api.NodeInfo, npuCardName string)
 func IsCardModeNode(node *api.NodeInfo) bool {
 	nodeSelectors, errNode := GetNodeSelector(node)
 	if errNode != nil {
-		klog.V(logErrorLev).Infof("node(%s) %v.", node.Name, errNode)
+		klog.V(LogErrorLev).Infof("node(%s) %v.", node.Name, errNode)
 		return false
 	}
 
-	acceleratorValue, ok := nodeSelectors[acceleratorType]
+	acceleratorValue, ok := nodeSelectors[AcceleratorType]
 	if !ok {
-		// no acceleratorType means module
-		klog.V(logDebugLev).Infof("node(%s) is module type.", node.Name)
+		// no AcceleratorType means module
+		klog.V(LogDebugLev).Infof("node(%s) is module type.", node.Name)
 		return false
 	}
 
-	if acceleratorValue == cardAcceleratorType {
-		klog.V(logDebugLev).Infof("node(%s) is card type.", node.Name)
+	if acceleratorValue == CardAcceleratorType {
+		klog.V(LogDebugLev).Infof("node(%s) is card type.", node.Name)
 		return true
 	}
 
-	klog.V(logDebugLev).Infof("node(%s) is module type.", node.Name)
+	klog.V(LogDebugLev).Infof("node(%s) is module type.", node.Name)
 	return false
 }
 
@@ -210,9 +235,22 @@ func GetNPUTopFromHccs(taskNPUNumber int, allocTopologyHccl []int) ([]int, error
 
 	if npuNum != 0 {
 		err = fmt.Errorf("%v-%v not meet request number[%d]", allocTopologyHccl, allocTopologyNPUs, taskNPUNumber)
-		klog.V(logErrorLev).Infof("%v.", err)
+		klog.V(LogErrorLev).Infof("%v.", err)
 		return nil, err
 	}
 
 	return allocTopologyNPUs, nil
+}
+
+func IsNPUNNode(tmpNode *api.NodeInfo) error {
+	for key, value := range tmpNode.Node.Annotations {
+		if strings.Contains(key, CommCardPreName) {
+			tmp := strings.Split(value, ",")
+			if len(tmp) != 0 {
+				return nil
+			}
+			continue
+		}
+	}
+	return fmt.Errorf("%s has no %s", tmpNode.Name, CommCardPreName)
 }

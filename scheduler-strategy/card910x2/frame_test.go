@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -45,6 +45,8 @@ const (
 	nodeName     = "centos"
 	constInt2000 = 2000
 	constInt3000 = 3000
+	node32Core   = 32.00
+	node29Core   = 29.00
 )
 
 // TestCNPUName
@@ -467,8 +469,8 @@ func TestCnpuScoreBestNPUNodesFn(t *testing.T) {
 		Convey("ScoreBestNPUNodesFn() should return correct result", func() {
 			scoreMap := make(map[string]float64)
 			expectedResult := map[string]float64{
-				nodeName1: 32.00,
-				nodeName2: 29.00,
+				nodeName1: node32Core,
+				nodeName2: node29Core,
 			}
 			result, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
 			So(err, ShouldBeNil)

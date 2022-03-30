@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -10,6 +10,7 @@ package common
 import (
 	"fmt"
 	"k8s.io/klog"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 func (cn *Scheduler) judgeNodeAndTaskNPU(taskNPU int, nodeNPUTopology []int) error {
@@ -18,6 +19,6 @@ func (cn *Scheduler) judgeNodeAndTaskNPU(taskNPU int, nodeNPUTopology []int) err
 	}
 
 	var meetErr = fmt.Errorf("req npu(%d) illegal", taskNPU)
-	klog.V(LogErrorLev).Infof("%s %v.", cn.PluginName, meetErr)
+	klog.V(util.LogDebugLev).Infof("%s %v.", cn.PluginName, meetErr)
 	return meetErr
 }

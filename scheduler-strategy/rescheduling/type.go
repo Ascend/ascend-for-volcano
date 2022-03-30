@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -9,7 +9,10 @@ Package rescheduling is using for HuaWei Ascend pin affinity schedule utilities.
 */
 package rescheduling
 
-import "k8s.io/apimachinery/pkg/types"
+import (
+	"k8s.io/apimachinery/pkg/types"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
+)
 
 const (
 	// CmJobKind the fault job data record in configmap.
@@ -24,11 +27,6 @@ const (
 	CmJobRankIds = "rankIds"
 	// TmpAllocRankIndexKind used for allocated rankIndex in one session.
 	TmpAllocRankIndexKind = "allocRankIndex"
-	logErrorLev           = 1
-	logInfoLev            = 3
-	logDebugLev           = 4
-	constIntNum2          = 2
-	constIntNum3          = 3
 	node910X8NPUNum       = 8
 	maxIntervalTime       = 300
 	maxRankIndex          = 1000
@@ -36,6 +34,7 @@ const (
 	cmName                = "vcjob-fault-npu-cm"
 	// node inoperable interval time(s)
 	nodeUpdateTime        = 5
+	graceOverTime         = 900
 	nodeHeartbeat         = "noded/heartbeat"
 	nodeHeartbeatInterval = "noded/heartbeat-interval"
 	faultNPU              = "huawei.com/Ascend910-Unhealthy"
@@ -51,17 +50,13 @@ const (
 	// JobFaultRankIDCMDataKey the job cm value key.
 	JobFaultRankIDCMDataKey = "fault-npus"
 	// JobFaultRankIDCMPre the job cm name prefix.
-	JobFaultRankIDCMPre           = "fault-config-"
-	nodeDEnableKey                = "nodeDEnable"
-	nodeDEnableOnValue            = "on"
-	nodeDEnableOffValue           = "off"
-	npu800And9000CardName         = "huawei.com/Ascend910"
-	npu800And9000CardPreName      = "Ascend910-"
-	// GraceOverTimeKey for GraceOverTime config by user
-	GraceOverTimeKey = "grace-over-time"
+	JobFaultRankIDCMPre      = "fault-config-"
+	nodeDEnableKey           = "nodeDEnable"
+	nodeDEnableOnValue       = "on"
+	nodeDEnableOffValue      = "off"
+	npu800And9000CardName    = "huawei.com/Ascend910"
+	npu800And9000CardPreName = "Ascend910-"
 )
-// GraceOverTime for rescheduling units: seconds
-var GraceOverTime int64 = 900
 
 // ReSchedulerTasks record the tasks using the failed NPU.
 // The key in ReSchedulerCache is jobID
@@ -145,7 +140,7 @@ type TaskUsedRankIndex struct {
 	UpdateTime int64
 }
 
-var reSchedulerJobController = make(map[string]struct{}, constIntNum3)
+var reSchedulerJobController = make(map[string]struct{}, util.ConstIntNum3)
 
 // FaultRankIDRecordJobCMData record in volcano fault cm, key is job's uuid.
 type FaultRankIDRecordJobCMData struct {

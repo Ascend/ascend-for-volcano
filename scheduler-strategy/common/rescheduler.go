@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 // Package common is using for HuaWei common infer Ascend pin affinity schedule.
@@ -7,7 +7,7 @@ package common
 
 import (
 	"fmt"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	"k8s.io/klog"
 	"reflect"
 	"strings"
@@ -16,22 +16,23 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/rescheduling"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 // PreHandleFaultNPUFn PreHandleFaultNPUFn
 func (re *ReScheduler) PreHandleFaultNPUFn(ssn *framework.Session) error {
-	klog.V(LogDebugLev).Infof("%s enter preHandleFaultNPUFn.", re.AnnoUnHealthy)
-	defer klog.V(LogDebugLev).Infof("%s leave preHandleFaultNPUFn.", re.AnnoUnHealthy)
+	klog.V(util.LogDebugLev).Infof("%s enter preHandleFaultNPUFn.", re.AnnoUnHealthy)
+	defer klog.V(util.LogDebugLev).Infof("%s leave preHandleFaultNPUFn.", re.AnnoUnHealthy)
 
 	// 1.get fault npu and node.
 	fNode, err := re.getInoperableNPUCards(ssn.Nodes)
 	if err != nil {
-		klog.V(LogDebugLev).Infof("%s preHandleFaultNPUFn %v.", re.AnnoUnHealthy, err)
+		klog.V(util.LogDebugLev).Infof("%s preHandleFaultNPUFn %v.", re.AnnoUnHealthy, err)
 	}
 	// 2.Determine if it is a  jobs.
 	tasks, jobGetErr := re.getFaultTasks(ssn.Jobs, fNode)
 	if jobGetErr != nil {
-		klog.V(LogDebugLev).Infof("%s : %v.getFaultTasks ", re.AnnoUnHealthy, jobGetErr)
+		klog.V(util.LogDebugLev).Infof("%s : %v.getFaultTasks ", re.AnnoUnHealthy, jobGetErr)
 		return nil
 	}
 
@@ -39,9 +40,9 @@ func (re *ReScheduler) PreHandleFaultNPUFn(ssn *framework.Session) error {
 		if task == nil {
 			continue
 		}
-		klog.V(LogErrorLev).Infof("evict task %+v", task)
+		klog.V(util.LogDebugLev).Infof("evict task %+v", task)
 		if err := ssn.Evict(task, jobRestartReason); err != nil {
-			klog.V(LogErrorLev).Infof("%s Failed to restart %s : %v", re.AnnoUnHealthy, task.UID, err)
+			klog.V(util.LogDebugLev).Infof("%s Failed to restart %s : %v", re.AnnoUnHealthy, task.UID, err)
 			re.updatePodReason(task, err.Error())
 			return err
 		}
@@ -79,18 +80,18 @@ func (re *ReScheduler) getInoperableNPUCards(nodes map[string]*api.NodeInfo) ([]
 	for _, nodeInfo := range nodes {
 		npus, err := re.getNodeFaultNPUs(nodeInfo)
 		if err != nil {
-			klog.V(LogDebugLev).Infof("getNodeFaultNPUs err:%v.", err)
+			klog.V(util.LogDebugLev).Infof("getNodeFaultNPUs err:%v.", err)
 			continue
 		}
 
-		faultNPUs = append(faultNPUs, rescheduling.FaultNPUsOnNode{nodeInfo.Name, npus,
-			nil, time.Now().Unix()})
+		faultNPUs = append(faultNPUs, rescheduling.FaultNPUsOnNode{
+			NodeName: nodeInfo.Name, FaultNPUs: npus, UpdateTime: time.Now().Unix()})
 	}
 
 	if len(faultNPUs) == 0 {
 		return nil, fmt.Errorf("%v nil inoperable NPU", reflect.ValueOf(nodes).MapKeys())
 	}
-	klog.V(LogDebugLev).Infof("getInoperableNPUCards %+v.", faultNPUs)
+	klog.V(util.LogDebugLev).Infof("getInoperableNPUCards %+v.", faultNPUs)
 
 	return faultNPUs, nil
 }
@@ -106,10 +107,10 @@ func (re *ReScheduler) getFaultTasks(jobs map[api.JobID]*api.JobInfo,
 		if job.PodGroup.Status.Phase != scheduling.PodGroupRunning {
 			continue
 		}
-		klog.V(LogDebugLev).Infof("%s Myjobs  PodGroupRunning ", job.Name)
+		klog.V(util.LogDebugLev).Infof("%s Myjobs  PodGroupRunning ", job.Name)
 		for _, task := range job.Tasks {
 			if !re.isFaultSchedulingTask(task) {
-				klog.V(LogDebugLev).Infof("isFaultSchedulingTask false taskname info:%s.", task.Name)
+				klog.V(util.LogDebugLev).Infof("isFaultSchedulingTask false taskname info:%s.", task.Name)
 				continue
 			}
 			if re.isFaultTask(task, nodes) {
@@ -119,26 +120,26 @@ func (re *ReScheduler) getFaultTasks(jobs map[api.JobID]*api.JobInfo,
 	}
 
 	if len(myTasks) == 0 {
-		klog.V(LogDebugLev).Infof("len myTasks is 0.")
+		klog.V(util.LogDebugLev).Infof("len myTasks is 0.")
 		return nil, fmt.Errorf("nil %s jobs", re.AnnoUnHealthy)
 	}
 
-	klog.V(LogDebugLev).Infof("job getFaultTasks myTasks len %d", len(myTasks))
+	klog.V(util.LogDebugLev).Infof("job getFaultTasks myTasks len %d", len(myTasks))
 	return myTasks, nil
 }
 
 func (re *ReScheduler) isFaultTask(task *api.TaskInfo, nodes []rescheduling.FaultNPUsOnNode) bool {
-	klog.V(LogDebugLev).Infof("isFaultTask task :%s.   nodes %+v", task.NodeName, nodes)
+	klog.V(util.LogDebugLev).Infof("isFaultTask task :%s.   nodes %+v", task.NodeName, nodes)
 	for _, node := range nodes {
 		if node.NodeName == task.NodeName {
 			anno, exist := task.Pod.Annotations[re.AnnoName]
 			if !exist {
-				klog.V(LogDebugLev).Infof("get %s Annotations %s failed.", task.Pod, re.AnnoName)
+				klog.V(util.LogDebugLev).Infof("get %s Annotations %s failed.", task.Pod, re.AnnoName)
 				continue
 			}
-			klog.V(LogDebugLev).Infof("isFaultTask  nodes %+v", node.FaultNPUs)
+			klog.V(util.LogDebugLev).Infof("isFaultTask  nodes %+v", node.FaultNPUs)
 			if re.checkFaultNPU(anno, node.FaultNPUs) {
-				klog.V(LogDebugLev).Infof("checkFaultNPU pod annotation.")
+				klog.V(util.LogDebugLev).Infof("checkFaultNPU pod annotation.")
 				return true
 			}
 		}
@@ -151,12 +152,12 @@ func (re *ReScheduler) checkFaultNPU(anno string, faultNPUs []string) bool {
 	for _, us := range used {
 		for _, ft := range faultNPUs {
 			if us == ft {
-				klog.V(LogDebugLev).Infof("checkFaultNPU true, nodes %+v", faultNPUs)
+				klog.V(util.LogDebugLev).Infof("checkFaultNPU true, nodes %+v", faultNPUs)
 				return true
 			}
 		}
 	}
-	klog.V(LogDebugLev).Infof("checkFaultNPU false, nodes %+v", faultNPUs)
+	klog.V(util.LogDebugLev).Infof("checkFaultNPU false, nodes %+v", faultNPUs)
 	return false
 }
 
