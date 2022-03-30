@@ -32,15 +32,19 @@ import (
 )
 
 const (
-	nodeName           = "ubuntu"
-	labelSize          = 8
-	annSize            = 8
-	constIntNum2       = 2
-	constIntNum3       = 3.0
-	constIntNum4       = 4
-	npuV910CardName16c = "huawei.com/Ascend910-16c"
-	npuV910CardName2c  = "huawei.com/Ascend910-2c"
-	npuV710CardName2c  = "huawei.com/Ascend710-2c"
+	nodeName             = "ubuntu"
+	labelSize            = 8
+	annSize              = 8
+	constIntNum2         = 2
+	constIntNum3         = 3.0
+	constIntNum4         = 4
+	npuV910CardName16c   = "huawei.com/Ascend910-16c"
+	npuV910CardName2c    = "huawei.com/Ascend910-2c"
+	npuV710CardName2c    = "huawei.com/Ascend710-2c"
+	invalidResourceType  = "huawei.com/Ascend910-5c"
+	noPrefixResourceType = "no-prefix"
+	validNum             = 1000
+	invalidNum           = 2000
 )
 
 type VNodeInfo struct {
@@ -170,12 +174,6 @@ func TestVnpuValidNPUJobFnInvalidSelector(t *testing.T) {
 // TestVnpuValidNPUJobFnInvalidReq
 func TestVnpuValidNPUJobFnInvalidReq(t *testing.T) {
 	Convey("Test job ValidNPUJobFn InvalidReq", t, func() {
-		const (
-			invalidResourceType  = "huawei.com/Ascend910-5c"
-			noPrefixResourceType = "no-prefix"
-			validNum             = 1000
-			invalidNum           = 2000
-		)
 		vnpu := &VNPU{}
 		vnpu910 := &modulev910.ChipV910{}
 		if getErr := vnpu910.InitVNPUPlugin(); getErr != nil {
@@ -186,9 +184,8 @@ func TestVnpuValidNPUJobFnInvalidReq(t *testing.T) {
 		uid := api.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx3")
 
 		Convey("ValidNPUJobFn() should return error for job with invalid resource prefix", func() {
-			pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-4",
-				podName: "npu-test-7", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
-				reqNPUType: npuV910CardName16c, reqNpuNum: "1"})
+			pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-4", podName: "npu-test-7",
+				nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi", reqNPUType: npuV910CardName16c, reqNpuNum: "1"})
 			setPodSelector(pod, util2.ArchSelector, util2.HuaweiArchArm)
 			tasks = append(tasks, api.NewTaskInfo(pod))
 			job := api.NewJobInfo(uid, tasks...)
@@ -197,18 +194,19 @@ func TestVnpuValidNPUJobFnInvalidReq(t *testing.T) {
 			result := vnpu.ValidNPUJobFn(job)
 			So(result, ShouldNotBeEmpty)
 		})
-		Convey("ValidNPUJobFn() should return error for job with invalid npu request type", func() {
-			pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-5",
-				podName: "npu-test-8", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
-				reqNPUType: npuV910CardName16c, reqNpuNum: "1"})
-			setPodSelector(pod, util2.ArchSelector, util2.HuaweiArchX86)
-			tasks = append(tasks, api.NewTaskInfo(pod))
-			job := api.NewJobInfo(uid, tasks...)
-			setJobResourceReq(job, invalidResourceType, float64(validNum))
-			ascendtest.AddTestJobPodGroup(job)
-			result := vnpu.ValidNPUJobFn(job)
-			So(result, ShouldNotBeNil)
-		})
+		Convey("ValidNPUJobFn() should return error for job with invalid npu request type",
+			func() {
+				pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-5",
+					podName: "npu-test-8", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
+					reqNPUType: npuV910CardName16c, reqNpuNum: "1"})
+				setPodSelector(pod, util2.ArchSelector, util2.HuaweiArchX86)
+				tasks = append(tasks, api.NewTaskInfo(pod))
+				job := api.NewJobInfo(uid, tasks...)
+				setJobResourceReq(job, invalidResourceType, float64(validNum))
+				ascendtest.AddTestJobPodGroup(job)
+				result := vnpu.ValidNPUJobFn(job)
+				So(result, ShouldNotBeNil)
+			})
 		Convey("ValidNPUJobFn() should return error for job with invalid npu request num", func() {
 			pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-6",
 				podName: "npu-test-9", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",

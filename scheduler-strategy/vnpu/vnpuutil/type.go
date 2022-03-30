@@ -29,9 +29,9 @@ const (
 	NPU710CardName = "huawei.com/Ascend710"
 	// UNKnownPluginName unknown vnpu plugin
 	UNKnownPluginName = "unknown"
-	// NPU910CardCoreKey for npu card core.4-32c-4c(chipId-allCores-freeCores)
+	// NPU910CardCoreKey for npu card core. like chipId-allCores-freeCores(4-32c-4c)
 	NPU910CardCoreKey = "huawei.com/Ascend910-spec"
-	// NPU710CardCoreKey for npu card core.4-8c-4c(chipId-allCores-notCutCores)
+	// NPU710CardCoreKey for npu card core. like chipId-allCores-notCutCores(4-8c-4c)
 	NPU710CardCoreKey = "huawei.com/Ascend710-spec"
 	// NodesNoMeetNPUReqError error for insufficient npus on the schedulable nodes.
 	NodesNoMeetNPUReqError = "insufficient npus on the schedulable nodes in cluster"

@@ -27,7 +27,7 @@ type orderVJobsByCreateTimeArgs struct {
 	jobs []*api.JobInfo
 }
 
-type orderVJobsByCreateTimeTests []struct {
+type orderVJobsByCreateTimeTests struct {
 	name    string
 	fields  VNPU
 	args    orderVJobsByCreateTimeArgs
@@ -35,13 +35,13 @@ type orderVJobsByCreateTimeTests []struct {
 	wantErr error
 }
 
-func buildOrderVJobsByCreateTimeTestCases() orderVJobsByCreateTimeTests {
+func buildOrderVJobsByCreateTimeTestCases() []orderVJobsByCreateTimeTests {
 	job0 := ascendtest.FakeNormalTestJobByCreatTime("pg0", util.ConstIntNum2, 0)
 	job1 := ascendtest.FakeNormalTestJobByCreatTime("pg1", util.ConstIntNum2, 1)
 	job2 := ascendtest.FakeNormalTestJobByCreatTime("pg2", util.ConstIntNum2, constIntNum2)
 	job3 := ascendtest.FakeNormalTestJobByCreatTime("pg3", util.ConstIntNum2, constIntNum4)
 
-	testCases := orderVJobsByCreateTimeTests{
+	testCases := []orderVJobsByCreateTimeTests{
 		{
 			name: "01-orderVJobsByCreateTimeTests jobOrder-test",
 			args: orderVJobsByCreateTimeArgs{

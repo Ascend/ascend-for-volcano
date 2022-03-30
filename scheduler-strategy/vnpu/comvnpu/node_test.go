@@ -57,8 +57,8 @@ func buildGetNodeNPUCoreInfoMapTestCases() getNodeNPUCoreInfoMapTests {
 	return testCases
 }
 
-// TestVNPU_GetNodeNPUCoreInfoMap test GetNodeNPUCoreInfoMap function
-func TestVNPU_GetNodeNPUCoreInfoMap(t *testing.T) {
+// TestGetNodeNPUCoreInfoMap test GetNodeNPUCoreInfoMap function
+func TestGetNodeNPUCoreInfoMap(t *testing.T) {
 	tests := buildGetNodeNPUCoreInfoMapTestCases()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -111,8 +111,8 @@ func buildGetVNPUUsedChipByReqTestCases() getVNPUUsedChipByReqTests {
 	return testCases
 }
 
-// TestVNPU_GetVNPUUsedChipByReq test GetNodeNPUCoreInfoMap function
-func TestVNPU_GetVNPUUsedChipByReq(t *testing.T) {
+// TestGetVNPUUsedChipByReq test GetNodeNPUCoreInfoMap function
+func TestGetVNPUUsedChipByReq(t *testing.T) {
 	tests := buildGetVNPUUsedChipByReqTestCases()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -190,8 +190,8 @@ func buildPreHandleVNPUTestCases() preHandleVNPUTests {
 	return testCases
 }
 
-// TestVNPU_PreHandleVNPU test PreHandleVNPU function
-func TestVNPU_PreHandleVNPU(t *testing.T) {
+// TestPreHandleVNPU test PreHandleVNPU function
+func TestPreHandleVNPU(t *testing.T) {
 	tests := buildPreHandleVNPUTestCases()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -18,6 +18,11 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/api"
 )
 
+const (
+	timeTmp   = 1648556261
+	checkCode = 991792085
+)
+
 type getVNPUCMDataArgs struct {
 	cacheData      VNPUAllocInfCache
 	cacheFunBefore func()
@@ -38,7 +43,7 @@ func buildGetVNPUCMDataTestCases() getVNPUCMDataTests {
 			args: getVNPUCMDataArgs{
 				cacheFunBefore: func() {
 					tmpPatche = gomonkey.ApplyFunc(time.Now,
-						func() time.Time { return time.Unix(1648556261, 0) })
+						func() time.Time { return time.Unix(timeTmp, 0) })
 				}, cacheFunAfter: func() {
 					tmpPatche.Reset()
 				},
@@ -55,10 +60,10 @@ func buildGetVNPUCMDataTestCases() getVNPUCMDataTests {
 					ReqCardName:   "Ascend910-5",
 					AllocCardName: "Ascend910-8c-180-5",
 					AllocFlag:     true,
-					UpdateTime:    1648556261}}, CheckCode: 991792085},
+					UpdateTime:    timeTmp}}, CheckCode: checkCode},
 				cacheFunBefore: func() {
 					tmpPatche = gomonkey.ApplyFunc(time.Now,
-						func() time.Time { return time.Unix(1648556261, 0) })
+						func() time.Time { return time.Unix(timeTmp, 0) })
 				}, cacheFunAfter: func() {
 					tmpPatche.Reset()
 				},

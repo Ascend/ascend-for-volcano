@@ -20,7 +20,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
-	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/vnpu/vnpuutil"
 )
 
@@ -37,12 +37,12 @@ func (tp *VNPU) ValidJobResource(job *api.JobInfo) error {
 		_, ok := tp.Attr.Coefficients[r]
 		if !ok {
 			msg := fmt.Errorf("%s request an invalid type of Vnpu resource", job.Name)
-			klog.V(hwutil.LogErrorLev).Infof("invalid request: %v.", msg)
+			klog.V(util.LogErrorLev).Infof("invalid request: %v.", msg)
 			return msg
 		}
-		vRC += int(jobNPU / hwutil.NPUHex)
+		vRC += int(jobNPU / util.NPUHex)
 	}
-	klog.V(hwutil.LogInfoLev).Infof("job(%s) requests %d Vnpu.", job.Name, vRC)
+	klog.V(util.LogInfoLev).Infof("job(%s) requests %d Vnpu.", job.Name, vRC)
 
 	if vRC > 1 {
 		// a job can request only one Vnpu resource
@@ -55,28 +55,28 @@ func (tp *VNPU) ValidJobResource(job *api.JobInfo) error {
 // GetNPUJobDefaultSelectorConfig get selectors for Vnpu
 func (tp *VNPU) GetNPUJobDefaultSelectorConfig() map[string]string {
 	var defaultSchedulerConfig map[string]string
-	defaultSchedulerConfig = make(map[string]string, hwutil.ConstIntNum3)
+	defaultSchedulerConfig = make(map[string]string, util.ConstIntNum3)
 
-	defaultSchedulerConfig[hwutil.ArchSelector] = hwutil.HuaweiArchArm + "|" + hwutil.HuaweiArchX86
+	defaultSchedulerConfig[util.ArchSelector] = util.HuaweiArchArm + "|" + util.HuaweiArchX86
 
 	return defaultSchedulerConfig
 }
 
 // for verify npu job must config selector
 func (tp *VNPU) validNPUJobSelector(job *api.JobInfo) error {
-	jobSelectors := hwutil.GetJobSelectors(job)
+	jobSelectors := util.GetJobSelectors(job)
 	if len(jobSelectors) == 0 {
 		msg := fmt.Errorf("%s getJobSelectors nil", job.Name)
-		klog.V(hwutil.LogErrorLev).Infof("%s.", msg.Error())
+		klog.V(util.LogErrorLev).Infof("%s.", msg.Error())
 		return msg
 	}
 
-	klog.V(hwutil.LogDebugLev).Infof("%s has selector: %v.", job.Name, jobSelectors)
+	klog.V(util.LogDebugLev).Infof("%s has selector: %v.", job.Name, jobSelectors)
 
 	defaultSchedulerConfig := tp.GetNPUJobDefaultSelectorConfig()
 
-	if err := hwutil.CompareNPUSelector(job, jobSelectors, defaultSchedulerConfig); err != nil {
-		klog.V(hwutil.LogErrorLev).Infof("%v.", err)
+	if err := util.CompareNPUSelector(job, jobSelectors, defaultSchedulerConfig); err != nil {
+		klog.V(util.LogErrorLev).Infof("%v.", err)
 		return err
 	}
 
@@ -104,19 +104,19 @@ func (tp *VNPU) isNewVNPUJob(job *api.JobInfo) bool {
 // GetNPUTypeByResourceNum get vJob vnpu source number.
 func (tp *VNPU) GetNPUTypeByResourceNum(tmp string) (string, error) {
 	split := strings.Split(tmp, "-")
-	if len(split) < hwutil.ConstIntNum2 {
-		klog.V(hwutil.LogDebugLev).Infof("%s GetVJobReqNPUType get err: %v.", tp.Name(), split)
+	if len(split) < util.ConstIntNum2 {
+		klog.V(util.LogDebugLev).Infof("%s GetVJobReqNPUType get err: %v.", tp.Name(), split)
 		return "", errors.New("err resource")
 	}
-	klog.V(hwutil.LogDebugLev).Infof("%s GetVJobReqNPUType get %v.", tp.Name(), split)
+	klog.V(util.LogDebugLev).Infof("%s GetVJobReqNPUType get %v.", tp.Name(), split)
 	return split[0], nil
 }
 
 // GetVJobReqNPUType get vJob req type.
 func (tp *VNPU) GetVJobReqNPUType(job *api.JobInfo) (string, error) {
-	tmp, getErr := hwutil.GetReqResourceNameFromJob(job)
+	tmp, getErr := util.GetReqResourceNameFromJob(job)
 	if getErr != nil {
-		klog.V(hwutil.LogErrorLev).Infof("%s GetVJobReqNPUType %s %v.", tp.Name(), job.Name, getErr)
+		klog.V(util.LogErrorLev).Infof("%s GetVJobReqNPUType %s %v.", tp.Name(), job.Name, getErr)
 		return "", getErr
 	}
 
@@ -124,9 +124,9 @@ func (tp *VNPU) GetVJobReqNPUType(job *api.JobInfo) (string, error) {
 }
 
 func (tp *VNPU) getVJobReqInfFromJobInfo(job *api.JobInfo) (*vnpuutil.VNPUAllocInf, error) {
-	reqNpuName, typeErr := hwutil.GetReqResourceNameFromJob(job)
+	reqNpuName, typeErr := util.GetReqResourceNameFromJob(job)
 	if typeErr != nil {
-		klog.V(hwutil.LogErrorLev).Infof("%s getVJobReqInfFromJobInfo %s %v.", tp.Name(), job.Name, typeErr)
+		klog.V(util.LogErrorLev).Infof("%s getVJobReqInfFromJobInfo %s %v.", tp.Name(), job.Name, typeErr)
 		return nil, typeErr
 	}
 	var tmp = vnpuutil.VNPUAllocInf{
@@ -138,22 +138,22 @@ func (tp *VNPU) getVJobReqInfFromJobInfo(job *api.JobInfo) (*vnpuutil.VNPUAllocI
 		AllocFlag:     false,
 		UpdateTime:    time.Now().Unix(),
 	}
-	klog.V(hwutil.LogErrorLev).Infof("%s getVJobReqInfFromJobInfo %s %+v.", tp.Name(), job.Name, tmp)
+	klog.V(util.LogErrorLev).Infof("%s getVJobReqInfFromJobInfo %s %+v.", tp.Name(), job.Name, tmp)
 	return &tmp, nil
 }
 
 // CheckJobNeedPreAlloc Check the vJob whether need do pre-Alloc or not.
 func (tp *VNPU) CheckJobNeedPreAlloc(job *api.JobInfo) error {
 	if tp.isNewVNPUJob(job) {
-		klog.V(hwutil.LogDebugLev).Infof("%s CheckJobNeedPreAlloc %s need to preAlloc.", tp.Name(), job.Name)
+		klog.V(util.LogDebugLev).Infof("%s CheckJobNeedPreAlloc %s need to preAlloc.", tp.Name(), job.Name)
 		return nil
 	}
 	if tp.isJobSetPreAllocFlag(job) {
 		preErr := fmt.Errorf("%s has been preAlloc", job.Name)
-		klog.V(hwutil.LogDebugLev).Infof("%s isJobSetPreAllocFlag %v.", tp.Name(), preErr)
+		klog.V(util.LogDebugLev).Infof("%s isJobSetPreAllocFlag %v.", tp.Name(), preErr)
 		return preErr
 	}
-	klog.V(hwutil.LogDebugLev).Infof("%s CheckJobNeedPreAlloc %s need to preAlloc.", tp.Name(), job.Name)
+	klog.V(util.LogDebugLev).Infof("%s CheckJobNeedPreAlloc %s need to preAlloc.", tp.Name(), job.Name)
 	// over time is deal in valid job
 	return nil
 }
@@ -178,16 +178,16 @@ func (tp *VNPU) RecordNewVNPUJobInCache(job *api.JobInfo) error {
 // UpdateVJobsCacheAllocChipByJobName Update vJob allocChip in cache by job name.
 func (tp *VNPU) UpdateVJobsCacheAllocChipByJobName(vJob *api.JobInfo) error {
 	var cards []string
-	tmp, getErr := hwutil.GetReqResourceNameFromJob(vJob)
+	tmp, getErr := util.GetReqResourceNameFromJob(vJob)
 	if getErr != nil {
-		klog.V(hwutil.LogErrorLev).Infof("%s GetVJobReqNPUType %s %v.", tp.Name(), vJob.Name, getErr)
+		klog.V(util.LogErrorLev).Infof("%s GetVJobReqNPUType %s %v.", tp.Name(), vJob.Name, getErr)
 		return getErr
 	}
 	for _, vTask := range vJob.Tasks {
-		chips := hwutil.GetPodUsedNPUNum(vTask, tmp)
+		chips := util.GetPodUsedNPUNum(vTask, tmp)
 		cards = append(cards, chips...)
 	}
-	if cards == nil {
+	if len(cards) == 0 {
 		return fmt.Errorf("%s err cards %v", vJob.UID, cards)
 	}
 
@@ -195,8 +195,8 @@ func (tp *VNPU) UpdateVJobsCacheAllocChipByJobName(vJob *api.JobInfo) error {
 		if data.JobUID == vJob.UID {
 			vnpuutil.VNPUAllocData.Cache[k].AllocCardName = cards[0]
 			vnpuutil.VNPUAllocData.Cache[k].UpdateTime = time.Now().Unix()
-			vnpuutil.VNPUAllocData.CheckCode = hwutil.MakeDataHash(vnpuutil.VNPUAllocData.Cache)
-			klog.V(hwutil.LogInfoLev).Infof("%s UpdateVJobsCacheAllocChipByJobName %s update into %v.",
+			vnpuutil.VNPUAllocData.CheckCode = util.MakeDataHash(vnpuutil.VNPUAllocData.Cache)
+			klog.V(util.LogInfoLev).Infof("%s UpdateVJobsCacheAllocChipByJobName %s update into %v.",
 				tp.Name(), vJob.UID, vnpuutil.VNPUAllocData.Cache)
 			return nil
 		}
@@ -218,7 +218,7 @@ func (tp *VNPU) GetVNPUAllocInfFromCacheByJobInf(vJob *api.JobInfo) (*vnpuutil.V
 func (tp *VNPU) IsVJobHasPredistribution(vJob *api.JobInfo) bool {
 	data, getERR := tp.GetVNPUAllocInfFromCacheByJobInf(vJob)
 	if getERR != nil {
-		klog.V(hwutil.LogErrorLev).Infof("%s IsVJobHasPredistribution: %v.", tp.Name(), getERR)
+		klog.V(util.LogErrorLev).Infof("%s IsVJobHasPredistribution: %v.", tp.Name(), getERR)
 		return false
 	}
 	if !data.AllocFlag {
@@ -234,7 +234,7 @@ func (tp *VNPU) IsVJobHasPredistribution(vJob *api.JobInfo) bool {
 func (tp *VNPU) IsVJobOverWaitTime(vJob *api.JobInfo) bool {
 	data, getERR := tp.GetVNPUAllocInfFromCacheByJobInf(vJob)
 	if getERR != nil {
-		klog.V(hwutil.LogErrorLev).Infof("%s IsVJobOverWaitTime: %v.", tp.Name(), getERR)
+		klog.V(util.LogErrorLev).Infof("%s IsVJobOverWaitTime: %v.", tp.Name(), getERR)
 		return false
 	}
 	diffTime := time.Now().Unix() - data.UpdateTime
@@ -252,8 +252,8 @@ func (tp *VNPU) DeleteCacheVJobByInfo(vJob *api.JobInfo) error {
 		cache = append(cache, tmp)
 	}
 	vnpuutil.VNPUAllocData.Cache = cache
-	vnpuutil.VNPUAllocData.CheckCode = hwutil.MakeDataHash(vnpuutil.VNPUAllocData.Cache)
-	klog.V(hwutil.LogDebugLev).Infof("%s DeleteCacheVJobByInfo %v.", tp.Name(), vnpuutil.VNPUAllocData.Cache)
+	vnpuutil.VNPUAllocData.CheckCode = util.MakeDataHash(vnpuutil.VNPUAllocData.Cache)
+	klog.V(util.LogDebugLev).Infof("%s DeleteCacheVJobByInfo %v.", tp.Name(), vnpuutil.VNPUAllocData.Cache)
 	return nil
 }
 
@@ -262,7 +262,7 @@ func (tp *VNPU) DealVJobLegality(vJob *api.JobInfo) error {
 	// 1.Only unallocated VJob can do these.
 	// 2.whether the job has predistribution flag
 	if tp.IsVJobHasPredistribution(vJob) {
-		klog.V(hwutil.LogDebugLev).Infof("%s %s has predistribution.", tp.Name(), vJob.UID)
+		klog.V(util.LogDebugLev).Infof("%s %s has predistribution.", tp.Name(), vJob.UID)
 		return nil
 	}
 
@@ -278,7 +278,7 @@ func (tp *VNPU) DealVJobLegality(vJob *api.JobInfo) error {
 func (tp *VNPU) GetPluginNameByJobInfo(job *api.JobInfo) (string, error) {
 	reqNpuType, typeErr := tp.GetVJobReqNPUType(job)
 	if typeErr != nil {
-		klog.V(hwutil.LogErrorLev).Infof("%s GetPluginNameByJobInfo %s %v.", tp.Name(), job.Name, typeErr)
+		klog.V(util.LogErrorLev).Infof("%s GetPluginNameByJobInfo %s %v.", tp.Name(), job.Name, typeErr)
 		return "", typeErr
 	}
 
@@ -292,7 +292,7 @@ func (tp *VNPU) GetPluginNameByJobInfo(job *api.JobInfo) (string, error) {
 	default:
 		pluginName = vnpuutil.UNKnownPluginName
 		pluginErr = fmt.Errorf("%s resource %v not support", job.Name, reqNpuType)
-		klog.V(hwutil.LogErrorLev).Infof("%s GetPluginNameByJobInfo %v.", tp.Name(), pluginErr)
+		klog.V(util.LogErrorLev).Infof("%s GetPluginNameByJobInfo %v.", tp.Name(), pluginErr)
 	}
 	return pluginName, pluginErr
 }
@@ -302,17 +302,17 @@ func (tp *VNPU) IsVNPUJob(job *api.JobInfo) bool {
 	// 1.init vnp
 	pluginName, nameErr := tp.GetPluginNameByJobInfo(job)
 	if nameErr != nil {
-		klog.V(hwutil.LogErrorLev).Infof("%s IsVNPUJob %s %v.", tp.Name(), job.Name, nameErr)
+		klog.V(util.LogErrorLev).Infof("%s IsVNPUJob %s %v.", tp.Name(), job.Name, nameErr)
 		return false
 	}
 	if pluginErr := tp.InitVNPUPluginByType(pluginName); pluginErr != nil {
-		klog.V(hwutil.LogErrorLev).Infof("%s IsVNPUJob :%v.", vnpuutil.PluginName, pluginErr)
+		klog.V(util.LogErrorLev).Infof("%s IsVNPUJob :%v.", vnpuutil.PluginName, pluginErr)
 		return false
 	}
 	// 2.vnp job.
-	reqNpuType, getErr := hwutil.GetReqResourceNameFromJob(job)
+	reqNpuType, getErr := util.GetReqResourceNameFromJob(job)
 	if getErr != nil {
-		klog.V(hwutil.LogErrorLev).Infof("%s IsVNPUJob %s %v.", tp.Name(), job.Name, getErr)
+		klog.V(util.LogErrorLev).Infof("%s IsVNPUJob %s %v.", tp.Name(), job.Name, getErr)
 		return false
 	}
 
@@ -321,7 +321,7 @@ func (tp *VNPU) IsVNPUJob(job *api.JobInfo) bool {
 			return true
 		}
 	}
-	klog.V(hwutil.LogErrorLev).Infof("%s IsVNPUJob %s %s not in %+v.", tp.Name(), job.Name, reqNpuType, tp.Attr)
+	klog.V(util.LogErrorLev).Infof("%s IsVNPUJob %s %s not in %+v.", tp.Name(), job.Name, reqNpuType, tp.Attr)
 	return false
 }
 
@@ -369,7 +369,7 @@ func (tp *VNPU) GetVJobNeedVNPU(vJob *api.JobInfo) (string, error) {
 			return tmp, nil
 		}
 	}
-	klog.V(hwutil.LogErrorLev).Infof("%s GetVJobNeedVNPU %s %#v has no %v.", tp.Name(),
+	klog.V(util.LogErrorLev).Infof("%s GetVJobNeedVNPU %s %#v has no %v.", tp.Name(),
 		vJob.Name, vJob.TotalRequest.ScalarResources, tp.Attr.AnnoName)
 	return "", fmt.Errorf("%s not has NPUS", vJob.Name)
 }
@@ -380,19 +380,19 @@ func (tp *VNPU) GetVJobMeetNodeList(vJob *api.JobInfo, res map[string]float64,
 	// 1.Get vJob need VNPU.
 	jobNeedNPUType, getErr := tp.GetVJobNeedVNPU(vJob)
 	if getErr != nil {
-		klog.V(hwutil.LogErrorLev).Infof("%s GetVJobNeedVNPU %v.", tp.Name(), getErr)
+		klog.V(util.LogErrorLev).Infof("%s GetVJobNeedVNPU %v.", tp.Name(), getErr)
 		return nil, getErr
 	}
 	// 2. check the cluster total res meet VJob require.
 	if !vnpuutil.IsVJobReqNPUMeetTotalResources(jobNeedNPUType, res) {
 		err := fmt.Errorf("total resource not meet req %s", jobNeedNPUType)
-		klog.V(hwutil.LogErrorLev).Infof("%s IsVJobReqNPUMeetTotalResources %s %v.", tp.Name(), vJob.Name, err)
+		klog.V(util.LogErrorLev).Infof("%s IsVJobReqNPUMeetTotalResources %s %v.", tp.Name(), vJob.Name, err)
 		return nil, err
 	}
 	// 3.Get node list by req VNPU.
 	nodeList, listErr := tp.GetNodeListByReqVNPU(jobNeedNPUType, ssn)
 	if listErr != nil {
-		klog.V(hwutil.LogErrorLev).Infof("%s GetNodeListByReqVNPU %v.", tp.Name(), listErr)
+		klog.V(util.LogErrorLev).Infof("%s GetNodeListByReqVNPU %v.", tp.Name(), listErr)
 		return nil, listErr
 	}
 	if len(nodeList) == 0 {
@@ -413,7 +413,7 @@ func (tp *VNPU) IsMyJob(vJob *api.JobInfo) error {
 func (tp *VNPU) ValidNPUJobFn(job *api.JobInfo) *api.ValidateResult {
 	// 1.valid npu job selector
 	if err := tp.validNPUJobSelector(job); err != nil {
-		klog.V(hwutil.LogErrorLev).Infof("%s err: %v.", tp.Name(), err)
+		klog.V(util.LogErrorLev).Infof("%s err: %v.", tp.Name(), err)
 		return &api.ValidateResult{
 			Pass:    false,
 			Reason:  err.Error(),
@@ -422,7 +422,7 @@ func (tp *VNPU) ValidNPUJobFn(job *api.JobInfo) *api.ValidateResult {
 	}
 	// 2.valid the resource type and the number of resources the job request
 	if errRs := tp.ValidJobResource(job); errRs != nil {
-		klog.V(hwutil.LogErrorLev).Infof("%s err: %v.", tp.Name(), errRs)
+		klog.V(util.LogErrorLev).Infof("%s err: %v.", tp.Name(), errRs)
 		return &api.ValidateResult{
 			Pass:    false,
 			Reason:  "job resource requested error",
@@ -431,7 +431,7 @@ func (tp *VNPU) ValidNPUJobFn(job *api.JobInfo) *api.ValidateResult {
 	}
 	// 3.Valid the vJob's legality
 	if checkErr := tp.DealVJobLegality(job); checkErr != nil {
-		klog.V(hwutil.LogErrorLev).Infof("%s DealVJobLegality: %v.", tp.Name(), checkErr)
+		klog.V(util.LogErrorLev).Infof("%s DealVJobLegality: %v.", tp.Name(), checkErr)
 		return &api.ValidateResult{
 			Pass:    false,
 			Reason:  "vJob legality error",

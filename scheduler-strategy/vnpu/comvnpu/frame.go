@@ -249,9 +249,7 @@ func (tp *VNPU) ScoreTheVJobSelectNode(vTask *api.TaskInfo, nodes []*api.NodeInf
 }
 
 // ScoreBestNPUNodesFn used for score candidate nodes
-func (tp *VNPU) ScoreBestNPUNodesFn(scoreMap map[string]float64,
-	bestNodes map[string]int,
-	vTask *api.TaskInfo,
+func (tp *VNPU) ScoreBestNPUNodesFn(scoreMap map[string]float64, bestNodes map[string]int, vTask *api.TaskInfo,
 	nodes []*api.NodeInfo) (map[string]float64, error) {
 	if len(scoreMap) == 0 || reflect.ValueOf(scoreMap).IsNil() {
 		err := errors.New("scoreBestNPUNodes's scoreMap is nil")

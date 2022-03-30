@@ -273,7 +273,7 @@ func IsNPUResourceStableInNode(kind string, tmpNode *api.NodeInfo) bool {
 
 // IsVJobRunning check whether the job is running or not.
 func IsVJobRunning(job *api.JobInfo) bool {
-	if len(job.Tasks) > 2 {
+	if len(job.Tasks) > util.ConstIntNum2 {
 		klog.V(util.LogInfoLev).Infof("%s has wrong tasks %#v", job.UID, job.Tasks)
 		return false
 	}
