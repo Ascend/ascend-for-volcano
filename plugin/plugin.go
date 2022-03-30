@@ -27,6 +27,12 @@ type NPUBuilder = func(string2 string) HwNPUSchedulerPlugin
 type HwNPUSchedulerPlugin interface {
 	// Name The unique name of npu scheduler policy, used by volcano frame.
 	Name() string
+	// GetResourceName get plugin NPU resource name.
+	GetResourceName() string
+	// GetResourcePreVal get plugin NPU resource name prefix.
+	GetResourcePreVal() string
+	// GetPluginDefaultJobSchedulerConfig get plugin default job scheduler config.
+	GetPluginDefaultJobSchedulerConfig() map[string]string
 	// OnHandlerStart The npu scheduler policy initial and common processing.
 	OnHandlerStart(*ScheduleHandler)
 	// IsMyTask For npu scheduler policy distinguish itself task.

@@ -11,10 +11,12 @@ package main
 
 import (
 	"errors"
+
 	"k8s.io/klog"
 	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
+
 	npuapi "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/npuinterface"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/card310x4"
@@ -22,6 +24,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/chip310x4"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/chip710"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/module910x8"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/vnpu/comvnpu"
 )
 
 var sHandler *plugin.ScheduleHandler
@@ -139,6 +142,7 @@ func HandlerStart() *plugin.ScheduleHandler {
 	scheduleHandler.RegisterNPUScheduler(card310x4.PluginName, card310x4.New)
 	scheduleHandler.RegisterNPUScheduler(chip310x4.PluginName, chip310x4.New)
 	scheduleHandler.RegisterNPUScheduler(chip710.PluginName, chip710.New)
+	scheduleHandler.RegisterNPUScheduler(comvnpu.PluginName, comvnpu.New)
 	// for npu scheduler start.
 	for _, huaweiNPU := range scheduleHandler.HuaweiNPUs {
 		huaweiNPU.OnHandlerStart(scheduleHandler)

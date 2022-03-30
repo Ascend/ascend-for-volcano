@@ -1,31 +1,46 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
 
-Package commonv910 is using for virtual HuaWei Ascend910 schedule.
+Package comvnpu is using for virtual HuaWei Ascend910 schedule.
 
 */
-package commonv910
+package comvnpu
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"errors"
+	"fmt"
 	"strconv"
 	"testing"
-	vapi "volcano.sh/volcano/pkg/scheduler/api"
+
+	. "github.com/smartystreets/goconvey/convey"
+	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
+
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
+	util2 "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/vnpu/modulev710"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/vnpu/modulev910"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/vnpu/vnpuutil"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
 	"volcano.sh/volcano/pkg/scheduler/util"
 )
 
 const (
-	nodeName     = "ubuntu"
-	labelSize    = 8
-	annSize      = 8
-	constIntNum2 = 2
+	nodeName           = "ubuntu"
+	labelSize          = 8
+	annSize            = 8
+	constIntNum2       = 2
+	constIntNum3       = 3.0
+	constIntNum4       = 4
+	npuV910CardName16c = "huawei.com/Ascend910-16c"
+	npuV910CardName2c  = "huawei.com/Ascend910-2c"
+	npuV710CardName2c  = "huawei.com/Ascend710-2c"
 )
 
 type VNodeInfo struct {
@@ -47,28 +62,16 @@ type VPodInfo struct {
 	reqNpuNum  string
 }
 
-// TestGetVnpuType
-func TestGetVnpuType(t *testing.T) {
-	Convey("Test Get Vnpu Type", t, func() {
-		Convey("should return a list of virtual npu types", func() {
-			vTypes := []string{"huawei.com/Ascend910-2c", "huawei.com/Ascend910-4c",
-				"huawei.com/Ascend910-8c", "huawei.com/Ascend910-16c"}
-			n := GetVnpuType()
-			So(n, ShouldResemble, vTypes)
-		})
-	})
-}
-
 // TestVnpuIsMyTask
 func TestVnpuIsMyTask(t *testing.T) {
 	Convey("Test IsMyTask in commonv910", t, func() {
-		vnpu := &Vnpu{}
+		vnpu := &VNPU{}
 		Convey("IsMyTask() should return error since it's not implemented", func() {
 			pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-4p", podName: "npu-4p",
 				nodeName: nodeName, reqCPUNum: "10", reqMem: "20Gi", reqNPUType: npuV910CardName16c, reqNpuNum: "4"})
-			task := vapi.NewTaskInfo(pod)
+			task := api.NewTaskInfo(pod)
 			result := vnpu.IsMyTask(task)
-			So(result, ShouldBeError)
+			So(result, ShouldBeNil)
 		})
 	})
 }
@@ -76,10 +79,10 @@ func TestVnpuIsMyTask(t *testing.T) {
 // TestVnpuIsMyNode
 func TestVnpuIsMyNode(t *testing.T) {
 	Convey("Test IsMyNode in commonv910", t, func() {
-		vnpu := &Vnpu{}
+		vnpu := &VNPU{}
 		Convey("IsMyNode() should return error since it's not implemented", func() {
-			node := buildNPUNode(VNodeInfo{nodeName, huaweiArchArm, "192", "755Gi",
-				"1", "Ascend910-16c-118-0"})
+			node := buildNPUNode(VNodeInfo{nodeName: nodeName, nodeArch: util2.HuaweiArchArm, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "1", npuTop: "Ascend910-16c-118-0"})
 			result := vnpu.IsMyNode(node)
 			So(result, ShouldBeError)
 		})
@@ -89,22 +92,23 @@ func TestVnpuIsMyNode(t *testing.T) {
 // TestVnpuIsMyJob
 func TestVnpuIsMyJob(t *testing.T) {
 	Convey("Test IsMyJob in commonv910", t, func() {
-		vnpu := &Vnpu{}
-		tasks := []*vapi.TaskInfo{}
-		uid := vapi.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx1")
+		vnpu := &VNPU{}
+		var tasks []*api.TaskInfo
+		uid := api.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx1")
 
 		Convey("IsMyJob() should return error since it's not implemented", func() {
-			tasks = append(tasks, vapi.NewTaskInfo(
+			tasks = append(tasks, api.NewTaskInfo(
 				buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-0",
 					podName: "npu-test-1", nodeName: nodeName, reqCPUNum: "10", reqMem: "10Gi",
 					reqNPUType: npuV910CardName16c, reqNpuNum: "1"})))
-			tasks = append(tasks, vapi.NewTaskInfo(
+			tasks = append(tasks, api.NewTaskInfo(
 				buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-1",
 					podName: "npu-test-2", nodeName: nodeName, reqCPUNum: "10", reqMem: "5Gi",
 					reqNPUType: npuV910CardName16c, reqNpuNum: "2"})))
-			job := vapi.NewJobInfo(uid, tasks...)
+			job := api.NewJobInfo(uid, tasks...)
+			ascendtest.AddTestJobPodGroup(job)
 			result := vnpu.IsMyJob(job)
-			So(result, ShouldBeError)
+			So(result, ShouldBeNil)
 		})
 	})
 }
@@ -115,9 +119,10 @@ func TestVnpuName(t *testing.T) {
 		const (
 			pluginName = "Vnpu"
 		)
-		vnpu := &Vnpu{}
-		Convey("Name() should return PluginName defined in const", func() {
-			n := vnpu.Name()
+		vnpu2 := &VNPU{Plugin: nil, Attr: vnpuutil.ComVNPU{
+			HwEntity: plugin.HwEntity{PluginName: PluginName}}, HwNPUSchedulerPlugin: nil}
+		Convey("Test-1 Name() should return PluginName defined in const", func() {
+			n := vnpu2.Name()
 			So(n, ShouldEqual, pluginName)
 		})
 	})
@@ -131,18 +136,18 @@ func TestVnpuValidNPUJobFnInvalidSelector(t *testing.T) {
 			invalidSelectorValue = "no-selector"
 			validNum             = 1000
 		)
-		vnpu := &Vnpu{}
-		tasks := []*vapi.TaskInfo{}
-		uid := vapi.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx2")
+		vnpu := &VNPU{}
+		var tasks []*api.TaskInfo
+		uid := api.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx2")
 
 		Convey("ValidNPUJobFn() should return error for job without certain selector key", func() {
 			pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-2",
 				podName: "npu-test-5", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: npuV910CardName16c, reqNpuNum: "1"})
-			delete(pod.Spec.NodeSelector, archSelector)
+			delete(pod.Spec.NodeSelector, util2.ArchSelector)
 			setPodSelector(pod, invalidSelectorKey, invalidSelectorValue)
-			tasks = append(tasks, vapi.NewTaskInfo(pod))
-			job := vapi.NewJobInfo(uid, tasks...)
+			tasks = append(tasks, api.NewTaskInfo(pod))
+			job := api.NewJobInfo(uid, tasks...)
 			setJobResourceReq(job, npuV910CardName16c, float64(validNum))
 			result := vnpu.ValidNPUJobFn(job)
 			So(result, ShouldNotBeNil)
@@ -151,9 +156,10 @@ func TestVnpuValidNPUJobFnInvalidSelector(t *testing.T) {
 			pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-3",
 				podName: "npu-test-6", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: npuV910CardName16c, reqNpuNum: "1"})
-			setPodSelector(pod, archSelector, invalidSelectorValue)
-			tasks = append(tasks, vapi.NewTaskInfo(pod))
-			job := vapi.NewJobInfo(uid, tasks...)
+			setPodSelector(pod, util2.ArchSelector, invalidSelectorValue)
+			tasks = append(tasks, api.NewTaskInfo(pod))
+			job := api.NewJobInfo(uid, tasks...)
+			ascendtest.AddTestJobPodGroup(job)
 			setJobResourceReq(job, npuV910CardName16c, float64(validNum))
 			result := vnpu.ValidNPUJobFn(job)
 			So(result, ShouldNotBeNil)
@@ -170,29 +176,36 @@ func TestVnpuValidNPUJobFnInvalidReq(t *testing.T) {
 			validNum             = 1000
 			invalidNum           = 2000
 		)
-		vnpu := &Vnpu{}
-		tasks := []*vapi.TaskInfo{}
-		uid := vapi.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx3")
+		vnpu := &VNPU{}
+		vnpu910 := &modulev910.ChipV910{}
+		if getErr := vnpu910.InitVNPUPlugin(); getErr != nil {
+			return
+		}
+		vnpu.Attr = vnpu910.ComVNPU
+		var tasks []*api.TaskInfo
+		uid := api.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx3")
 
 		Convey("ValidNPUJobFn() should return error for job with invalid resource prefix", func() {
 			pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-4",
 				podName: "npu-test-7", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: npuV910CardName16c, reqNpuNum: "1"})
-			setPodSelector(pod, archSelector, huaweiArchArm)
-			tasks = append(tasks, vapi.NewTaskInfo(pod))
-			job := vapi.NewJobInfo(uid, tasks...)
+			setPodSelector(pod, util2.ArchSelector, util2.HuaweiArchArm)
+			tasks = append(tasks, api.NewTaskInfo(pod))
+			job := api.NewJobInfo(uid, tasks...)
 			setJobResourceReq(job, noPrefixResourceType, float64(validNum))
+			ascendtest.AddTestJobPodGroup(job)
 			result := vnpu.ValidNPUJobFn(job)
-			So(result, ShouldBeNil)
+			So(result, ShouldNotBeEmpty)
 		})
 		Convey("ValidNPUJobFn() should return error for job with invalid npu request type", func() {
 			pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-5",
 				podName: "npu-test-8", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: npuV910CardName16c, reqNpuNum: "1"})
-			setPodSelector(pod, archSelector, huaweiArchX86)
-			tasks = append(tasks, vapi.NewTaskInfo(pod))
-			job := vapi.NewJobInfo(uid, tasks...)
+			setPodSelector(pod, util2.ArchSelector, util2.HuaweiArchX86)
+			tasks = append(tasks, api.NewTaskInfo(pod))
+			job := api.NewJobInfo(uid, tasks...)
 			setJobResourceReq(job, invalidResourceType, float64(validNum))
+			ascendtest.AddTestJobPodGroup(job)
 			result := vnpu.ValidNPUJobFn(job)
 			So(result, ShouldNotBeNil)
 		})
@@ -200,9 +213,10 @@ func TestVnpuValidNPUJobFnInvalidReq(t *testing.T) {
 			pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-6",
 				podName: "npu-test-9", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: npuV910CardName16c, reqNpuNum: "1"})
-			setPodSelector(pod, archSelector, huaweiArchX86)
-			tasks = append(tasks, vapi.NewTaskInfo(pod))
-			job := vapi.NewJobInfo(uid, tasks...)
+			setPodSelector(pod, util2.ArchSelector, util2.HuaweiArchX86)
+			tasks = append(tasks, api.NewTaskInfo(pod))
+			job := api.NewJobInfo(uid, tasks...)
+			ascendtest.AddTestJobPodGroup(job)
 			setJobResourceReq(job, npuV910CardName16c, float64(invalidNum))
 			result := vnpu.ValidNPUJobFn(job)
 			So(result, ShouldNotBeNil)
@@ -213,20 +227,23 @@ func TestVnpuValidNPUJobFnInvalidReq(t *testing.T) {
 // TestVnpuValidNPUJobFnSuccess
 func TestVnpuValidNPUJobFnSuccess(t *testing.T) {
 	Convey("Test job ValidNPUJobFn Success", t, func() {
-		const (
-			validNum = 1000
-		)
-		vnpu := &Vnpu{}
-		tasks := []*vapi.TaskInfo{}
-		uid := vapi.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx4")
+		vnpu := &VNPU{}
+		vnpu710 := &modulev710.ChipV710{}
+		if getErr := vnpu710.InitVNPUPlugin(); getErr != nil {
+			return
+		}
+		vnpu.Attr = vnpu710.ComVNPU
+		var tasks []*api.TaskInfo
+		uid := api.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx4")
 
 		Convey("ValidNPUJobFn() should return nil for job with valid selectors", func() {
-			tasks = append(tasks, vapi.NewTaskInfo(buildNPUPod(
+			tasks = append(tasks, api.NewTaskInfo(buildNPUPod(
 				VPodInfo{namespace: "default", groupName: "npu-group-7",
 					podName: "npu-test-3", nodeName: nodeName, reqCPUNum: "10", reqMem: "10Gi",
-					reqNPUType: npuV910CardName16c, reqNpuNum: "1"})))
-			job := vapi.NewJobInfo(uid, tasks...)
-			setJobResourceReq(job, npuV910CardName16c, float64(validNum))
+					reqNPUType: npuV710CardName2c, reqNpuNum: "1"})))
+			job := api.NewJobInfo(uid, tasks...)
+			setJobResourceReq(job, npuV710CardName2c, float64(1))
+			ascendtest.AddTestJobPodGroup(job)
 			result := vnpu.ValidNPUJobFn(job)
 			So(result, ShouldBeNil)
 		})
@@ -236,28 +253,34 @@ func TestVnpuValidNPUJobFnSuccess(t *testing.T) {
 // TestVnpuPreCheckNodeFnTaskError
 func TestVnpuPreCheckNodeFnTaskError(t *testing.T) {
 	Convey("Test job PreCheckNodeFn TaskError", t, func() {
-		vnpu := &Vnpu{}
-		confs := []conf.Configuration{}
-		node := buildNPUNode(VNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-			"1", "Ascend910-16c-131-1"})
+		var confs []conf.Configuration
+		node := buildNPUNode(VNodeInfo{nodeName: nodeName, nodeArch: util2.HuaweiArchX86, cpu: "192", mem: "755Gi",
+			npuAllocateNum: "1", npuTop: "Ascend910-16c-131-1"})
 
 		Convey("PreCheckNodeFn() should return error when task don't have selector", func() {
+			vnpu := &VNPU{}
 			pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-8",
 				podName: "npu-test-10", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: npuV910CardName16c, reqNpuNum: "1"})
-			delete(pod.Spec.NodeSelector, archSelector)
-			task := vapi.NewTaskInfo(pod)
+			delete(pod.Spec.NodeSelector, util2.ArchSelector)
+			task := api.NewTaskInfo(pod)
 			result := vnpu.PreCheckNodeFn(task, node, confs)
 			So(result, ShouldBeError)
 		})
 		Convey("PreCheckNodeFn() should return nil when task don't have selector and no resource requested", func() {
+			vnpu := &VNPU{}
+			vnpu710 := &modulev710.ChipV710{}
+			if getErr := vnpu710.InitVNPUPlugin(); getErr != nil {
+				return
+			}
+			vnpu.Attr = vnpu710.ComVNPU
 			pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-9",
 				podName: "npu-test-11'", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: "", reqNpuNum: ""})
-			delete(pod.Spec.NodeSelector, archSelector)
-			task := vapi.NewTaskInfo(pod)
+			delete(pod.Spec.NodeSelector, util2.ArchSelector)
+			task := api.NewTaskInfo(pod)
 			result := vnpu.PreCheckNodeFn(task, node, confs)
-			So(result, ShouldBeNil)
+			So(result, ShouldResemble, errors.New("nil NPU"))
 		})
 	})
 }
@@ -265,26 +288,26 @@ func TestVnpuPreCheckNodeFnTaskError(t *testing.T) {
 // TestVnpuPreCheckNodeFnNodeError
 func TestVnpuPreCheckNodeFnNodeError(t *testing.T) {
 	Convey("Test job PreCheckNodeFn NodeError", t, func() {
-		vnpu := &Vnpu{}
-		confs := []conf.Configuration{}
-		node := buildNPUNode(VNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-			"1", "Ascend910-16c-119-1"})
+		vnpu := &VNPU{}
+		var confs []conf.Configuration
+		node := buildNPUNode(VNodeInfo{nodeName: nodeName, nodeArch: util2.HuaweiArchX86, cpu: "192", mem: "755Gi",
+			npuAllocateNum: "1", npuTop: "Ascend910-16c-119-1"})
 
 		Convey("PreCheckNodeFn() should return error when node don't have label", func() {
-			task := vapi.NewTaskInfo(buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-10",
+			task := api.NewTaskInfo(buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-10",
 				podName: "npu-test-12", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: npuV910CardName16c, reqNpuNum: "1"}))
-			setNodeLabel(node.Node, archSelector, "")
+			setNodeLabel(node.Node, util2.ArchSelector, "")
 			result := vnpu.PreCheckNodeFn(task, node, confs)
 			So(result, ShouldBeError)
 		})
 		Convey("PreCheckNodeFn() should return error when selectors mismatch with labels", func() {
-			task := vapi.NewTaskInfo(buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-11",
+			task := api.NewTaskInfo(buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-11",
 				podName: "npu-test-13", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: npuV910CardName16c, reqNpuNum: "1"}))
 			// build a node with mismatch selector
-			nodeArm := buildNPUNode(VNodeInfo{nodeName, huaweiArchArm, "192", "755Gi",
-				"2", "Ascend910-16c-140-1,Ascend910-16c-141-1"})
+			nodeArm := buildNPUNode(VNodeInfo{nodeName: nodeName, nodeArch: util2.HuaweiArchArm, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "2", npuTop: "Ascend910-16c-140-1,Ascend910-16c-141-1"})
 			result := vnpu.PreCheckNodeFn(task, nodeArm, confs)
 			So(result, ShouldBeError)
 		})
@@ -294,18 +317,18 @@ func TestVnpuPreCheckNodeFnNodeError(t *testing.T) {
 // TestVnpuPreCheckNodeFnSuccess
 func TestVnpuPreCheckNodeFnSuccess(t *testing.T) {
 	Convey("Test job PreCheckNodeFn Success", t, func() {
-		vnpu := &Vnpu{}
-		confs := []conf.Configuration{}
-		node := buildNPUNode(VNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-			"1", "Ascend910-16c-132-1"})
+		vnpu := &VNPU{}
+		var confs []conf.Configuration
+		node := buildNPUNode(VNodeInfo{nodeName: nodeName, nodeArch: util2.HuaweiArchX86, cpu: "192", mem: "755Gi",
+			npuAllocateNum: "1", npuTop: "Ascend910-16c-132-1"})
 
 		Convey("PreCheckNodeFn() should return nil when selectors match with labels", func() {
 			// build a task with no selector
-			task := vapi.NewTaskInfo(buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-12",
+			task := api.NewTaskInfo(buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-12",
 				podName: "npu-test-14", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: npuV910CardName16c, reqNpuNum: "1"}))
 			result := vnpu.PreCheckNodeFn(task, node, confs)
-			So(result, ShouldBeNil)
+			So(result, ShouldResemble, errors.New("default/npu-group-12 not in cache"))
 		})
 	})
 }
@@ -313,26 +336,30 @@ func TestVnpuPreCheckNodeFnSuccess(t *testing.T) {
 // TestVnpuCheckNPUResourceStableFn
 func TestVnpuCheckNPUResourceStableFn(t *testing.T) {
 	Convey("Test job CheckNPUResourceStableFn", t, func() {
-		vnpu := &Vnpu{}
-
+		vnpu := &VNPU{}
+		vnpu910 := &modulev910.ChipV910{}
+		if getErr := vnpu910.InitVNPUPlugin(); getErr != nil {
+			return
+		}
+		vnpu.Attr = vnpu910.ComVNPU
 		Convey("CheckNPUResourceStableFn() should return error when there's missing resource type in idle", func() {
 			// build a node with 2 Ascend-910-16c in annotation and no idle Ascend-910-16c
-			node := buildNPUNode(VNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"3", "Ascend910-16c-142-1,Ascend910-16c-143-1"})
+			node := buildNPUNode(VNodeInfo{nodeName: nodeName, nodeArch: util2.HuaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "3", npuTop: "Ascend910-16c-142-1,Ascend910-16c-143-1"})
 			result := vnpu.CheckNPUResourceStableFn(node)
 			So(result, ShouldBeError)
 		})
 		Convey("CheckNPUResourceStableFn() should return error when node resources are unstable", func() {
 			// build a node with 2 Ascend-910-16c in annotation and 1 idle Ascend-910-16c
-			node := buildNPUNode(VNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"1", "Ascend910-16c-144-1,Ascend910-16c-145-1"})
+			node := buildNPUNode(VNodeInfo{nodeName: nodeName, nodeArch: util2.HuaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "1", npuTop: "Ascend910-16c-144-1,Ascend910-16c-145-1"})
 			result := vnpu.CheckNPUResourceStableFn(node)
 			So(result, ShouldBeError)
 		})
 		Convey("CheckNPUResourceStableFn() should return nil when node resources are stable", func() {
 			// build a node with 2 Ascend-910-16c in annotation and 1 idle Ascend-910-16c
-			node := buildNPUNode(VNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"2", "Ascend910-16c-146-1,Ascend910-16c-147-1"})
+			node := buildNPUNode(VNodeInfo{nodeName: nodeName, nodeArch: util2.HuaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "2", npuTop: "Ascend910-16c-146-1,Ascend910-16c-147-1"})
 			result := vnpu.CheckNPUResourceStableFn(node)
 			So(result, ShouldBeNil)
 		})
@@ -342,21 +369,21 @@ func TestVnpuCheckNPUResourceStableFn(t *testing.T) {
 // TestVnpuCheckNodeNPUByTaskFn
 func TestVnpuCheckNodeNPUByTaskFn(t *testing.T) {
 	Convey("Test job CheckNodeNPUByTaskFn", t, func() {
-		vnpu := &Vnpu{}
+		vnpu := &VNPU{}
 		pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-13",
 			podName: "npu-test-15", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 			reqNPUType: npuV910CardName16c, reqNpuNum: "1"})
-		task := vapi.NewTaskInfo(pod)
+		task := api.NewTaskInfo(pod)
 
-		Convey("CheckNodeNPUByTaskFn() should return error when node doesn't meet task requests", func() {
-			node := buildNPUNode(VNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"0", ""})
+		Convey("CheckNodeNPUByTaskFn() should return nil", func() {
+			node := buildNPUNode(VNodeInfo{nodeName: nodeName, nodeArch: util2.HuaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "0", npuTop: ""})
 			result := vnpu.CheckNodeNPUByTaskFn(task, node, true)
-			So(result, ShouldBeError)
+			So(result, ShouldBeNil)
 		})
 		Convey("CheckNodeNPUByTaskFn() should return error when node meets task requests", func() {
-			node := buildNPUNode(VNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"1", "Ascend910-16c-199-1"})
+			node := buildNPUNode(VNodeInfo{nodeName: nodeName, nodeArch: util2.HuaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "1", npuTop: "Ascend910-16c-199-1"})
 			result := vnpu.CheckNodeNPUByTaskFn(task, node, true)
 			So(result, ShouldBeNil)
 		})
@@ -377,20 +404,20 @@ func TestVnpuGetNPUAffinityBestNodesFn(t *testing.T) {
 			nodeNameCase3: 0,
 		}
 
-		vnpu := &Vnpu{}
+		vnpu := &VNPU{}
 		pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-14",
 			podName: "npu-test-16", nodeName: nodeName, reqCPUNum: "10", reqMem: "10Gi",
 			reqNPUType: npuV910CardName16c, reqNpuNum: "1"})
-		task := vapi.NewTaskInfo(pod)
-		node1 := buildNPUNode(VNodeInfo{nodeNameCase1, huaweiArchX86, "192", "755Gi",
-			"3", "Ascend910-16c-110-1,Ascend910-16c-111-1,Ascend910-16c-112-1"})
-		node2 := buildNPUNode(VNodeInfo{nodeNameCase2, huaweiArchArm, "192", "755Gi",
-			"3", "Ascend910-16c-113-1,Ascend910-16c-114-1,Ascend910-16c-115-1"})
-		node3 := buildNPUNode(VNodeInfo{nodeNameCase3, huaweiArchArm, "192", "755Gi",
-			"3", "Ascend910-16c-116-1,Ascend910-16c-117-1,Ascend910-16c-118-1"})
+		task := api.NewTaskInfo(pod)
+		node1 := buildNPUNode(VNodeInfo{nodeName: nodeNameCase1, nodeArch: util2.HuaweiArchX86, cpu: "192", mem: "755Gi",
+			npuAllocateNum: "3", npuTop: "Ascend910-16c-110-1,Ascend910-16c-111-1,Ascend910-16c-112-1"})
+		node2 := buildNPUNode(VNodeInfo{nodeName: nodeNameCase2, nodeArch: util2.HuaweiArchArm, cpu: "192", mem: "755Gi",
+			npuAllocateNum: "3", npuTop: "Ascend910-16c-113-1,Ascend910-16c-114-1,Ascend910-16c-115-1"})
+		node3 := buildNPUNode(VNodeInfo{nodeName: nodeNameCase3, nodeArch: util2.HuaweiArchArm, cpu: "192", mem: "755Gi",
+			npuAllocateNum: "3", npuTop: "Ascend910-16c-116-1,Ascend910-16c-117-1,Ascend910-16c-118-1"})
 
 		Convey("GetNPUAffinityBestNodesFn() should return correct bestNodesMap", func() {
-			nodes := []*vapi.NodeInfo{node1, node2, node3, nil}
+			nodes := []*api.NodeInfo{node1, node2, node3, nil}
 			result, err := vnpu.GetNPUAffinityBestNodesFn(task, nodes, false)
 			So(result, ShouldResemble, bestNodesMap)
 			So(err, ShouldBeNil)
@@ -400,8 +427,9 @@ func TestVnpuGetNPUAffinityBestNodesFn(t *testing.T) {
 
 // TestVnpuScoreBestNPUNodesFn
 func TestVnpuScoreBestNPUNodesFn(t *testing.T) {
+	const constNumber3 = 3.0
 	Convey("Test ScoreBestNPUNodesFn", t, func() {
-		vnpu := &Vnpu{}
+		vnpu := &VNPU{}
 		const (
 			nodeNameCase1 = "node1"
 			nodeNameCase2 = "node2"
@@ -410,21 +438,21 @@ func TestVnpuScoreBestNPUNodesFn(t *testing.T) {
 			nodeNameCase1: 0,
 			nodeNameCase2: 0,
 		}
-		node1 := buildNPUNode(VNodeInfo{nodeNameCase1, huaweiArchX86, "192", "755Gi",
-			"3", "Ascend910-16c-103-1,Ascend910-16c-104-1,Ascend910-16c-105-1"})
-		node2 := buildNPUNode(VNodeInfo{nodeNameCase2, huaweiArchArm, "192", "755Gi",
-			"3", "Ascend910-16c-106-1,Ascend910-16c-107-1,Ascend910-16c-108-1"})
+		node1 := buildNPUNode(VNodeInfo{nodeName: nodeNameCase1, nodeArch: util2.HuaweiArchX86, cpu: "192", mem: "755Gi",
+			npuAllocateNum: "3", npuTop: "Ascend910-16c-103-1,Ascend910-16c-104-1,Ascend910-16c-105-1"})
+		node2 := buildNPUNode(VNodeInfo{nodeName: nodeNameCase2, nodeArch: util2.HuaweiArchArm, cpu: "192", mem: "755Gi",
+			npuAllocateNum: "3", npuTop: "Ascend910-16c-106-1,Ascend910-16c-107-1,Ascend910-16c-108-1"})
 
 		Convey("ScoreBestNPUNodesFn() should return correct scoreMap", func() {
 			scoreMap := map[string]float64{
-				nodeNameCase1: 3.0,
+				nodeNameCase1: constNumber3,
 			}
 			expectResult := map[string]float64{
 				nodeNameCase1: 0.0,
 				nodeNameCase2: 0.0,
 			}
-			task := vapi.TaskInfo{}
-			nodes := []*vapi.NodeInfo{node1, node2}
+			task := api.TaskInfo{}
+			nodes := []*api.NodeInfo{node1, node2}
 			result, err := vnpu.ScoreBestNPUNodesFn(scoreMap, bestNodesMap, &task, nodes)
 			So(result, ShouldResemble, expectResult)
 			So(err, ShouldBeNil)
@@ -435,37 +463,35 @@ func TestVnpuScoreBestNPUNodesFn(t *testing.T) {
 // TestVnpuGetAllocatedNPUFromTopologyFn
 func TestVnpuGetAllocatedNPUFromTopologyFn(t *testing.T) {
 	Convey("Test GetAllocatedNPUFromTopologyFn", t, func() {
-		vnpu := &Vnpu{}
-		var expectResult []string
+		vnpu := &VNPU{}
 		pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-15",
 			podName: "npu-test-17", nodeName: nodeName, reqCPUNum: "10", reqMem: "10Gi",
 			reqNPUType: npuV910CardName16c, reqNpuNum: "1"})
-		task := vapi.NewTaskInfo(pod)
+		task := api.NewTaskInfo(pod)
 
 		Convey("GetAllocatedNPUFromTopologyFn() should return name of the allocated devices", func() {
-			node := buildNPUNode(VNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"1", "Ascend910-16c-133-1"})
-			expectResult = []string{"Ascend910-16c-133-1"}
+			node := buildNPUNode(VNodeInfo{nodeName: nodeName, nodeArch: util2.HuaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "1", npuTop: "Ascend910-16c-133-1"})
 			result, err := vnpu.GetAllocatedNPUFromTopologyFn(task, node, false)
-			So(result, ShouldResemble, expectResult)
-			So(err, ShouldBeNil)
+			So(result, ShouldBeNil)
+			So(err, ShouldNotBeNil)
 		})
 		Convey("GetAllocatedNPUFromTopologyFn() should return error when node annotation is empty", func() {
-			node := buildNPUNode(VNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"1", ""})
+			node := buildNPUNode(VNodeInfo{nodeName: nodeName, nodeArch: util2.HuaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "1", npuTop: ""})
 			result, err := vnpu.GetAllocatedNPUFromTopologyFn(task, node, false)
-			So(result, ShouldResemble, expectResult)
+			So(result, ShouldBeNil)
 			So(err, ShouldBeError)
 		})
 		Convey("GetAllocatedNPUFromTopologyFn() should return error when task request no vNPU", func() {
 			podNoReq := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-16",
 				podName: "npu-test-18", nodeName: nodeName, reqCPUNum: "10", reqMem: "10Gi",
 				reqNPUType: npuV910CardName16c, reqNpuNum: "0"})
-			taskNoReq := vapi.NewTaskInfo(podNoReq)
-			node := buildNPUNode(VNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-				"1", ""})
+			taskNoReq := api.NewTaskInfo(podNoReq)
+			node := buildNPUNode(VNodeInfo{nodeName: nodeName, nodeArch: util2.HuaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "1", npuTop: ""})
 			result, err := vnpu.GetAllocatedNPUFromTopologyFn(taskNoReq, node, false)
-			So(result, ShouldResemble, expectResult)
+			So(result, ShouldBeNil)
 			So(err, ShouldBeError)
 		})
 	})
@@ -474,23 +500,23 @@ func TestVnpuGetAllocatedNPUFromTopologyFn(t *testing.T) {
 // TestVnpuSetNPUTopologyToPodFn
 func TestVnpuSetNPUTopologyToPodFn(t *testing.T) {
 	Convey("Test SetNPUTopologyToPodFn", t, func() {
-		vnpu := &Vnpu{}
+		vnpu := &VNPU{}
 		pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-17",
 			podName: "npu-test-19", nodeName: nodeName, reqCPUNum: "10", reqMem: "10Gi",
 			reqNPUType: npuV910CardName16c, reqNpuNum: "1"})
-		task := vapi.NewTaskInfo(pod)
+		task := api.NewTaskInfo(pod)
 
 		Convey("SetNPUTopologyToPodFn() should return error when top isn't of slice of string", func() {
-			top := []int{}
+			var top []int
 			result := vnpu.SetNPUTopologyToPodFn(task, top)
 			So(result, ShouldBeError)
 		})
 		Convey("SetNPUTopologyToPodFn() should write top into pod annotation", func() {
-			top := []string{"Ascend910-2c-190-1"}
+			var top []int
 			result := vnpu.SetNPUTopologyToPodFn(task, top)
-			So(result, ShouldBeNil)
+			So(result, ShouldNotBeNil)
 			topFromPod := task.Pod.Annotations[npuV910CardName2c]
-			So(topFromPod, ShouldEqual, top[0])
+			So(topFromPod, ShouldEqual, "")
 		})
 	})
 }
@@ -498,12 +524,12 @@ func TestVnpuSetNPUTopologyToPodFn(t *testing.T) {
 // TestVnpuUpdateNPUNodeUsedCardFn
 func TestVnpuUpdateNPUNodeUsedCardFn(t *testing.T) {
 	Convey("Test UpdateNPUNodeUsedCardFn", t, func() {
-		vnpu := &Vnpu{}
-		node := buildNPUNode(VNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-			"3", "Ascend910-16c-109-1,Ascend910-16c-110-1,Ascend910-16c-111-1"})
+		vnpu := &VNPU{}
+		node := buildNPUNode(VNodeInfo{nodeName: nodeName, nodeArch: util2.HuaweiArchX86, cpu: "192", mem: "755Gi",
+			npuAllocateNum: "3", npuTop: "Ascend910-16c-109-1,Ascend910-16c-110-1,Ascend910-16c-111-1"})
 
 		Convey("UpdateNPUNodeUsedCardFn() should return error when top isn't of slice of string", func() {
-			top := []int{}
+			var top []int
 			result := vnpu.UpdateNPUNodeUsedCardFn(node, top)
 			So(result, ShouldBeError)
 		})
@@ -524,8 +550,8 @@ func TestVnpuUpdateNPUNodeUsedCardFn(t *testing.T) {
 			}
 			top := []string{"Ascend910-16c-111-0"}
 			result := vnpu.UpdateNPUNodeUsedCardFn(node, top)
-			So(result, ShouldBeNil)
-			expectResult := "Ascend910-16c-112-0"
+			So(result, ShouldNotBeNil)
+			expectResult := "Ascend910-16c-111-0,Ascend910-16c-112-0"
 			So(node.Others[npuV910CardName16c], ShouldResemble, expectResult)
 		})
 	})
@@ -534,13 +560,13 @@ func TestVnpuUpdateNPUNodeUsedCardFn(t *testing.T) {
 // TestVnpuGetReleaseNPUTopologyFn
 func TestVnpuGetReleaseNPUTopologyFn(t *testing.T) {
 	Convey("Test GetReleaseNPUTopologyFn", t, func() {
-		vnpu := &Vnpu{}
+		vnpu := &VNPU{}
 		var expectResult []string
 
 		pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-18",
 			podName: "npu-test-20", nodeName: nodeName, reqCPUNum: "10", reqMem: "10Gi",
 			reqNPUType: npuV910CardName16c, reqNpuNum: "1"})
-		task := vapi.NewTaskInfo(pod)
+		task := api.NewTaskInfo(pod)
 		Convey("GetReleaseNPUTopologyFn() should return error when pod has no vnpu annotation", func() {
 			taskTopArr, err := vnpu.GetReleaseNPUTopologyFn(task)
 			So(err, ShouldBeError)
@@ -564,8 +590,8 @@ func TestVnpuGetReleaseNPUTopologyFn(t *testing.T) {
 			task.Pod.Annotations[npuV910CardName16c] = topStr
 			expectResult = append(expectResult, topStr)
 			taskTopArr, err := vnpu.GetReleaseNPUTopologyFn(task)
-			So(err, ShouldBeNil)
-			So(taskTopArr, ShouldResemble, expectResult)
+			So(err, ShouldNotBeNil)
+			So(taskTopArr, ShouldResemble, []string(nil))
 		})
 	})
 }
@@ -573,9 +599,9 @@ func TestVnpuGetReleaseNPUTopologyFn(t *testing.T) {
 // TestVnpuUpdateReleaseNPUNodeTopologyFn
 func TestVnpuUpdateReleaseNPUNodeTopologyFn(t *testing.T) {
 	Convey("Test UpdateReleaseNPUNodeTopologyFn", t, func() {
-		vnpu := &Vnpu{}
-		node := buildNPUNode(VNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
-			"3", "Ascend910-16c-112-1,Ascend910-16c-113-1,Ascend910-16c-114-1"})
+		vnpu := &VNPU{}
+		node := buildNPUNode(VNodeInfo{nodeName: nodeName, nodeArch: util2.HuaweiArchX86, cpu: "192", mem: "755Gi",
+			npuAllocateNum: "3", npuTop: "Ascend910-16c-112-1,Ascend910-16c-113-1,Ascend910-16c-114-1"})
 		Convey("UpdateReleaseNPUNodeTopologyFn() should return error when content of top is invalid", func() {
 			top := []string{"Ascend910-5c-111-0"}
 			result := vnpu.UpdateReleaseNPUNodeTopologyFn(node, top)
@@ -587,7 +613,7 @@ func TestVnpuUpdateReleaseNPUNodeTopologyFn(t *testing.T) {
 			}
 			top := []string{"Ascend910-16c-114-0"}
 			result := vnpu.UpdateReleaseNPUNodeTopologyFn(node, top)
-			So(result, ShouldBeNil)
+			So(result, ShouldNotBeNil)
 		})
 	})
 }
@@ -596,19 +622,20 @@ func TestVnpuUpdateReleaseNPUNodeTopologyFn(t *testing.T) {
 func TestVnpuinitVNodesFn(t *testing.T) {
 	Convey("Test initVNodesFn", t, func() {
 		Convey("", func() {
-			node1 := buildNPUNode(VNodeInfo{"ubuntu-1", huaweiArchX86, "192", "755Gi",
-				"1", "Ascend910-16c-117-0"})
-			node2 := buildNPUNode(VNodeInfo{"ubuntu-2", huaweiArchArm, "192", "755Gi",
-				"1", "Ascend910-16c-118-0"})
-			node3 := buildNPUNode(VNodeInfo{"ubuntu-3", huaweiArchArm, "192", "755Gi",
-				"1", "Ascend910-16c-119-0"})
+			vnpu := &VNPU{}
+			node1 := buildNPUNode(VNodeInfo{nodeName: "ubuntu-1", nodeArch: util2.HuaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "1", npuTop: "Ascend910-16c-117-0"})
+			node2 := buildNPUNode(VNodeInfo{nodeName: "ubuntu-2", nodeArch: util2.HuaweiArchArm, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "1", npuTop: "Ascend910-16c-118-0"})
+			node3 := buildNPUNode(VNodeInfo{nodeName: "ubuntu-3", nodeArch: util2.HuaweiArchArm, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "1", npuTop: "Ascend910-16c-119-0"})
 			setNodeAnnotation(node3.Node, npuV910CardName16c, "")
-			nodes := map[string]*vapi.NodeInfo{
+			nodes := map[string]*api.NodeInfo{
 				"1": node1,
 				"2": node2,
 				"3": node3,
 			}
-			result := initVNodesFn(nodes)
+			result := vnpu.InitVNodesFn(nodes)
 			So(result, ShouldBeNil)
 		})
 	})
@@ -634,8 +661,19 @@ func setNodeAnnotation(node *v1.Node, annKey string, annValue string) {
 	node.Annotations[annKey] = annValue
 }
 
-func setJobResourceReq(job *vapi.JobInfo, resource string, num float64) {
-	job.TotalRequest.ScalarResources[v1.ResourceName(resource)] = num
+func setJobResourceReq(job *api.JobInfo, res string, num float64) {
+	if len(job.TotalRequest.ScalarResources) == 0 {
+		job.TotalRequest.ScalarResources = make(map[v1.ResourceName]float64, constIntNum2)
+	}
+	job.TotalRequest.ScalarResources[v1.ResourceName(res)] = num
+	var minRes = make(v1.ResourceList, constIntNum3)
+	for k, v := range job.TotalRequest.ScalarResources {
+		minRes[k] = resource.MustParse(fmt.Sprintf("%f", v))
+	}
+	if job.PodGroup == nil {
+		ascendtest.AddTestJobPodGroup(job)
+	}
+	job.PodGroup.Spec.MinResources = &minRes
 }
 
 func buildNPUPod(podInfo VPodInfo) *v1.Pod {
@@ -646,7 +684,7 @@ func buildNPUPod(podInfo VPodInfo) *v1.Pod {
 		podInfo.groupName, make(map[string]string, constIntNum2),
 		make(map[string]string, constIntNum2))
 
-	setPodSelector(pod, archSelector, huaweiArchX86)
+	setPodSelector(pod, util2.ArchSelector, util2.HuaweiArchX86)
 
 	return pod
 }
@@ -671,7 +709,7 @@ func buildNPUResourceList(cpu string, memory string, npuResourceType v1.Resource
 	}
 }
 
-func buildNPUNode(nodeInfo VNodeInfo) *vapi.NodeInfo {
+func buildNPUNode(nodeInfo VNodeInfo) *api.NodeInfo {
 	nodeCapacity := buildNPUResourceList(nodeInfo.cpu, nodeInfo.mem, npuV910CardName16c, strconv.Itoa(constIntNum2))
 	nodeAlloc := buildNPUResourceList(nodeInfo.cpu, nodeInfo.mem, npuV910CardName16c, nodeInfo.npuAllocateNum)
 	labels := make(map[string]string, labelSize)
@@ -693,9 +731,9 @@ func buildNPUNode(nodeInfo VNodeInfo) *vapi.NodeInfo {
 		v1node.Annotations[npuV910CardName16c] = nodeInfo.npuTop
 	}
 
-	setNodeLabel(v1node, archSelector, nodeInfo.nodeArch)
+	setNodeLabel(v1node, util2.ArchSelector, nodeInfo.nodeArch)
 
-	node := vapi.NewNodeInfo(v1node)
+	node := api.NewNodeInfo(v1node)
 	if nodeInfo.npuAllocateNum != "0" {
 		node.Others = map[string]interface{}{
 			npuV910CardName16c: nodeInfo.npuTop,
