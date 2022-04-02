@@ -99,7 +99,6 @@ func ChangeReqVNPUToCores(needNPU string) (int, error) {
 
 func updateCMCardData(dataSet, inDataSet []CardVNPUs) ([]CardVNPUs, error) {
 	if len(dataSet) == 0 || len(inDataSet) == 0 {
-		fmt.Printf("haha-4%+v===%+v\n", dataSet, inDataSet)
 		return append(dataSet, inDataSet...), nil
 	}
 
@@ -108,12 +107,10 @@ func updateCMCardData(dataSet, inDataSet []CardVNPUs) ([]CardVNPUs, error) {
 		tmp := firData
 		tmpMap[tmp.CardName] = tmp
 	}
-	fmt.Printf("haha-5-0%+v===%+v\n", tmpMap, inDataSet)
 	for _, secData := range inDataSet {
 		value, ok := tmpMap[secData.CardName]
 		if !ok {
 			tmpMap[secData.CardName] = secData
-			fmt.Printf("haha-5-1%+v===%+v\n", tmpMap, secData)
 			continue
 		}
 		// RemoveDuplicates
@@ -123,13 +120,11 @@ func updateCMCardData(dataSet, inDataSet []CardVNPUs) ([]CardVNPUs, error) {
 			Alloc:    append(value.Alloc, secData.Alloc...),
 		}
 		tmpMap[secData.CardName] = tmp
-		fmt.Printf("haha-3%+v\n", tmp)
 	}
 	var updateData []CardVNPUs
 	for _, value := range tmpMap {
 		tmp := value
 		updateData = append(updateData, tmp)
-		fmt.Printf("haha-5-2%+v===%+v\n", updateData, tmp)
 	}
 	return updateData, nil
 }
@@ -143,7 +138,6 @@ func updateCMNodeData(dataSet []NodeVNPUs, inData NodeVNPUs) ([]NodeVNPUs, error
 		}
 		// find the exist node
 		findNode = true
-		fmt.Printf("haha-2-1%+v==%+v\n", nodeData.Cards, inData.Cards)
 		cardSet, cardErr := updateCMCardData(nodeData.Cards, inData.Cards)
 		if cardErr != nil {
 			klog.V(util.LogErrorLev).Infof("updateCMNodeData %v.", cardErr)
@@ -152,11 +146,8 @@ func updateCMNodeData(dataSet []NodeVNPUs, inData NodeVNPUs) ([]NodeVNPUs, error
 		tmp := nodeData
 		tmp.Cards = cardSet
 		returnValue = append(returnValue, tmp)
-		fmt.Printf("haha-2-2%+v==%+v==%+v\n", cardSet, nodeData.Cards, inData.Cards)
-		//dataSet[k].Cards = cardSet
 	}
 	if !findNode {
-		//dataSet = append(dataSet, inData)
 		returnValue = append(returnValue, inData)
 	}
 	return returnValue, nil
@@ -180,7 +171,6 @@ func getCMNodeVNPUsDataFromVNPUAllocInfCache(cacheData VNPUAllocInfCache) ([]Nod
 			klog.V(util.LogErrorLev).Infof("getCMNodeVNPUsDataFromVNPUAllocInfCache %v.", updateErr)
 			return nil, updateErr
 		}
-		fmt.Printf("haha-1%+v===%+v\n", nodeData, tmpNode)
 	}
 	if len(nodeData) == 0 {
 		return nil, errors.New("no configmap data")

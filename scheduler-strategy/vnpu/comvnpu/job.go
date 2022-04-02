@@ -240,7 +240,7 @@ func (tp *VNPU) IsVJobOverWaitTime(vJob *api.JobInfo) bool {
 	diffTime := time.Now().Unix() - data.UpdateTime
 	if diffTime > vnpuutil.JobPendingWaitTime {
 		klog.V(util.LogErrorLev).Infof("%s IsVJobOverWaitTime %s: %v==%v.", tp.Name(), vJob.Name,
-			time.Now().Unix()-data.UpdateTime)
+			time.Now().Unix(), data.UpdateTime)
 		return true
 	}
 	return false

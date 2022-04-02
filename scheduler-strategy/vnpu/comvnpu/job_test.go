@@ -121,7 +121,7 @@ func buildGetVJobMeetNodeListTestCases() getVJobMeetNodeListTests {
 			args: getVJobMeetNodeListArgs{
 				vJob: job0, res: nil, ssn: ssn1},
 			want:    nil,
-			wantErr: fmt.Errorf("total resource not meet req %s", npuV910CardName16c),
+			wantErr: fmt.Errorf("total resource map[] not meet req %s", npuV910CardName16c),
 		},
 		{
 			name:   "02-getVJobMeetNodeList jobOrder-test",

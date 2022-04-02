@@ -158,7 +158,7 @@ func (tp *VNPU) DealVNPUSelectNodeAndChip(task *api.TaskInfo, node *api.NodeInfo
 	// check whether has the require chip
 	value, covertErr := util.GetNPUAllocCardsFromNodeOthers(node, data.ReqNPUType)
 	if covertErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s DealVNPUSelectNodeAndChip %v.", tp.Name(), task.Name, covertErr)
+		klog.V(util.LogErrorLev).Infof("%s DealVNPUSelectNodeAndChip %v %v.", tp.Name(), task.Name, covertErr)
 		return covertErr
 	}
 	// Check whether the partition of node chips is consistent with the requirements in cache
@@ -316,7 +316,8 @@ func (tp *VNPU) GetAllocatedNPUFromTopologyFn(vTask *api.TaskInfo, node *api.Nod
 			tp.Name(), nodeCards, allocErr)
 		return nil, allocErr
 	}
-	klog.V(util.LogInfoLev).Infof("GetAllocatedNPUFromTopologyFn %s get %v in %s.", vTask.Job, allocVNPUChip, node.Name)
+	klog.V(util.LogInfoLev).Infof("GetAllocatedNPUFromTopologyFn %s get %v in %s.", vTask.Job, allocVNPUChip,
+		node.Name)
 	return allocVNPUChip[0], nil
 }
 
@@ -381,7 +382,7 @@ func (tp *VNPU) GetAndRecordNewVNPUJobsFromSsn(ssn *framework.Session) error {
 		}
 		if !tp.IsVNPUJob(job) {
 			klog.V(util.LogDebugLev).Infof("%s GetAndRecordNewVNPUJobsFromSsn %s not VNPU job.", tp.Name(),
-				vnpuutil.PluginName, job.Name)
+				job.Name)
 			continue
 		}
 		if err := tp.RecordNewVNPUJobInCache(job); err != nil {

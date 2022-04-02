@@ -588,8 +588,8 @@ func TestVnpuGetReleaseNPUTopologyFn(t *testing.T) {
 			task.Pod.Annotations[npuV910CardName16c] = topStr
 			expectResult = append(expectResult, topStr)
 			taskTopArr, err := vnpu.GetReleaseNPUTopologyFn(task)
-			So(err, ShouldNotBeNil)
-			So(taskTopArr, ShouldResemble, []string(nil))
+			So(err, ShouldBeNil)
+			So(taskTopArr, ShouldResemble, expectResult)
 		})
 	})
 }
