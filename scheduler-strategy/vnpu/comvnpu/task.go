@@ -56,13 +56,22 @@ func (tp *VNPU) IsSelectorMeetNode(task *api.TaskInfo, node *api.NodeInfo, conf 
 }
 
 // GetReleaseNPUTopologyFn obtain allocated device info from Pod
-func (tp *VNPU) GetReleaseNPUTopologyFn(task *api.TaskInfo) (interface{}, error) {
+func (tp *VNPU) GetReleaseNPUTopologyFn(vTask *api.TaskInfo) (interface{}, error) {
 	var vType string
 	var taskTopArr []string
 	var err error
-
+	// 1.init vnp
+	pluginName, nameErr := tp.GetPluginNameByTaskInfo(vTask)
+	if nameErr != nil {
+		klog.V(util.LogErrorLev).Infof("%s GetPluginNameByJobInfo %s %v.", tp.Name(), vTask.Name, nameErr)
+		return nil, nameErr
+	}
+	if pluginErr := tp.InitVNPUPluginByType(pluginName); pluginErr != nil {
+		klog.V(util.LogErrorLev).Infof("%s InitVNPUPluginByType :%v.", vnpuutil.PluginName, pluginErr)
+		return nil, pluginErr
+	}
 	for _, vType = range tp.Attr.DivideKinds {
-		taskTopArr, err = tp.GetNPUsFromNodeAnnotation(task.Pod.Annotations, vType)
+		taskTopArr, err = tp.GetNPUsFromNodeAnnotation(vTask.Pod.Annotations, vType)
 		if err != nil {
 			continue
 		}
@@ -145,12 +154,11 @@ func (tp *VNPU) SetNPUTopologyToPodFn(task *api.TaskInfo, top interface{}) error
 	var topStr string
 	var vType string
 
-	topArr, ok := top.([]string)
-	if !ok || len(topArr) < 1 {
+	topInstance, ok := top.(string)
+	if !ok {
 		return errors.New("set NPU topology to pod gets invalid argument")
 	}
 
-	topInstance := topArr[0]
 	for _, vt := range tp.Attr.DivideKinds {
 		v := strings.TrimPrefix(vt, tp.Attr.AnnoPreVal)
 		if strings.HasPrefix(topInstance, v) {
@@ -159,9 +167,8 @@ func (tp *VNPU) SetNPUTopologyToPodFn(task *api.TaskInfo, top interface{}) error
 		}
 	}
 
-	topStr = strings.Join(topArr, ",")
 	klog.V(util.LogInfoLev).Infof("%s setNPUTopologyToPod begin top:%v.", tp.Name(), top)
-	task.Pod.Annotations[vType] = topStr
+	task.Pod.Annotations[vType] = topInstance
 	task.Pod.Annotations[common.PodPredicateTime] = strconv.FormatInt(time.Now().UnixNano(), util.ConstIntNum10)
 	klog.V(util.LogInfoLev).Infof("%s setNPUTopologyToPod %s top:%s.", tp.Name(), task.Name, topStr)
 

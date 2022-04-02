@@ -97,21 +97,9 @@ func ChangeReqVNPUToCores(needNPU string) (int, error) {
 	return strconv.Atoi(content)
 }
 
-func getNoDuplicatesCardVNPUs(fir, sec []string) []string {
-	reqMap := make(map[string]struct{}, util.ConstIntNum3)
-	temp := append(fir, sec...)
-	for _, l := range temp {
-		reqMap[l] = struct{}{}
-	}
-	var tmpSlice []string
-	for value := range reqMap {
-		tmpSlice = append(tmpSlice, value)
-	}
-	return tmpSlice
-}
-
 func updateCMCardData(dataSet, inDataSet []CardVNPUs) ([]CardVNPUs, error) {
 	if len(dataSet) == 0 || len(inDataSet) == 0 {
+		fmt.Printf("haha-4%+v===%+v\n", dataSet, inDataSet)
 		return append(dataSet, inDataSet...), nil
 	}
 
@@ -120,48 +108,58 @@ func updateCMCardData(dataSet, inDataSet []CardVNPUs) ([]CardVNPUs, error) {
 		tmp := firData
 		tmpMap[tmp.CardName] = tmp
 	}
-
+	fmt.Printf("haha-5-0%+v===%+v\n", tmpMap, inDataSet)
 	for _, secData := range inDataSet {
 		value, ok := tmpMap[secData.CardName]
 		if !ok {
-			tmpMap[secData.CardName] = value
+			tmpMap[secData.CardName] = secData
+			fmt.Printf("haha-5-1%+v===%+v\n", tmpMap, secData)
 			continue
 		}
 		// RemoveDuplicates
 		tmp := CardVNPUs{
 			CardName: secData.CardName,
-			Req:      getNoDuplicatesCardVNPUs(value.Req, secData.Req),
-			Alloc:    getNoDuplicatesCardVNPUs(value.Alloc, secData.Alloc),
+			Req:      append(value.Req, secData.Req...),
+			Alloc:    append(value.Alloc, secData.Alloc...),
 		}
 		tmpMap[secData.CardName] = tmp
+		fmt.Printf("haha-3%+v\n", tmp)
 	}
 	var updateData []CardVNPUs
 	for _, value := range tmpMap {
 		tmp := value
 		updateData = append(updateData, tmp)
+		fmt.Printf("haha-5-2%+v===%+v\n", updateData, tmp)
 	}
 	return updateData, nil
 }
 
 func updateCMNodeData(dataSet []NodeVNPUs, inData NodeVNPUs) ([]NodeVNPUs, error) {
 	findNode := false
-	for k, nodeData := range dataSet {
+	var returnValue []NodeVNPUs
+	for _, nodeData := range dataSet {
 		if nodeData.NodeName != inData.NodeName {
 			continue
 		}
 		// find the exist node
 		findNode = true
+		fmt.Printf("haha-2-1%+v==%+v\n", nodeData.Cards, inData.Cards)
 		cardSet, cardErr := updateCMCardData(nodeData.Cards, inData.Cards)
 		if cardErr != nil {
 			klog.V(util.LogErrorLev).Infof("updateCMNodeData %v.", cardErr)
 			return nil, cardErr
 		}
-		dataSet[k].Cards = cardSet
+		tmp := nodeData
+		tmp.Cards = cardSet
+		returnValue = append(returnValue, tmp)
+		fmt.Printf("haha-2-2%+v==%+v==%+v\n", cardSet, nodeData.Cards, inData.Cards)
+		//dataSet[k].Cards = cardSet
 	}
 	if !findNode {
-		dataSet = append(dataSet, inData)
+		//dataSet = append(dataSet, inData)
+		returnValue = append(returnValue, inData)
 	}
-	return dataSet, nil
+	return returnValue, nil
 }
 
 func getCMNodeVNPUsDataFromVNPUAllocInfCache(cacheData VNPUAllocInfCache) ([]NodeVNPUs, error) {
@@ -182,6 +180,7 @@ func getCMNodeVNPUsDataFromVNPUAllocInfCache(cacheData VNPUAllocInfCache) ([]Nod
 			klog.V(util.LogErrorLev).Infof("getCMNodeVNPUsDataFromVNPUAllocInfCache %v.", updateErr)
 			return nil, updateErr
 		}
+		fmt.Printf("haha-1%+v===%+v\n", nodeData, tmpNode)
 	}
 	if len(nodeData) == 0 {
 		return nil, errors.New("no configmap data")

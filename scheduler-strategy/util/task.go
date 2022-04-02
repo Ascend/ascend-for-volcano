@@ -85,6 +85,7 @@ func GetTaskLabels(task *api.TaskInfo) map[string]string {
 	return task.Pod.Labels
 }
 
+// GetRealPodByTask get pod by task from k8s directly.
 func GetRealPodByTask(ssn *framework.Session, task *api.TaskInfo) (*v1.Pod, error) {
 	pod, err := ssn.KubeClient().CoreV1().Pods(task.Namespace).Get(context.TODO(), task.Name, metav1.GetOptions{})
 	if err != nil {
@@ -97,7 +98,8 @@ func GetRealPodByTask(ssn *framework.Session, task *api.TaskInfo) (*v1.Pod, erro
 	return pod, nil
 }
 
-func GetPodUsedNPUNum(task *api.TaskInfo, resType string) []string {
+// GetPodUsedNPUNames get the task alloc NPUs.like set of Ascend910-1.
+func GetPodUsedNPUNames(task *api.TaskInfo, resType string) []string {
 	if task == nil {
 		return nil
 	}
@@ -109,6 +111,7 @@ func GetPodUsedNPUNum(task *api.TaskInfo, resType string) []string {
 	return resSlice
 }
 
+// GetReqResourceNameFromTask get task use npu name
 func GetReqResourceNameFromTask(vTask *api.TaskInfo) (string, error) {
 	if vTask == nil {
 		return "", errors.New("nil parameter")
