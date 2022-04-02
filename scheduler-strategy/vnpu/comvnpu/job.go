@@ -145,7 +145,7 @@ func (tp *VNPU) getVJobReqInfFromJobInfo(job *api.JobInfo) (*vnpuutil.VNPUAllocI
 // CheckJobNeedPreAlloc Check the vJob whether need do pre-Alloc or not.
 func (tp *VNPU) CheckJobNeedPreAlloc(job *api.JobInfo) error {
 	if tp.isNewVNPUJob(job) {
-		klog.V(util.LogDebugLev).Infof("%s CheckJobNeedPreAlloc %s need to preAlloc.", tp.Name(), job.Name)
+		klog.V(util.LogDebugLev).Infof("%s CheckJobNeedPreAlloc new %s need to preAlloc.", tp.Name(), job.Name)
 		return nil
 	}
 	if tp.isJobSetPreAllocFlag(job) {
@@ -184,7 +184,7 @@ func (tp *VNPU) UpdateVJobsCacheAllocChipByJobName(vJob *api.JobInfo) error {
 		return getErr
 	}
 	for _, vTask := range vJob.Tasks {
-		chips := util.GetPodUsedNPUNum(vTask, tmp)
+		chips := util.GetPodUsedNPUNames(vTask, tmp)
 		cards = append(cards, chips...)
 	}
 	if len(cards) == 0 {
@@ -238,7 +238,12 @@ func (tp *VNPU) IsVJobOverWaitTime(vJob *api.JobInfo) bool {
 		return false
 	}
 	diffTime := time.Now().Unix() - data.UpdateTime
-	return diffTime > vnpuutil.JobPendingWaitTime
+	if diffTime > vnpuutil.JobPendingWaitTime {
+		klog.V(util.LogErrorLev).Infof("%s IsVJobOverWaitTime %s: %v==%v.", tp.Name(), vJob.Name,
+			time.Now().Unix(), data.UpdateTime)
+		return true
+	}
+	return false
 }
 
 // DeleteCacheVJobByInfo delete vJob from cache.
@@ -262,10 +267,13 @@ func (tp *VNPU) DealVJobLegality(vJob *api.JobInfo) error {
 	// 1.Only unallocated VJob can do these.
 	// 2.whether the job has predistribution flag
 	if tp.IsVJobHasPredistribution(vJob) {
-		klog.V(util.LogDebugLev).Infof("%s %s has predistribution.", tp.Name(), vJob.UID)
+		klog.V(util.LogDebugLev).Infof("%s DealVJobLegality %s not pre-distribution.", tp.Name(), vJob.UID)
 		return nil
 	}
-
+	if util.IsJobRunningByInfo(vJob) {
+		klog.V(util.LogDebugLev).Infof("%s DealVJobLegality %s has running.", tp.Name(), vJob.UID)
+		return nil
+	}
 	// 3.check the job whether over the max wait time.
 	if !tp.IsVJobOverWaitTime(vJob) {
 		return nil
@@ -321,7 +329,8 @@ func (tp *VNPU) IsVNPUJob(job *api.JobInfo) bool {
 			return true
 		}
 	}
-	klog.V(util.LogErrorLev).Infof("%s IsVNPUJob %s %s not in %+v.", tp.Name(), job.Name, reqNpuType, tp.Attr)
+	klog.V(util.LogErrorLev).Infof("%s IsVNPUJob %s %s not in %+v.", tp.Name(), job.Name, reqNpuType,
+		tp.Attr.DivideKinds)
 	return false
 }
 
@@ -385,8 +394,8 @@ func (tp *VNPU) GetVJobMeetNodeList(vJob *api.JobInfo, res map[string]float64,
 	}
 	// 2. check the cluster total res meet VJob require.
 	if !vnpuutil.IsVJobReqNPUMeetTotalResources(jobNeedNPUType, res) {
-		err := fmt.Errorf("total resource not meet req %s", jobNeedNPUType)
-		klog.V(util.LogErrorLev).Infof("%s IsVJobReqNPUMeetTotalResources %s %v.", tp.Name(), vJob.Name, err)
+		err := fmt.Errorf("total resource %+v not meet req %s", res, jobNeedNPUType)
+		klog.V(util.LogErrorLev).Infof("%s GetVJobMeetNodeList %s %v.", tp.Name(), vJob.Name, err)
 		return nil, err
 	}
 	// 3.Get node list by req VNPU.

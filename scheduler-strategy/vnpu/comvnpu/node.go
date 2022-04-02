@@ -25,13 +25,17 @@ import (
 
 // InitVNodesFn init node.
 func (tp *VNPU) InitVNodesFn(nodes map[string]*api.NodeInfo) error {
-	for key := range nodes {
-		for _, vType := range tp.Attr.DivideKinds {
-			nTopStr, err := getResourceFromAnnotationFn(nodes[key].Node.Annotations, vType)
+	for _, tmpNode := range nodes {
+		anno := tmpNode.Node.Annotations
+		for typeKey := range anno {
+			if !strings.Contains(typeKey, vnpuutil.NPUIdentifyName) {
+				continue
+			}
+			nTopStr, err := getResourceFromAnnotationFn(anno, typeKey)
 			if err != nil {
 				continue
 			}
-			err = util.SaveTopologyInMap(nodes[key].Others, nTopStr, vType)
+			err = util.SaveTopologyInMap(tmpNode.Others, nTopStr, typeKey)
 			if err != nil {
 				return err
 			}
@@ -113,22 +117,15 @@ func getTopStrFromNodeOther(othersMap map[string]interface{}, npuCardName string
 	return topArr, nil
 }
 
-// Update occupied resource info after allocate
-func updateTopStrOfNodeOtherAlloc(nodeTopStrArr []string, top []string) string {
+// Update occupied resource info after allocate, for only one chip.
+func updateTopStrOfNodeOtherAlloc(nodeTopStrArr []string, top string) string {
 	var tmpTopStrArr []string
-	var existFlag bool
 
 	for _, nTop := range nodeTopStrArr {
-		existFlag = false
-		for _, tTop := range top {
-			if nTop == tTop {
-				existFlag = true
-				break
-			}
+		if nTop == top {
+			continue
 		}
-		if !existFlag {
-			tmpTopStrArr = append(tmpTopStrArr, nTop)
-		}
+		tmpTopStrArr = append(tmpTopStrArr, nTop)
 	}
 	klog.V(util.LogDebugLev).Infof("updateTopStrOfNodeOtherAlloc : %v.", tmpTopStrArr)
 	newNodeTopStr := strings.Join(tmpTopStrArr, ",")
@@ -137,22 +134,16 @@ func updateTopStrOfNodeOtherAlloc(nodeTopStrArr []string, top []string) string {
 }
 
 // Update occupied resource info after release
-func updateTopStrOfNodeOtherRelease(nodeTopStrArr []string, top []string) string {
+func updateTopStrOfNodeOtherRelease(nodeTopStrArr []string, top string) string {
 	var tmpTopStrArr []string
 
-	tmpTopMap := make(map[string]int, util.ConstIntNum3)
+	tmpTopMap := make(map[string]struct{}, util.ConstIntNum3)
 	// add tops that already exist in node.Others to tmp map
 	for _, nTop := range nodeTopStrArr {
-		tmpTopMap[nTop] = 0
+		tmpTopMap[nTop] = struct{}{}
 	}
 	// add tops that been released to tmp map
-	for _, tTop := range top {
-		if _, ok := tmpTopMap[tTop]; ok {
-			klog.V(util.LogInfoLev).Infof("updateTopStrOfNodeOtherRelease card exists: %s.", tTop)
-			continue
-		}
-		tmpTopMap[tTop] = 0
-	}
+	tmpTopMap[top] = struct{}{}
 
 	for k := range tmpTopMap {
 		tmpTopStrArr = append(tmpTopStrArr, k)
@@ -166,18 +157,14 @@ func updateTopStrOfNodeOtherRelease(nodeTopStrArr []string, top []string) string
 
 // UpdateNPUNodeTopology Update node info to node.Others
 func (tp *VNPU) UpdateNPUNodeTopology(node *api.NodeInfo, top interface{}, updateFn func([]string,
-	[]string) string) error {
+	string) string) error {
 	var vType string
 
-	topArr, ok := top.([]string)
+	topInstance, ok := top.(string)
 	if !ok {
 		return errors.New("invalid argument")
 	}
-	if len(topArr) == 0 {
-		return errors.New("top is empty")
-	}
 
-	topInstance := topArr[0]
 	vType = tp.JudgeResourceTypeByTopInfo(topInstance)
 	if vType == "" {
 		return errors.New("invalid top content")
@@ -190,7 +177,7 @@ func (tp *VNPU) UpdateNPUNodeTopology(node *api.NodeInfo, top interface{}, updat
 		return err
 	}
 	// update to node.Others
-	newNodeTopStr := updateFn(nodeTopStrArr, topArr)
+	newNodeTopStr := updateFn(nodeTopStrArr, topInstance)
 	err = util.ReloadNewTopToNodeOther(node, newNodeTopStr, vType)
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("reloadNewTopToNode failed.")
@@ -440,7 +427,7 @@ func (tp *VNPU) getMeetChipsInNode(needCores int, nodeInf *api.NodeInfo) (map[in
 			continue
 		}
 		// split card
-		if v.UnCutCore > needCores {
+		if v.UnCutCore >= needCores {
 			chipCores[v.ChipID] = v.UnCutCore
 		}
 	}

@@ -91,6 +91,9 @@ func (tp *VNPU) VJobRunHandle(ssn *framework.Session) error {
 	if writeErr != nil {
 		klog.V(util.LogInfoLev).Infof("%v WriteVNPUAllocInfDataIntoCacheCM %v.", tp.Name(), writeErr)
 	}
+	if updateErr == nil && cmErr == nil && writeErr == nil {
+		return nil
+	}
 	return multierror.Append(updateErr, cmErr, writeErr)
 }
 
@@ -127,12 +130,16 @@ func (tp *VNPU) PreHandleVNPU(ssn *framework.Session) error {
 func (tp *VNPU) IsVNPUReqMeetActual(reqCard, actCard string) bool {
 	reqSlice := strings.Split(reqCard, "-")
 	req := reqSlice[len(reqSlice)-1]
-	actualSlice := strings.Split(actCard, "-")
-	actual := actualSlice[len(actualSlice)-1]
-	if req != actual {
-		return false
+	actualTop := strings.Split(actCard, ",")
+	for _, actCardString := range actualTop {
+		actualSlice := strings.Split(actCardString, "-")
+		actual := actualSlice[len(actualSlice)-1]
+		if req == actual {
+			return true
+		}
 	}
-	return true
+
+	return false
 }
 
 // DealVNPUSelectNodeAndChip check node whether has job require resource.
@@ -149,11 +156,10 @@ func (tp *VNPU) DealVNPUSelectNodeAndChip(task *api.TaskInfo, node *api.NodeInfo
 		return nameErr
 	}
 	// check whether has the require chip
-	value, ok := node.Node.Annotations[data.ReqNPUType]
-	if !ok || value == "" {
-		resErr := fmt.Errorf("%s has no %s", node.Name, data.ReqNPUType)
-		klog.V(util.LogErrorLev).Infof("%s %s DealVNPUSelectNodeAndChip %v.", tp.Name(), task.Name, resErr)
-		return resErr
+	value, covertErr := util.GetNPUAllocCardsFromNodeOthers(node, data.ReqNPUType)
+	if covertErr != nil {
+		klog.V(util.LogErrorLev).Infof("%s DealVNPUSelectNodeAndChip %v %v.", tp.Name(), task.Name, covertErr)
+		return covertErr
 	}
 	// Check whether the partition of node chips is consistent with the requirements in cache
 	if !tp.IsVNPUReqMeetActual(data.ReqCardName, value) {
@@ -283,13 +289,12 @@ func (tp *VNPU) GetAllocatedNPUFromTopologyFn(vTask *api.TaskInfo, node *api.Nod
 	reqCardName := data.ReqCardName
 	// like: huawei.com/Ascend910-0
 	reqVNPUType := data.ReqNPUType
-	// get the VNPU chip like huawei.com/Ascend910-2c-100-1
-	nodeCards, ok := node.Node.Annotations[reqVNPUType]
-	if !ok {
-		cardErr := fmt.Errorf("%s for %s no %s", vTask.Name, node.Name, reqCardName)
-		klog.V(util.LogErrorLev).Infof("%s GetAllocatedNPUFromTopologyFn %s %v.", tp.Name(),
-			reqVNPUType, cardErr)
-		return nil, cardErr
+
+	nodeCards, err := util.GetNPUAllocCardsFromNodeOthers(node, reqVNPUType)
+	if err != nil {
+		covertErr := fmt.Errorf("%s other %s not string", node.Name, reqVNPUType)
+		klog.V(util.LogErrorLev).Infof("%s GetAllocatedNPUFromTopologyFn %v.", tp.Name(), covertErr)
+		return nil, covertErr
 	}
 	// find the card id
 	reqIDStrings := strings.Split(reqCardName, "-")
@@ -311,8 +316,9 @@ func (tp *VNPU) GetAllocatedNPUFromTopologyFn(vTask *api.TaskInfo, node *api.Nod
 			tp.Name(), nodeCards, allocErr)
 		return nil, allocErr
 	}
-	klog.V(util.LogInfoLev).Infof("GetAllocatedNPUFromTopologyFn %s get %v in %s.", vTask.Job, allocVNPUChip, node.Name)
-	return allocVNPUChip, nil
+	klog.V(util.LogInfoLev).Infof("GetAllocatedNPUFromTopologyFn %s get %v in %s.", vTask.Job, allocVNPUChip,
+		node.Name)
+	return allocVNPUChip[0], nil
 }
 
 // AddOrUpdateVNPUAllocInfIntoCache  add or update cache element.
@@ -366,30 +372,29 @@ func (tp *VNPU) InitVNPUPluginByType(reqNpuType string) error {
 
 // GetAndRecordNewVNPUJobsFromSsn record new vJob in cache.
 func (tp *VNPU) GetAndRecordNewVNPUJobsFromSsn(ssn *framework.Session) error {
-	var errs error
 	getNum := 0
 	for _, job := range ssn.Jobs {
 		// for not ready job can pre handle
 		if !vnpuutil.IsVJobPending(job) {
-			klog.V(util.LogDebugLev).Infof("%s job(%s) ready:%v.",
+			klog.V(util.LogDebugLev).Infof("%s GetAndRecordNewVNPUJobsFromSsn %s ready:%v.",
 				vnpuutil.PluginName, job.Name, job.PodGroup.Status.Phase)
 			continue
 		}
 		if !tp.IsVNPUJob(job) {
-			klog.V(util.LogDebugLev).Infof("%s %s not VNPU job", vnpuutil.PluginName, job.Name)
+			klog.V(util.LogDebugLev).Infof("%s GetAndRecordNewVNPUJobsFromSsn %s not VNPU job.", tp.Name(),
+				job.Name)
+			continue
+		}
+		if err := tp.RecordNewVNPUJobInCache(job); err != nil {
+			klog.V(util.LogErrorLev).Infof("%s RecordNewVNPUJobInCache :%v.", vnpuutil.PluginName, err)
 			continue
 		}
 		getNum++
-		if err := tp.RecordNewVNPUJobInCache(job); err != nil {
-			klog.V(util.LogErrorLev).Infof("%s RecordNewVNPUJobInCache :%v.", vnpuutil.PluginName, err)
-			errs = multierror.Append(errs, err)
-			continue
-		}
 	}
 	if getNum == 0 {
-		return errors.New("nil job need deal")
+		return errors.New("none jobs need deal")
 	}
-	return errs
+	return nil
 }
 
 // GetAllNeedAllocVJobsFromCache get unAlloc vJobs from cache.
@@ -485,7 +490,7 @@ func (tp *VNPU) AllocNewVNPUJobsFromCache(ssn *framework.Session) error {
 		klog.V(util.LogErrorLev).Infof("%s GetClusterAllResourceFromSsn :%v.", vnpuutil.PluginName, resErr)
 		return resErr
 	}
-	klog.V(util.LogDebugLev).Infof("%s GetClusterAllResourceFromSsn:%+v.", vnpuutil.PluginName, clusterResource)
+	klog.V(util.LogDebugLev).Infof("%s AllocNewVNPUJobsFromCache:%+v.", vnpuutil.PluginName, clusterResource)
 	// 4.Alloc vJobs
 	if allocErr := tp.AllocCacheVJobsIntoCache(vJobsList, clusterResource, ssn); allocErr != nil {
 		klog.V(util.LogErrorLev).Infof("%s AllocCacheVJobsIntoCache :%v.", vnpuutil.PluginName, allocErr)
@@ -504,7 +509,7 @@ func (tp *VNPU) writevNPUAllocInfIntoCm(ssn *framework.Session) error {
 		Data: vnpuutil.GetVNPUCMData(vnpuutil.VNPUAllocData),
 	}
 
-	klog.V(util.LogDebugLev).Infof("Write vNPU alloc inf into cm: %+v/%v.", vNPUCM.Namespace, vNPUCM.Name)
+	klog.V(util.LogDebugLev).Infof("Write vNPU alloc inf into cm: %+v.", vNPUCM)
 	if err := util.CreateOrUpdateConfigMap(ssn.KubeClient(),
 		vNPUCM, vnpuutil.VNPUCMName, vnpuutil.VNPUCMNameSpace); err != nil {
 		klog.V(util.LogErrorLev).Infof("writevNPUAllocInfIntoCm : %v.", err)

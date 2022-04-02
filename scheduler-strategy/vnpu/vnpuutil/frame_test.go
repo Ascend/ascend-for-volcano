@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/agiledragon/gomonkey/v2"
+
 	"volcano.sh/volcano/pkg/scheduler/api"
 )
 
@@ -29,49 +30,52 @@ type getVNPUCMDataArgs struct {
 	cacheFunAfter  func()
 }
 
-type getVNPUCMDataTests []struct {
+type getVNPUCMDataTest struct {
 	name string
 	args getVNPUCMDataArgs
 	want map[string]string
 }
 
-func buildGetVNPUCMDataTestCases() getVNPUCMDataTests {
+func buildGetVNPUCMData01TestCases(tmpPatche *gomonkey.Patches) getVNPUCMDataTest {
+	test01 := getVNPUCMDataTest{
+		name: "01-getVNPUCMDataTests- nil-test",
+		args: getVNPUCMDataArgs{
+			cacheFunBefore: func() {
+				tmpPatche = gomonkey.ApplyFunc(time.Now,
+					func() time.Time { return time.Unix(timeTmp, 0) })
+			}, cacheFunAfter: func() {
+				tmpPatche.Reset()
+			},
+		},
+		want: map[string]string{VNPCMDataKey: `{"Nodes":null,"UpdateTime":0,"CheckCode":0}`},
+	}
+	return test01
+}
+
+func buildGetVNPUCMData02TestCases(tmpPatche *gomonkey.Patches) getVNPUCMDataTest {
+	test03 := getVNPUCMDataTest{
+		name: "02-getVNPUCMDataTests- no pre-deal-test",
+		args: getVNPUCMDataArgs{cacheData: VNPUAllocInfCache{
+			Cache: []VNPUAllocInf{{api.JobID("btg-test/mindx-dls-npu-8c"),
+				"huawei.com/Ascend910-8c", "k8smaster", "Ascend910-5",
+				"Ascend910-8c-180-5", false, timeTmp}}, CheckCode: checkCode},
+			cacheFunBefore: func() {
+				tmpPatche = gomonkey.ApplyFunc(time.Now,
+					func() time.Time { return time.Unix(timeTmp, 0) })
+			}, cacheFunAfter: func() {
+				tmpPatche.Reset()
+			},
+		},
+		want: map[string]string{VNPCMDataKey: `{"Nodes":null,"UpdateTime":0,"CheckCode":0}`},
+	}
+	return test03
+}
+
+func buildGetVNPUCMDataTestCases() []getVNPUCMDataTest {
 	var tmpPatche *gomonkey.Patches
-	testCases := getVNPUCMDataTests{
-		{
-			name: "01-getVNPUCMDataTests- nil-test",
-			args: getVNPUCMDataArgs{
-				cacheFunBefore: func() {
-					tmpPatche = gomonkey.ApplyFunc(time.Now,
-						func() time.Time { return time.Unix(timeTmp, 0) })
-				}, cacheFunAfter: func() {
-					tmpPatche.Reset()
-				},
-			},
-			want: map[string]string{VNPCMDataKey: `{"Nodes":null,"UpdateTime":0,"CheckCode":0}`},
-		},
-		{
-			name: "02-getVNPUCMDataTests- not-nil-test",
-			args: getVNPUCMDataArgs{cacheData: VNPUAllocInfCache{
-				Cache: []VNPUAllocInf{{
-					JobUID:        api.JobID("btg-test/mindx-dls-npu-8c"),
-					ReqNPUType:    "huawei.com/Ascend910-8c",
-					NodeName:      "k8smaster",
-					ReqCardName:   "Ascend910-5",
-					AllocCardName: "Ascend910-8c-180-5",
-					AllocFlag:     true,
-					UpdateTime:    timeTmp}}, CheckCode: checkCode},
-				cacheFunBefore: func() {
-					tmpPatche = gomonkey.ApplyFunc(time.Now,
-						func() time.Time { return time.Unix(timeTmp, 0) })
-				}, cacheFunAfter: func() {
-					tmpPatche.Reset()
-				},
-			},
-			want: map[string]string{VNPCMDataKey: "{\"Nodes\":[{\"NodeName\":\"k8smaster\",\"Cards\":[" +
-				"{\"CardName\":\"Ascend910-5\",\"Req\":[\"huawei.com/Ascend910-8c\"],\"Alloc\":" +
-				"[\"Ascend910-8c-180-5\"]}]}],\"UpdateTime\":1648556261,\"CheckCode\":4009496266}"},
-		},
+	testCases := []getVNPUCMDataTest{
+		buildGetVNPUCMData01TestCases(tmpPatche),
+		buildGetVNPUCMData02TestCases(tmpPatche),
 	}
 	return testCases
 }

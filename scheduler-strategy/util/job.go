@@ -161,3 +161,22 @@ func GetReqResourceNameFromJob(vJob *api.JobInfo) (string, error) {
 	klog.V(LogErrorLev).Infof("GetReqResourceNameFromJob %+v.", vJob.PodGroup.Spec.MinResources)
 	return "", errors.New("nil NPU")
 }
+
+// IsJobRunningByInfo judge job whether is running or not.
+func IsJobRunningByInfo(vJob *api.JobInfo) bool {
+	if vJob == nil {
+		return false
+	}
+	if len(vJob.Tasks) == 0 {
+		return false
+	}
+	for _, task := range vJob.Tasks {
+		if task.Pod == nil {
+			return false
+		}
+		if task.Pod.Status.Phase != v1.PodRunning {
+			return false
+		}
+	}
+	return true
+}

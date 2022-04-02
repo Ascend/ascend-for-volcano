@@ -12,6 +12,7 @@ package vnpuutil
 import (
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 const (
@@ -23,6 +24,8 @@ const (
 	PluginNameBy710VNPU = "710-VNPU"
 	// NPUCardNamePrefix huawei.com/ for judge npu resource.
 	NPUCardNamePrefix = "huawei.com/"
+	// NPUIdentifyName to identify the NPU
+	NPUIdentifyName = util.CommCardPreName
 	// NPU910CardName for judge 910 npu resource.
 	NPU910CardName = "huawei.com/Ascend910"
 	// NPU710CardName for judge 710 npu resource.
@@ -55,7 +58,7 @@ const (
 	// DeleteOverTime over time for job finish deal.
 	DeleteOverTime = 5
 	// JobPendingWaitTime The time wait for device-plugin create vnpu.
-	JobPendingWaitTime = 60
+	JobPendingWaitTime = 300
 	// VNPUScoreWeight for volcano select vnpu node core.
 	VNPUScoreWeight = 64
 )
