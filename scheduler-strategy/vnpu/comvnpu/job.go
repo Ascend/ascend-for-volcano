@@ -328,6 +328,7 @@ func (tp *VNPU) IsVNPUJob(job *api.JobInfo) bool {
 	for _, kind := range tp.Attr.DivideKinds {
 		if kind == reqNpuType {
 			flag = true
+			break
 		}
 	}
 	if !flag {

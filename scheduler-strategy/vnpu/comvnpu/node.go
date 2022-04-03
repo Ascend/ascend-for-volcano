@@ -539,8 +539,8 @@ func (tp *VNPU) reduceTheAllocWholeChipToNodeOther(chip string, nodeInf *api.Nod
 	}
 
 	if len(allCards) != len(topSlice) {
-		nodeInf.Others[tp.Attr.AnnoName] = strings.Join(allCards, ",")
 		// whole card deal over.need to deal cores continue.
+		nodeInf.Others[tp.Attr.AnnoName] = strings.Join(allCards, ",")
 	}
 	return nil
 }
