@@ -317,21 +317,35 @@ func (tp *VNPU) IsVNPUJob(job *api.JobInfo) bool {
 		klog.V(util.LogErrorLev).Infof("%s IsVNPUJob :%v.", vnpuutil.PluginName, pluginErr)
 		return false
 	}
-	// 2.vnp job.
+
 	reqNpuType, getErr := util.GetReqResourceNameFromJob(job)
 	if getErr != nil {
 		klog.V(util.LogErrorLev).Infof("%s IsVNPUJob %s %v.", tp.Name(), job.Name, getErr)
 		return false
 	}
-
+	// 2.vnp job.
+	flag := false
 	for _, kind := range tp.Attr.DivideKinds {
 		if kind == reqNpuType {
-			return true
+			flag = true
 		}
 	}
-	klog.V(util.LogErrorLev).Infof("%s IsVNPUJob %s %s not in %+v.", tp.Name(), job.Name, reqNpuType,
-		tp.Attr.DivideKinds)
-	return false
+	if !flag {
+		klog.V(util.LogErrorLev).Infof("%s IsVNPUJob %s %s not in %+v.", tp.Name(), job.Name, reqNpuType,
+			tp.Attr.DivideKinds)
+		return false
+	}
+	// 3.valid vJob require vNPU Number.
+	num, numErr := util.GetJobReqResourceNumFromJobPG(job, reqNpuType)
+	if numErr != nil {
+		klog.V(util.LogErrorLev).Infof("%s IsVNPUJob %s %+v.", tp.Name(), job.Name, numErr)
+		return false
+	}
+	if num != 1 {
+		klog.V(util.LogErrorLev).Infof("%s IsVNPUJob %s req %+v==%d.", tp.Name(), job.Name, reqNpuType, num)
+		return false
+	}
+	return true
 }
 
 type vJobsList []*api.JobInfo

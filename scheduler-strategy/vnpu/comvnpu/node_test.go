@@ -10,17 +10,17 @@ Package comvnpu is using for virtual HuaWei Ascend910 schedule.
 package comvnpu
 
 import (
+	"reflect"
+	"testing"
+
 	"github.com/agiledragon/gomonkey/v2"
 	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
-	"reflect"
-	"testing"
-	"volcano.sh/volcano/pkg/scheduler/framework"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
-
 	"volcano.sh/volcano/pkg/scheduler/api"
+	"volcano.sh/volcano/pkg/scheduler/framework"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/vnpu/vnpuutil"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
 )
@@ -84,7 +84,7 @@ type getVNPUUsedChipByReqArgs struct {
 	vNode   *api.NodeInfo
 }
 
-type getVNPUUsedChipByReqTests []struct {
+type getVNPUUsedChipByReqTest struct {
 	name    string
 	fields  VNPU
 	args    getVNPUUsedChipByReqArgs
@@ -92,21 +92,62 @@ type getVNPUUsedChipByReqTests []struct {
 	wantErr error
 }
 
-func buildGetVNPUUsedChipByReqTestCases() getVNPUUsedChipByReqTests {
+func buildGetVNPUUsedChipByReq01TestCase() getVNPUUsedChipByReqTest {
 	nodeInf := ascendtest.FakeNormalTestNode("vNode")
 	ascendtest.SetTestNPUNodeAnnotation(nodeInf, vnpuutil.NPU910CardCoreKey, "0-32c-32c,1-32c-30c")
 	ascendtest.SetTestNPUNodeAnnotation(nodeInf, vnpuutil.NPU910CardName, "Ascend91-0,Ascend91-1")
-	testCases := getVNPUUsedChipByReqTests{
-		{
-			name: "01-getVNPUUsedChipByReqTest jobOrder-test",
-			fields: VNPU{
-				Attr: vnpuutil.ComVNPU{NPUCardCoreKey: vnpuutil.NPU910CardCoreKey,
-					HwEntity: plugin.HwEntity{AnnoName: vnpuutil.NPU910CardName, AnnoPreVal: vnpuutil.NPUCardNamePrefix}},
-			},
-			args:    getVNPUUsedChipByReqArgs{needNPU: "huawei.com/Ascend910-16c", vNode: nodeInf},
-			want:    "Ascend910-1",
-			wantErr: nil,
+	testCase01 := getVNPUUsedChipByReqTest{
+		name: "01-getVNPUUsedChipByReqTest jobOrder-test",
+		fields: VNPU{
+			Attr: vnpuutil.ComVNPU{NPUCardCoreKey: vnpuutil.NPU910CardCoreKey,
+				HwEntity: plugin.HwEntity{AnnoName: vnpuutil.NPU910CardName, AnnoPreVal: vnpuutil.NPUCardNamePrefix}},
 		},
+		args:    getVNPUUsedChipByReqArgs{needNPU: "huawei.com/Ascend910-16c", vNode: nodeInf},
+		want:    "Ascend910-1",
+		wantErr: nil,
+	}
+	return testCase01
+}
+
+func buildGetVNPUUsedChipByReq02TestCase() getVNPUUsedChipByReqTest {
+	node02 := ascendtest.FakeNormalTestNode("vNode02")
+	ascendtest.SetTestNPUNodeAnnotation(node02, vnpuutil.NPU910CardCoreKey, "0-32c-32c,1-32c-3c,2-30c-30c")
+	ascendtest.SetTestNPUNodeAnnotation(node02, vnpuutil.NPU910CardName, "Ascend91-0,Ascend91-2")
+	testCase02 := getVNPUUsedChipByReqTest{
+		name: "02-getVNPUUsedChipByReqTest jobOrder-test",
+		fields: VNPU{
+			Attr: vnpuutil.ComVNPU{NPUCardCoreKey: vnpuutil.NPU910CardCoreKey,
+				HwEntity: plugin.HwEntity{AnnoName: vnpuutil.NPU910CardName, AnnoPreVal: vnpuutil.NPUCardNamePrefix}},
+		},
+		args:    getVNPUUsedChipByReqArgs{needNPU: "huawei.com/Ascend910-1c", vNode: node02},
+		want:    "Ascend910-1",
+		wantErr: nil,
+	}
+	return testCase02
+}
+
+func buildGetVNPUUsedChipByReq03TestCase() getVNPUUsedChipByReqTest {
+	node03 := ascendtest.FakeNormalTestNode("vNode03")
+	ascendtest.SetTestNPUNodeAnnotation(node03, vnpuutil.NPU910CardCoreKey, "0-32c-32c,1-32c-3c,2-30c-30c")
+	ascendtest.SetTestNPUNodeAnnotation(node03, vnpuutil.NPU910CardName, "Ascend91-0,Ascend91-2")
+	testCase03 := getVNPUUsedChipByReqTest{
+		name: "03-getVNPUUsedChipByReqTest jobOrder-test",
+		fields: VNPU{
+			Attr: vnpuutil.ComVNPU{NPUCardCoreKey: vnpuutil.NPU910CardCoreKey,
+				HwEntity: plugin.HwEntity{AnnoName: vnpuutil.NPU910CardName, AnnoPreVal: vnpuutil.NPUCardNamePrefix}},
+		},
+		args:    getVNPUUsedChipByReqArgs{needNPU: "huawei.com/Ascend910-16c", vNode: node03},
+		want:    "Ascend910-2",
+		wantErr: nil,
+	}
+	return testCase03
+}
+
+func buildGetVNPUUsedChipByReqTestCases() []getVNPUUsedChipByReqTest {
+	testCases := []getVNPUUsedChipByReqTest{
+		buildGetVNPUUsedChipByReq01TestCase(),
+		buildGetVNPUUsedChipByReq02TestCase(),
+		buildGetVNPUUsedChipByReq03TestCase(),
 	}
 	return testCases
 }
@@ -206,6 +247,80 @@ func TestPreHandleVNPU(t *testing.T) {
 				t.Errorf("GetVNPUUsedChipByReq() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			tt.args.cacheFunAfter()
+		})
+	}
+}
+
+type reduceTheAllocChipFromNodeOtherArgs struct {
+	chip    string
+	vJob    *api.JobInfo
+	nodeInf *api.NodeInfo
+}
+
+type reduceTheAllocChipFromNodeOtherTests struct {
+	name    string
+	fields  VNPU
+	args    reduceTheAllocChipFromNodeOtherArgs
+	wantErr error
+}
+
+func buildReduceTheAllocChipFromNodeOther01TestCase() reduceTheAllocChipFromNodeOtherTests {
+	job0 := ascendtest.FakeNormalTestJobByCreatTime("pg0", util.ConstIntNum2, 0)
+	ascendtest.SetFakeJobRequestSource(job0, npuV710CardName2c, 1)
+	node0 := ascendtest.FakeNormalTestNode("node0")
+	ascendtest.SetTestNPUNodeAnnotation(node0, vnpuutil.NPU710CardCoreKey, "0-32c-32c,1-32c-32c")
+	ascendtest.SetTestNPUNodeAnnotation(node0, vnpuutil.NPU710CardName, "Ascend710-0,Ascend710-1")
+	test01 := reduceTheAllocChipFromNodeOtherTests{
+		name: "01-ReduceTheAllocChipFromNodeOther reduceNodeOther-test",
+		fields: VNPU{
+			Attr: vnpuutil.ComVNPU{NPUCardCoreKey: vnpuutil.NPU710CardCoreKey,
+				HwEntity: plugin.HwEntity{AnnoName: vnpuutil.NPU710CardName, AnnoPreVal: vnpuutil.NPUCardNamePrefix}},
+		},
+		args:    reduceTheAllocChipFromNodeOtherArgs{chip: "Ascend710-0", vJob: job0, nodeInf: node0},
+		wantErr: nil,
+	}
+	return test01
+}
+
+func buildReduceTheAllocChipFromNodeOther02TestCase() reduceTheAllocChipFromNodeOtherTests {
+	job2 := ascendtest.FakeNormalTestJobByCreatTime("pg2", util.ConstIntNum2, 0)
+	ascendtest.SetFakeJobRequestSource(job2, npuV710CardName2c, 1)
+	node2 := ascendtest.FakeNormalTestNode("node2")
+	ascendtest.SetTestNPUNodeAnnotation(node2, vnpuutil.NPU710CardCoreKey, "0-32c-32c,1-32c-30c")
+	ascendtest.SetTestNPUNodeAnnotation(node2, vnpuutil.NPU710CardName, "Ascend710-0")
+	test02 := reduceTheAllocChipFromNodeOtherTests{
+		name: "01-ReduceTheAllocChipFromNodeOther reduceNodeOther-test",
+		fields: VNPU{
+			Attr: vnpuutil.ComVNPU{NPUCardCoreKey: vnpuutil.NPU710CardCoreKey,
+				HwEntity: plugin.HwEntity{AnnoName: vnpuutil.NPU710CardName, AnnoPreVal: vnpuutil.NPUCardNamePrefix}},
+		},
+		args:    reduceTheAllocChipFromNodeOtherArgs{chip: "Ascend710-1", vJob: job2, nodeInf: node2},
+		wantErr: nil,
+	}
+	return test02
+}
+
+func buildReduceTheAllocChipFromNodeOtherTestCases() []reduceTheAllocChipFromNodeOtherTests {
+	testCases := []reduceTheAllocChipFromNodeOtherTests{
+		buildReduceTheAllocChipFromNodeOther01TestCase(),
+		buildReduceTheAllocChipFromNodeOther02TestCase(),
+	}
+	return testCases
+}
+
+func TestReduceTheAllocChipFromNodeOther(t *testing.T) {
+	tests := buildReduceTheAllocChipFromNodeOtherTestCases()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tp := &VNPU{
+				Plugin:               tt.fields.Plugin,
+				Attr:                 tt.fields.Attr,
+				HwNPUSchedulerPlugin: tt.fields.HwNPUSchedulerPlugin,
+			}
+			err := tp.reduceTheAllocChipFromNodeOther(tt.args.chip, tt.args.vJob, tt.args.nodeInf)
+			if !reflect.DeepEqual(err, tt.wantErr) {
+				t.Errorf("reduceTheAllocChipFromNodeOther() error = %v, wantErr %v", err, tt.wantErr)
+			}
 		})
 	}
 }

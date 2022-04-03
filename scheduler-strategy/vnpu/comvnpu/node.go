@@ -283,10 +283,10 @@ func (tp *VNPU) GetNodeNPUCoreInfoMap(vNode *api.NodeInfo) (map[string]vNPUCoreI
 		return nil, errors.New(vnpuutil.PluginUninitializedError)
 	}
 	// get the all cores.
-	coreString, ok := vNode.Node.Annotations[tp.Attr.NPUCardCoreKey]
-	if !ok {
-		coreErr := fmt.Errorf("%s has no %s", vNode.Name, tp.Attr.NPUCardCoreKey)
-		return nil, coreErr
+	coreString, getErr := util.GetNPUAllocCardsFromNodeOthers(vNode, tp.Attr.NPUCardCoreKey)
+	if getErr != nil {
+		klog.V(util.LogDebugLev).Infof("GetNodeNPUCoreInfoMap :%v", getErr)
+		return nil, getErr
 	}
 	coreMap := make(map[string]vNPUCoreInfo, util.ConstIntNum3)
 	coreSlice := strings.Split(coreString, ",")
@@ -450,6 +450,7 @@ func (tp *VNPU) GetVNPUUsedChipByReq(needNPU string, nodeInf *api.NodeInfo) (str
 		klog.V(util.LogErrorLev).Infof("%s GetVNPUUsedChipByReq %v.", tp.Name(), listErr)
 		return "", listErr
 	}
+	klog.V(util.LogDebugLev).Infof("%s GetVNPUUsedChipByReq get chipList:%+v", tp.Name(), chipList)
 	return tp.getTheFillOneFromList(chipList)
 }
 
@@ -519,5 +520,97 @@ func (tp *VNPU) UpdateReleaseNPUNodeTopologyFn(node *api.NodeInfo, top interface
 		return errors.New("update npu node topology after release failed")
 	}
 
+	return nil
+}
+
+func (tp *VNPU) reduceTheAllocWholeChipToNodeOther(chip string, nodeInf *api.NodeInfo) error {
+	topStr, getErr := util.GetNPUAllocCardsFromNodeOthers(nodeInf, tp.Attr.AnnoName)
+	if getErr != nil {
+		klog.V(util.LogErrorLev).Infof("%s reduceTheAllocChipFromNodeOther :+%v.", tp.Name(), getErr)
+		return getErr
+	}
+	var allCards []string
+	topSlice := strings.Split(topStr, ",")
+	for _, chipStr := range topSlice {
+		if chipStr == chip {
+			continue
+		}
+		allCards = append(allCards, chipStr)
+	}
+
+	if len(allCards) != len(topSlice) {
+		nodeInf.Others[tp.Attr.AnnoName] = strings.Join(allCards, ",")
+		// whole card deal over.need to deal cores continue.
+	}
+	return nil
+}
+
+// GetVJobReqNPUCoreNum get the job require npu core number.
+func (tp *VNPU) GetVJobReqNPUCoreNum(vJob *api.JobInfo) (int, error) {
+	tmp, getErr := util.GetReqResourceNameFromJob(vJob)
+	if getErr != nil {
+		klog.V(util.LogErrorLev).Infof("%s GetVJobReqNPUType %s %v.", tp.Name(), vJob.Name, getErr)
+		return 0, getErr
+	}
+	// tmp like huawei.com/Ascend910-2c
+	tmpSlice := strings.Split(tmp, "-")
+	if len(tmpSlice) != util.ConstIntNum2 {
+		return 0, fmt.Errorf("%s err require %s", vJob.Name, tmp)
+	}
+	tmpStr := strings.TrimRight(tmpSlice[1], "c")
+	coreNum, conErr := strconv.Atoi(tmpStr)
+	if conErr != nil {
+		return 0, conErr
+	}
+	return coreNum, nil
+}
+
+// reduceTheAllocChipFromNodeOther chip is Ascend710-0
+func (tp *VNPU) reduceTheAllocChipFromNodeOther(chip string, vJob *api.JobInfo, nodeInf *api.NodeInfo) error {
+	chipSlice := strings.Split(chip, "-")
+	if len(chipSlice) != util.ConstIntNum2 {
+		return fmt.Errorf("%s is wrong chip", chip)
+	}
+	// deal the whole card.
+	if wholeErr := tp.reduceTheAllocWholeChipToNodeOther(chip, nodeInf); wholeErr != nil {
+		return wholeErr
+	}
+	// deal the core.
+	jobReqCoreNum, jobCoreErr := tp.GetVJobReqNPUCoreNum(vJob)
+	if jobCoreErr != nil {
+		return jobCoreErr
+	}
+	coreString, getErr := util.GetNPUAllocCardsFromNodeOthers(nodeInf, tp.Attr.NPUCardCoreKey)
+	if getErr != nil {
+		klog.V(util.LogDebugLev).Infof("%s reduceTheAllocChipFromNodeOther :%v", tp.Name(), getErr)
+		return getErr
+	}
+	var allCors []string
+	coreSlice := strings.Split(coreString, ",")
+	for _, coreStr := range coreSlice {
+		// coreStr is 4-8c-6c
+		tmpSlice := strings.Split(coreStr, "-")
+		if len(tmpSlice) != util.ConstIntNum3 {
+			return fmt.Errorf("wrong core string %s", coreStr)
+		}
+		if chipSlice[1] != tmpSlice[0] {
+			allCors = append(allCors, coreStr)
+			continue
+		}
+		tempChar := tmpSlice[util.ConstIntNum2]
+		desChar := strings.TrimRight(tempChar, "c")
+		tmpNum, tmpErr := strconv.Atoi(desChar)
+		if tmpErr != nil {
+			return tmpErr
+		}
+		resNum := tmpNum - jobReqCoreNum
+		if resNum < 0 {
+			return fmt.Errorf("wrong core node(%s),job(%v)", coreStr, jobReqCoreNum)
+		}
+		resChar := strconv.Itoa(resNum)
+		resStr := tmpSlice[0] + "-" + tmpSlice[1] + "-" + resChar + "c"
+		allCors = append(allCors, resStr)
+	}
+	nodeInf.Others[tp.Attr.NPUCardCoreKey] = strings.Join(allCors, ",")
 	return nil
 }
