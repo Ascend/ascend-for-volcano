@@ -83,3 +83,18 @@ func FakeNormalTestJobByCreatTime(jobName string, taskNum int, creatTime int64) 
 	job.CreationTimestamp = metav1.Time{Time: time.Unix(time.Now().Unix()+creatTime, 0)}
 	return job
 }
+
+// SetFakeJobRequestSource add job require on total,task.
+func SetFakeJobRequestSource(fJob *api.JobInfo, name string, value int) {
+	AddTestJobPodGroup(fJob)
+	SetTestJobPodGroupStatus(fJob, scheduling.PodGroupPending)
+
+	var minRes = make(v1.ResourceList, constIntNum3)
+	minRes[v1.ResourceName(name)] = resource.MustParse(fmt.Sprintf("%f", float64(value)))
+	fJob.PodGroup.Spec.MinResources = &minRes
+	if fJob.TotalRequest == nil {
+		reqResource := api.NewResource(*fJob.PodGroup.Spec.MinResources)
+		fJob.TotalRequest = reqResource
+	}
+	return
+}

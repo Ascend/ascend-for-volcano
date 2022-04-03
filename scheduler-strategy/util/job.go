@@ -12,9 +12,10 @@ package util
 import (
 	"errors"
 	"fmt"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/klog"
 	"strings"
+
+	"k8s.io/api/core/v1"
+	"k8s.io/klog"
 	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
@@ -179,4 +180,17 @@ func IsJobRunningByInfo(vJob *api.JobInfo) bool {
 		}
 	}
 	return true
+}
+
+// GetJobReqResourceNumFromJobPG Get job require resource number from job podGroup.
+func GetJobReqResourceNumFromJobPG(tmpJob *api.JobInfo, reqNpuType string) (int, error) {
+	if tmpJob == nil {
+		return 0, errors.New("nil parameter")
+	}
+	reqResource := api.NewResource(*tmpJob.PodGroup.Spec.MinResources)
+	value, ok := reqResource.ScalarResources[v1.ResourceName(reqNpuType)]
+	if !ok {
+		return 0, fmt.Errorf("%s no %s", tmpJob.Name, reqNpuType)
+	}
+	return int(value / NPUHex), nil
 }

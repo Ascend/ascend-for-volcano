@@ -41,8 +41,9 @@ func SetTestNPUNodeOther(node *api.NodeInfo, key string, value string) {
 	node.Others[key] = value
 }
 
-// SetTestNPUNodeAnnotation set NPU node other for add fault npu resource.
+// SetTestNPUNodeAnnotation set NPU node annotation for add fault npu resource.
 func SetTestNPUNodeAnnotation(node *api.NodeInfo, key string, value string) {
+	SetTestNPUNodeOther(node, key, value)
 	if node.Node.Annotations == nil {
 		node.Node.Annotations = make(map[string]string, constIntNum3)
 	}

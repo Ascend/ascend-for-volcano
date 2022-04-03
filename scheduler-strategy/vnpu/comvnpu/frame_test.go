@@ -112,7 +112,7 @@ func TestVnpuIsMyJob(t *testing.T) {
 			job := api.NewJobInfo(uid, tasks...)
 			ascendtest.AddTestJobPodGroup(job)
 			result := vnpu.IsMyJob(job)
-			So(result, ShouldBeNil)
+			So(result, ShouldNotBeNil)
 		})
 	})
 }

@@ -12,10 +12,11 @@ package util
 import (
 	"errors"
 	"fmt"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/klog"
 	"strconv"
 	"strings"
+
+	"k8s.io/api/core/v1"
+	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
 )
 
@@ -32,12 +33,11 @@ func GetNodeIdleNPUNum(node *api.NodeInfo, npuCardName string) (int, error) {
 
 // GetNodeAvailNPUIdsFromAnno Get node npu available number
 func GetNodeAvailNPUIdsFromAnno(node *api.NodeInfo, npuCardName string) (map[int]struct{}, error) {
-	chipStr, getErr := GetNPUAllocCardsFromNodeAnnotations(node, npuCardName)
+	chipStr, getErr := GetNPUAllocCardsFromNodeOthers(node, npuCardName)
 	if getErr != nil {
 		klog.V(LogDebugLev).Infof("GetNodeAvailNPUIdsFromAnno :%v", getErr)
 		return nil, getErr
 	}
-
 	idsMap := make(map[int]struct{}, ConstIntNum8)
 	chipSlice := strings.Split(chipStr, ",")
 	for _, chip := range chipSlice {
