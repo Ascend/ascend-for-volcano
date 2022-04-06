@@ -83,7 +83,7 @@ func TestOrderVJobsByCreateTime(t *testing.T) {
 
 type getVJobMeetNodeListArgs struct {
 	vJob *api.JobInfo
-	res  map[string]float64
+	res  map[string]int
 	ssn  *framework.Session
 }
 
@@ -96,6 +96,7 @@ type getVJobMeetNodeListTests []struct {
 }
 
 func buildGetVJobMeetNodeListTestCases() getVJobMeetNodeListTests {
+	const npuCoreNum = 32
 	job0 := ascendtest.FakeNormalTestJobByCreatTime("pg0", util.ConstIntNum2, 0)
 	ascendtest.AddTestJobPodGroup(job0)
 
@@ -103,6 +104,7 @@ func buildGetVJobMeetNodeListTestCases() getVJobMeetNodeListTests {
 	node0 := ascendtest.FakeNormalTestNode("node0")
 	ascendtest.SetTestNPUNodeAnnotation(node0, vnpuutil.NPU910CardName, "Ascend910-1")
 	ascendtest.SetTestNPUNodeAnnotation(node0, vnpuutil.NPU910CardCoreKey, "1-32c-32")
+	ascendtest.SetFakeNodeIdleSource(node0, vnpuutil.NPU910CardName, 1)
 	ascendtest.SetNPUNodeLabel(node0.Node, vnpuutil.VNPUNodeLabelKey, vnpuutil.VNPUNodeLabelValue)
 	ascendtest.SetNPUNodeLabel(node0.Node, util.ArchSelector, util.HuaweiArchX86)
 
@@ -127,7 +129,7 @@ func buildGetVJobMeetNodeListTestCases() getVJobMeetNodeListTests {
 			name:   "02-getVJobMeetNodeList jobOrder-test",
 			fields: *vnpu,
 			args: getVJobMeetNodeListArgs{
-				vJob: job0, res: map[string]float64{vnpuutil.NPU910CardName: 1}, ssn: ssn1},
+				vJob: job0, res: map[string]int{node0.Name: npuCoreNum}, ssn: ssn1},
 			want:    []*api.NodeInfo{node0},
 			wantErr: nil,
 		},

@@ -418,23 +418,26 @@ func (tp *VNPU) GetAllNeedAllocVJobsFromCache(ssn *framework.Session) ([]*api.Jo
 	return vJobs, nil
 }
 
-// GetClusterAllResourceFromSsn get cluster all resources.
-func (tp *VNPU) GetClusterAllResourceFromSsn(ssn *framework.Session) (map[string]float64, error) {
-	var allocatableResource = make(map[string]float64, util.ConstIntNum8)
+// GetClusterAllResourceFromSsn get cluster all core used.
+func (tp *VNPU) GetClusterAllResourceFromSsn(ssn *framework.Session) (map[string]int, error) {
+	var allocatableResource = make(map[string]int, util.ConstIntNum8)
 	for _, nodInf := range ssn.Nodes {
-		for name, value := range nodInf.Idle.ScalarResources {
-			if _, ok := allocatableResource[string(name)]; !ok {
-				allocatableResource[string(name)] = value
-				continue
-			}
-			allocatableResource[string(name)] += value
+		nodeCoresInf, coresErr := tp.GetNodeNPUCoreInfoMap(nodInf)
+		if coresErr != nil {
+			klog.V(util.LogErrorLev).Infof("%s IsVNPUNodeMeetReqResource %v.", tp.Name(), coresErr)
+			return nil, coresErr
 		}
+		var nodeAllUsableCores = 0
+		for _, tmp := range nodeCoresInf {
+			nodeAllUsableCores += tmp.UnCutCore
+		}
+		allocatableResource[nodInf.Name] = nodeAllUsableCores
 	}
 	return allocatableResource, nil
 }
 
 // AllocCacheVJobsIntoCache Allocate the resources required by the vJobs to the cache.
-func (tp *VNPU) AllocCacheVJobsIntoCache(jobs []*api.JobInfo, res map[string]float64, ssn *framework.Session) error {
+func (tp *VNPU) AllocCacheVJobsIntoCache(jobs []*api.JobInfo, res map[string]int, ssn *framework.Session) error {
 	var allocErrores error
 	for _, vJob := range jobs {
 		pluginName, nameErr := tp.GetPluginNameByJobInfo(vJob)
@@ -757,7 +760,7 @@ func (tp *VNPU) RecordVJobAllocInfoInCache(nodeInf *api.NodeInfo, chip string, v
 }
 
 // AllocCacheVJobIntoCache alloc vJob into cache by resources from session
-func (tp *VNPU) AllocCacheVJobIntoCache(vJob *api.JobInfo, res map[string]float64, ssn *framework.Session) error {
+func (tp *VNPU) AllocCacheVJobIntoCache(vJob *api.JobInfo, res map[string]int, ssn *framework.Session) error {
 	if tp == nil {
 		return errors.New(vnpuutil.PluginUninitializedError)
 	}

@@ -198,6 +198,22 @@ func (tp *VNPU) UpdateNPUNodeUsedCardFn(node *api.NodeInfo, top interface{}) err
 	return nil
 }
 
+func (tp *VNPU) coverReqNPUTypeToCoreNum(jobNeedNPUType string) (int, error) {
+	tmpSlice := strings.Split(jobNeedNPUType, "-")
+	if len(tmpSlice) != util.ConstIntNum2 {
+		klog.V(util.LogErrorLev).Infof("%s IsVNPUNodeMeetReqResource %s error.", tp.Name(), jobNeedNPUType)
+		return 0, fmt.Errorf("error format %v", jobNeedNPUType)
+	}
+	chipCoreStr := tmpSlice[1]
+	chipCoreStr = strings.TrimRight(chipCoreStr, "c")
+	chipCore, covAllErr := strconv.Atoi(chipCoreStr)
+	if covAllErr != nil {
+		klog.V(util.LogErrorLev).Infof("%s IsVNPUNodeMeetReqResource convert %v.", tp.Name(), covAllErr)
+		return 0, covAllErr
+	}
+	return chipCore, nil
+}
+
 // IsVNPUNodeMeetReqResource for VNPU card only need one for one job.
 // jobNeedNPUType is like huawei.com/Ascend910-2c
 func (tp *VNPU) IsVNPUNodeMeetReqResource(jobNeedNPUType string, tmpNode *api.NodeInfo) bool {
@@ -210,16 +226,9 @@ func (tp *VNPU) IsVNPUNodeMeetReqResource(jobNeedNPUType string, tmpNode *api.No
 		return false
 	}
 	// get need cores
-	tmpSlice := strings.Split(jobNeedNPUType, "-")
-	if len(tmpSlice) != util.ConstIntNum2 {
-		klog.V(util.LogErrorLev).Infof("%s IsVNPUNodeMeetReqResource %s error.", tp.Name(), jobNeedNPUType)
-		return false
-	}
-	chipCoreStr := tmpSlice[1]
-	chipCoreStr = strings.TrimRight(chipCoreStr, "c")
-	chipCore, covAllErr := strconv.Atoi(chipCoreStr)
-	if covAllErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s IsVNPUNodeMeetReqResource convert %v.", tp.Name(), covAllErr)
+	chipCore, coverErr := tp.coverReqNPUTypeToCoreNum(jobNeedNPUType)
+	if coverErr != nil {
+		klog.V(util.LogErrorLev).Infof("%s IsVNPUNodeMeetReqResource %v.", tp.Name(), coresErr)
 		return false
 	}
 	for cardID, v := range nodeCoresInf {

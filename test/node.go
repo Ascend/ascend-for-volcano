@@ -42,22 +42,22 @@ func SetTestNPUNodeOther(node *api.NodeInfo, key string, value string) {
 }
 
 // SetTestNPUNodeAnnotation set NPU node annotation for add fault npu resource.
-func SetTestNPUNodeAnnotation(node *api.NodeInfo, key string, value string) {
-	SetTestNPUNodeOther(node, key, value)
+func SetTestNPUNodeAnnotation(node *api.NodeInfo, name string, value string) {
+	SetTestNPUNodeOther(node, name, value)
 	if node.Node.Annotations == nil {
 		node.Node.Annotations = make(map[string]string, constIntNum3)
 	}
 
-	node.Node.Annotations[key] = value
+	node.Node.Annotations[name] = value
 
 	stringSlice := strings.Split(value, ",")
 	if node.Allocatable == nil || len(node.Allocatable.ScalarResources) == 0 {
 		allo := api.Resource{ScalarResources: map[v1.ResourceName]float64{
-			v1.ResourceName(key): float64(len(stringSlice)) * util.NPUHex}}
+			v1.ResourceName(name): float64(len(stringSlice)) * util.NPUHex}}
 		node.Allocatable = &allo
 		return
 	}
-	node.Allocatable.ScalarResources[v1.ResourceName(key)] = float64(len(stringSlice)) * util.NPUHex
+	node.Allocatable.ScalarResources[v1.ResourceName(name)] = float64(len(stringSlice)) * util.NPUHex
 }
 
 // BuildNPUNode built NPU node object
@@ -101,4 +101,11 @@ func FakeNormalTestNodes(num int) []*api.NodeInfo {
 	}
 
 	return nodes
+}
+
+// SetFakeNodeIdleSource Set fake node the idle source.
+func SetFakeNodeIdleSource(nodeInf *api.NodeInfo, name string, value int) {
+	idle := api.Resource{ScalarResources: map[v1.ResourceName]float64{
+		v1.ResourceName(name): float64(value) * util.NPUHex}}
+	nodeInf.Idle = &idle
 }
