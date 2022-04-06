@@ -96,6 +96,7 @@ type getVJobMeetNodeListTests []struct {
 }
 
 func buildGetVJobMeetNodeListTestCases() getVJobMeetNodeListTests {
+	const npuCoreNum = 32
 	job0 := ascendtest.FakeNormalTestJobByCreatTime("pg0", util.ConstIntNum2, 0)
 	ascendtest.AddTestJobPodGroup(job0)
 
@@ -128,7 +129,7 @@ func buildGetVJobMeetNodeListTestCases() getVJobMeetNodeListTests {
 			name:   "02-getVJobMeetNodeList jobOrder-test",
 			fields: *vnpu,
 			args: getVJobMeetNodeListArgs{
-				vJob: job0, res: map[string]int{node0.Name: 32}, ssn: ssn1},
+				vJob: job0, res: map[string]int{node0.Name: npuCoreNum}, ssn: ssn1},
 			want:    []*api.NodeInfo{node0},
 			wantErr: nil,
 		},
