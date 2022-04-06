@@ -47,7 +47,7 @@ func buildGetVNPUCMData01TestCases(tmpPatche *gomonkey.Patches) getVNPUCMDataTes
 				tmpPatche.Reset()
 			},
 		},
-		want: map[string]string{VNPCMDataKey: `{"Nodes":null,"UpdateTime":0,"CheckCode":0}`},
+		want: map[string]string{VNPCMDataKey: `{"Nodes":null,"UpdateTime":1648556261,"CheckCode":3096267169}`},
 	}
 	return test01
 }
@@ -66,7 +66,7 @@ func buildGetVNPUCMData02TestCases(tmpPatche *gomonkey.Patches) getVNPUCMDataTes
 				tmpPatche.Reset()
 			},
 		},
-		want: map[string]string{VNPCMDataKey: `{"Nodes":null,"UpdateTime":0,"CheckCode":0}`},
+		want: map[string]string{VNPCMDataKey: `{"Nodes":null,"UpdateTime":1648556261,"CheckCode":3096267169}`},
 	}
 	return test03
 }

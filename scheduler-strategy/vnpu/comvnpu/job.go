@@ -398,8 +398,27 @@ func (tp *VNPU) GetVJobNeedVNPU(vJob *api.JobInfo) (string, error) {
 	return "", fmt.Errorf("%s not has NPUS", vJob.Name)
 }
 
+// IsVJobReqNPUMeetTotalResources npu card only has one kind and one.
+func (tp *VNPU) IsVJobReqNPUMeetTotalResources(npu string, res map[string]int) bool {
+	if len(res) == 0 || npu == "" {
+		klog.V(util.LogErrorLev).Info("IsVJobReqNPUMeetTotalResources parameters error.")
+		return false
+	}
+	chipCore, coverErr := tp.coverReqNPUTypeToCoreNum(npu)
+	if coverErr != nil {
+		klog.V(util.LogErrorLev).Infof("%s IsVNPUNodeMeetReqResource %v.", tp.Name(), coverErr)
+		return false
+	}
+	for _, value := range res {
+		if value >= chipCore {
+			return true
+		}
+	}
+	return false
+}
+
 // GetVJobMeetNodeList Get vJob meet nodeMap
-func (tp *VNPU) GetVJobMeetNodeList(vJob *api.JobInfo, res map[string]float64,
+func (tp *VNPU) GetVJobMeetNodeList(vJob *api.JobInfo, res map[string]int,
 	ssn *framework.Session) ([]*api.NodeInfo, error) {
 	// 1.Get vJob need VNPU.
 	jobNeedNPUType, getErr := tp.GetVJobNeedVNPU(vJob)
@@ -408,7 +427,7 @@ func (tp *VNPU) GetVJobMeetNodeList(vJob *api.JobInfo, res map[string]float64,
 		return nil, getErr
 	}
 	// 2. check the cluster total res meet VJob require.
-	if !vnpuutil.IsVJobReqNPUMeetTotalResources(jobNeedNPUType, res) {
+	if !tp.IsVJobReqNPUMeetTotalResources(jobNeedNPUType, res) {
 		err := fmt.Errorf("total resource %+v not meet req %s", res, jobNeedNPUType)
 		klog.V(util.LogErrorLev).Infof("%s GetVJobMeetNodeList %s %v.", tp.Name(), vJob.Name, err)
 		return nil, err

@@ -26,21 +26,6 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
-// IsVJobReqNPUMeetTotalResources npu card only has one kind and one.
-func IsVJobReqNPUMeetTotalResources(npu string, res map[string]float64) bool {
-	if len(res) == 0 || npu == "" {
-		klog.V(util.LogErrorLev).Info("IsVJobReqNPUMeetTotalResources parameters error.")
-		return false
-	}
-	temp := strings.Split(npu, "-")
-	if value, ok := res[temp[0]]; ok {
-		if value >= 1.0 {
-			return true
-		}
-	}
-	return false
-}
-
 // ConvertToVNPUAllocInfCacheFromCMData Convert string to VNPUAllocInfCache.
 func ConvertToVNPUAllocInfCacheFromCMData(buffer string) (*VNPUAllocInfCache, error) {
 	cache := VNPUAllocInfCache{}
@@ -183,12 +168,11 @@ func changeVNPUAllocInfCacheToCMData(cacheData VNPUAllocInfCache) (VNPUCM, error
 	nodeData, err := getCMNodeVNPUsDataFromVNPUAllocInfCache(cacheData)
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("changeVNPUAllocInfCacheToCMData: %v.", err)
-		return VNPUCM{}, nil
 	}
 
 	cmData.Nodes = nodeData
 	cmData.UpdateTime = time.Now().Unix()
-	cmData.CheckCode = util.MakeDataHash(cmData.Nodes)
+	cmData.CheckCode = util.MakeDataHash(cmData)
 	return cmData, nil
 }
 
@@ -244,21 +228,25 @@ func IsNPUResourceStableInNode(kind string, tmpNode *api.NodeInfo) bool {
 		klog.V(util.LogErrorLev).Infof("IsNPUResourceStableInNode parameters nil.")
 		return false
 	}
-	k8sNum, k8sOK := tmpNode.Allocatable.ScalarResources[v1.ResourceName(kind)]
+	k8sNum, k8sOK := tmpNode.Idle.ScalarResources[v1.ResourceName(kind)]
 	if !k8sOK {
 		klog.V(util.LogErrorLev).Infof("IsNPUResourceStableInNode %s no %v in k8s.", tmpNode.Name, kind)
 		return false
 	}
-	annoSrings, anOK := tmpNode.Node.Annotations[kind]
-	if !anOK {
-		klog.V(util.LogErrorLev).Infof("IsNPUResourceStableInNode %s no %v in annotation.", tmpNode.Name, kind)
+	annoSrings, err := util.GetNPUAllocCardsFromNodeOthers(tmpNode, kind)
+	if err != nil {
+		klog.V(util.LogErrorLev).Infof("IsNPUResourceStableInNode :%v.", err)
 		return false
 	}
+
 	annoSlice := strings.Split(annoSrings, ",")
 	annoNum := len(annoSlice)
+	if annoSrings == "" {
+		annoNum = 0
+	}
 	if int(k8sNum/util.NPUHex) != annoNum {
-		klog.V(util.LogErrorLev).Infof("%s IsNPUResourceStableInNode  %s not stable (%v != %v).", tmpNode.Name,
-			kind, k8sNum, annoNum)
+		klog.V(util.LogErrorLev).Infof("%s IsNPUResourceStableInNode  %s not stable (%v != %v:%v).", tmpNode.Name,
+			kind, k8sNum, annoNum, annoSrings)
 		return false
 	}
 	return true
