@@ -112,15 +112,19 @@ func (tp *VNPU) GetVNPUCacheFromCacheCM(ssn *framework.Session) error {
 // PreHandleVNPU Only for abstract VNPU, not v910,v710 and so on.
 func (tp *VNPU) PreHandleVNPU(ssn *framework.Session) error {
 	if getErr := tp.GetVNPUCacheFromCacheCM(ssn); getErr != nil {
-		klog.V(util.LogInfoLev).Infof("PreHandleVNPU :%v.", getErr)
+		klog.V(util.LogErrorLev).Infof("PreHandleVNPU :%v.", getErr)
+	}
+
+	if updateErr := tp.updateNodesOthersByVNPUCache(ssn.Nodes); updateErr != nil {
+		klog.V(util.LogErrorLev).Infof("PreHandleVNPU :%v.", updateErr)
 	}
 
 	if err := tp.DealNewVNPUJob(ssn); err != nil {
-		klog.V(util.LogInfoLev).Infof("DealNewVNPUJob :%v.", err)
+		klog.V(util.LogInfoLev).Infof("PreHandleVNPU :%v.", err)
 	}
 
 	if npuErr := tp.DealFinishedVNPUJob(ssn); npuErr != nil {
-		klog.V(util.LogInfoLev).Infof("DealFinishedVNPUJob :%v.", npuErr)
+		klog.V(util.LogInfoLev).Infof("PreHandleVNPU :%v.", npuErr)
 	}
 	// no need deal errors.
 	return nil
@@ -424,14 +428,17 @@ func (tp *VNPU) GetClusterAllResourceFromSsn(ssn *framework.Session) (map[string
 	for _, nodInf := range ssn.Nodes {
 		nodeCoresInf, coresErr := tp.GetNodeNPUCoreInfoMap(nodInf)
 		if coresErr != nil {
-			klog.V(util.LogErrorLev).Infof("%s IsVNPUNodeMeetReqResource %v.", tp.Name(), coresErr)
-			return nil, coresErr
+			klog.V(util.LogDebugLev).Infof("%s GetClusterAllResourceFromSsn %v.", tp.Name(), coresErr)
+			continue
 		}
 		var nodeAllUsableCores = 0
 		for _, tmp := range nodeCoresInf {
 			nodeAllUsableCores += tmp.UnCutCore
 		}
 		allocatableResource[nodInf.Name] = nodeAllUsableCores
+	}
+	if len(allocatableResource) == 0 {
+		return nil, errors.New("nil npu node")
 	}
 	return allocatableResource, nil
 }

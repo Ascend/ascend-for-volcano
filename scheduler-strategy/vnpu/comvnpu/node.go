@@ -12,6 +12,7 @@ package comvnpu
 import (
 	"errors"
 	"fmt"
+	"github.com/hashicorp/go-multierror"
 	"sort"
 	"strconv"
 	"strings"
@@ -622,4 +623,73 @@ func (tp *VNPU) reduceTheAllocChipFromNodeOther(chip string, vJob *api.JobInfo, 
 	}
 	nodeInf.Others[tp.Attr.NPUCardCoreKey] = strings.Join(allCors, ",")
 	return nil
+}
+
+// getNodeUseInfoFromCache the format key like Ascend710-0.
+func (tp *VNPU) getNodeUseInfoFromCache(nodeInf *api.NodeInfo) (map[string]int, error) {
+	tmp := make(map[string]int, util.ConstIntNum3)
+	for _, value := range vnpuutil.VNPUAllocData.Cache {
+		if value.NodeName != nodeInf.Name {
+			continue
+		}
+		if value.AllocCardName != "" || !value.AllocFlag {
+			continue
+		}
+
+		tmp[value.ReqCardName] += 1
+	}
+	if len(tmp) == 0 {
+		return nil, fmt.Errorf("%s's other no need change", nodeInf.Name)
+	}
+	return tmp, nil
+}
+
+// updateNodeOtherWholeCardByUseMap for node and useMap is corresponding, must use getNodeUseInfoFromCache before.
+func (tp *VNPU) updateNodeOtherWholeCardByUseMap(nodeInf *api.NodeInfo, useMap map[string]int) error {
+	for cardName := range useMap {
+		tmpSlice := strings.Split(cardName, "-")
+		if len(tmpSlice) < util.ConstIntNum2 {
+			return fmt.Errorf("%s err card name %s", nodeInf.Name, cardName)
+		}
+		resName := vnpuutil.NPUCardNamePrefix + tmpSlice[0]
+		topStr, getErr := util.GetNPUAllocCardsFromNodeOthers(nodeInf, resName)
+		if getErr != nil {
+			klog.V(util.LogDebugLev).Infof("%s updateNodeOtherWholeCardByUseMap:%v.", tp.Name(), getErr)
+			continue
+		}
+		if !strings.Contains(topStr, cardName) {
+			continue
+		}
+		var allCards []string
+		topSlice := strings.Split(topStr, ",")
+		for _, chipStr := range topSlice {
+			if chipStr == cardName {
+				continue
+			}
+			allCards = append(allCards, chipStr)
+		}
+		writeString := strings.Join(allCards, ",")
+		if saveErr := util.SaveTopologyInMap(nodeInf.Others, writeString, resName); saveErr != nil {
+			return saveErr
+		}
+	}
+	return nil
+}
+
+// updateNodesOthersByVNPUCache must do after cache update.
+func (tp *VNPU) updateNodesOthersByVNPUCache(ssnNodes map[string]*api.NodeInfo) error {
+	var returnErr error
+	for _, nodeInf := range ssnNodes {
+		useMap, getErr := tp.getNodeUseInfoFromCache(nodeInf)
+		if getErr != nil {
+			klog.V(util.LogDebugLev).Infof("%s updateNodesOthersByVNPUCache :%v", tp.Name(), getErr)
+			continue
+		}
+		if upErr := tp.updateNodeOtherWholeCardByUseMap(nodeInf, useMap); upErr != nil {
+			klog.V(util.LogErrorLev).Infof("%s updateNodesOthersByVNPUCache :%v", tp.Name(), upErr)
+			returnErr = multierror.Append(returnErr, upErr)
+			continue
+		}
+	}
+	return returnErr
 }

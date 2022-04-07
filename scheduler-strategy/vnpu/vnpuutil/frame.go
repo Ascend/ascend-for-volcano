@@ -245,8 +245,8 @@ func IsNPUResourceStableInNode(kind string, tmpNode *api.NodeInfo) bool {
 		annoNum = 0
 	}
 	if int(k8sNum/util.NPUHex) != annoNum {
-		klog.V(util.LogErrorLev).Infof("%s IsNPUResourceStableInNode  %s not stable (%v != %v:%v).", tmpNode.Name,
-			kind, k8sNum, annoNum, annoSrings)
+		klog.V(util.LogErrorLev).Infof("%s IsNPUResourceStableInNode %s not stable (%v != %v:%v).",
+			tmpNode.Name, kind, k8sNum, annoNum*util.NPUHex, annoSrings)
 		return false
 	}
 	return true
