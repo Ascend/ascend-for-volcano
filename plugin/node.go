@@ -21,15 +21,12 @@ import (
 
 // Init hw npu nodes, used in npu plugins.
 func (hwNPU *ScheduleHandler) initNodesNPUAllocTopology(nodes map[string]*api.NodeInfo) error {
-	for cardName, initNodes := range hwNPU.InitNodesNPUAllocTopologyFns {
-		for key := range nodes {
-			node := nodes[key]
-			if node.Others == nil {
-				node.Others = make(map[string]interface{}, 1)
-				nodes[key] = node
-			}
+	for _, tmpNode := range nodes {
+		if tmpNode.Others == nil {
+			tmpNode.Others = make(map[string]interface{}, 1)
 		}
-
+	}
+	for cardName, initNodes := range hwNPU.InitNodesNPUAllocTopologyFns {
 		if err := initNodes(nodes); err != nil {
 			klog.V(logErrorLev).Infof("%s InitNodesNPUAllocTopology :%v.", cardName, err)
 			return err
