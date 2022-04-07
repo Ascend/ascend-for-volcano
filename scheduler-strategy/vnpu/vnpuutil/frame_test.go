@@ -71,11 +71,35 @@ func buildGetVNPUCMData02TestCases(tmpPatche *gomonkey.Patches) getVNPUCMDataTes
 	return test03
 }
 
+func buildGetVNPUCMData03TestCases(tmpPatche *gomonkey.Patches) getVNPUCMDataTest {
+	test03 := getVNPUCMDataTest{
+		name: "03-getVNPUCMDataTests- no pre-deal-test",
+		args: getVNPUCMDataArgs{cacheData: VNPUAllocInfCache{
+			Cache: []VNPUAllocInf{{api.JobID("btg-test/mindx-dls-npu-8c"),
+				"huawei.com/Ascend910-8c", "k8smaster", "Ascend910-5",
+				"Ascend910-8c-180-5", false, timeTmp},
+				{api.JobID("btg-test/mindx-dls-npu-8c"),
+					"huawei.com/Ascend710-2c", "ubuntu-05", "Ascend710-0",
+					"Ascend710-2c-100-0", false, timeTmp},
+			}, CheckCode: checkCode},
+			cacheFunBefore: func() {
+				tmpPatche = gomonkey.ApplyFunc(time.Now,
+					func() time.Time { return time.Unix(timeTmp, 0) })
+			}, cacheFunAfter: func() {
+				tmpPatche.Reset()
+			},
+		},
+		want: map[string]string{VNPCMDataKey: `{"Nodes":null,"UpdateTime":1648556261,"CheckCode":3096267169}`},
+	}
+	return test03
+}
+
 func buildGetVNPUCMDataTestCases() []getVNPUCMDataTest {
 	var tmpPatche *gomonkey.Patches
 	testCases := []getVNPUCMDataTest{
 		buildGetVNPUCMData01TestCases(tmpPatche),
 		buildGetVNPUCMData02TestCases(tmpPatche),
+		buildGetVNPUCMData03TestCases(tmpPatche),
 	}
 	return testCases
 }

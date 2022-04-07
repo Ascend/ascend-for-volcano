@@ -460,7 +460,7 @@ func (tp *VNPU) GetVNPUUsedChipByReq(needNPU string, nodeInf *api.NodeInfo) (str
 		klog.V(util.LogErrorLev).Infof("%s GetVNPUUsedChipByReq %v.", tp.Name(), listErr)
 		return "", listErr
 	}
-	klog.V(util.LogDebugLev).Infof("%s GetVNPUUsedChipByReq get chipList:%+v", tp.Name(), chipList)
+	klog.V(util.LogDebugLev).Infof("%s GetVNPUUsedChipByReq %d get chipList %+v", tp.Name(), core, chipList)
 	return tp.getTheFillOneFromList(chipList)
 }
 

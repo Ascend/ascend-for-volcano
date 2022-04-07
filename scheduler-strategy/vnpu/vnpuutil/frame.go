@@ -119,6 +119,8 @@ func updateCMNodeData(dataSet []NodeVNPUs, inData NodeVNPUs) ([]NodeVNPUs, error
 	var returnValue []NodeVNPUs
 	for _, nodeData := range dataSet {
 		if nodeData.NodeName != inData.NodeName {
+			tmp := nodeData
+			returnValue = append(returnValue, tmp)
 			continue
 		}
 		// find the exist node
