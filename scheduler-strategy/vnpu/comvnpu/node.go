@@ -12,11 +12,11 @@ package comvnpu
 import (
 	"errors"
 	"fmt"
-	"github.com/hashicorp/go-multierror"
 	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/hashicorp/go-multierror"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
 
@@ -636,7 +636,7 @@ func (tp *VNPU) getNodeUseInfoFromCache(nodeInf *api.NodeInfo) (map[string]int, 
 			continue
 		}
 
-		tmp[value.ReqCardName] += 1
+		tmp[value.ReqCardName]++
 	}
 	if len(tmp) == 0 {
 		return nil, fmt.Errorf("%s's other no need change", nodeInf.Name)
