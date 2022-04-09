@@ -14,9 +14,10 @@ import (
 	"errors"
 	"fmt"
 	"hash/crc32"
-	"k8s.io/klog"
 	"strconv"
 	"strings"
+
+	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 )
@@ -278,6 +279,7 @@ func ValidStringMapKeyAndValue(tmpMap map[string]string, key, value string) bool
 	return false
 }
 
+// MakeDataHash make data hash.
 func MakeDataHash(data interface{}) uint32 {
 	dataString, marshErr := MarshalCacheDataToString(data)
 	if marshErr != nil {
@@ -286,6 +288,7 @@ func MakeDataHash(data interface{}) uint32 {
 	return crc32.ChecksumIEEE([]byte(dataString))
 }
 
+// MarshalCacheDataToString Marshal cache data to string.
 func MarshalCacheDataToString(data interface{}) (string, error) {
 	dataBuffer, err := json.Marshal(data)
 	if err != nil {
@@ -293,4 +296,17 @@ func MarshalCacheDataToString(data interface{}) (string, error) {
 		return "", err
 	}
 	return string(dataBuffer), nil
+}
+
+// GetResourceFromAnnotationFn get the source from annotation.
+func GetResourceFromAnnotationFn(Annotations map[string]string, resourceName string) (string, error) {
+	topStr, ok := Annotations[resourceName]
+	// In case of kubernetes doesn't have some kind of resource type, but name of that type was written in
+	// node annotation with a value of empty string. If topStr is empty, an error should be returned so that that type
+	// of resource will be ignored.
+	if !ok || topStr == "" {
+		return "", fmt.Errorf("requested %s does not exist", resourceName)
+	}
+
+	return topStr, nil
 }

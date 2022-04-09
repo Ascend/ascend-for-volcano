@@ -11,21 +11,30 @@ package common
 
 import (
 	"fmt"
+	"strings"
+
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
+
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/vnpu/vnpuutil"
 )
 
 func (cn *Scheduler) initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) error {
-	for key := range nodes {
-		topStr, err := util.GetNPUAllocCardsFromNodeAnnotations(nodes[key], cn.AnnoName)
-		if err != nil {
-			klog.V(util.LogDebugLev).Infof("%s initNodesFn :%v", cn.PluginName, err)
-			return nil
-		}
-		err = util.SaveTopologyInMap(nodes[key].Others, topStr, cn.AnnoName)
-		if err != nil {
-			return err
+	for _, tmpNode := range nodes {
+		anno := tmpNode.Node.Annotations
+		for typeKey := range anno {
+			if !strings.Contains(typeKey, vnpuutil.NPUIdentifyName) {
+				continue
+			}
+			nTopStr, err := util.GetResourceFromAnnotationFn(anno, typeKey)
+			if err != nil {
+				nTopStr = ""
+			}
+			err = util.SaveTopologyInMap(tmpNode.Others, nTopStr, typeKey)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	klog.V(util.LogDebugLev).Infof("All nodes are initialized successfully")

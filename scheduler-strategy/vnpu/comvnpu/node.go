@@ -32,9 +32,9 @@ func (tp *VNPU) InitVNodesFn(nodes map[string]*api.NodeInfo) error {
 			if !strings.Contains(typeKey, vnpuutil.NPUIdentifyName) {
 				continue
 			}
-			nTopStr, err := getResourceFromAnnotationFn(anno, typeKey)
+			nTopStr, err := util.GetResourceFromAnnotationFn(anno, typeKey)
 			if err != nil {
-				continue
+				nTopStr = ""
 			}
 			err = util.SaveTopologyInMap(tmpNode.Others, nTopStr, typeKey)
 			if err != nil {
@@ -46,21 +46,9 @@ func (tp *VNPU) InitVNodesFn(nodes map[string]*api.NodeInfo) error {
 	return nil
 }
 
-func getResourceFromAnnotationFn(Annotations map[string]string, resourceName string) (string, error) {
-	topStr, ok := Annotations[resourceName]
-	// In case of kubernetes doesn't have some kind of resource type, but name of that type was written in
-	// node annotation with a value of empty string. If topStr is empty, an error should be returned so that that type
-	// of resource will be ignored.
-	if !ok || topStr == "" {
-		return "", fmt.Errorf("requested %s does not exist", resourceName)
-	}
-
-	return topStr, nil
-}
-
 // GetNPUsFromNodeAnnotation get the node annotation.
 func (tp *VNPU) GetNPUsFromNodeAnnotation(annotations map[string]string, resourceName string) ([]string, error) {
-	topStr, err := getResourceFromAnnotationFn(annotations, resourceName)
+	topStr, err := util.GetResourceFromAnnotationFn(annotations, resourceName)
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("getNPUsFromNodeAnnotation failed to get annotation value")
 		return nil, err
@@ -113,7 +101,9 @@ func getTopStrFromNodeOther(othersMap map[string]interface{}, npuCardName string
 		klog.V(util.LogErrorLev).Infof("%s getNodeNPUStrFromOther not string type.", npuCardName)
 		return nil, errors.New("nodeTopStrArr nil")
 	}
-
+	if mapStr == "" {
+		return nil, nil
+	}
 	topArr = strings.Split(mapStr, ",")
 	return topArr, nil
 }
@@ -240,7 +230,7 @@ func (tp *VNPU) IsVNPUNodeMeetReqResource(jobNeedNPUType string, tmpNode *api.No
 			}
 		}
 
-		if v.UnCutCore > chipCore {
+		if v.UnCutCore >= chipCore {
 			return true
 		}
 	}
@@ -430,14 +420,16 @@ func (tp *VNPU) getMeetChipsInNode(needCores int, nodeInf *api.NodeInfo) (map[in
 	if coresErr != nil {
 		return nil, coresErr
 	}
+	klog.V(util.LogDebugLev).Infof("%s getMeetChipsInNode %s other:%+v %+v %+v", tp.Name(), nodeInf.Name,
+		nodeInf.Others, idsMap, nodeCoresInf)
 	for _, v := range nodeCoresInf {
 		// whole card
 		if _, ok := idsMap[v.ChipID]; ok {
 			chipCores[v.ChipID] = v.UnCutCore
 			continue
 		}
-		// split card
-		if v.UnCutCore >= needCores {
+		// split card exclude no cut chip.
+		if v.UnCutCore >= needCores && v.UnCutCore != v.AllCore {
 			chipCores[v.ChipID] = v.UnCutCore
 		}
 	}
@@ -460,7 +452,8 @@ func (tp *VNPU) GetVNPUUsedChipByReq(needNPU string, nodeInf *api.NodeInfo) (str
 		klog.V(util.LogErrorLev).Infof("%s GetVNPUUsedChipByReq %v.", tp.Name(), listErr)
 		return "", listErr
 	}
-	klog.V(util.LogDebugLev).Infof("%s GetVNPUUsedChipByReq %d get chipList %+v", tp.Name(), core, chipList)
+	klog.V(util.LogDebugLev).Infof("%s GetVNPUUsedChipByReq %s %d chipList:%+v", tp.Name(), nodeInf.Name, core,
+		chipList)
 	return tp.getTheFillOneFromList(chipList)
 }
 
@@ -517,7 +510,9 @@ func (tp *VNPU) CheckNPUResourceStableFn(node *api.NodeInfo) error {
 		}
 
 		if err = util.CheckNodeNPUStabilize(len(nodeNPUIdleNumFromTop), nodeNPUIdleNumFromIdle); err != nil {
-			return fmt.Errorf("node %s %s : %s", node.Name, vnpuutil.NodeNotStableWarning, err)
+			checkErr := fmt.Errorf("%s %s %s : %v", node.Name, vType, vnpuutil.NodeNotStableWarning, err)
+			klog.V(util.LogErrorLev).Infof("%s CheckNPUResourceStableFn %v.", tp.Name(), checkErr)
+			return checkErr
 		}
 	}
 
@@ -646,6 +641,7 @@ func (tp *VNPU) getNodeUseInfoFromCache(nodeInf *api.NodeInfo) (map[string]int, 
 
 // updateNodeOtherWholeCardByUseMap for node and useMap is corresponding, must use getNodeUseInfoFromCache before.
 func (tp *VNPU) updateNodeOtherWholeCardByUseMap(nodeInf *api.NodeInfo, useMap map[string]int) error {
+	klog.V(util.LogDebugLev).Infof("%s updateNodeOtherWholeCardByUseMap before:%v", tp.Name(), nodeInf.Others)
 	for cardName := range useMap {
 		tmpSlice := strings.Split(cardName, "-")
 		if len(tmpSlice) < util.ConstIntNum2 {
@@ -673,6 +669,7 @@ func (tp *VNPU) updateNodeOtherWholeCardByUseMap(nodeInf *api.NodeInfo, useMap m
 			return saveErr
 		}
 	}
+	klog.V(util.LogDebugLev).Infof("%s updateNodeOtherWholeCardByUseMap after:%v", tp.Name(), nodeInf.Others)
 	return nil
 }
 
@@ -685,6 +682,7 @@ func (tp *VNPU) updateNodesOthersByVNPUCache(ssnNodes map[string]*api.NodeInfo) 
 			klog.V(util.LogDebugLev).Infof("%s updateNodesOthersByVNPUCache :%v", tp.Name(), getErr)
 			continue
 		}
+		klog.V(util.LogErrorLev).Infof("%s updateNodesOthersByVNPUCache %v:%+v", tp.Name(), nodeInf.Name, useMap)
 		if upErr := tp.updateNodeOtherWholeCardByUseMap(nodeInf, useMap); upErr != nil {
 			klog.V(util.LogErrorLev).Infof("%s updateNodesOthersByVNPUCache :%v", tp.Name(), upErr)
 			returnErr = multierror.Append(returnErr, upErr)

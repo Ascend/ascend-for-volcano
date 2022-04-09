@@ -21,10 +21,10 @@ import (
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
-
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
+
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/vnpu/modulev710"
@@ -577,7 +577,7 @@ func (tp *VNPU) CheckVJobCanBeDeleteByName(vJobName string, ssn *framework.Sessi
 		if task.Status == api.Succeeded || task.Status == api.Failed {
 			return true
 		}
-		klog.V(util.LogDebugLev).Infof("CheckVJobCanBeDeleteByName %s task status %v", task.UID, task.Status)
+		klog.V(util.LogDebugLev).Infof("CheckVJobCanBeDeleteByName %s task status %v", task.Job, task.Status)
 		return false
 	}
 	klog.V(util.LogErrorLev).Infof("CheckVJobCanBeDeleteByName %s no tasks", vJobName)

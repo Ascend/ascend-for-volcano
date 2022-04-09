@@ -12,10 +12,13 @@ package plugin
 import (
 	"errors"
 	"fmt"
+	"time"
+
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
+
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/rescheduling"
 )
 
@@ -122,7 +125,8 @@ func (hwNPU *ScheduleHandler) setNPUTopologyToPod(task *api.TaskInfo, top interf
 	if curNPUPlugin == nil {
 		return errors.New(noneNPUPlugin)
 	}
-
+	// sleep for pod not be same time create.
+	time.Sleep(time.Millisecond)
 	return curNPUPlugin.SetNPUTopologyToPodFn(task, top)
 }
 
@@ -285,9 +289,8 @@ func (hwNPU *ScheduleHandler) NodePredicate(task *api.TaskInfo, node *api.NodeIn
 	// check resource stabilize
 	if err := hwNPU.checkNPUResourceStable(task, node); err != nil {
 		// npu on node are not stable, node cannot be selected.
-		klog.V(logInfoLev).Infof("%s checkNPUResourceStable %s : %v ,cannot be selected.", PluginName,
-			node.Name, err)
-		return fmt.Errorf("checkNPUResourceStable %s : %v", node.Name, err)
+		klog.V(logInfoLev).Infof("%s checkNPUResourceStable %v ,cannot be selected.", PluginName, err)
+		return fmt.Errorf("checkNPUResourceStable %v", err)
 	}
 
 	if err := hwNPU.checkNodeNPUByTask(task, node, IsDistributeTask(task, ssn)); err != nil {
