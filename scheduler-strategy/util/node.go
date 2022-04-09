@@ -153,8 +153,8 @@ func GetNodeSelector(node *api.NodeInfo) (map[string]string, error) {
 func GetNPUAllocCardsFromNodeOthers(node *api.NodeInfo, npuCardName string) (string, error) {
 	valueTmp, ok := node.Others[npuCardName]
 	if !ok {
-		msg := fmt.Errorf("%s npu card nil", node.Name)
-		klog.V(LogDebugLev).Infof("%s :%v.", npuCardName, msg.Error())
+		msg := fmt.Errorf("%s npu card %s nil", node.Name, npuCardName)
+		klog.V(LogDebugLev).Infof("GetNPUAllocCardsFromNodeOthers :%v.", msg.Error())
 		return "", msg
 	}
 

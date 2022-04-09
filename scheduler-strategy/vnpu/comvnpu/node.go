@@ -34,7 +34,7 @@ func (tp *VNPU) InitVNodesFn(nodes map[string]*api.NodeInfo) error {
 			}
 			nTopStr, err := util.GetResourceFromAnnotationFn(anno, typeKey)
 			if err != nil {
-				continue
+				nTopStr = ""
 			}
 			err = util.SaveTopologyInMap(tmpNode.Others, nTopStr, typeKey)
 			if err != nil {
@@ -101,7 +101,9 @@ func getTopStrFromNodeOther(othersMap map[string]interface{}, npuCardName string
 		klog.V(util.LogErrorLev).Infof("%s getNodeNPUStrFromOther not string type.", npuCardName)
 		return nil, errors.New("nodeTopStrArr nil")
 	}
-
+	if mapStr == "" {
+		return nil, nil
+	}
 	topArr = strings.Split(mapStr, ",")
 	return topArr, nil
 }
@@ -228,7 +230,7 @@ func (tp *VNPU) IsVNPUNodeMeetReqResource(jobNeedNPUType string, tmpNode *api.No
 			}
 		}
 
-		if v.UnCutCore > chipCore {
+		if v.UnCutCore >= chipCore {
 			return true
 		}
 	}
@@ -508,7 +510,9 @@ func (tp *VNPU) CheckNPUResourceStableFn(node *api.NodeInfo) error {
 		}
 
 		if err = util.CheckNodeNPUStabilize(len(nodeNPUIdleNumFromTop), nodeNPUIdleNumFromIdle); err != nil {
-			return fmt.Errorf("node %s %s : %s", node.Name, vnpuutil.NodeNotStableWarning, err)
+			checkErr := fmt.Errorf("%s %s %s : %v", node.Name, vType, vnpuutil.NodeNotStableWarning, err)
+			klog.V(util.LogErrorLev).Infof("%s CheckNPUResourceStableFn %v.", tp.Name(), checkErr)
+			return checkErr
 		}
 	}
 

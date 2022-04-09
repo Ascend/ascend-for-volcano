@@ -289,9 +289,8 @@ func (hwNPU *ScheduleHandler) NodePredicate(task *api.TaskInfo, node *api.NodeIn
 	// check resource stabilize
 	if err := hwNPU.checkNPUResourceStable(task, node); err != nil {
 		// npu on node are not stable, node cannot be selected.
-		klog.V(logInfoLev).Infof("%s checkNPUResourceStable %s : %v ,cannot be selected.", PluginName,
-			node.Name, err)
-		return fmt.Errorf("checkNPUResourceStable %s : %v", node.Name, err)
+		klog.V(logInfoLev).Infof("%s checkNPUResourceStable %v ,cannot be selected.", PluginName, err)
+		return fmt.Errorf("checkNPUResourceStable %v", err)
 	}
 
 	if err := hwNPU.checkNodeNPUByTask(task, node, IsDistributeTask(task, ssn)); err != nil {

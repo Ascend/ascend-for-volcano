@@ -29,7 +29,7 @@ func (cn *Scheduler) initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) erro
 			}
 			nTopStr, err := util.GetResourceFromAnnotationFn(anno, typeKey)
 			if err != nil {
-				continue
+				nTopStr = ""
 			}
 			err = util.SaveTopologyInMap(tmpNode.Others, nTopStr, typeKey)
 			if err != nil {

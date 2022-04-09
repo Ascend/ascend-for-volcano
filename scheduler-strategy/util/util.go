@@ -279,6 +279,7 @@ func ValidStringMapKeyAndValue(tmpMap map[string]string, key, value string) bool
 	return false
 }
 
+// MakeDataHash make data hash.
 func MakeDataHash(data interface{}) uint32 {
 	dataString, marshErr := MarshalCacheDataToString(data)
 	if marshErr != nil {
@@ -287,6 +288,7 @@ func MakeDataHash(data interface{}) uint32 {
 	return crc32.ChecksumIEEE([]byte(dataString))
 }
 
+// MarshalCacheDataToString Marshal cache data to string.
 func MarshalCacheDataToString(data interface{}) (string, error) {
 	dataBuffer, err := json.Marshal(data)
 	if err != nil {
