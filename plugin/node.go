@@ -12,9 +12,8 @@ package plugin
 import (
 	"errors"
 	"fmt"
-	"time"
-
 	"k8s.io/klog"
+	"time"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
