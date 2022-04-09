@@ -506,7 +506,9 @@ func (tp *VNPU) CheckNPUResourceStableFn(node *api.NodeInfo) error {
 
 		nodeNPUIdleNumFromIdle, err := util.GetNodeNPUNumFromIdle(node, vType)
 		if err != nil {
-			return fmt.Errorf("getNodeNPUNumFromIdle %s : %s", vnpuutil.NodesNoMeetNPUReqError, err)
+			idleErr := fmt.Errorf("getNodeNPUNumFromIdle %s : %s", vnpuutil.NodesNoMeetNPUReqError, err)
+			klog.V(util.LogErrorLev).Infof("%s CheckNPUResourceStableFn %v.", tp.Name(), idleErr)
+			return idleErr
 		}
 
 		if err = util.CheckNodeNPUStabilize(len(nodeNPUIdleNumFromTop), nodeNPUIdleNumFromIdle); err != nil {

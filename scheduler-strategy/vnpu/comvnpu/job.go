@@ -101,8 +101,8 @@ func (tp *VNPU) isNewVNPUJob(job *api.JobInfo) bool {
 	return true
 }
 
-// GetNPUTypeByResourceNum get vJob vnpu source number.
-func (tp *VNPU) GetNPUTypeByResourceNum(tmp string) (string, error) {
+// GetNPUTypeByResourceName get vJob vnpu source name, like huawei.com/Ascend710-4c.
+func (tp *VNPU) GetNPUTypeByResourceName(tmp string) (string, error) {
 	split := strings.Split(tmp, "-")
 	if len(split) < util.ConstIntNum2 {
 		klog.V(util.LogDebugLev).Infof("%s GetVJobReqNPUType get err: %v.", tp.Name(), split)
@@ -120,7 +120,7 @@ func (tp *VNPU) GetVJobReqNPUType(job *api.JobInfo) (string, error) {
 		return "", getErr
 	}
 
-	return tp.GetNPUTypeByResourceNum(tmp)
+	return tp.GetNPUTypeByResourceName(tmp)
 }
 
 func (tp *VNPU) getVJobReqInfFromJobInfo(job *api.JobInfo) (*vnpuutil.VNPUAllocInf, error) {

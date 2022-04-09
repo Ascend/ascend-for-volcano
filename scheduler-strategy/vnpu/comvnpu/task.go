@@ -94,7 +94,7 @@ func (tp *VNPU) GetVTaskReqNPUType(vTask *api.TaskInfo) (string, error) {
 		return "", getErr
 	}
 
-	return tp.GetNPUTypeByResourceNum(tmp)
+	return tp.GetNPUTypeByResourceName(tmp)
 }
 
 // GetPluginNameByTaskInfo Get plugin name by taskInfo
@@ -151,7 +151,6 @@ func (tp *VNPU) IsMyTask(vTask *api.TaskInfo) error {
 
 // SetNPUTopologyToPodFn write the name of the allocated devices to Pod
 func (tp *VNPU) SetNPUTopologyToPodFn(task *api.TaskInfo, top interface{}) error {
-	var topStr string
 	var vType string
 
 	topInstance, ok := top.(string)
@@ -167,10 +166,11 @@ func (tp *VNPU) SetNPUTopologyToPodFn(task *api.TaskInfo, top interface{}) error
 		}
 	}
 
-	klog.V(util.LogInfoLev).Infof("%s setNPUTopologyToPod begin top:%v.", tp.Name(), top)
+	klog.V(util.LogInfoLev).Infof("%s setNPUTopologyToPod begin top:%v.", tp.Name(), topInstance)
 	task.Pod.Annotations[vType] = topInstance
-	task.Pod.Annotations[common.PodPredicateTime] = strconv.FormatInt(time.Now().UnixNano(), util.ConstIntNum10)
-	klog.V(util.LogInfoLev).Infof("%s setNPUTopologyToPod %s top:%s.", tp.Name(), task.Name, topStr)
+	tmpTime := strconv.FormatInt(time.Now().UnixNano(), util.ConstIntNum10)
+	task.Pod.Annotations[common.PodPredicateTime] = tmpTime
+	klog.V(util.LogInfoLev).Infof("%s setNPUTopologyToPod %s at %v.", tp.Name(), task.Name, tmpTime)
 
 	return nil
 }
