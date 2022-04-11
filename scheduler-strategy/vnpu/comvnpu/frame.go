@@ -758,11 +758,13 @@ func (tp *VNPU) RecordVJobAllocInfoInCache(nodeInf *api.NodeInfo, chip string, v
 	}
 	klog.V(util.LogDebugLev).Infof("%s RecordVJobAllocInfoInCache %s record %+v.", tp.Name(), vJob.UID,
 		vnpuutil.VNPUAllocData.Cache)
+	klog.V(util.LogDebugLev).Infof("%s haha-1 record %v %+v.", nodeInf.Name, chip, nodeInf.Others)
 	// reduce the select one from node other.
 	if reduceErr := tp.reduceTheAllocChipFromNodeOther(chip, vJob, nodeInf); reduceErr != nil {
 		klog.V(util.LogDebugLev).Infof("%s RecordVJobAllocInfoInCache %s %+v.", tp.Name(), vJob.UID, reduceErr)
 		return reduceErr
 	}
+	klog.V(util.LogDebugLev).Infof("%s haha-2 record %+v.", nodeInf.Name, nodeInf.Others)
 	return nil
 }
 

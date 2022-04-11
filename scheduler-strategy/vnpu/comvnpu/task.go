@@ -97,14 +97,7 @@ func (tp *VNPU) GetVTaskReqNPUType(vTask *api.TaskInfo) (string, error) {
 	return tp.GetNPUTypeByResourceName(tmp)
 }
 
-// GetPluginNameByTaskInfo Get plugin name by taskInfo
-func (tp *VNPU) GetPluginNameByTaskInfo(vTask *api.TaskInfo) (string, error) {
-	reqNpuType, typeErr := tp.GetVTaskReqNPUType(vTask)
-	if typeErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s GetPluginNameByJobInfo %s %v.", tp.Name(), vTask.Name, typeErr)
-		return "", typeErr
-	}
-
+func (tp *VNPU) getVNPUPluginNameByReqType(reqNpuType string) string {
 	var pluginName string
 	switch reqNpuType {
 	case vnpuutil.NPU710CardName:
@@ -114,7 +107,18 @@ func (tp *VNPU) GetPluginNameByTaskInfo(vTask *api.TaskInfo) (string, error) {
 	default:
 		pluginName = vnpuutil.UNKnownPluginName
 	}
-	return pluginName, nil
+	return pluginName
+}
+
+// GetPluginNameByTaskInfo Get plugin name by taskInfo
+func (tp *VNPU) GetPluginNameByTaskInfo(vTask *api.TaskInfo) (string, error) {
+	reqNpuType, typeErr := tp.GetVTaskReqNPUType(vTask)
+	if typeErr != nil {
+		klog.V(util.LogErrorLev).Infof("%s GetPluginNameByJobInfo %s %v.", tp.Name(), vTask.Name, typeErr)
+		return "", typeErr
+	}
+
+	return tp.getVNPUPluginNameByReqType(reqNpuType), nil
 }
 
 // IsMyTask used for identify Vnpu task, need to be implemented by vNPU plugins

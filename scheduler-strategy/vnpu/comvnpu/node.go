@@ -303,6 +303,22 @@ func (tp *VNPU) GetNodeNPUCoreInfoMap(vNode *api.NodeInfo) (map[string]vNPUCoreI
 	return coreMap, nil
 }
 
+func (tp *VNPU) updateNodeOtherCardCoresInf(nodeInf *api.NodeInfo, nodeCoresInf map[string]vNPUCoreInfo) error {
+	var allCards []string
+	for _, tmp := range nodeCoresInf {
+		idStr := strconv.Itoa(tmp.ChipID)
+		allStr := strconv.Itoa(tmp.AllCore)
+		unCutStr := strconv.Itoa(tmp.UnCutCore)
+		chipStr := idStr + "-" + allStr + "c-" + unCutStr + "c"
+		allCards = append(allCards, chipStr)
+	}
+	writeString := strings.Join(allCards, ",")
+	if saveErr := util.SaveTopologyInMap(nodeInf.Others, writeString, tp.Attr.NPUCardCoreKey); saveErr != nil {
+		return saveErr
+	}
+	return nil
+}
+
 // cardID like Ascend910-0
 func (tp *VNPU) isWholeCardInNodeAnnotation(cardID string, nodeInf *api.NodeInfo) bool {
 	cardsStr, ok := nodeInf.Node.Annotations[tp.Attr.AnnoName]
@@ -412,15 +428,17 @@ func (tp *VNPU) getMeetChipsInNode(needCores int, nodeInf *api.NodeInfo) (map[in
 	var chipCores = make(map[int]int, util.ConstIntNum8)
 	// Get from whole card.
 	idsMap, numErr := util.GetNodeAvailNPUIdsFromAnno(nodeInf, tp.Attr.AnnoName)
-	if numErr != numErr {
+	if numErr != nil {
+		klog.V(util.LogErrorLev).Infof("%s getMeetChipsInNode %s %v.", tp.Name(), nodeInf.Name, numErr)
 		return nil, numErr
 	}
 	// Get split cards.
 	nodeCoresInf, coresErr := tp.GetNodeNPUCoreInfoMap(nodeInf)
 	if coresErr != nil {
+		klog.V(util.LogErrorLev).Infof("%s getMeetChipsInNode %s %v.", tp.Name(), nodeInf.Name, coresErr)
 		return nil, coresErr
 	}
-	klog.V(util.LogDebugLev).Infof("%s getMeetChipsInNode %s other:%+v %+v %+v", tp.Name(), nodeInf.Name,
+	klog.V(util.LogDebugLev).Infof("%s getMeetChipsInNode %s other:%+v idsMap:%+v %+v", tp.Name(), nodeInf.Name,
 		nodeInf.Others, idsMap, nodeCoresInf)
 	for _, v := range nodeCoresInf {
 		// whole card
@@ -622,8 +640,8 @@ func (tp *VNPU) reduceTheAllocChipFromNodeOther(chip string, vJob *api.JobInfo, 
 	return nil
 }
 
-// getNodeUseInfoFromCache the format key like Ascend710-0.
-func (tp *VNPU) getNodeUseInfoFromCache(nodeInf *api.NodeInfo) (map[string]int, error) {
+// getNodeUseInfoFromVNPUCache the format key like Ascend710-0.
+func (tp *VNPU) getNodeUseInfoFromVNPUCache(nodeInf *api.NodeInfo) (map[string]int, error) {
 	tmp := make(map[string]int, util.ConstIntNum3)
 	for _, value := range vnpuutil.VNPUAllocData.Cache {
 		if value.NodeName != nodeInf.Name {
@@ -632,8 +650,12 @@ func (tp *VNPU) getNodeUseInfoFromCache(nodeInf *api.NodeInfo) (map[string]int, 
 		if value.AllocCardName != "" || !value.AllocFlag {
 			continue
 		}
-
-		tmp[value.ReqCardName]++
+		chipCore, coverErr := tp.coverReqNPUTypeToCoreNum(value.ReqNPUType)
+		if coverErr != nil {
+			klog.V(util.LogErrorLev).Infof("%s getNodeUseInfoFromVNPUCache %v.", tp.Name(), coverErr)
+			continue
+		}
+		tmp[value.ReqCardName] += chipCore
 	}
 	if len(tmp) == 0 {
 		return nil, fmt.Errorf("%s's other no need change", nodeInf.Name)
@@ -641,10 +663,10 @@ func (tp *VNPU) getNodeUseInfoFromCache(nodeInf *api.NodeInfo) (map[string]int, 
 	return tmp, nil
 }
 
-// updateNodeOtherWholeCardByUseMap for node and useMap is corresponding, must use getNodeUseInfoFromCache before.
+// updateNodeOtherWholeCardByUseMap for node and useMap is corresponding, must use getNodeUseInfoFromVNPUCache before.
 func (tp *VNPU) updateNodeOtherWholeCardByUseMap(nodeInf *api.NodeInfo, useMap map[string]int) error {
-	klog.V(util.LogDebugLev).Infof("%s updateNodeOtherWholeCardByUseMap before:%v", tp.Name(), nodeInf.Others)
 	for cardName := range useMap {
+		// cardName is Ascend710-0
 		tmpSlice := strings.Split(cardName, "-")
 		if len(tmpSlice) < util.ConstIntNum2 {
 			return fmt.Errorf("%s err card name %s", nodeInf.Name, cardName)
@@ -671,21 +693,77 @@ func (tp *VNPU) updateNodeOtherWholeCardByUseMap(nodeInf *api.NodeInfo, useMap m
 			return saveErr
 		}
 	}
-	klog.V(util.LogDebugLev).Infof("%s updateNodeOtherWholeCardByUseMap after:%v", tp.Name(), nodeInf.Others)
 	return nil
+}
+
+// updateNodeOtherCardCoresByUseMap for node and useMap is corresponding, must use getNodeUseInfoFromVNPUCache before.
+func (tp *VNPU) updateNodeOtherCardCoresByUseMap(nodeInf *api.NodeInfo, useMap map[string]int) error {
+	for cardName, useCores := range useMap {
+		// cardName is Ascend710-0
+		tmpSlice := strings.Split(cardName, "-")
+		if len(tmpSlice) < util.ConstIntNum2 {
+			return fmt.Errorf("%s err card %s", nodeInf.Name, cardName)
+		}
+		reqNpuType := vnpuutil.NPUCardNamePrefix + tmpSlice[0]
+		pluginName := tp.getVNPUPluginNameByReqType(reqNpuType)
+		if pluginErr := tp.InitVNPUPluginByType(pluginName); pluginErr != nil {
+			klog.V(util.LogErrorLev).Infof("%s IsVNPUJob :%v.", vnpuutil.PluginName, pluginErr)
+			continue
+		}
+		nodeCoresInf, coresErr := tp.GetNodeNPUCoreInfoMap(nodeInf)
+		if coresErr != nil {
+			klog.V(util.LogErrorLev).Infof("%s IsVNPUNodeMeetReqResource %v.", tp.Name(), coresErr)
+			continue
+		}
+		coreInfo, ok := nodeCoresInf[cardName]
+		if !ok {
+			klog.V(util.LogErrorLev).Infof("%s updateNodeOtherCardCoresByUseMap %s no %v.", tp.Name(),
+				nodeInf.Name, cardName)
+			continue
+		}
+		if useCores > coreInfo.UnCutCore {
+			klog.V(util.LogErrorLev).Infof("%s updateNodeOtherCardCoresByUseMap %s %s %v over %v.", tp.Name(),
+				nodeInf.Name, cardName, useCores, coreInfo.UnCutCore)
+			continue
+		}
+		coreInfo.UnCutCore -= useCores
+		nodeCoresInf[cardName] = coreInfo
+		if upErr := tp.updateNodeOtherCardCoresInf(nodeInf, nodeCoresInf); upErr != nil {
+			klog.V(util.LogErrorLev).Infof("%s updateNodeOtherCardCoresByUseMap %v.", tp.Name(), upErr)
+			continue
+		}
+	}
+	return nil
+}
+
+// updateNPUInfInNodeOtherByUseMap for node and useMap is corresponding, must use getNodeUseInfoFromVNPUCache before.
+func (tp *VNPU) updateNPUInfInNodeOtherByUseMap(nodeInf *api.NodeInfo, useMap map[string]int) error {
+	klog.V(util.LogDebugLev).Infof("%s updateNPUInfInNodeOtherByUseMap before:%v", tp.Name(), nodeInf.Others)
+	var returnErr error
+	// deal whole card
+	if upErr := tp.updateNodeOtherWholeCardByUseMap(nodeInf, useMap); upErr != nil {
+		klog.V(util.LogErrorLev).Infof("%s updateNPUInfInNodeOtherByUseMap :%v", tp.Name(), upErr)
+	}
+	// deal chip cores
+	if upErr := tp.updateNodeOtherCardCoresByUseMap(nodeInf, useMap); upErr != nil {
+		klog.V(util.LogErrorLev).Infof("%s updateNPUInfInNodeOtherByUseMap :%v", tp.Name(), upErr)
+		returnErr = multierror.Append(returnErr, upErr)
+	}
+	klog.V(util.LogDebugLev).Infof("%s updateNPUInfInNodeOtherByUseMap after:%v", tp.Name(), nodeInf.Others)
+	return returnErr
 }
 
 // updateNodesOthersByVNPUCache must do after cache update.
 func (tp *VNPU) updateNodesOthersByVNPUCache(ssnNodes map[string]*api.NodeInfo) error {
 	var returnErr error
 	for _, nodeInf := range ssnNodes {
-		useMap, getErr := tp.getNodeUseInfoFromCache(nodeInf)
+		useMap, getErr := tp.getNodeUseInfoFromVNPUCache(nodeInf)
 		if getErr != nil {
 			klog.V(util.LogDebugLev).Infof("%s updateNodesOthersByVNPUCache :%v", tp.Name(), getErr)
 			continue
 		}
 		klog.V(util.LogErrorLev).Infof("%s updateNodesOthersByVNPUCache %v:%+v", tp.Name(), nodeInf.Name, useMap)
-		if upErr := tp.updateNodeOtherWholeCardByUseMap(nodeInf, useMap); upErr != nil {
+		if upErr := tp.updateNPUInfInNodeOtherByUseMap(nodeInf, useMap); upErr != nil {
 			klog.V(util.LogErrorLev).Infof("%s updateNodesOthersByVNPUCache :%v", tp.Name(), upErr)
 			returnErr = multierror.Append(returnErr, upErr)
 			continue
