@@ -105,10 +105,10 @@ func (tp *VNPU) isNewVNPUJob(job *api.JobInfo) bool {
 func (tp *VNPU) GetNPUTypeByResourceName(tmp string) (string, error) {
 	split := strings.Split(tmp, "-")
 	if len(split) < util.ConstIntNum2 {
-		klog.V(util.LogDebugLev).Infof("%s GetVJobReqNPUType get err: %v.", tp.Name(), split)
+		klog.V(util.LogDebugLev).Infof("GetNPUTypeByResourceName get err: %v.", split)
 		return "", errors.New("err resource")
 	}
-	klog.V(util.LogDebugLev).Infof("%s GetVJobReqNPUType get %v.", tp.Name(), split)
+	klog.V(util.LogDebugLev).Infof("GetNPUTypeByResourceName get %v.", split)
 	return split[0], nil
 }
 

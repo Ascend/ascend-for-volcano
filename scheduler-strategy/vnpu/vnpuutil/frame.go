@@ -235,12 +235,11 @@ func IsNPUResourceStableInNode(kind string, tmpNode *api.NodeInfo) bool {
 		klog.V(util.LogErrorLev).Infof("IsNPUResourceStableInNode %s no %v in k8s.", tmpNode.Name, kind)
 		return false
 	}
-	annoSrings, err := util.GetNPUAllocCardsFromNodeOthers(tmpNode, kind)
+	annoSrings, err := util.GetNPUAllocCardsFromNodeAnnotations(tmpNode, kind)
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("IsNPUResourceStableInNode :%v.", err)
 		return false
 	}
-
 	annoSlice := strings.Split(annoSrings, ",")
 	annoNum := len(annoSlice)
 	if annoSrings == "" {
