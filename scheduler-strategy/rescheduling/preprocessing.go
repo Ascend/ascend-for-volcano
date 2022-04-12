@@ -12,15 +12,17 @@ package rescheduling
 import (
 	"encoding/json"
 	"fmt"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog"
 	"strconv"
 	"strings"
 	"time"
+
+	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
+
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
@@ -531,6 +533,7 @@ func updateReSchedulerData(cmData *v1.ConfigMap) error {
 	return nil
 }
 
+// UpdateFaultNPUInfFromCM update fault data in cm.
 func UpdateFaultNPUInfFromCM(ssn *framework.Session) error {
 	cmData, err := util.GetConfigMapWithRetry(ssn.KubeClient(), cmNameSpace, cmName)
 	if err != nil {

@@ -44,11 +44,11 @@ func GetNodeAvailNPUIdsFromAnno(node *api.NodeInfo, npuCardName string) (map[int
 		// chip like Ascend710-4
 		cardSlice := strings.Split(chip, "-")
 		cardStr := cardSlice[len(cardSlice)-1]
-		cardId, covErr := strconv.Atoi(cardStr)
+		cardID, covErr := strconv.Atoi(cardStr)
 		if covErr != nil {
 			return nil, covErr
 		}
-		idsMap[cardId] = struct{}{}
+		idsMap[cardID] = struct{}{}
 	}
 	return idsMap, nil
 }
@@ -242,6 +242,7 @@ func GetNPUTopFromHccs(taskNPUNumber int, allocTopologyHccl []int) ([]int, error
 	return allocTopologyNPUs, nil
 }
 
+// IsNPUNNode to judge the node wither has NPU card or not.
 func IsNPUNNode(tmpNode *api.NodeInfo) error {
 	for key, value := range tmpNode.Node.Annotations {
 		if strings.Contains(key, CommCardPreName) {

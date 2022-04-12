@@ -12,15 +12,17 @@ package util
 import (
 	"context"
 	"fmt"
-	v1 "k8s.io/api/core/v1"
+	"reflect"
+
+	"k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
-	"reflect"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 )
 
+// GetConfigMapWithRetry  Get config map from k8s.
 func GetConfigMapWithRetry(client kubernetes.Interface, namespace, cmName string) (*v1.ConfigMap, error) {
 	var cm *v1.ConfigMap
 	var err error
@@ -33,6 +35,7 @@ func GetConfigMapWithRetry(client kubernetes.Interface, namespace, cmName string
 	return cm, nil
 }
 
+// IsConfigMapChanged judge the cm wither is same. true is no change.
 func IsConfigMapChanged(k8s kubernetes.Interface, cm *v1.ConfigMap, cmName, nameSpace string) bool {
 	cmData, getErr := GetConfigMapWithRetry(k8s, nameSpace, cmName)
 	if getErr != nil {
@@ -45,6 +48,7 @@ func IsConfigMapChanged(k8s kubernetes.Interface, cm *v1.ConfigMap, cmName, name
 	return true
 }
 
+// CreateOrUpdateConfigMap Create or update configMap.
 func CreateOrUpdateConfigMap(k8s kubernetes.Interface, cm *v1.ConfigMap, cmName, nameSpace string) error {
 	_, cErr := k8s.CoreV1().ConfigMaps(cm.ObjectMeta.Namespace).Create(context.TODO(), cm, metav1.CreateOptions{})
 	if cErr != nil {
@@ -66,6 +70,7 @@ func CreateOrUpdateConfigMap(k8s kubernetes.Interface, cm *v1.ConfigMap, cmName,
 	return nil
 }
 
+// DeleteSchedulerConfigMap Delete configMap.
 func DeleteSchedulerConfigMap(ssn *framework.Session, nameSpace, cmName string) error {
 	err := ssn.KubeClient().CoreV1().ConfigMaps(nameSpace).Delete(context.TODO(), cmName, metav1.DeleteOptions{})
 	if err != nil {

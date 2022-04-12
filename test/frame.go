@@ -11,7 +11,8 @@ package ascendtest
 
 import (
 	"fmt"
-	v1 "k8s.io/api/core/v1"
+
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/tools/record"
@@ -31,10 +32,12 @@ func PrintError(format string, args ...interface{}) {
 	fmt.Printf("ERROR:"+format+"\n", args...)
 }
 
+// AddNodeIntoFakeSSN Add test node into fake SSN.
 func AddNodeIntoFakeSSN(ssn *framework.Session, info *api.NodeInfo) {
 	ssn.Nodes[info.Name] = info
 }
 
+// AddJobIntoFakeSSN Add test job into fake SSN.
 func AddJobIntoFakeSSN(ssn *framework.Session, info *api.JobInfo) {
 	ssn.Jobs[info.UID] = info
 }
