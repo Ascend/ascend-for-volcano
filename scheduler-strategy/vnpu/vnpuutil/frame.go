@@ -13,13 +13,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
-	"time"
-
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
+	"strconv"
+	"strings"
+	"time"
+	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
@@ -268,11 +268,15 @@ func IsVJobRunning(job *api.JobInfo) bool {
 	return true
 }
 
-// IsVJobPending check whether the job is pending or not.
-func IsVJobPending(job *api.JobInfo) bool {
+// IsVJobCanPreHandle check whether the job is pending or inQueue.
+func IsVJobCanPreHandle(job *api.JobInfo) bool {
 	if len(job.Tasks) > util.ConstIntNum2 {
 		klog.V(util.LogErrorLev).Infof("%s has wrong tasks %+v", job.UID, job.Tasks)
 		return false
+	}
+	if job.PodGroup.Status.Phase == scheduling.PodGroupInqueue {
+		klog.V(util.LogInfoLev).Infof("%s IsVJobCanPreHandle Inqueue.", job.UID)
+		return true
 	}
 	for _, task := range job.Tasks {
 		if task.Pod.Status.Phase != v1.PodPending {

@@ -275,10 +275,11 @@ func SetJobPendReasonByNodesCase(ssn *framework.Session, nodes map[string]*api.N
 }
 
 // ValidJobFn For job preconception, used by volcano frame.
-func (hwNPU *ScheduleHandler) ValidJobFn(obj interface{}, confs []conf.Configuration) *api.ValidateResult {
+func (hwNPU *ScheduleHandler) ValidJobFn(obj interface{}, ssn *framework.Session) *api.ValidateResult {
 	klog.V(logInfoLev).Infof("enter job valid")
 	defer klog.V(logInfoLev).Infof("leave job valid")
 
+	confs := ssn.Configurations
 	job := getJobHandle(obj)
 	if job == nil {
 		klog.V(logErrorLev).Infof(" validJobFn convert <%v> failed.", obj)

@@ -640,6 +640,23 @@ func (tp *VNPU) reduceTheAllocChipFromNodeOther(chip string, vJob *api.JobInfo, 
 	return nil
 }
 
+// getNodeUseInfoFromNode get from node cores(NPUCardCoreKey).
+func (tp *VNPU) getNodeUseInfoFromNode(nodeInf *api.NodeInfo) (map[string]int, error) {
+	tmp := make(map[string]int, util.ConstIntNum3)
+	nodeCoresInf, coresErr := tp.GetNodeNPUCoreInfoMap(nodeInf)
+	if coresErr != nil {
+		klog.V(util.LogDebugLev).Infof("%s getNodeUseInfoFromNode :%v", tp.Name(), coresErr)
+		return nil, coresErr
+	}
+	for cardName, value := range nodeCoresInf {
+		tmp[cardName] = value.AllCore - value.UnCutCore
+	}
+	if len(tmp) == 0 {
+		return nil, fmt.Errorf("%s's other no need change", nodeInf.Name)
+	}
+	return tmp, nil
+}
+
 // getNodeUseInfoFromVNPUCache the format key like Ascend710-0.
 func (tp *VNPU) getNodeUseInfoFromVNPUCache(nodeInf *api.NodeInfo) (map[string]int, error) {
 	tmp := make(map[string]int, util.ConstIntNum3)
@@ -647,7 +664,7 @@ func (tp *VNPU) getNodeUseInfoFromVNPUCache(nodeInf *api.NodeInfo) (map[string]i
 		if value.NodeName != nodeInf.Name {
 			continue
 		}
-		if value.AllocCardName != "" || !value.AllocFlag {
+		if !value.AllocFlag {
 			continue
 		}
 		chipCore, coverErr := tp.coverReqNPUTypeToCoreNum(value.ReqNPUType)
@@ -698,18 +715,11 @@ func (tp *VNPU) updateNodeOtherWholeCardByUseMap(nodeInf *api.NodeInfo, useMap m
 
 // updateNodeOtherCardCoresByUseMap for node and useMap is corresponding, must use getNodeUseInfoFromVNPUCache before.
 func (tp *VNPU) updateNodeOtherCardCoresByUseMap(nodeInf *api.NodeInfo, useMap map[string]int) error {
+	if tp == nil {
+		return fmt.Errorf("%s nil parameter", nodeInf.Name)
+	}
 	for cardName, useCores := range useMap {
 		// cardName is Ascend710-0
-		tmpSlice := strings.Split(cardName, "-")
-		if len(tmpSlice) < util.ConstIntNum2 {
-			return fmt.Errorf("%s err card %s", nodeInf.Name, cardName)
-		}
-		reqNpuType := vnpuutil.NPUCardNamePrefix + tmpSlice[0]
-		pluginName := tp.getVNPUPluginNameByReqType(reqNpuType)
-		if pluginErr := tp.InitVNPUPluginByType(pluginName); pluginErr != nil {
-			klog.V(util.LogErrorLev).Infof("%s IsVNPUJob :%v.", vnpuutil.PluginName, pluginErr)
-			continue
-		}
 		nodeCoresInf, coresErr := tp.GetNodeNPUCoreInfoMap(nodeInf)
 		if coresErr != nil {
 			klog.V(util.LogErrorLev).Infof("%s IsVNPUNodeMeetReqResource %v.", tp.Name(), coresErr)
@@ -753,11 +763,59 @@ func (tp *VNPU) updateNPUInfInNodeOtherByUseMap(nodeInf *api.NodeInfo, useMap ma
 	return returnErr
 }
 
+// InitVNPUPluginByNodeInfo Init VNPU plugin by nodeInfo.
+func (tp *VNPU) InitVNPUPluginByNodeInfo(nodeInf *api.NodeInfo) error {
+	pluginName, nameErr := tp.GetPluginNameByNodeInfo(nodeInf)
+	if nameErr != nil {
+		klog.V(util.LogErrorLev).Infof("InitVNPUPluginByNodeInfo :%v.", nameErr)
+		return nameErr
+	}
+	if pluginErr := tp.InitVNPUPluginByType(pluginName); pluginErr != nil {
+		klog.V(util.LogErrorLev).Infof("InitVNPUPluginByNodeInfo :%v.", pluginErr)
+		return pluginErr
+	}
+	klog.V(util.LogDebugLev).Infof("InitVNPUPluginByNodeInfo init %v.", tp.Name())
+	return nil
+}
+
+func (tp *VNPU) getNodePreUseInfo(nodeInf *api.NodeInfo) (map[string]int, error) {
+	preUseMap := make(map[string]int, util.ConstIntNum3)
+	cacheUseMap, getErr := tp.getNodeUseInfoFromVNPUCache(nodeInf)
+	if getErr != nil {
+		klog.V(util.LogErrorLev).Infof("%s getNodePreUseInfo :%v", tp.Name(), getErr)
+		return nil, getErr
+	}
+	nodeUseMap, getErr := tp.getNodeUseInfoFromNode(nodeInf)
+	if getErr != nil {
+		klog.V(util.LogErrorLev).Infof("%s getNodePreUseInfo :%v", tp.Name(), getErr)
+		return cacheUseMap, nil
+	}
+	for cardName, value := range cacheUseMap {
+		useValue, ok := nodeUseMap[cardName]
+		if !ok {
+			preUseMap[cardName] = value
+			continue
+		}
+		re := value - useValue
+		if re < 0 {
+			valueErr := fmt.Errorf("%s cache pre-use %v less than core cut %d", nodeInf.Name, value, useValue)
+			klog.V(util.LogErrorLev).Infof("%s getNodePreUseInfo :%v", tp.Name(), valueErr)
+			return nil, valueErr
+		}
+		preUseMap[cardName] = re
+	}
+	return preUseMap, nil
+}
+
 // updateNodesOthersByVNPUCache must do after cache update.
 func (tp *VNPU) updateNodesOthersByVNPUCache(ssnNodes map[string]*api.NodeInfo) error {
 	var returnErr error
 	for _, nodeInf := range ssnNodes {
-		useMap, getErr := tp.getNodeUseInfoFromVNPUCache(nodeInf)
+		if pluginErr := tp.InitVNPUPluginByNodeInfo(nodeInf); pluginErr != nil {
+			klog.V(util.LogErrorLev).Infof("%s updateNodesOthersByVNPUCache :%v.", tp.Name(), pluginErr)
+			continue
+		}
+		useMap, getErr := tp.getNodePreUseInfo(nodeInf)
 		if getErr != nil {
 			klog.V(util.LogDebugLev).Infof("%s updateNodesOthersByVNPUCache :%v", tp.Name(), getErr)
 			continue
@@ -770,4 +828,26 @@ func (tp *VNPU) updateNodesOthersByVNPUCache(ssnNodes map[string]*api.NodeInfo) 
 		}
 	}
 	return returnErr
+}
+
+// GetVNodeNPUType get node resource npu type.
+func (tp *VNPU) GetVNodeNPUType(nodeInf *api.NodeInfo) (string, error) {
+	tmp, getErr := util.GetReqResourceNameFromNode(nodeInf)
+	if getErr != nil {
+		klog.V(util.LogErrorLev).Infof("%s GetVNodeNPUType %s %v.", tp.Name(), nodeInf.Name, getErr)
+		return "", getErr
+	}
+
+	return tp.GetNPUTypeByResourceName(tmp)
+}
+
+// GetPluginNameByNodeInfo Get plugin name by nodeInfo
+func (tp *VNPU) GetPluginNameByNodeInfo(nodeInf *api.NodeInfo) (string, error) {
+	reqNpuType, typeErr := tp.GetVNodeNPUType(nodeInf)
+	if typeErr != nil {
+		klog.V(util.LogErrorLev).Infof("%s GetPluginNameByNodeInfo %s %v.", tp.Name(), nodeInf.Name, typeErr)
+		return "", typeErr
+	}
+
+	return tp.getVNPUPluginNameByReqType(reqNpuType), nil
 }

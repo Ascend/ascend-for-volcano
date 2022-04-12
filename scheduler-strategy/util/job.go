@@ -194,3 +194,8 @@ func GetJobReqResourceNumFromJobPG(tmpJob *api.JobInfo, reqNpuType string) (int,
 	}
 	return int(value / NPUHex), nil
 }
+
+// SerialProcessingJobsInOneNode Tasks are processed sequentially with one node.
+func SerialProcessingJobsInOneNode() {
+
+}
