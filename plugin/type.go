@@ -22,6 +22,7 @@ const (
 	noneNPUPlugin          = "get nil NPUPlugin(not npu task)"
 )
 
+// HwEntity for all volcano-npu plugin.
 type HwEntity struct {
 	// the new func add name
 	PluginName string

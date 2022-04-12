@@ -13,18 +13,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	v1 "k8s.io/api/core/v1"
+	"strings"
+
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
-	"strings"
 	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/cli/vjobs"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
+
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/rescheduling"
-	hwutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 func getJobHandle(obj interface{}) *api.JobInfo {
@@ -211,7 +213,8 @@ func RestartJob(ssn *framework.Session, job *api.JobInfo, obj interface{}) error
 }
 
 func (hwNPU *ScheduleHandler) preCheckJob(job *api.JobInfo, confs []conf.Configuration) error {
-	return hwutil.ValidJobSelector(job, confs)
+
+	return util.ValidJobSelector(job, confs)
 }
 
 func (hwNPU *ScheduleHandler) isHwNPUJob(job *api.JobInfo) error {
@@ -287,7 +290,7 @@ func (hwNPU *ScheduleHandler) ValidJobFn(obj interface{}, confs []conf.Configura
 		}
 	}
 
-	if !hwutil.IsJobInitial(job) {
+	if !util.IsJobInitial(job) {
 		klog.V(logDebugLev).Infof("%s job(%s) not ready:%v.", PluginName, job.Name, job.PodGroup.Status.Phase)
 		return nil
 	}
@@ -317,6 +320,5 @@ func (hwNPU *ScheduleHandler) ValidJobFn(obj interface{}, confs []conf.Configura
 	}
 
 	klog.V(logInfoLev).Infof("check ok, Job(%s), reqNPU(%v).", job.Name, job.TotalRequest)
-
 	return nil
 }
