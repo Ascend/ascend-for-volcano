@@ -270,7 +270,6 @@ func GetReqResourceNameFromNode(tmpNode *api.NodeInfo) (string, error) {
 		if num != 0 {
 			return temp, nil
 		}
-		continue
 	}
 	klog.V(LogErrorLev).Infof("GetReqResourceNameFromNode %+v.", tmpNode.Allocatable.ScalarResources)
 	return "", errors.New("nil NPU")
