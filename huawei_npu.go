@@ -65,7 +65,7 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 	sHandler.InitNPUSession(ssn)
 	// check job npu resource, if illegal return failed
 	ssn.AddJobValidFn(tp.Name(), func(obj interface{}) *api.ValidateResult {
-		result := sHandler.ValidJobFn(obj, ssn)
+		result := sHandler.ValidJobFn(obj, ssn.Configurations)
 		if result != nil {
 			if setErr := plugin.SetJobPendingReason(ssn, obj, result.Message); setErr != nil {
 				klog.V(logErrorLev).Infof("%s setJobFailed err: %v.", PluginName, setErr)
