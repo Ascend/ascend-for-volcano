@@ -104,7 +104,10 @@ func (tp *VNPU) isNewVNPUJob(job *api.JobInfo) bool {
 // GetNPUTypeByResourceName get vJob vnpu source name, like huawei.com/Ascend710-4c.
 func (tp *VNPU) GetNPUTypeByResourceName(tmp string) (string, error) {
 	split := strings.Split(tmp, "-")
-	if len(split) < util.ConstIntNum2 {
+	if len(split) == 1 {
+		return tmp, nil
+	}
+	if len(split) != util.ConstIntNum2 {
 		klog.V(util.LogDebugLev).Infof("GetNPUTypeByResourceName get err: %v.", split)
 		return "", errors.New("err resource")
 	}

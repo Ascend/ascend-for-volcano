@@ -255,3 +255,22 @@ func IsNPUNNode(tmpNode *api.NodeInfo) error {
 	}
 	return fmt.Errorf("%s has no %s", tmpNode.Name, CommCardPreName)
 }
+
+// GetReqResourceNameFromNode get node has npu name
+func GetReqResourceNameFromNode(tmpNode *api.NodeInfo) (string, error) {
+	if tmpNode == nil {
+		return "", errors.New("nil parameter")
+	}
+	for k, num := range tmpNode.Allocatable.ScalarResources {
+		temp := string(k)
+		// must contains "huawei.com/Ascend"
+		if !strings.Contains(temp, CommCardPreName) {
+			continue
+		}
+		if num != 0 {
+			return temp, nil
+		}
+	}
+	klog.V(LogErrorLev).Infof("GetReqResourceNameFromNode %+v.", tmpNode.Allocatable.ScalarResources)
+	return "", errors.New("nil NPU")
+}

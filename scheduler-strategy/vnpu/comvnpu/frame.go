@@ -379,7 +379,7 @@ func (tp *VNPU) GetAndRecordNewVNPUJobsFromSsn(ssn *framework.Session) error {
 	getNum := 0
 	for _, job := range ssn.Jobs {
 		// for not ready job can pre handle
-		if !vnpuutil.IsVJobPending(job) {
+		if !vnpuutil.IsVJobCanPreHandle(job) {
 			klog.V(util.LogDebugLev).Infof("%s GetAndRecordNewVNPUJobsFromSsn %s ready:%v.",
 				vnpuutil.PluginName, job.Name, job.PodGroup.Status.Phase)
 			continue
