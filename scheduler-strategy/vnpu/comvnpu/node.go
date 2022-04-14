@@ -810,6 +810,10 @@ func (tp *VNPU) getNodePreUseInfo(nodeInf *api.NodeInfo) (map[string]int, error)
 // updateNodesOthersByVNPUCache must do after cache update.
 func (tp *VNPU) updateNodesOthersByVNPUCache(ssnNodes map[string]*api.NodeInfo) error {
 	var returnErr error
+	if len(ssnNodes) == 0 {
+		klog.V(util.LogErrorLev).Infof("%s updateNodesOthersByVNPUCache nil nodes.", tp.Name())
+		return errors.New("nil nodes")
+	}
 	for _, nodeInf := range ssnNodes {
 		if pluginErr := tp.InitVNPUPluginByNodeInfo(nodeInf); pluginErr != nil {
 			klog.V(util.LogErrorLev).Infof("%s updateNodesOthersByVNPUCache :%v.", tp.Name(), pluginErr)
