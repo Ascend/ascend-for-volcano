@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -13,23 +13,22 @@ import (
 	"errors"
 	"fmt"
 	"k8s.io/klog"
+	"time"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
+
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/rescheduling"
 )
 
 // Init hw npu nodes, used in npu plugins.
 func (hwNPU *ScheduleHandler) initNodesNPUAllocTopology(nodes map[string]*api.NodeInfo) error {
-	for cardName, initNodes := range hwNPU.InitNodesNPUAllocTopologyFns {
-		for key := range nodes {
-			node := nodes[key]
-			if node.Others == nil {
-				node.Others = make(map[string]interface{}, 1)
-				nodes[key] = node
-			}
+	for _, tmpNode := range nodes {
+		if tmpNode.Others == nil {
+			tmpNode.Others = make(map[string]interface{}, 1)
 		}
-
+	}
+	for cardName, initNodes := range hwNPU.InitNodesNPUAllocTopologyFns {
 		if err := initNodes(nodes); err != nil {
 			klog.V(logErrorLev).Infof("%s InitNodesNPUAllocTopology :%v.", cardName, err)
 			return err
@@ -125,7 +124,8 @@ func (hwNPU *ScheduleHandler) setNPUTopologyToPod(task *api.TaskInfo, top interf
 	if curNPUPlugin == nil {
 		return errors.New(noneNPUPlugin)
 	}
-
+	// sleep for pod not be same time create.
+	time.Sleep(time.Millisecond)
 	return curNPUPlugin.SetNPUTopologyToPodFn(task, top)
 }
 
@@ -270,8 +270,9 @@ func (hwNPU *ScheduleHandler) NodePredicate(task *api.TaskInfo, node *api.NodeIn
 	// select node by architect
 	if err := hwNPU.preCheckNode(task, node, ssn.Configurations); err != nil {
 		// get scheduler selector configure failed, but need continue
-		klog.V(logErrorLev).Infof("%s taskName: %s ,nodeName %s : %v.", PluginName, task.Name, node.Name, err)
-		return fmt.Errorf("%s in %s:%v", task.Name, node.Name, err)
+		preErr := fmt.Errorf("%s in %s:%v", task.Name, node.Name, err)
+		klog.V(logErrorLev).Infof("%s preCheckNode %v.", PluginName, preErr)
+		return preErr
 	}
 
 	// if not npu task no need continue; only check selector before
@@ -287,9 +288,8 @@ func (hwNPU *ScheduleHandler) NodePredicate(task *api.TaskInfo, node *api.NodeIn
 	// check resource stabilize
 	if err := hwNPU.checkNPUResourceStable(task, node); err != nil {
 		// npu on node are not stable, node cannot be selected.
-		klog.V(logInfoLev).Infof("%s checkNPUResourceStable %s : %v ,cannot be selected.", PluginName,
-			node.Name, err)
-		return fmt.Errorf("checkNPUResourceStable %s : %v", node.Name, err)
+		klog.V(logInfoLev).Infof("%s checkNPUResourceStable %v ,cannot be selected.", PluginName, err)
+		return fmt.Errorf("checkNPUResourceStable %v", err)
 	}
 
 	if err := hwNPU.checkNodeNPUByTask(task, node, IsDistributeTask(task, ssn)); err != nil {
@@ -297,7 +297,7 @@ func (hwNPU *ScheduleHandler) NodePredicate(task *api.TaskInfo, node *api.NodeIn
 		klog.V(logInfoLev).Infof("%s checkNodeNPUByTask %s:%v ,cannot be selected.", PluginName, node.Name, err)
 		return fmt.Errorf("checkNodeNPUByTask  %s : %s %v", node.Name, nodesNoMeetNPUReqError, err)
 	}
-
+	klog.V(logInfoLev).Infof("%s NodePredicate %s select successes.", PluginName, node.Name)
 	return nil
 }
 
@@ -312,5 +312,27 @@ func (hwNPU *ScheduleHandler) initHandleFaultNPUInf(ssn *framework.Session) erro
 		klog.V(logErrorLev).Infof("initHandleFaultNPUInf :%v.", npuErr)
 	}
 
+	return nil
+}
+
+// preHandleVNPUFn handle NPU fault chip.(Find fault npu,node,pod,RankIndex)
+func (hwNPU *ScheduleHandler) preHandleVNPUFn(ssn *framework.Session) error {
+	for pluginName, preHandleVNPUFn := range hwNPU.PreHandleVNPUFns {
+		if err := preHandleVNPUFn(ssn); err != nil {
+			klog.V(logDebugLev).Infof("%s preHandleFaultNPU :%v.", pluginName, err)
+			return err
+		}
+	}
+	return nil
+}
+
+// vJobRunHandleFn handle NPU fault chip.(Find fault npu,node,pod,RankIndex)
+func (hwNPU *ScheduleHandler) vJobRunHandleFn(ssn *framework.Session) error {
+	for pluginName, vJobRunHandle := range hwNPU.VJobRunHandleFns {
+		if err := vJobRunHandle(ssn); err != nil {
+			klog.V(logDebugLev).Infof("%s vJobRunHandleFn :%v.", pluginName, err)
+			return err
+		}
+	}
 	return nil
 }

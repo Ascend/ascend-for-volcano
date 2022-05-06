@@ -1,10 +1,10 @@
 #!/bin/bash
 # Perform  build volcano-huawei-npu-scheduler plugin
-# Copyright @ Huawei Technologies CO., Ltd. 2020-2021. All rights reserved
+# Copyright @ Huawei Technologies CO., Ltd. 2020-2022. All rights reserved
 
 set -e
 
-DEFAULT_VER='v2.0.4'
+DEFAULT_VER='v3.0.0'
 TOP_DIR=${GOPATH}/src/volcano.sh/volcano/
 BASE_PATH=${GOPATH}/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/
 CMD_PATH=${GOPATH}/src/volcano.sh/volcano/cmd/

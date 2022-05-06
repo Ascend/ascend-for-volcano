@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -14,11 +14,6 @@ import "volcano.sh/volcano/pkg/scheduler/api"
 // common type
 const (
 	NodeNPUNumber = 64
-	ConstIntNum1  = 1
-
-	LogErrorLev = 1
-	LogInfoLev  = 3
-	LogDebugLev = 4
 
 	PodPredicateTime = "predicate-time"
 

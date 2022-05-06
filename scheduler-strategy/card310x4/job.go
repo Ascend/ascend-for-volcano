@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -19,7 +19,7 @@ import (
 
 func getCardNPUJobDefaultSelectorConfig() map[string]string {
 	var defaultSchedulerConfig map[string]string
-	defaultSchedulerConfig = make(map[string]string, constIntNum3)
+	defaultSchedulerConfig = make(map[string]string, util.ConstIntNum3)
 
 	defaultSchedulerConfig[archSelector] = huaweiArchArm + "|" + huaweiArchX86
 	defaultSchedulerConfig[acceleratorType] = cardAcceleratorType + "|" + chipAcceleratorType
@@ -32,15 +32,15 @@ func validNPUJobSelector(job *api.JobInfo) error {
 	jobSelectors := util.GetJobLabels(job)
 	if len(jobSelectors) == 0 {
 		msg := fmt.Errorf("%s %s GetJobLabels nil", PluginName, job.Name)
-		klog.V(logErrorLev).Infof("%s.", msg.Error())
+		klog.V(util.LogDebugLev).Infof("%s.", msg.Error())
 		return msg
 	}
 
 	defaultSchedulerConfig := getCardNPUJobDefaultSelectorConfig()
-	klog.V(logDebugLev).Infof("%s card selector: %v default:%v.", job.Name, jobSelectors, defaultSchedulerConfig)
+	klog.V(util.LogDebugLev).Infof("%s card selector: %v default:%v.", job.Name, jobSelectors, defaultSchedulerConfig)
 
 	if err := util.CompareNPUSelector(job, jobSelectors, defaultSchedulerConfig); err != nil {
-		klog.V(logErrorLev).Infof("%v.", err)
+		klog.V(util.LogDebugLev).Infof("%v.", err)
 		return err
 	}
 
@@ -49,7 +49,7 @@ func validNPUJobSelector(job *api.JobInfo) error {
 
 // CheckSingleTrainMode Single Train job has only one task.
 func CheckSingleTrainMode(job *api.JobInfo) error {
-	klog.V(logDebugLev).Infof("checkSingleTrainMode job(%s).", job.Name)
+	klog.V(util.LogDebugLev).Infof("checkSingleTrainMode job(%s).", job.Name)
 
 	for _, task := range job.Tasks {
 		taskNPU, taskError := util.GetTaskNPUNum(task, a310NPUCardName)
@@ -57,9 +57,9 @@ func CheckSingleTrainMode(job *api.JobInfo) error {
 			return errors.New("no npu task")
 		}
 
-		klog.V(logDebugLev).Infof("%s check Card Mode %s require %d npu.", PluginName, task.Name, taskNPU)
+		klog.V(util.LogDebugLev).Infof("%s check Card Mode %s require %d npu.", PluginName, task.Name, taskNPU)
 
-		if taskNPU < constIntNum1 || taskNPU > cardNPUNumber {
+		if taskNPU < util.ConstIntNum1 || taskNPU > cardNPUNumber {
 			return fmt.Errorf("%s single trainning not match task NPU number:%d", job.Name, taskNPU)
 		}
 	}
@@ -71,7 +71,7 @@ func CheckSingleTrainMode(job *api.JobInfo) error {
 func checkCardDistributeTrainMode(job *api.JobInfo, nodeNPU int) error {
 	taskNum := len(job.Tasks)
 
-	klog.V(logDebugLev).Infof("%s check Card Mode %s has %d tasks.", PluginName, job.Name, taskNum)
+	klog.V(util.LogDebugLev).Infof("%s check Card Mode %s has %d tasks.", PluginName, job.Name, taskNum)
 
 	for _, task := range job.Tasks {
 		taskNPU, taskError := util.GetTaskNPUNum(task, a310NPUCardName)
@@ -79,9 +79,9 @@ func checkCardDistributeTrainMode(job *api.JobInfo, nodeNPU int) error {
 			return errors.New("no npu task")
 		}
 
-		klog.V(logDebugLev).Infof("%s check Card Mode %s require %d npu.", PluginName, task.Name, taskNPU)
+		klog.V(util.LogDebugLev).Infof("%s check Card Mode %s require %d npu.", PluginName, task.Name, taskNPU)
 
-		if taskNPU < constIntNum1 || taskNPU > cardNPUNumber {
+		if taskNPU < util.ConstIntNum1 || taskNPU > cardNPUNumber {
 			return fmt.Errorf("CardDistributeTrain %s req npu [%d] but node [%d]", task.Name, taskNPU, nodeNPU)
 		}
 	}
@@ -94,7 +94,7 @@ func validJobModel(job *api.JobInfo) error {
 	taskNum := len(job.Tasks)
 	var nodeNPU = cardNPUNumber
 
-	if taskNum <= constIntNum1 {
+	if taskNum <= util.ConstIntNum1 {
 		if err = CheckSingleTrainMode(job); err != nil {
 			return err
 		}
@@ -111,7 +111,7 @@ func validJobModel(job *api.JobInfo) error {
 func validJobNPUNum(job *api.JobInfo) error {
 	jobNPU, err := util.GetJobReqNPUNum(job, a310NPUCardName)
 	if err != nil {
-		klog.V(logDebugLev).Infof("job(%s) get npu number failed", job.Name)
+		klog.V(util.LogDebugLev).Infof("job(%s) get npu number failed", job.Name)
 		return err
 	}
 
@@ -127,7 +127,7 @@ func validJobNPUNum(job *api.JobInfo) error {
 func IsJobOfCardModeFromLabel(job *api.JobInfo) bool {
 	jobSelectors := util.GetJobLabels(job)
 	if len(jobSelectors) == 0 {
-		klog.V(logErrorLev).Infof("job(%s) has no selectors.", job.Name)
+		klog.V(util.LogDebugLev).Infof("job(%s) has no selectors.", job.Name)
 		return false
 	}
 

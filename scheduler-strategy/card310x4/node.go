@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -22,7 +22,7 @@ func initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) error {
 	for key := range nodes {
 		topStr, err := util.GetNPUAllocCardsFromNodeAnnotations(nodes[key], a310NPUCardName)
 		if err != nil {
-			klog.V(logDebugLev).Infof("%s initNodesFn :%v", PluginName, err)
+			klog.V(util.LogDebugLev).Infof("%s initNodesFn :%v", PluginName, err)
 			return nil
 		}
 		err = util.SaveTopologyInMap(nodes[key].Others, topStr, a310NPUCardName)
@@ -30,7 +30,7 @@ func initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) error {
 			return err
 		}
 	}
-	klog.V(logDebugLev).Infof("All nodes are initialized successfully")
+	klog.V(util.LogDebugLev).Infof("All nodes are initialized successfully")
 	return nil
 }
 
@@ -63,29 +63,29 @@ func initPriNodeGroups(task *api.TaskInfo, nodes []*api.NodeInfo) ([]map[string]
 	// init pri Node group
 	for _, node := range nodes {
 		if reflect.ValueOf(node).IsNil() {
-			klog.V(logErrorLev).Infof("%s initPriNodeGroups get node nil.", PluginName)
+			klog.V(util.LogDebugLev).Infof("%s initPriNodeGroups get node nil.", PluginName)
 			continue
 		}
 		cardIds := util.GetTopFromNodeOthers(node, a310NPUCardName, a310NPUCardPreName)
 		if cardIds == nil {
-			klog.V(logDebugLev).Infof("%s initPriNodeGroups [%s] get node top nil.", PluginName, node.Name)
+			klog.V(util.LogDebugLev).Infof("%s initPriNodeGroups [%s] get node top nil.", PluginName, node.Name)
 			continue
 		}
 		cardNumGroups := getCardNumGroupsFromTop(cardIds)
 		// set the meet node into its pri-node-list group
 		addPriNodeGroupFn := func(priNodeGroup map[string]*npuPriNodeInf, groupName string) {
-			klog.V(logDebugLev).Infof("%s [%s],group:%v.", PluginName, node.Name, priNodeGroup[node.Name])
+			klog.V(util.LogDebugLev).Infof("%s [%s],group:%v.", PluginName, node.Name, priNodeGroup[node.Name])
 			priNodeGroup[node.Name] = &npuPriNodeInf{
 				Name:     groupName,
 				nodeName: node.Name,
 			}
-			klog.V(logDebugLev).Infof("%s addPriNodeGroupFn node name:%s priNode:%v.",
+			klog.V(util.LogDebugLev).Infof("%s addPriNodeGroupFn node name:%s priNode:%v.",
 				PluginName, node.Name, priNodeGroup[node.Name])
 		}
 		// insert into group by policy
 		err = insertNodeInPriGroup(task, cardNumGroups, priNodeGroups, addPriNodeGroupFn)
 		if err != nil {
-			klog.V(logErrorLev).Infof("%s insertNodeInPriGroup %v.", PluginName, err)
+			klog.V(util.LogDebugLev).Infof("%s insertNodeInPriGroup %v.", PluginName, err)
 			continue
 		}
 	}

@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -28,19 +28,16 @@ func (tp *chip310x4) Name() string {
 
 // New return npu plugin.
 func New(npuName string) plugin.HwNPUSchedulerPlugin {
-	defaultSchedulerConfig := make(map[string]string, constIntNum2)
-	defaultSchedulerConfig[archSelector] = huaweiArchArm + "|" + huaweiArchX86
-	defaultSchedulerConfig[acceleratorType] = cardAcceleratorType + "|" + chipAcceleratorType
-	co := common.Scheduler{
+	var npuPlugin = chip310x4{}
+	npuPlugin.com = common.Scheduler{
 		PluginName:                npuName,
-		AnnoName:                  a310NPUChipName,
-		AnnoPreVal:                a310NPUCardPreName,
-		DefaultJobSchedulerConfig: defaultSchedulerConfig,
+		AnnoName:                  npuPlugin.GetResourceName(),
+		AnnoPreVal:                npuPlugin.GetResourcePreVal(),
+		DefaultJobSchedulerConfig: npuPlugin.GetPluginDefaultJobSchedulerConfig(),
 	}
-	return &chip310x4{
-		com: co,
-		re:  common.ReScheduler{AnnoUnHealthy: a310FaultNPUName, IsMyJob: co.IsMyJob, AnnoName: co.AnnoName},
-	}
+	npuPlugin.re = common.ReScheduler{AnnoUnHealthy: a310FaultNPUName,
+		IsMyJob: npuPlugin.com.IsMyJob, AnnoName: npuPlugin.com.AnnoName}
+	return &npuPlugin
 }
 
 // OnHandlerStart The npu scheduler policy initial and common processing.
@@ -173,4 +170,22 @@ func (tp *chip310x4) IsMyJob(job *api.JobInfo) error {
 	}
 
 	return nil
+}
+
+// GetResourceName get plugin NPU resource name.
+func (tp *chip310x4) GetResourceName() string {
+	return a310NPUChipName
+}
+
+// GetResourcePreVal get plugin NPU resource name prefix.
+func (tp *chip310x4) GetResourcePreVal() string {
+	return a310NPUCardPreName
+}
+
+// GetPluginDefaultJobSchedulerConfig get plugin default job scheduler config.
+func (tp *chip310x4) GetPluginDefaultJobSchedulerConfig() map[string]string {
+	defaultSchedulerConfig := make(map[string]string, util.ConstIntNum1)
+	defaultSchedulerConfig[archSelector] = huaweiArchArm + "|" + huaweiArchX86
+	defaultSchedulerConfig[acceleratorType] = cardAcceleratorType + "|" + chipAcceleratorType
+	return defaultSchedulerConfig
 }

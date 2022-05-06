@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -14,7 +14,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	ms "strconv"
+	"strconv"
 	"testing"
 	vapi "volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
@@ -44,6 +44,8 @@ const (
 	acceleratorType     = "accelerator-type"
 	cardAcceleratorType = "card"
 	nodeName            = "centos"
+	node32Core          = 32.00
+	node29Core          = 29.00
 )
 
 // TestMNPUName
@@ -130,7 +132,7 @@ func TestMNPUIsMyNode(t *testing.T) {
 func TestMNPUIsMyJob(t *testing.T) {
 	Convey("Test module910x8 IsMyJob", t, func() {
 		vnpu := &module910x8{}
-		tasks := []*vapi.TaskInfo{}
+		var tasks []*vapi.TaskInfo
 		uid := vapi.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx11")
 
 		Convey("IsMyJob() should return error when job request no NPU", func() {
@@ -173,7 +175,7 @@ func TestMNPUValidNPUJobFnInvalidSelector(t *testing.T) {
 			validNum             = 8000
 		)
 		npu := &module910x8{}
-		tasks := []*vapi.TaskInfo{}
+		var tasks []*vapi.TaskInfo
 		uid := vapi.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx4")
 
 		Convey("ValidNPUJobFn() should return error for job without certain selector key", func() {
@@ -211,7 +213,7 @@ func TestMNPUValidNPUJobFnInvalidNum(t *testing.T) {
 			validNum8   = "8"
 		)
 		npu := &module910x8{}
-		tasks := []*vapi.TaskInfo{}
+		var tasks []*vapi.TaskInfo
 		uid := vapi.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx6")
 
 		Convey("ValidNPUJobFn() should return error for job with invalid request number 0", func() {
@@ -252,7 +254,7 @@ func TestMNPUValidNPUJobFnInvalidModel(t *testing.T) {
 			num16 = "16"
 		)
 		npu := &module910x8{}
-		tasks := []*vapi.TaskInfo{}
+		var tasks []*vapi.TaskInfo
 		uid := vapi.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx7")
 
 		Convey("ValidNPUJobFn() should return error for job with invalid single model", func() {
@@ -284,7 +286,7 @@ func TestMNPUValidNPUJobFnInvalidModel(t *testing.T) {
 func TestMNPUPreCheckNodeFnTaskError(t *testing.T) {
 	Convey("Test module910x8 PreCheckNodeFn", t, func() {
 		npu := &module910x8{}
-		confs := []conf.Configuration{}
+		var confs []conf.Configuration
 		node := buildNPUNode(MNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 			"1", "Ascend910-1"})
 
@@ -313,7 +315,7 @@ func TestMNPUPreCheckNodeFnTaskError(t *testing.T) {
 func TestMNPUPreCheckNodeFnNodeError(t *testing.T) {
 	Convey("Test module910x8 PreCheckNodeFnNodeError", t, func() {
 		npu := &module910x8{}
-		confs := []conf.Configuration{}
+		var confs []conf.Configuration
 		node := buildNPUNode(MNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 			"1", "Ascend910-8"})
 
@@ -342,7 +344,7 @@ func TestMNPUPreCheckNodeFnNodeError(t *testing.T) {
 func TestMnpuPreCheckNodeFnSuccess(t *testing.T) {
 	Convey("Test module910x8 PreCheckNodeFnSuccess", t, func() {
 		npu := &module910x8{}
-		confs := []conf.Configuration{}
+		var confs []conf.Configuration
 		node := buildNPUNode(MNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 			"1", "Ascend910-5"})
 
@@ -422,7 +424,7 @@ func TestMnpuGetNPUAffinityBestNodesFn(t *testing.T) {
 			podName: "npu-test-61", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 			reqNPUType: npu800And9000CardName, reqNpuNum: "4"})
 		task := vapi.NewTaskInfo(pod)
-		nodes := []*vapi.NodeInfo{}
+		var nodes []*vapi.NodeInfo
 
 		Convey("GetNPUAffinityBestNodesFn() should return correct result", func() {
 			node1 := buildNPUNode(MNodeInfo{nodeName1, huaweiArchX86, "192", "755Gi",
@@ -457,7 +459,7 @@ func TestMnpuScoreBestNPUNodesFn(t *testing.T) {
 			reqNPUType: npu800And9000CardName, reqNpuNum: "4"})
 		task := vapi.NewTaskInfo(pod)
 
-		nodes := []*vapi.NodeInfo{}
+		var nodes []*vapi.NodeInfo
 		node1 := buildNPUNode(MNodeInfo{nodeName1, huaweiArchX86, "192", "755Gi",
 			"8", "Ascend910-5,Ascend910-2,Ascend910-0,Ascend910-1,Ascend910-3," +
 				"Ascend910-6,Ascend910-7"})
@@ -475,12 +477,9 @@ func TestMnpuScoreBestNPUNodesFn(t *testing.T) {
 
 		Convey("ScoreBestNPUNodesFn() should return correct result", func() {
 			scoreMap := make(map[string]float64)
-			expectedResult := map[string]float64{
-				nodeName1: 32.00,
-				nodeName2: 29.00,
-			}
+			expectedResult := map[string]float64(nil)
 			result, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
-			So(err, ShouldBeNil)
+			So(err, ShouldNotBeNil)
 			So(result, ShouldResemble, expectedResult)
 		})
 	})
@@ -539,7 +538,7 @@ func TestMnpuSetNPUTopologyToPodFn(t *testing.T) {
 			podName: "npu-test-64", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 			reqNPUType: npu800And9000CardName, reqNpuNum: "4"}))
 		Convey("SetNPUTopologyToPodFn() should return error when top is of wrong type", func() {
-			top := []string{}
+			var top []string
 			err := npu.SetNPUTopologyToPodFn(task, top)
 			So(err, ShouldBeError)
 			So(task.Pod.Annotations[npu800And9000CardName], ShouldEqual, "")
@@ -647,7 +646,7 @@ func buildNPUPod(podInfo MPodInfo) *v1.Pod {
 }
 
 func buildNPUResourceList(MCpu string, MMemory string, npuResourceType v1.ResourceName, npu string) v1.ResourceList {
-	npuNum, err := ms.Atoi(npu)
+	npuNum, err := strconv.Atoi(npu)
 	if err != nil {
 		return nil
 	}
@@ -667,7 +666,7 @@ func buildNPUResourceList(MCpu string, MMemory string, npuResourceType v1.Resour
 }
 
 func buildNPUNode(MNode MNodeInfo) *vapi.NodeInfo {
-	nodeCapacity := buildNPUResourceList(MNode.cpu, MNode.mem, npu800And9000CardName, ms.Itoa(constIntNum2))
+	nodeCapacity := buildNPUResourceList(MNode.cpu, MNode.mem, npu800And9000CardName, strconv.Itoa(constIntNum2))
 	nodeAlloc := buildNPUResourceList(MNode.cpu, MNode.mem, npu800And9000CardName, MNode.npuAllocateNum)
 	labels := make(map[string]string, constIntNum2)
 	ann := make(map[string]string, constIntNum2)

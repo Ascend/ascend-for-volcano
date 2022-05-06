@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -10,21 +10,26 @@ Package util is using for HuaWei Ascend9 pin affinity schedule utilities.
 package util
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
+	"strings"
 	"volcano.sh/volcano/pkg/scheduler/api"
+	"volcano.sh/volcano/pkg/scheduler/framework"
 )
 
 // GetTaskNPUNum Get task requires npu number.
 func GetTaskNPUNum(task *api.TaskInfo, npuCardName string) (int, error) {
 	tmpNPU, ok := task.Resreq.ScalarResources[v1.ResourceName(npuCardName)]
-	if !ok || int(tmpNPU/npuHex) == 0 {
+	if !ok || int(tmpNPU/NPUHex) == 0 {
 		return 0, fmt.Errorf("not %s task", npuCardName)
 	}
 
-	taskNPU := int(tmpNPU / npuHex)
+	taskNPU := int(tmpNPU / NPUHex)
 	return taskNPU, nil
 }
 
@@ -47,24 +52,24 @@ func GetTaskSelectors(task *api.TaskInfo) map[string]string {
 func IsTaskOfCardMode(task *api.TaskInfo) bool {
 	taskSelectors := getTaskSelectors(task)
 	if len(taskSelectors) == 0 {
-		klog.V(logDebugLev).Infof("task(%s) has no selectors.", task.Name)
+		klog.V(LogDebugLev).Infof("task(%s) has no selectors.", task.Name)
 		return false
 	}
 
-	return ValidStringMapKeyAndValue(taskSelectors, acceleratorType, cardAcceleratorType)
+	return ValidStringMapKeyAndValue(taskSelectors, AcceleratorType, CardAcceleratorType)
 }
 
 // GetDeviceIDsFromAnnotations Get npu card ids from Annotations.
 func GetDeviceIDsFromAnnotations(Annotations map[string]string, npuCardName string, npuCardPreName string) []int {
 	tmpTopStr, ok := Annotations[npuCardName]
 	if !ok {
-		klog.V(logDebugLev).Infof("%s getDeviceIDsFromAnnotations top nil.", npuCardName)
+		klog.V(LogDebugLev).Infof("%s getDeviceIDsFromAnnotations top nil.", npuCardName)
 		return nil
 	}
 
 	tmpDeviceIDs := ChangeTopToIntArray(tmpTopStr, npuCardPreName)
 	if tmpDeviceIDs == nil {
-		klog.V(logErrorLev).Infof("%s getDeviceIDsFromAnnotations to int failed.", npuCardName)
+		klog.V(LogErrorLev).Infof("%s getDeviceIDsFromAnnotations to int failed.", npuCardName)
 		return nil
 	}
 
@@ -78,4 +83,47 @@ func getTaskSelectors(task *api.TaskInfo) map[string]string {
 // GetTaskLabels Get task labels from pod label.
 func GetTaskLabels(task *api.TaskInfo) map[string]string {
 	return task.Pod.Labels
+}
+
+// GetRealPodByTask get pod by task from k8s directly.
+func GetRealPodByTask(ssn *framework.Session, task *api.TaskInfo) (*v1.Pod, error) {
+	pod, err := ssn.KubeClient().CoreV1().Pods(task.Namespace).Get(context.TODO(), task.Name, metav1.GetOptions{})
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			klog.V(LogErrorLev).Infof("Failed to get pod %v in%v: %v",
+				task.Namespace, task.Name, err)
+			return nil, err
+		}
+	}
+	return pod, nil
+}
+
+// GetPodUsedNPUNames get the task alloc NPUs.like set of Ascend910-1.
+func GetPodUsedNPUNames(task *api.TaskInfo, resType string) []string {
+	if task == nil {
+		return nil
+	}
+	res, ok := task.Pod.Annotations[resType]
+	if !ok {
+		return nil
+	}
+	resSlice := strings.Split(res, ",")
+	return resSlice
+}
+
+// GetReqResourceNameFromTask get task use npu name
+func GetReqResourceNameFromTask(vTask *api.TaskInfo) (string, error) {
+	if vTask == nil {
+		return "", errors.New("nil parameter")
+	}
+	for k := range vTask.Resreq.ScalarResources {
+		temp := string(k)
+		// must contains "huawei.com/Ascend"
+		if strings.Contains(temp, CommCardPreName) {
+			return temp, nil
+		}
+		continue
+	}
+	klog.V(LogErrorLev).Infof("GetReqResourceNameFromTask %+v.", vTask.Resreq.ScalarResources)
+	return "", errors.New("nil NPU")
 }

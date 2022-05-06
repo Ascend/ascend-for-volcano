@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -696,7 +696,7 @@ func TestCnpuGetFitCardFromNodeByPriorityFn(t *testing.T) {
 		priorityArray := [cardNPUNumber]int{1, 2, 3, 4}
 		Convey("getFitCardFromNodeByPriorityFn() should return correct result "+
 			"when taskNPUNumber is 6", func() {
-			taskNPUNumber := 6
+			taskNPUNumber := constIntNum6
 			result, err := tp.GetFitCardFromNodeByPriority(taskNPUNumber, nodeTop, priorityArray)
 			So(err, ShouldBeNil)
 			So(result, ShouldNotBeNil)
@@ -704,7 +704,7 @@ func TestCnpuGetFitCardFromNodeByPriorityFn(t *testing.T) {
 
 		Convey("getFitCardFromNodeByPriorityFn() should return correct result "+
 			"when taskNPUNumber is 7", func() {
-			taskNPUNumber := 7
+			taskNPUNumber := constIntNum7
 			result, err := tp.GetFitCardFromNodeByPriority(taskNPUNumber, nodeTop, priorityArray)
 			So(err, ShouldBeNil)
 			So(result, ShouldNotBeNil)
@@ -712,7 +712,7 @@ func TestCnpuGetFitCardFromNodeByPriorityFn(t *testing.T) {
 
 		Convey("getFitCardFromNodeByPriorityFn() should return correct result "+
 			"when taskNPUNumber is 20", func() {
-			taskNPUNumber := 21
+			taskNPUNumber := constIntNum21
 			result, err := tp.GetFitCardFromNodeByPriority(taskNPUNumber, nodeTop, priorityArray)
 			So(err, ShouldBeNil)
 			So(result, ShouldNotBeNil)
@@ -720,7 +720,7 @@ func TestCnpuGetFitCardFromNodeByPriorityFn(t *testing.T) {
 
 		Convey("getFitCardFromNodeByPriorityFn() should return correct result "+
 			"when taskNPUNumber is 27", func() {
-			taskNPUNumber := 27
+			taskNPUNumber := constIntNum27
 			result, err := tp.GetFitCardFromNodeByPriority(taskNPUNumber, nodeTop, priorityArray)
 			So(err, ShouldBeNil)
 			So(result, ShouldNotBeNil)
@@ -735,15 +735,15 @@ func TestCnpuGetFitCardFromNodeByPriorityFnNotMatch(t *testing.T) {
 		t.Fatalf("TestCnpuGetFitCardFromNodeByPriorityFnNotMatch error")
 	}
 	Convey("Test chip310x4 GetFitCardFromNodeByPriorityFn When nodeTop number is 64", t, func() {
-		nodeTop := make([]int, 64)
-		for i := 0; i < 64; i++ {
+		nodeTop := make([]int, constIntNum64)
+		for i := 0; i < constIntNum64; i++ {
 			nodeTop[i] = i
 		}
 
 		Convey("getFitCardFromNodeByPriorityFn() should return correct result "+
 			"when nodeTop number is 64", func() {
 			priorityArray := [cardNPUNumber]int{NPUID1, NPUID2, NPUID3, NPUID4}
-			taskNPUNumber := 64
+			taskNPUNumber := constIntNum64
 			result, err := tp.GetFitCardFromNodeByPriority(taskNPUNumber, nodeTop, priorityArray)
 			So(err, ShouldBeNil)
 			So(result, ShouldNotBeNil)

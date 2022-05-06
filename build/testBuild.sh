@@ -1,11 +1,10 @@
 #!/bin/bash
 # Perform  test volcano-huawei-npu-scheduler plugin
-# Copyright @ Huawei Technologies CO., Ltd. 2020-2021. All rights reserved
+# Copyright @ Huawei Technologies CO., Ltd. 2020-2022. All rights reserved
 
 set -e
 
 export GO111MODULE=on
-export GOPROXY=https://cmc.centralrepo.rnd.huawei.com/go/
 export GONOSUMDB="*"
 export PATH=$GOPATH/bin:$PATH
 

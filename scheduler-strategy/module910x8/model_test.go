@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -170,7 +170,7 @@ func TestMNPUInsertNodeInPriGroup(t *testing.T) {
 func TestMNPUJudgeNodeAndTaskNPU(t *testing.T) {
 	Convey("Test module910x8 judgeNodeAndTaskNPU", t, func() {
 		Convey("judgeNodeAndTaskNPU() should return nil when taskNPU is 0", func() {
-			err := judgeNodeAndTaskNPU(0, []int{0, 1, 2, 3})
+			err := judgeNodeAndTaskNPU(0, []int{0, 1, constIntNum2, constIntNum3})
 			So(err, ShouldBeNil)
 		})
 		Convey("judgeNodeAndTaskNPU() should return err when node doesn't satisfy req of 1", func() {
@@ -182,15 +182,17 @@ func TestMNPUJudgeNodeAndTaskNPU(t *testing.T) {
 			So(err, ShouldBeNil)
 		})
 		Convey("judgeNodeAndTaskNPU() should return nil when node doesn't satisfy req of 4", func() {
-			err := judgeNodeAndTaskNPU(4, []int{4, 5, 6})
+			err := judgeNodeAndTaskNPU(4, []int{constIntNum4, constIntNum5, constIntNum6})
 			So(err, ShouldBeError)
 		})
 		Convey("judgeNodeAndTaskNPU() should return nil when node satisfies req of 8", func() {
-			err := judgeNodeAndTaskNPU(8, []int{0, 1, 2, 3, 4, 5, 6, 7})
+			err := judgeNodeAndTaskNPU(8, []int{0, constIntNum1, constIntNum2, constIntNum3,
+				constIntNum4, constIntNum5, constIntNum6, constIntNum7})
 			So(err, ShouldBeNil)
 		})
 		Convey("judgeNodeAndTaskNPU() should return er when req num is invalid", func() {
-			err := judgeNodeAndTaskNPU(7, []int{0, 1, 2, 3, 4, 5, 6, 7})
+			err := judgeNodeAndTaskNPU(7, []int{0, constIntNum1, constIntNum2, constIntNum3,
+				constIntNum4, constIntNum5, constIntNum6, constIntNum7})
 			So(err, ShouldBeError)
 		})
 	})

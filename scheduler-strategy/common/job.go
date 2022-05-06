@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -26,15 +26,15 @@ func (cn *Scheduler) validNPUJobSelector(job *api.JobInfo) error {
 	jobSelectors := util.GetJobLabels(job)
 	if len(jobSelectors) == 0 {
 		msg := fmt.Errorf("%s %s getJobSelectors nil", cn.PluginName, job.Name)
-		klog.V(LogErrorLev).Infof("%s.", msg.Error())
+		klog.V(util.LogDebugLev).Infof("%s.", msg.Error())
 		return msg
 	}
 
 	defaultSchedulerConfig := cn.getCardNPUJobDefaultSelectorConfig()
-	klog.V(LogDebugLev).Infof("%s card selector: %v default:%v.", job.Name, jobSelectors, defaultSchedulerConfig)
+	klog.V(util.LogDebugLev).Infof("%s card selector: %v default:%v.", job.Name, jobSelectors, defaultSchedulerConfig)
 
 	if err := util.CompareNPUSelector(job, jobSelectors, defaultSchedulerConfig); err != nil {
-		klog.V(LogErrorLev).Infof("%v.", err)
+		klog.V(util.LogDebugLev).Infof("%v.", err)
 		return err
 	}
 
@@ -42,16 +42,16 @@ func (cn *Scheduler) validNPUJobSelector(job *api.JobInfo) error {
 }
 
 func (cn *Scheduler) validJobModel(job *api.JobInfo) error {
-	klog.V(LogDebugLev).Infof("validJobModel job(%s).", job.Name)
+	klog.V(util.LogDebugLev).Infof("validJobModel job(%s).", job.Name)
 
 	for _, task := range job.Tasks {
 		taskNPU, taskError := util.GetTaskNPUNum(task, cn.AnnoName)
 		if taskError != nil {
 			return errors.New("no npu task")
 		}
-		klog.V(LogDebugLev).Infof("%s check Card Mode %s require %d npu.", cn.PluginName, task.Name, taskNPU)
+		klog.V(util.LogDebugLev).Infof("%s check Card Mode %s require %d npu.", cn.PluginName, task.Name, taskNPU)
 
-		if taskNPU < ConstIntNum1 || taskNPU > NodeNPUNumber {
+		if taskNPU < util.ConstIntNum1 || taskNPU > NodeNPUNumber {
 			return fmt.Errorf("%s single trainning not match task NPU number:%d", job.Name, taskNPU)
 		}
 	}

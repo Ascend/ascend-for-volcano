@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -30,6 +30,11 @@ const (
 	constIntNum3  = 3
 	cardNPUNumber = 4
 	constIntNum5  = 5
+	constIntNum6  = 6
+	constIntNum7  = 7
+	constIntNum21 = 21
+	constIntNum27 = 27
+	constIntNum64 = 64
 
 	logErrorLev = 1
 	logInfoLev  = 3

@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -17,6 +17,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 	npuapi "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/npuinterface"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/rescheduling"
 )
 
 // NPUBuilder PluginBuilder plugin management
@@ -26,10 +27,14 @@ type NPUBuilder = func(string2 string) HwNPUSchedulerPlugin
 type HwNPUSchedulerPlugin interface {
 	// Name The unique name of npu scheduler policy, used by volcano frame.
 	Name() string
-
+	// GetResourceName get plugin NPU resource name.
+	GetResourceName() string
+	// GetResourcePreVal get plugin NPU resource name prefix.
+	GetResourcePreVal() string
+	// GetPluginDefaultJobSchedulerConfig get plugin default job scheduler config.
+	GetPluginDefaultJobSchedulerConfig() map[string]string
 	// OnHandlerStart The npu scheduler policy initial and common processing.
 	OnHandlerStart(*ScheduleHandler)
-
 	// IsMyTask For npu scheduler policy distinguish itself task.
 	IsMyTask(*api.TaskInfo) error
 	// IsMyNode For npu scheduler policy distinguish itself node.
@@ -64,12 +69,28 @@ type HwNPUSchedulerPlugin interface {
 type ScheduleHandler struct {
 	// for object
 	HuaweiNPUs map[string]HwNPUSchedulerPlugin
+	// for object
+	PluginEntity map[string]HwEntity
 	// For object functions
 	InitNodesNPUAllocTopologyFns map[string]npuapi.InitNodesNPUTopologyFn
 	// Handle NPU fault chip/node functions.
 	PreHandleFaultNPUFns map[string]npuapi.PreHandleFaultNPUFn
 	// Nodes pre-select cluster processing
 	ClusterNodePredicateFns map[string]npuapi.ClusterNodePredicateFn
+	//  preHandleVNPUFn
+	PreHandleVNPUFns map[string]npuapi.PreHandleVNPUFn
+	// VJobRunHandleFn
+	VJobRunHandleFns map[string]npuapi.VNPUJobRunningHandleFn
+}
+
+func (hwNPU *ScheduleHandler) AddPreHandleVNPU(pluginName string, fn npuapi.PreHandleVNPUFn) {
+	hwNPU.PreHandleVNPUFns[pluginName] = fn
+	klog.V(logDebugLev).Infof("PreHandleVNPUFns :%v add.", pluginName)
+}
+
+func (hwNPU *ScheduleHandler) AddVJobRunHandle(pluginName string, fn npuapi.VNPUJobRunningHandleFn) {
+	hwNPU.VJobRunHandleFns[pluginName] = fn
+	klog.V(logDebugLev).Infof("VJobRunHandle :%v add.", pluginName)
 }
 
 // AddPreHandleFaultNPU add Pretreatment of NPU faults function
@@ -92,7 +113,15 @@ func (hwNPU *ScheduleHandler) AddClusterNodePredicateFn(pluginName string, fn np
 
 // RegisterNPUScheduler register the plugin
 func (hwNPU *ScheduleHandler) RegisterNPUScheduler(name string, pc NPUBuilder) {
-	hwNPU.HuaweiNPUs[name] = pc(name)
+	temp := pc(name)
+	hwNPU.HuaweiNPUs[name] = temp
+	en, ok := temp.(*HwEntity)
+	if !ok {
+		klog.V(logErrorLev).Infof("NPU plugin entity [%v] register failed.", name)
+		return
+	}
+
+	hwNPU.PluginEntity[name] = *en
 	klog.V(logInfoLev).Infof("NPU Scheduler[%v] registered.", name)
 }
 
@@ -113,7 +142,11 @@ func (hwNPU *ScheduleHandler) InitNPUSession(ssn *framework.Session) {
 	}
 	// Handle NPU fault chip/node/job.
 	if err := hwNPU.initHandleFaultNPUInf(ssn); err != nil {
-		klog.V(logDebugLev).Infof("InitNPUSession :%v .", err)
+		klog.V(logDebugLev).Infof("init handle fault NPU :%v .", err)
+	}
+	// Handle VNPU 910,710
+	if err := hwNPU.preHandleVNPUFn(ssn); err != nil {
+		klog.V(logErrorLev).Infof("preprocess virtual NPU :%v .", err)
 	}
 }
 
@@ -182,17 +215,12 @@ func (hwNPU *ScheduleHandler) getHWPluginByNodes(nodes []*api.NodeInfo) (HwNPUSc
 	var hwNPUPlugin HwNPUSchedulerPlugin
 
 	for _, myNPUPlugin := range hwNPU.HuaweiNPUs {
-		if myNPUPlugin == nil {
-			continue
-		}
-
 		err = errors.New("nil nodes assert")
 		for _, node := range nodes {
-			if reflect.ValueOf(node).IsNil() {
+			if reflect.ValueOf(node).IsNil() || myNPUPlugin == nil {
 				continue
 			}
-
-			if err = myNPUPlugin.IsMyNode(node); err == nil && myNPUPlugin != nil {
+			if err = myNPUPlugin.IsMyNode(node); err == nil {
 				hwNPUPlugin = myNPUPlugin
 				break
 			}
@@ -241,4 +269,16 @@ func (hwNPU *ScheduleHandler) getNPUPlugin(obj interface{}) HwNPUSchedulerPlugin
 
 	klog.V(logDebugLev).Infof("%T : %v.", obj, err)
 	return nil
+}
+
+func (hwNPU *ScheduleHandler) BeforeCloseHandler(ssn *framework.Session) {
+	// deal fault ReScheduler
+	if err := rescheduling.WriteReSchedulerDataToCM(ssn, rescheduling.ReSchedulerCache); err != nil {
+		klog.V(logInfoLev).Infof("%s BeforeCloseHandler %v.", PluginName, err)
+	}
+	// deal VNPU Jobs
+	if vJobErr := hwNPU.vJobRunHandleFn(ssn); vJobErr != nil {
+		klog.V(logInfoLev).Infof("%s BeforeCloseHandler %v.", PluginName, vJobErr)
+	}
+	return
 }

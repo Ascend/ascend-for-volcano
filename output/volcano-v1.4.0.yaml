@@ -135,6 +135,8 @@ spec:
     metadata:
       labels:
         app: volcano-scheduler
+      annotations:
+        seccomp.security.alpha.kubernetes.io/pod: runtime/default
     spec:
       nodeSelector:
         masterselector: dls-master-node
@@ -286,6 +288,8 @@ spec:
     metadata:
       labels:
         app: volcano-controller
+      annotations:
+        seccomp.security.alpha.kubernetes.io/pod: runtime/default
     spec:
       nodeSelector:
         masterselector: dls-master-node

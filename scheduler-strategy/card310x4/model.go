@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -31,7 +31,7 @@ func judgeNodeAndTaskNPU(taskNPU int, nodeNPUTopology []int) error {
 
 	var meetErr = fmt.Errorf("req npu(%d) illegal", taskNPU)
 
-	klog.V(logErrorLev).Infof("%s %v.", PluginName, meetErr)
+	klog.V(util.LogDebugLev).Infof("%s %v.", PluginName, meetErr)
 	return meetErr
 }
 
@@ -42,29 +42,29 @@ func initOneCardPriNodeGroups(
 	addPriNodeGroupFn initPriNodeGroupFn) error {
 	if len(priNodeGroups) < cardNPUNumber {
 		err := fmt.Errorf("priNodeGroups's length(%d) not meet(%d)", len(priNodeGroups), cardNPUNumber)
-		klog.V(logErrorLev).Infof("%s initOneCardPriNodeGroups %v.", PluginName, err.Error())
+		klog.V(util.LogDebugLev).Infof("%s initOneCardPriNodeGroups %v.", PluginName, err.Error())
 		return err
 	}
 	bestGrade := cardNPUNumber
 	// priority:1>3>2>4
 	for _, cardNumGroup := range cardNumGroups {
 		switch len(cardNumGroup) {
-		case constIntNum1:
-			bestGrade = constIntNum0
-		case constIntNum3:
-			bestGrade = min(bestGrade, constIntNum1)
-		case constIntNum2:
-			bestGrade = min(bestGrade, constIntNum2)
+		case util.ConstIntNum1:
+			bestGrade = util.ConstIntNum0
+		case util.ConstIntNum3:
+			bestGrade = min(bestGrade, util.ConstIntNum1)
+		case util.ConstIntNum2:
+			bestGrade = min(bestGrade, util.ConstIntNum2)
 		case cardNPUNumber:
-			bestGrade = min(bestGrade, constIntNum3)
+			bestGrade = min(bestGrade, util.ConstIntNum3)
 		}
-		if bestGrade == constIntNum0 {
+		if bestGrade == util.ConstIntNum0 {
 			break
 		}
 	}
 	if bestGrade == cardNPUNumber {
 		// no satisfy
-		klog.V(logErrorLev).Infof("%s initOneCardPriNodeGroups node(%v) cannot fit.", PluginName, cardNumGroups)
+		klog.V(util.LogDebugLev).Infof("%s initOneCardPriNodeGroups node(%v) cannot fit.", PluginName, cardNumGroups)
 		return errors.New(nodeNoFitNPUWarning)
 	}
 	addPriNodeGroupFn(priNodeGroups[bestGrade], strconv.Itoa(bestGrade))
@@ -79,7 +79,7 @@ func initTwoCardPriNodeGroups(
 
 	if len(priNodeGroups) < cardNPUNumber {
 		err := fmt.Errorf("priNodeGroups's length(%d) not meet(%d)", len(priNodeGroups), cardNPUNumber)
-		klog.V(logErrorLev).Infof("%s initOneCardPriNodeGroups %v.", PluginName, err.Error())
+		klog.V(util.LogDebugLev).Infof("%s initOneCardPriNodeGroups %v.", PluginName, err.Error())
 		return err
 	}
 
@@ -88,21 +88,21 @@ func initTwoCardPriNodeGroups(
 	// priority:2>3>4
 	for _, cardNumGroup := range cardNumGroups {
 		switch len(cardNumGroup) {
-		case constIntNum2:
-			bestGrade = constIntNum0
-		case constIntNum3:
-			bestGrade = min(bestGrade, constIntNum1)
+		case util.ConstIntNum2:
+			bestGrade = util.ConstIntNum0
+		case util.ConstIntNum3:
+			bestGrade = min(bestGrade, util.ConstIntNum1)
 		case cardNPUNumber:
-			bestGrade = min(bestGrade, constIntNum2)
+			bestGrade = min(bestGrade, util.ConstIntNum2)
 		}
-		if bestGrade == constIntNum0 {
+		if bestGrade == util.ConstIntNum0 {
 			break
 		}
 	}
 
 	if bestGrade == cardNPUNumber {
 		// no satisfy
-		klog.V(logErrorLev).Infof("%s initOneCardPriNodeGroups node(%v) cannot fit.", PluginName, cardNumGroups)
+		klog.V(util.LogDebugLev).Infof("%s initOneCardPriNodeGroups node(%v) cannot fit.", PluginName, cardNumGroups)
 		return errors.New(nodeNoFitNPUWarning)
 	}
 
@@ -117,7 +117,7 @@ func initThreeCardPriNodeGroups(
 
 	if len(priNodeGroups) < cardNPUNumber {
 		err := fmt.Errorf("priNodeGroups's length(%d) not meet(%d)", len(priNodeGroups), cardNPUNumber)
-		klog.V(logErrorLev).Infof("%s initOneCardPriNodeGroups %v.", PluginName, err.Error())
+		klog.V(util.LogDebugLev).Infof("%s initOneCardPriNodeGroups %v.", PluginName, err.Error())
 		return err
 	}
 
@@ -126,19 +126,19 @@ func initThreeCardPriNodeGroups(
 	// priority:3>4
 	for _, cardNumGroup := range cardNumGroups {
 		switch len(cardNumGroup) {
-		case constIntNum3:
-			bestGrade = constIntNum0
+		case util.ConstIntNum3:
+			bestGrade = util.ConstIntNum0
 		case cardNPUNumber:
-			bestGrade = min(bestGrade, constIntNum1)
+			bestGrade = min(bestGrade, util.ConstIntNum1)
 		}
-		if bestGrade == constIntNum0 {
+		if bestGrade == util.ConstIntNum0 {
 			break
 		}
 	}
 
 	if bestGrade == cardNPUNumber {
 		// no satisfy
-		klog.V(logErrorLev).Infof("%s initOneCardPriNodeGroups node(%v) cannot fit.", PluginName, cardNumGroups)
+		klog.V(util.LogDebugLev).Infof("%s initOneCardPriNodeGroups node(%v) cannot fit.", PluginName, cardNumGroups)
 		return errors.New(nodeNoFitNPUWarning)
 	}
 
@@ -153,7 +153,7 @@ func initFourCardPriNodeGroups(
 
 	if len(priNodeGroups) < cardNPUNumber {
 		err := fmt.Errorf("priNodeGroups's length(%d) not meet(%d)", len(priNodeGroups), cardNPUNumber)
-		klog.V(logErrorLev).Infof("%s initOneCardPriNodeGroups %v.", PluginName, err.Error())
+		klog.V(util.LogDebugLev).Infof("%s initOneCardPriNodeGroups %v.", PluginName, err.Error())
 		return err
 	}
 
@@ -163,14 +163,14 @@ func initFourCardPriNodeGroups(
 	for _, cardNumGroup := range cardNumGroups {
 		if len(cardNumGroup) == cardNPUNumber {
 			// A group
-			bestGrade = constIntNum0
+			bestGrade = util.ConstIntNum0
 			break
 		}
 	}
 
 	if bestGrade == cardNPUNumber {
 		// no satisfy
-		klog.V(logErrorLev).Infof("%s initOneCardPriNodeGroups node(%v) cannot fit.", PluginName, cardNumGroups)
+		klog.V(util.LogDebugLev).Infof("%s initOneCardPriNodeGroups node(%v) cannot fit.", PluginName, cardNumGroups)
 		return errors.New(nodeNoFitNPUWarning)
 	}
 
@@ -191,25 +191,25 @@ func insertNodeInPriGroup(
 	taskReqNPU, errGet := util.GetTaskNPUNum(task, a310NPUCardName)
 	if errGet != nil {
 		// cannot return error for task is no npu kind possible.
-		klog.V(logErrorLev).Infof("%s batchNodeOrderFn task :%s,%v.", PluginName, task.Name, errGet)
+		klog.V(util.LogDebugLev).Infof("%s batchNodeOrderFn task :%s,%v.", PluginName, task.Name, errGet)
 		// cannot return nil，will panic
 		return nil
 	}
 
 	switch taskReqNPU {
-	case constIntNum0:
-		klog.V(logInfoLev).Infof("%s initPriNodeGroups task npu is 0.", PluginName)
-	case constIntNum1:
+	case util.ConstIntNum0:
+		klog.V(util.LogInfoLev).Infof("%s initPriNodeGroups task npu is 0.", PluginName)
+	case util.ConstIntNum1:
 		err = initOneCardPriNodeGroups(cardNumGroups, priNodeGroups, addPriNodeGroupFn)
-	case constIntNum2:
+	case util.ConstIntNum2:
 		err = initTwoCardPriNodeGroups(cardNumGroups, priNodeGroups, addPriNodeGroupFn)
-	case constIntNum3:
+	case util.ConstIntNum3:
 		err = initThreeCardPriNodeGroups(cardNumGroups, priNodeGroups, addPriNodeGroupFn)
 	case cardNPUNumber:
 		err = initFourCardPriNodeGroups(cardNumGroups, priNodeGroups, addPriNodeGroupFn)
 	default:
 		// For normal,can not be here. The pre function validate job has done this.
-		klog.V(logErrorLev).Infof("%s node(%v) not fit task request %d.", PluginName, cardNumGroups, taskReqNPU)
+		klog.V(util.LogDebugLev).Infof("%s node(%v) not fit task request %d.", PluginName, cardNumGroups, taskReqNPU)
 		err = errors.New("illegal request npu number " + strconv.Itoa(taskReqNPU))
 	}
 
@@ -220,17 +220,17 @@ func getNPUAllocPriorityArray(taskNPUNumber int) ([cardNPUNumber]int, error) {
 	var priorityArray [cardNPUNumber]int
 	var err = error(nil)
 	switch taskNPUNumber {
-	case constIntNum0:
-		klog.V(logInfoLev).Infof("%s task req npu is 0.", PluginName)
-	case constIntNum1:
+	case util.ConstIntNum0:
+		klog.V(util.LogInfoLev).Infof("%s task req npu is 0.", PluginName)
+	case util.ConstIntNum1:
 		// priority:1>3>2>4
-		priorityArray = [cardNPUNumber]int{1, constIntNum3, constIntNum2, cardNPUNumber}
-	case constIntNum2:
+		priorityArray = [cardNPUNumber]int{1, util.ConstIntNum3, util.ConstIntNum2, cardNPUNumber}
+	case util.ConstIntNum2:
 		// priority：2>3>4
-		priorityArray = [cardNPUNumber]int{constIntNum2, constIntNum3, cardNPUNumber}
-	case constIntNum3:
+		priorityArray = [cardNPUNumber]int{util.ConstIntNum2, util.ConstIntNum3, cardNPUNumber}
+	case util.ConstIntNum3:
 		// priority：3>4
-		priorityArray = [cardNPUNumber]int{constIntNum3, cardNPUNumber}
+		priorityArray = [cardNPUNumber]int{util.ConstIntNum3, cardNPUNumber}
 	case cardNPUNumber:
 		priorityArray = [cardNPUNumber]int{cardNPUNumber}
 	default:
@@ -238,7 +238,7 @@ func getNPUAllocPriorityArray(taskNPUNumber int) ([cardNPUNumber]int, error) {
 		err = fmt.Errorf("illegal request npu number: %d", taskNPUNumber)
 	}
 	if err != nil {
-		klog.V(logErrorLev).Infof("%s %s.", PluginName, err.Error())
+		klog.V(util.LogDebugLev).Infof("%s %s.", PluginName, err.Error())
 		return priorityArray, err
 	}
 	return priorityArray, nil
@@ -254,7 +254,7 @@ func getFitCardFromNodeByPriority(nodeTop []int, priorityArray [cardNPUNumber]in
 	existNPU, npuNumberIndex := getExistIDAndIndexGroupOfNPU(nodeTop)
 	selectedCardTop, err := getSelectedCardTop(priorityArray, existNPU, npuNumberIndex)
 	if err != nil {
-		klog.V(logErrorLev).Infof("%s getHccsFromNodeByPriority: %v %s.", PluginName, nodeTop, err.Error())
+		klog.V(util.LogDebugLev).Infof("%s getHccsFromNodeByPriority: %v %s.", PluginName, nodeTop, err.Error())
 		return nil, err
 	}
 	return selectedCardTop, nil
@@ -266,7 +266,7 @@ func getSelectedCardTop(priorityArray [cardNPUNumber]int, existNPU map[int]bool,
 	for _, arrLen := range priorityArray {
 		selectedGroup := index[arrLen]
 		if len(selectedGroup) == 0 {
-			klog.V(logErrorLev).Infof("%s getSelectedCardTop %d group %+v.", PluginName, arrLen, priorityArray)
+			klog.V(util.LogDebugLev).Infof("%s getSelectedCardTop %d group %+v.", PluginName, arrLen, priorityArray)
 			continue
 		}
 		randNum := rand.Intn(len(selectedGroup))

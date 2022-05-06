@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -10,11 +10,14 @@ Package util is using for HuaWei Ascend9 pin affinity schedule utilities.
 package util
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
-	"k8s.io/klog"
+	"hash/crc32"
 	"strconv"
 	"strings"
+
+	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 )
@@ -37,13 +40,13 @@ func ChangeTopToIntArray(topStr string, npuCardPreName string) []int {
 		v := strings.TrimPrefix(cardStr, npuCardPreName)
 		cardInt, err = strconv.Atoi(v)
 		if err != nil {
-			klog.V(logErrorLev).Infof("ChangeTopToIntArray conv failed %v.", err)
+			klog.V(LogErrorLev).Infof("ChangeTopToIntArray conv failed %v.", err)
 			return nil
 		}
 
 		topInt = append(topInt, cardInt)
 	}
-	klog.V(logDebugLev).Infof("ChangeTopToIntArray %v.", topInt)
+	klog.V(LogDebugLev).Infof("ChangeTopToIntArray %v.", topInt)
 	return topInt
 }
 
@@ -62,12 +65,12 @@ func isSelectorMeetJob(jobSelectors, schedulerConf map[string]string) bool {
 	for jobKey, jobValue := range jobSelectors {
 		confValue, confOk := schedulerConf[jobKey]
 		if !confOk {
-			klog.V(logErrorLev).Infof("conf has no job selector key:%s.", jobKey)
+			klog.V(LogErrorLev).Infof("conf has no job selector key:%s.", jobKey)
 			return false
 		}
 
 		if !strings.Contains(confValue, jobValue) {
-			klog.V(logErrorLev).Infof("conf has no job selector value:%s.", jobValue)
+			klog.V(LogErrorLev).Infof("conf has no job selector value:%s.", jobValue)
 			return false
 		}
 	}
@@ -76,12 +79,12 @@ func isSelectorMeetJob(jobSelectors, schedulerConf map[string]string) bool {
 
 func getDefaultSchedulerSelectorConfig() map[string]string {
 	var defaultSchedulerConfig map[string]string
-	defaultSchedulerConfig = make(map[string]string, constIntNum3)
+	defaultSchedulerConfig = make(map[string]string, ConstIntNum3)
 
-	defaultSchedulerConfig[archSelector] = huaweiArchArm + "|" + huaweiArchX86
+	defaultSchedulerConfig[ArchSelector] = HuaweiArchArm + "|" + HuaweiArchX86
 	defaultSchedulerConfig[accelerator] = accelerator910Value + "|" + accelerator310Value
-	defaultSchedulerConfig[acceleratorType] = cardAcceleratorType + "|" + moduleAcceleratorType +
-		"|" + chipAcceleratorType
+	defaultSchedulerConfig[AcceleratorType] = CardAcceleratorType + "|" + ModuleAcceleratorType +
+		"|" + ChipAcceleratorType
 
 	return defaultSchedulerConfig
 }
@@ -89,19 +92,15 @@ func getDefaultSchedulerSelectorConfig() map[string]string {
 // GetSchedulerSelectorConfig Get selector from volcano config file.
 func GetSchedulerSelectorConfig(confs []conf.Configuration) map[string]string {
 	var customerScheduler map[string]string
-	customerScheduler = make(map[string]string, constIntNum2)
+	customerScheduler = make(map[string]string, ConstIntNum2)
 
-	configuration, err := GetConfigFromSchedulerConfigMap(CMSelectorKey, confs)
-	if err != nil {
-		klog.V(logDebugLev).Info(err)
-	}
-	if len(confs) != 0 && err == nil {
-		klog.V(logDebugLev).Infof("getSchedulerSelectorConfig ok[%+v].", confs)
+	if len(confs) != 0 {
+		klog.V(LogDebugLev).Infof("getSchedulerSelectorConfig ok[%+v].", confs)
 		// get customer config selector
-		for k, v := range configuration.Arguments {
+		for k, v := range confs[0].Arguments {
 			customerScheduler[k] = v
 		}
-		klog.V(logDebugLev).Infof("add config SchedulerSelector ok[%+v].", customerScheduler)
+		klog.V(LogDebugLev).Infof("add config SchedulerSelector ok[%+v].", customerScheduler)
 	}
 
 	// default conf cannot be covered
@@ -111,19 +110,19 @@ func GetSchedulerSelectorConfig(confs []conf.Configuration) map[string]string {
 		tempStr, ok := customerScheduler[k]
 		if !ok {
 			customerScheduler[k] = v
-			klog.V(logDebugLev).Infof("use default config [%s]:[%s].", k, v)
+			klog.V(LogDebugLev).Infof("use default config [%s]:[%s].", k, v)
 			continue
 		}
 		// exist default key, compare content
 		if strings.Contains(tempStr, v) {
-			klog.V(logDebugLev).Infof("default config has customer config [%s]:[%s].", k, v)
+			klog.V(LogDebugLev).Infof("default config has customer config [%s]:[%s].", k, v)
 			continue
 		}
 		// append not cover
-		klog.V(logDebugLev).Infof("config key(%s) not same [%s]:[%s].", k, v, tempStr)
+		klog.V(LogDebugLev).Infof("config key(%s) not same [%s]:[%s].", k, v, tempStr)
 		customerScheduler[k] = v + "|" + tempStr
 	}
-	klog.V(logDebugLev).Infof("add getSchedulerSelectorConfig ok[%+v].", customerScheduler)
+	klog.V(LogDebugLev).Infof("add getSchedulerSelectorConfig ok[%+v].", customerScheduler)
 	return customerScheduler
 }
 
@@ -135,21 +134,21 @@ func CheckTaskAndNodeSelectorMeet(tSelectors map[string]string,
 	for taskKey, taskValue := range tSelectors {
 		confValue, confOk := conf[taskKey]
 		if !confOk {
-			klog.V(logErrorLev).Infof("conf has no task selector:%s.", taskKey)
-			return fmt.Errorf("%s : conf has no:%s", nodeNoFitSelectorError, taskKey)
+			klog.V(LogErrorLev).Infof("conf has no task selector:%s.", taskKey)
+			return fmt.Errorf("%s : conf has no:%s", NodeNoFitSelectorError, taskKey)
 		}
 
 		nodeValue, nodeOk := nSelector[taskKey]
 		if !nodeOk {
-			klog.V(logErrorLev).Infof("node has no task selector:%s.", taskKey)
-			return fmt.Errorf("%s : node has no:%s", nodeNoFitSelectorError, taskKey)
+			klog.V(LogErrorLev).Infof("node has no task selector:%s.", taskKey)
+			return fmt.Errorf("%s : node has no:%s", NodeNoFitSelectorError, taskKey)
 		}
 
 		if !strings.Contains(confValue, taskValue) || !strings.EqualFold(taskValue, nodeValue) {
-			klog.V(logErrorLev).Infof("selector(%s) not equal: task(%s) node(%s) conf(%s).",
+			klog.V(LogErrorLev).Infof("selector(%s) not equal: task(%s) node(%s) conf(%s).",
 				taskKey, taskValue, nodeValue, confValue)
 			return fmt.Errorf("%s key[%s] : task(%s) node(%s) conf(%s)",
-				nodeNoFitSelectorError, taskKey, taskValue, nodeValue, confValue)
+				NodeNoFitSelectorError, taskKey, taskValue, nodeValue, confValue)
 		}
 	}
 
@@ -193,7 +192,7 @@ func GetRealTopAfterRelease(nodeDeviceIDs []int, taskDeviceIDs []int, npuCardPre
 	// add task topology to tmp map, Deduplicate the same topology
 	for _, tTopI := range taskDeviceIDs {
 		if _, ok := tmpTopMap[tTopI]; ok {
-			klog.V(logInfoLev).Infof("%s getRealTopAfterRelease already has cardId: %d.", npuCardPreName, tTopI)
+			klog.V(LogInfoLev).Infof("%s getRealTopAfterRelease already has cardId: %d.", npuCardPreName, tTopI)
 			continue
 		}
 		tmpTopMap[tTopI] = 0
@@ -211,23 +210,23 @@ func IsSelectorMeetNode(task *api.TaskInfo, node *api.NodeInfo, conf map[string]
 	taskSelectors := GetTaskSelectors(task)
 	if len(taskSelectors) == 0 {
 		if err := IsNPUTask(task, cardName); err != nil {
-			klog.V(logDebugLev).Infof("not npu task[%s], no need selector.", task.Name)
+			klog.V(LogDebugLev).Infof("not npu task[%s], no need selector.", task.Name)
 			return nil
 		}
 		// npu task need selector
-		klog.V(logErrorLev).Infof("task[%s] no selector in select node[%s].", task.Name, node.Name)
-		return errors.New(nodeNoFitSelectorError)
+		klog.V(LogErrorLev).Infof("task[%s] no selector in select node[%s].", task.Name, node.Name)
+		return errors.New(NodeNoFitSelectorError)
 	}
 
 	// task has selector, so node should have
 	nodeSelector, errNode := GetNodeSelector(node)
 	if errNode != nil {
-		klog.V(logErrorLev).Infof("GetNodeSelector task[%s] on node(%s) %v.", task.Name, node.Name, errNode)
-		return errors.New(nodeNoFitSelectorError)
+		klog.V(LogErrorLev).Infof("GetNodeSelector task[%s] on node(%s) %v.", task.Name, node.Name, errNode)
+		return errors.New(NodeNoFitSelectorError)
 	}
 
 	if err := CheckTaskAndNodeSelectorMeet(taskSelectors, nodeSelector, conf); err != nil {
-		klog.V(logErrorLev).Infof("CheckTaskAndNodeSelectorMeet %s err:%v.", node.Name, err)
+		klog.V(LogErrorLev).Infof("CheckTaskAndNodeSelectorMeet %s err:%v.", node.Name, err)
 		return err
 	}
 
@@ -251,13 +250,13 @@ func CompareNPUSelector(job *api.JobInfo, jobS map[string]string, defaultS map[s
 		jobValue, jobOk := jobS[defKey]
 		if !jobOk {
 			msg := fmt.Errorf("%s has no selector:%s", job.Name, defKey)
-			klog.V(logErrorLev).Infof("%v.", msg)
+			klog.V(LogErrorLev).Infof("%v.", msg)
 			return msg
 		}
 
 		if !isSelectorContains(defValue, jobValue) {
 			msg := fmt.Errorf("%s selector[%s]:[%s] not in [%s]", job.Name, defKey, jobValue, defValue)
-			klog.V(logErrorLev).Infof("%v.", msg)
+			klog.V(LogErrorLev).Infof("%v.", msg)
 			return msg
 		}
 	}
@@ -268,7 +267,7 @@ func CompareNPUSelector(job *api.JobInfo, jobS map[string]string, defaultS map[s
 func ValidStringMapKeyAndValue(tmpMap map[string]string, key, value string) bool {
 	tmpValue, ok := tmpMap[key]
 	if !ok {
-		// no acceleratorType means module
+		// no AcceleratorType means module
 		return false
 	}
 
@@ -276,40 +275,38 @@ func ValidStringMapKeyAndValue(tmpMap map[string]string, key, value string) bool
 		return true
 	}
 
-	klog.V(logDebugLev).Infof("valid ok .")
+	klog.V(LogDebugLev).Infof("valid ok .")
 	return false
 }
 
-
-// GetConfigFromSchedulerConfigMap get config info from yaml
-func GetConfigFromSchedulerConfigMap(configKey string, configurations []conf.Configuration) (*conf.Configuration,
-	error) {
-	if len(configurations) == 0 {
-		return nil, errors.New("no configurations in scheduler configmap")
+// MakeDataHash make data hash.
+func MakeDataHash(data interface{}) uint32 {
+	dataString, marshErr := MarshalCacheDataToString(data)
+	if marshErr != nil {
+		return 0
 	}
-
-	// in the new version, the configuration is obtained based on the configured name field.
-	if config := getConfigurationByKey(configKey, configurations); config != nil {
-		klog.V(logDebugLev).Infof("get the configurations by name [%s] successful.", configKey)
-		return config, nil
-	}
-
-	// compatible with old versions, because of the name field is not configured in the old versions.
-	if configKey == CMSelectorKey {
-		// if user removes configuration name and changes the order, will make mistakes.
-		klog.V(logDebugLev).Info("compatible with old versions, get the selector configuration successful.")
-		return &configurations[0], nil
-	}
-
-	return nil, fmt.Errorf("cannot get configurations by name [%s], name not in configurations", configKey)
+	return crc32.ChecksumIEEE([]byte(dataString))
 }
 
-func getConfigurationByKey(configKey string, configurations []conf.Configuration) *conf.Configuration {
-	for _, cf := range configurations {
-		if cf.Name == configKey {
-			return &cf
-		}
+// MarshalCacheDataToString Marshal cache data to string.
+func MarshalCacheDataToString(data interface{}) (string, error) {
+	dataBuffer, err := json.Marshal(data)
+	if err != nil {
+		klog.V(LogErrorLev).Infof("marshalCacheDataToString err: %v.", err)
+		return "", err
+	}
+	return string(dataBuffer), nil
+}
+
+// GetResourceFromAnnotationFn get the source from annotation.
+func GetResourceFromAnnotationFn(Annotations map[string]string, resourceName string) (string, error) {
+	topStr, ok := Annotations[resourceName]
+	// In case of kubernetes doesn't have some kind of resource type, but name of that type was written in
+	// node annotation with a value of empty string. If topStr is empty, an error should be returned so that that type
+	// of resource will be ignored.
+	if !ok || topStr == "" {
+		return "", fmt.Errorf("requested %s does not exist", resourceName)
 	}
 
-	return nil
+	return topStr, nil
 }

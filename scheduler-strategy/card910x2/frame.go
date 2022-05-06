@@ -1,5 +1,5 @@
 /*
-Copyright(C) 2021. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
@@ -29,7 +29,13 @@ func (tp *card910x2) Name() string {
 
 // New return npu plugin.
 func New(npuName string) plugin.HwNPUSchedulerPlugin {
-	return &card910x2{name: npuName}
+	var npuPlugin = card910x2{}
+	return &card910x2{plugin.HwEntity{
+		PluginName:                npuName,
+		AnnoName:                  npuPlugin.GetResourceName(),
+		AnnoPreVal:                npuPlugin.GetResourcePreVal(),
+		DefaultJobSchedulerConfig: npuPlugin.GetPluginDefaultJobSchedulerConfig(),
+	}}
 }
 
 // OnHandlerStart The npu scheduler policy initial and common processing.
@@ -77,7 +83,7 @@ func (tp *card910x2) PreCheckNodeFn(task *api.TaskInfo, node *api.NodeInfo, conf
 	schedulerConf := hwutil.GetSchedulerSelectorConfig(confs)
 	if len(schedulerConf) == 0 {
 		// get scheduler selector configure failed, but need continue
-		klog.V(logErrorLev).Infof("%s JobName: %s get selector nil", PluginName, task.Name)
+		klog.V(logErrorLev).Infof("%s JobUID: %s get selector nil", PluginName, task.Name)
 		return fmt.Errorf("%s get scheduler selector nil", node.Name)
 	}
 
@@ -357,4 +363,22 @@ func (tp *card910x2) IsMyJob(job *api.JobInfo) error {
 	}
 
 	return nil
+}
+
+// GetResourceName get plugin NPU resource name.
+func (tp *card910x2) GetResourceName() string {
+	return a300TNPUCardName
+}
+
+// GetResourcePreVal get plugin NPU resource name prefix.
+func (tp *card910x2) GetResourcePreVal() string {
+	return a300tNPUCardPreName
+}
+
+// GetPluginDefaultJobSchedulerConfig get plugin default job scheduler config.
+func (tp *card910x2) GetPluginDefaultJobSchedulerConfig() map[string]string {
+	defaultSchedulerConfig := make(map[string]string, hwutil.ConstIntNum1)
+	defaultSchedulerConfig[archSelector] = huaweiArchArm + "|" + huaweiArchX86
+	defaultSchedulerConfig[acceleratorType] = cardAcceleratorType + "|" + moduleAcceleratorType
+	return defaultSchedulerConfig
 }
