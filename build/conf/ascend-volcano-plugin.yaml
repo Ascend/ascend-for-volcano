@@ -40,7 +40,7 @@ compile:
     parameters: [
       ["buildmode","plugin"],
     ['ldflags', '-s -linkmode=external -extldflags=-Wl,-z,now -X "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin.PluginName=volcano-npu_{{ version }}_linux-{{ systemEnv.processor }}"'],
-    ["o", "volcano-npu_{{ version }}_linux-{{ systemEnv.processor }}.so {{ BASE_PATH }}"]
+    ["o", "volcano-npu_{{ version }}_linux-{{ systemEnv.processor }}.so {{ BASE_PATH }}"],
     ]
   output:
     files:
