@@ -8,17 +8,19 @@ Package card310x4 is using for HuaWei A300T Ascend pin affinity schedule.
 package card310x4
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cs "strconv"
 	"testing"
+
+	. "github.com/smartystreets/goconvey/convey"
+	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	vapi "volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
+	util2 "volcano.sh/volcano/pkg/scheduler/util"
+
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 	ascendtest "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
-	util2 "volcano.sh/volcano/pkg/scheduler/util"
 )
 
 type CNodeInfo struct {

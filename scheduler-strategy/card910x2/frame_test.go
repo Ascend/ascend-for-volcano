@@ -70,7 +70,7 @@ func TestCNPUValidNPUJobFnInvalidSelector(t *testing.T) {
 			validNum2            = 2000
 		)
 		npu := &card910x2{}
-		tasks := []*vapi.TaskInfo{}
+		var tasks []*vapi.TaskInfo
 		uid := vapi.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx5")
 
 		Convey("ValidNPUJobFn() should return error for job without certain selector key", func() {
@@ -107,7 +107,7 @@ func TestCNPUValidNPUJobFnInvalidNum(t *testing.T) {
 			validNum1   = "1"
 		)
 		npu := &card910x2{}
-		tasks := []*vapi.TaskInfo{}
+		var tasks []*vapi.TaskInfo
 		uid := vapi.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx8")
 
 		Convey("ValidNPUJobFn() should return error for job with invalid request number 0", func() {
@@ -148,7 +148,7 @@ func TestCNPUValidNPUJobFnInvalidModel(t *testing.T) {
 			num8 = "8"
 		)
 		npu := &card910x2{}
-		tasks := []*vapi.TaskInfo{}
+		var tasks []*vapi.TaskInfo
 		uid := vapi.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx9")
 
 		Convey("ValidNPUJobFn() should return error for job with invalid single model", func() {
@@ -180,7 +180,7 @@ func TestCNPUValidNPUJobFnInvalidModel(t *testing.T) {
 func TestCNPUPreCheckNodeFnTaskError(t *testing.T) {
 	Convey("Test card910x2 PreCheckNodeFnTaskError", t, func() {
 		npu := &card910x2{}
-		confs := []conf.Configuration{}
+		var confs []conf.Configuration
 		node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 			"1", "Ascend910-1"})
 
@@ -211,7 +211,7 @@ func TestCNPUPreCheckNodeFnTaskError(t *testing.T) {
 func TestCNPUPreCheckNodeFnNodeError(t *testing.T) {
 	Convey("Test card910x2 PreCheckNodeFnNodeError", t, func() {
 		npu := &card910x2{}
-		confs := []conf.Configuration{}
+		var confs []conf.Configuration
 		node := buildNPUNode(CNodeInfo{nodeName, huaweiArchX86, "192", "755Gi",
 			"1", "Ascend910-3"})
 

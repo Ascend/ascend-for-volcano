@@ -43,6 +43,7 @@ func init() {
 	sHandler = HandlerStart()
 }
 
+// checkSession check the ssn's parameters
 func checkSession(ssn *framework.Session) error {
 	if ssn == nil {
 		klog.V(logErrorLev).Infof("%s OnSessionOpen got a null session hence doing nothing.", PluginName)
@@ -125,7 +126,6 @@ func (tp *huaweiNPUPlugin) OnSessionClose(ssn *framework.Session) {
 func HandlerStart() *plugin.ScheduleHandler {
 	scheduleHandler := &plugin.ScheduleHandler{
 		HuaweiNPUs:       map[string]plugin.HwNPUSchedulerPlugin{},
-		PluginEntity:     map[string]plugin.HwEntity{},
 		PreHandleVNPUFns: map[string]npuapi.PreHandleVNPUFn{},
 		VJobRunHandleFns: map[string]npuapi.VNPUJobRunningHandleFn{},
 		// for object funcs
@@ -143,10 +143,6 @@ func HandlerStart() *plugin.ScheduleHandler {
 	scheduleHandler.RegisterNPUScheduler(chip310x4.PluginName, chip310x4.New)
 	scheduleHandler.RegisterNPUScheduler(chip710.PluginName, chip710.New)
 	scheduleHandler.RegisterNPUScheduler(comvnpu.PluginName, comvnpu.New)
-	// for npu scheduler start.
-	for _, huaweiNPU := range scheduleHandler.HuaweiNPUs {
-		huaweiNPU.OnHandlerStart(scheduleHandler)
-	}
 
 	return scheduleHandler
 }

@@ -11,10 +11,12 @@ package plugin
 
 import (
 	"errors"
-	v1 "k8s.io/api/core/v1"
+	"fmt"
+	"reflect"
+
+	"k8s.io/api/core/v1"
 	"k8s.io/klog"
 	schedulerApi "k8s.io/kube-scheduler/extender/v1"
-	"reflect"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 )
@@ -125,4 +127,17 @@ func IsDistributeTask(task *api.TaskInfo, ssn *framework.Session) bool {
 
 	klog.V(logDebugLev).Infof("IsDistributeTask %s get %d task.", task.Job, len(job.Tasks))
 	return false
+}
+
+func (hwNPU *ScheduleHandler) isHwNPUTask(task *api.TaskInfo) error {
+	curNPUPlugin := hwNPU.getNPUPlugin(task)
+	if curNPUPlugin == nil {
+		return errors.New(noneNPUPlugin)
+	}
+	if !hwNPU.IsPluginRegistered(curNPUPlugin.Name()) {
+		plugErr := fmt.Errorf("%s not registered", curNPUPlugin.Name())
+		klog.V(logErrorLev).Infof("isHwNPUTask :%v.", plugErr)
+		return plugErr
+	}
+	return curNPUPlugin.IsMyTask(task)
 }

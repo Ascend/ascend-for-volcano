@@ -119,7 +119,7 @@ func (tp *VNPU) GetNPUTypeByResourceName(tmp string) (string, error) {
 func (tp *VNPU) GetVJobReqNPUType(job *api.JobInfo) (string, error) {
 	tmp, getErr := util.GetReqResourceNameFromJob(job)
 	if getErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s GetVJobReqNPUType %s %v.", tp.Name(), job.Name, getErr)
+		klog.V(util.LogDebugLev).Infof("%s GetVJobReqNPUType %s %v.", tp.Name(), job.Name, getErr)
 		return "", getErr
 	}
 
@@ -289,7 +289,7 @@ func (tp *VNPU) DealVJobLegality(vJob *api.JobInfo) error {
 func (tp *VNPU) GetPluginNameByJobInfo(job *api.JobInfo) (string, error) {
 	reqNpuType, typeErr := tp.GetVJobReqNPUType(job)
 	if typeErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s GetPluginNameByJobInfo %s %v.", tp.Name(), job.Name, typeErr)
+		klog.V(util.LogDebugLev).Infof("%s GetPluginNameByJobInfo %s %v.", tp.Name(), job.Name, typeErr)
 		return "", typeErr
 	}
 
@@ -313,7 +313,7 @@ func (tp *VNPU) IsVNPUJob(job *api.JobInfo) bool {
 	// 1.init vnp
 	pluginName, nameErr := tp.GetPluginNameByJobInfo(job)
 	if nameErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s IsVNPUJob %s %v.", tp.Name(), job.Name, nameErr)
+		klog.V(util.LogDebugLev).Infof("%s IsVNPUJob %s %v.", tp.Name(), job.Name, nameErr)
 		return false
 	}
 	if pluginErr := tp.InitVNPUPluginByType(pluginName); pluginErr != nil {
