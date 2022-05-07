@@ -11,13 +11,12 @@ package comvnpu
 
 import (
 	"fmt"
-	"strconv"
-	"testing"
-
 	. "github.com/smartystreets/goconvey/convey"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"strconv"
+	"testing"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 
