@@ -94,10 +94,14 @@ func GetSchedulerSelectorConfig(confs []conf.Configuration) map[string]string {
 	var customerScheduler map[string]string
 	customerScheduler = make(map[string]string, ConstIntNum2)
 
-	if len(confs) != 0 {
+	configuration, err := GetConfigFromSchedulerConfigMap(CMSelectorKey, confs)
+	if err != nil {
+		klog.V(LogDebugLev).Info(err)
+	}
+	if len(confs) != 0 && err == nil {
 		klog.V(LogDebugLev).Infof("getSchedulerSelectorConfig ok[%+v].", confs)
 		// get customer config selector
-		for k, v := range confs[0].Arguments {
+		for k, v := range configuration.Arguments {
 			customerScheduler[k] = v
 		}
 		klog.V(LogDebugLev).Infof("add config SchedulerSelector ok[%+v].", customerScheduler)
@@ -309,4 +313,37 @@ func GetResourceFromAnnotationFn(Annotations map[string]string, resourceName str
 	}
 
 	return topStr, nil
+}
+
+// GetConfigFromSchedulerConfigMap get config info from yaml
+func GetConfigFromSchedulerConfigMap(configKey string, configurations []conf.Configuration) (*conf.Configuration,
+	error) {
+	if len(configurations) == 0 {
+		return nil, errors.New("no configurations in scheduler configmap")
+	}
+
+	// in the new version, the configuration is obtained based on the configured name field.
+	if config := getConfigurationByKey(configKey, configurations); config != nil {
+		klog.V(LogDebugLev).Infof("get the configurations by name [%s] successful.", configKey)
+		return config, nil
+	}
+
+	// compatible with old versions, because of the name field is not configured in the old versions.
+	if configKey == CMSelectorKey {
+		// if user removes configuration name and changes the order, will make mistakes.
+		klog.V(LogDebugLev).Info("compatible with old versions, get the selector configuration successful.")
+		return &configurations[0], nil
+	}
+
+	return nil, fmt.Errorf("cannot get configurations by name [%s], name not in configurations", configKey)
+}
+
+func getConfigurationByKey(configKey string, configurations []conf.Configuration) *conf.Configuration {
+	for _, cf := range configurations {
+		if cf.Name == configKey {
+			return &cf
+		}
+	}
+
+	return nil
 }

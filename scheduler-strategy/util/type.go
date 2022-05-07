@@ -58,4 +58,12 @@ const (
 	ChipAcceleratorType = "chip"
 	// NodeNoFitSelectorError for node no fit selector error.
 	NodeNoFitSelectorError = "no matching label on this node"
+	// CMInitParamKey init param key in scheduler configmap
+	CMInitParamKey = "init-params"
+	// CMSelectorKey selector key in scheduler configmap
+	CMSelectorKey = "selector"
+	// SegmentEnable for VNPU segment enable flag. Default is "false".
+	SegmentEnable = "presetVirtualDevice"
+	// SegmentNoEnable SegmentEnable not enable.
+	SegmentNoEnable = "SegmentEnable not enable"
 )

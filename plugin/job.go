@@ -222,7 +222,11 @@ func (hwNPU *ScheduleHandler) isHwNPUJob(job *api.JobInfo) error {
 	if curNPUPlugin == nil {
 		return errors.New(noneNPUPlugin)
 	}
-
+	if !hwNPU.IsPluginRegistered(curNPUPlugin.Name()) {
+		plugErr := fmt.Errorf("%s not registered", curNPUPlugin.Name())
+		klog.V(logErrorLev).Infof("isHwNPUJob :%v.", plugErr)
+		return plugErr
+	}
 	return curNPUPlugin.IsMyJob(job)
 }
 

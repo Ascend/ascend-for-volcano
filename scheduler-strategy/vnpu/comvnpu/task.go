@@ -145,6 +145,7 @@ func (tp *VNPU) IsMyTask(vTask *api.TaskInfo) error {
 
 	for _, kind := range tp.Attr.DivideKinds {
 		if kind == reqNpuType {
+			klog.V(util.LogErrorLev).Infof("%s IsMyTask %s is %+v kind.", tp.Name(), vTask.Name, kind)
 			return nil
 		}
 	}

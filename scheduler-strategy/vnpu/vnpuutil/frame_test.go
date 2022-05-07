@@ -10,11 +10,10 @@ Package vnpuutil is using for virtual HuaWei Ascend910 schedule.
 package vnpuutil
 
 import (
+	"github.com/agiledragon/gomonkey/v2"
 	"reflect"
 	"testing"
 	"time"
-
-	"github.com/agiledragon/gomonkey/v2"
 
 	"volcano.sh/volcano/pkg/scheduler/api"
 )
