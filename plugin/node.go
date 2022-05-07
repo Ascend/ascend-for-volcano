@@ -12,13 +12,15 @@ package plugin
 import (
 	"errors"
 	"fmt"
-	"k8s.io/klog"
 	"time"
+
+	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/rescheduling"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
 // Init hw npu nodes, used in npu plugins.
@@ -58,21 +60,16 @@ func (hwNPU *ScheduleHandler) preCheckNode(task *api.TaskInfo, node *api.NodeInf
 	return curNPUPlugin.PreCheckNodeFn(task, node, confs)
 }
 
-func (hwNPU *ScheduleHandler) isHwNPUTask(task *api.TaskInfo) error {
-	curNPUPlugin := hwNPU.getNPUPlugin(task)
-	if curNPUPlugin == nil {
-		return errors.New(noneNPUPlugin)
-	}
-
-	return curNPUPlugin.IsMyTask(task)
-}
-
 func (hwNPU *ScheduleHandler) isHwNPUNode(task *api.TaskInfo, node *api.NodeInfo) error {
 	curNPUPlugin := hwNPU.getNPUPlugin(task)
 	if curNPUPlugin == nil {
 		return nil
 	}
-
+	if !hwNPU.IsPluginRegistered(curNPUPlugin.Name()) {
+		plugErr := fmt.Errorf("%s not registered", curNPUPlugin.Name())
+		klog.V(logErrorLev).Infof("isHwNPUNode :%v.", plugErr)
+		return plugErr
+	}
 	return curNPUPlugin.IsMyNode(node)
 }
 
@@ -242,6 +239,11 @@ func (hwNPU *ScheduleHandler) checkNPUResourceStable(task *api.TaskInfo, node *a
 	if curNPUPlugin == nil {
 		return errors.New(noneNPUPlugin)
 	}
+	if !hwNPU.IsPluginRegistered(curNPUPlugin.Name()) {
+		plugErr := fmt.Errorf("%s not registered", curNPUPlugin.Name())
+		klog.V(logErrorLev).Infof("checkNPUResourceStable :%v.", plugErr)
+		return plugErr
+	}
 	return curNPUPlugin.CheckNPUResourceStableFn(node)
 }
 
@@ -319,7 +321,15 @@ func (hwNPU *ScheduleHandler) initHandleFaultNPUInf(ssn *framework.Session) erro
 func (hwNPU *ScheduleHandler) preHandleVNPUFn(ssn *framework.Session) error {
 	for pluginName, preHandleVNPUFn := range hwNPU.PreHandleVNPUFns {
 		if err := preHandleVNPUFn(ssn); err != nil {
-			klog.V(logDebugLev).Infof("%s preHandleFaultNPU :%v.", pluginName, err)
+			if err.Error() != util.SegmentNoEnable {
+				klog.V(logDebugLev).Infof("%s preHandleFaultNPU :%v.", pluginName, err)
+				return err
+			}
+			klog.V(logErrorLev).Infof("%s preHandleFaultNPU :%v.", pluginName, err)
+			if unRegErr := hwNPU.UnRegisterNPUScheduler(pluginName); unRegErr != nil {
+				klog.V(logErrorLev).Infof("preHandleVNPUFn :%v.", unRegErr)
+				return unRegErr
+			}
 			return err
 		}
 	}

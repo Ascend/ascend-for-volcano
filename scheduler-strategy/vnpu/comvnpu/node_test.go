@@ -14,9 +14,10 @@ import (
 	"testing"
 
 	"github.com/agiledragon/gomonkey/v2"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"volcano.sh/volcano/pkg/scheduler/api"
+	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
@@ -197,14 +198,16 @@ func buildPreHandleVNPUTestCases() preHandleVNPUTests {
 	ascendtest.AddJobIntoFakeSSN(ssn1, job0)
 	ascendtest.AddJobIntoFakeSSN(ssn1, job1)
 	ascendtest.AddNodeIntoFakeSSN(ssn1, node0)
+	ascendtest.AddConfigIntoFakeSSN(ssn1, []conf.Configuration{{Name: util.CMInitParamKey,
+		Arguments: map[string]string{util.SegmentEnable: "true"}}})
 	var tmpPatche *gomonkey.Patches
 	var tmpPatche1 *gomonkey.Patches
 	testCases := preHandleVNPUTests{
 		{
 			name: "01-getVNPUUsedChipByReqTest jobOrder-test",
 			fields: VNPU{
-				Attr: vnpuutil.ComVNPU{NPUCardCoreKey: vnpuutil.NPU910CardCoreKey,
-					HwEntity: plugin.HwEntity{AnnoName: vnpuutil.NPU910CardName, AnnoPreVal: vnpuutil.NPUCardNamePrefix}},
+				Attr: vnpuutil.ComVNPU{NPUCardCoreKey: vnpuutil.NPU910CardCoreKey, HwEntity: plugin.HwEntity{
+					AnnoName: vnpuutil.NPU910CardName, AnnoPreVal: vnpuutil.NPUCardNamePrefix}},
 			},
 			args: preHandleVNPUArgs{ssn: ssn1,
 				cacheFunBefore: func() {

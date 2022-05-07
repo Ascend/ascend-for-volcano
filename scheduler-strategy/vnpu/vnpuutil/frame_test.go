@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/agiledragon/gomonkey/v2"
-
 	"volcano.sh/volcano/pkg/scheduler/api"
 )
 

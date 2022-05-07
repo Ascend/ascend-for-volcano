@@ -35,7 +35,7 @@ data:
         "accelerator":"huawei-Ascend910|nvidia-tesla-v100|nvidia-tesla-p40",
         "accelerator-type":"card|module"}
       - name: init-params
-        arguments: {"grace-over-time":"900"}
+        arguments: {"grace-over-time":"900","presetVirtualDevice":"true"}
 
 ---
 apiVersion: v1

@@ -111,6 +111,11 @@ func (tp *VNPU) GetVNPUCacheFromCacheCM(ssn *framework.Session) error {
 
 // PreHandleVNPU Only for abstract VNPU, not v910,v710 and so on.
 func (tp *VNPU) PreHandleVNPU(ssn *framework.Session) error {
+	if !vnpuutil.CheckVNPUSegmentEnable(ssn) {
+		klog.V(util.LogDebugLev).Info("PreHandleVNPU segment not enable.")
+		return errors.New(util.SegmentNoEnable)
+	}
+	klog.V(util.LogDebugLev).Info("PreHandleVNPU segment enable.")
 	if getErr := tp.GetVNPUCacheFromCacheCM(ssn); getErr != nil {
 		klog.V(util.LogErrorLev).Infof("PreHandleVNPU :%v.", getErr)
 	}
@@ -176,9 +181,13 @@ func (tp *VNPU) DealVNPUSelectNodeAndChip(task *api.TaskInfo, node *api.NodeInfo
 }
 
 // PreCheckNodeFn check whether the node matches the tag requirements of the task.
-func (tp *VNPU) PreCheckNodeFn(task *api.TaskInfo, node *api.NodeInfo, _ []conf.Configuration) error {
+func (tp *VNPU) PreCheckNodeFn(task *api.TaskInfo, node *api.NodeInfo, confs []conf.Configuration) error {
 	klog.V(util.LogDebugLev).Infof("%s PreCheckNodeFn %s enter.", tp.Name(), task.Name)
 	defer klog.V(util.LogDebugLev).Infof("%s PreCheckNodeFn %s leave.", tp.Name(), task.Name)
+	if !vnpuutil.CheckVNPUSegmentEnableByConfig(confs) {
+		klog.V(util.LogErrorLev).Infof("%s PreCheckNodeFn SegmentEnable not enable.", vnpuutil.PluginName)
+		return nil
+	}
 	// 1.init vnp
 	pluginName, nameErr := tp.GetPluginNameByTaskInfo(task)
 	if nameErr != nil {

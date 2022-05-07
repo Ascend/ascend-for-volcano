@@ -56,7 +56,12 @@ const (
 	nodeDEnableOffValue      = "off"
 	npu800And9000CardName    = "huawei.com/Ascend910"
 	npu800And9000CardPreName = "Ascend910-"
+	// GraceOverTimeKey for GraceOverTime config by user
+	GraceOverTimeKey = "grace-over-time"
 )
+
+// GraceOverTime for rescheduling units: seconds
+var GraceOverTime int64 = graceOverTime
 
 // ReSchedulerTasks record the tasks using the failed NPU.
 // The key in ReSchedulerCache is jobID

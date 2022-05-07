@@ -12,12 +12,13 @@ package ascendtest
 import (
 	"fmt"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/tools/record"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/cache"
+	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 	"volcano.sh/volcano/pkg/scheduler/util"
 )
@@ -40,6 +41,11 @@ func AddNodeIntoFakeSSN(ssn *framework.Session, info *api.NodeInfo) {
 // AddJobIntoFakeSSN Add test job into fake SSN.
 func AddJobIntoFakeSSN(ssn *framework.Session, info *api.JobInfo) {
 	ssn.Jobs[info.UID] = info
+}
+
+// AddConfigIntoFakeSSN Add test node into fake SSN.
+func AddConfigIntoFakeSSN(ssn *framework.Session, configs []conf.Configuration) {
+	ssn.Configurations = configs
 }
 
 // FakeNormalSSN fake normal test ssn.
