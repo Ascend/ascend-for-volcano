@@ -46,3 +46,12 @@ compile:
               - "{{ BASE_PATH }}/output/vc-controller-manager"
             mode: 500
 
+test:
+  input:
+  process:
+    type: ut
+    testTool: shell
+    execdir: "{{systemEnv.workspace}}/{{component}}/build"
+    parameters: ""
+    script: "test.sh"
+  output:
