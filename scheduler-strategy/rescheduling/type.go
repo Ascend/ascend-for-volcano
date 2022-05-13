@@ -11,6 +11,7 @@ package rescheduling
 
 import (
 	"k8s.io/apimachinery/pkg/types"
+
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
@@ -58,6 +59,8 @@ const (
 	npu800And9000CardPreName = "Ascend910-"
 	// GraceOverTimeKey for GraceOverTime config by user
 	GraceOverTimeKey = "grace-over-time"
+	// AscendNPUPodRealUse for NPU pod real use cards.
+	AscendNPUPodRealUse = "huawei.com/AscendReal"
 )
 
 // GraceOverTime for rescheduling units: seconds
