@@ -32,7 +32,7 @@ func (re *ReScheduler) PreHandleFaultNPUFn(ssn *framework.Session) error {
 	// 2.Determine if it is a  jobs.
 	tasks, jobGetErr := re.getFaultTasks(ssn.Jobs, fNode)
 	if jobGetErr != nil {
-		klog.V(util.LogDebugLev).Infof("%s : %v.getFaultTasks ", re.AnnoUnHealthy, jobGetErr)
+		klog.V(util.LogDebugLev).Infof("PreHandleFaultNPUFn %s : %v.", re.AnnoUnHealthy, jobGetErr)
 		return nil
 	}
 
@@ -67,7 +67,7 @@ func (re *ReScheduler) updatePodReason(task *api.TaskInfo, reasonTmp string) {
 func (re *ReScheduler) getNodeFaultNPUs(node *api.NodeInfo) ([]string, error) {
 	npuStrings, ok := node.Node.Annotations[re.AnnoUnHealthy]
 	if !ok || len(npuStrings) == 0 {
-		return nil, fmt.Errorf("%s get nil npus", node.Name)
+		return nil, fmt.Errorf("%s get nil %s ", node.Name, re.AnnoUnHealthy)
 	}
 
 	faultNPUs := strings.Split(npuStrings, ",")

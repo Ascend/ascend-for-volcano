@@ -139,7 +139,7 @@ func getTaskUseNPUs(nodesTask map[string]*v1.Pod, nodeName string) ([]string, er
 		return nil, fmt.Errorf("not use %s", nodeName)
 	}
 
-	return getPodUsedNPUS(tmpPod, npu800And9000CardName, node910X8NPUNum)
+	return getPodUsedNPUS(tmpPod, AscendNPUPodRealUse, node910X8NPUNum)
 }
 
 func getFaultCardsFromCache() (map[string]FaultNPUsOnNode, error) {

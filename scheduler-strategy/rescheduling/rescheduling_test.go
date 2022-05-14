@@ -972,7 +972,7 @@ func buildSetFaultJobPodIndexTestCases() setFaultJobPodIndexTests {
 					addTestTaskIntoReSchedulerCache(tasks[0])
 				},
 			},
-			wantErr: nil,
+			wantErr: errors.New("no rankIndex cache"),
 		},
 	}
 	return testCases

@@ -18,6 +18,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/card310x4"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/common"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/rescheduling"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
@@ -36,7 +37,7 @@ func New(npuName string) plugin.HwNPUSchedulerPlugin {
 		DefaultJobSchedulerConfig: npuPlugin.GetPluginDefaultJobSchedulerConfig(),
 	}
 	npuPlugin.re = common.ReScheduler{AnnoUnHealthy: a310FaultNPUName,
-		IsMyJob: npuPlugin.com.IsMyJob, AnnoName: npuPlugin.com.AnnoName}
+		IsMyJob: npuPlugin.com.IsMyJob, AnnoName: rescheduling.AscendNPUPodRealUse}
 	return &npuPlugin
 }
 

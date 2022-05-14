@@ -199,7 +199,7 @@ func buildPreHandleVNPUTestCases() preHandleVNPUTests {
 	ascendtest.AddJobIntoFakeSSN(ssn1, job1)
 	ascendtest.AddNodeIntoFakeSSN(ssn1, node0)
 	ascendtest.AddConfigIntoFakeSSN(ssn1, []conf.Configuration{{Name: util.CMInitParamKey,
-		Arguments: map[string]string{util.SegmentEnable: "true"}}})
+		Arguments: map[string]string{util.SegmentEnable: "false"}}})
 	var tmpPatche *gomonkey.Patches
 	var tmpPatche1 *gomonkey.Patches
 	testCases := preHandleVNPUTests{

@@ -301,7 +301,7 @@ func CheckVNPUSegmentEnableByConfig(configurations []conf.Configuration) bool {
 		klog.V(util.LogDebugLev).Info("checkVNPUSegmentEnable doesn't exist presetVirtualDevice.")
 		return false
 	}
-	if segmentEnable == "true" {
+	if segmentEnable == "false" {
 		return true
 	}
 	return false

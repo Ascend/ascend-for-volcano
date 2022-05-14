@@ -15,6 +15,7 @@ import (
 	"reflect"
 	"strconv"
 	"time"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/rescheduling"
 
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -40,7 +41,7 @@ func New(npuName string) plugin.HwNPUSchedulerPlugin {
 		DefaultJobSchedulerConfig: pluginCard.GetPluginDefaultJobSchedulerConfig(),
 	}
 	pluginCard.re = common.ReScheduler{AnnoUnHealthy: a310FaultNPUName,
-		IsMyJob: pluginCard.com.IsMyJob, AnnoName: pluginCard.com.AnnoName}
+		IsMyJob: pluginCard.com.IsMyJob, AnnoName: rescheduling.AscendNPUPodRealUse}
 	return &pluginCard
 }
 
