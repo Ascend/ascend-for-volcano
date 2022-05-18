@@ -32,3 +32,13 @@ compile:
             src:
               - "{{ BASE_PATH }}/output/vc-scheduler"
             mode: 500
+
+test:
+  input:
+  process:
+    type: ut
+    testTool: shell
+    execdir: "{{systemEnv.workspace}}/{{component}}/build"
+    parameters: ""
+    script: "test.sh"
+  output:

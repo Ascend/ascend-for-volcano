@@ -57,3 +57,12 @@ compile:
               prefix: zip
               arch: "{{ systemEnv.processor }}"
 
+test:
+  input:
+  process:
+    type: ut
+    testTool: shell
+    execdir: "{{systemEnv.workspace}}/{{component}}/build"
+    parameters: ""
+    script: "testBuild.sh"
+  output:
