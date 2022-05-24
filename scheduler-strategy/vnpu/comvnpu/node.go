@@ -128,7 +128,7 @@ func updateTopStrOfNodeOtherAlloc(nodeTopStrArr []string, top string) string {
 func updateTopStrOfNodeOtherRelease(nodeTopStrArr []string, top string) string {
 	var tmpTopStrArr []string
 
-	tmpTopMap := make(map[string]struct{}, util.ConstIntNum3)
+	tmpTopMap := make(map[string]struct{}, util.NPUIndex3)
 	// add tops that already exist in node.Others to tmp map
 	for _, nTop := range nodeTopStrArr {
 		tmpTopMap[nTop] = struct{}{}
@@ -191,7 +191,7 @@ func (tp *VNPU) UpdateNPUNodeUsedCardFn(node *api.NodeInfo, top interface{}) err
 
 func (tp *VNPU) coverReqNPUTypeToCoreNum(jobNeedNPUType string) (int, error) {
 	tmpSlice := strings.Split(jobNeedNPUType, "-")
-	if len(tmpSlice) != util.ConstIntNum2 {
+	if len(tmpSlice) != util.NPUIndex2 {
 		klog.V(util.LogErrorLev).Infof("%s IsVNPUNodeMeetReqResource %s error.", tp.Name(), jobNeedNPUType)
 		return 0, fmt.Errorf("error format %v", jobNeedNPUType)
 	}
@@ -243,7 +243,7 @@ func (tp *VNPU) IsVNPUNodeMeetReqResource(jobNeedNPUType string, tmpNode *api.No
 func (tp *VNPU) parseStringToVNPUCoreInfo(coreString string) (string, vNPUCoreInfo, error) {
 	// deal 1-32c-32c
 	tmpSlice := strings.Split(coreString, "-")
-	if len(tmpSlice) != util.ConstIntNum3 {
+	if len(tmpSlice) != util.NPUIndex3 {
 		coreErr := fmt.Errorf("%s error format", coreString)
 		return "", vNPUCoreInfo{}, coreErr
 	}
@@ -261,7 +261,7 @@ func (tp *VNPU) parseStringToVNPUCoreInfo(coreString string) (string, vNPUCoreIn
 		return "", vNPUCoreInfo{}, covAllErr
 	}
 	// get not cut core
-	chipNoCutCoreStr := tmpSlice[util.ConstIntNum2]
+	chipNoCutCoreStr := tmpSlice[util.NPUIndex2]
 	chipNoCutCoreStr = strings.TrimRight(chipNoCutCoreStr, "c")
 	chipNoCutCore, covNoCutErr := strconv.Atoi(chipNoCutCoreStr)
 	if covNoCutErr != nil {
@@ -288,7 +288,7 @@ func (tp *VNPU) GetNodeNPUCoreInfoMap(vNode *api.NodeInfo) (map[string]vNPUCoreI
 		klog.V(util.LogDebugLev).Infof("GetNodeNPUCoreInfoMap :%v", getErr)
 		return nil, getErr
 	}
-	coreMap := make(map[string]vNPUCoreInfo, util.ConstIntNum3)
+	coreMap := make(map[string]vNPUCoreInfo, util.NPUIndex3)
 	coreSlice := strings.Split(coreString, ",")
 	for _, coreShortInf := range coreSlice {
 		card, tmp, parseErr := tp.parseStringToVNPUCoreInfo(coreShortInf)
@@ -579,7 +579,7 @@ func (tp *VNPU) GetVJobReqNPUCoreNum(vJob *api.JobInfo) (int, error) {
 	}
 	// tmp like huawei.com/Ascend910-2c
 	tmpSlice := strings.Split(tmp, "-")
-	if len(tmpSlice) != util.ConstIntNum2 {
+	if len(tmpSlice) != util.NPUIndex2 {
 		return 0, fmt.Errorf("%s err require %s", vJob.Name, tmp)
 	}
 	tmpStr := strings.TrimRight(tmpSlice[1], "c")
@@ -593,7 +593,7 @@ func (tp *VNPU) GetVJobReqNPUCoreNum(vJob *api.JobInfo) (int, error) {
 // reduceTheAllocChipFromNodeOther chip is Ascend710-0
 func (tp *VNPU) reduceTheAllocChipFromNodeOther(chip string, vJob *api.JobInfo, nodeInf *api.NodeInfo) error {
 	chipSlice := strings.Split(chip, "-")
-	if len(chipSlice) != util.ConstIntNum2 {
+	if len(chipSlice) != util.NPUIndex2 {
 		return fmt.Errorf("%s is wrong chip", chip)
 	}
 	// deal the whole card.
@@ -615,14 +615,14 @@ func (tp *VNPU) reduceTheAllocChipFromNodeOther(chip string, vJob *api.JobInfo, 
 	for _, coreStr := range coreSlice {
 		// coreStr is 4-8c-6c
 		tmpSlice := strings.Split(coreStr, "-")
-		if len(tmpSlice) != util.ConstIntNum3 {
+		if len(tmpSlice) != util.NPUIndex3 {
 			return fmt.Errorf("wrong core string %s", coreStr)
 		}
 		if chipSlice[1] != tmpSlice[0] {
 			allCors = append(allCors, coreStr)
 			continue
 		}
-		tempChar := tmpSlice[util.ConstIntNum2]
+		tempChar := tmpSlice[util.NPUIndex2]
 		desChar := strings.TrimRight(tempChar, "c")
 		tmpNum, tmpErr := strconv.Atoi(desChar)
 		if tmpErr != nil {
@@ -642,7 +642,7 @@ func (tp *VNPU) reduceTheAllocChipFromNodeOther(chip string, vJob *api.JobInfo, 
 
 // getNodeUseInfoFromNode get from node cores(NPUCardCoreKey).
 func (tp *VNPU) getNodeUseInfoFromNode(nodeInf *api.NodeInfo) (map[string]int, error) {
-	tmp := make(map[string]int, util.ConstIntNum3)
+	tmp := make(map[string]int, util.NPUIndex3)
 	nodeCoresInf, coresErr := tp.GetNodeNPUCoreInfoMap(nodeInf)
 	if coresErr != nil {
 		klog.V(util.LogDebugLev).Infof("%s getNodeUseInfoFromNode :%v", tp.Name(), coresErr)
@@ -659,7 +659,7 @@ func (tp *VNPU) getNodeUseInfoFromNode(nodeInf *api.NodeInfo) (map[string]int, e
 
 // getNodeUseInfoFromVNPUCache the format key like Ascend710-0.
 func (tp *VNPU) getNodeUseInfoFromVNPUCache(nodeInf *api.NodeInfo) (map[string]int, error) {
-	tmp := make(map[string]int, util.ConstIntNum3)
+	tmp := make(map[string]int, util.NPUIndex3)
 	for _, value := range vnpuutil.VNPUAllocData.Cache {
 		if value.NodeName != nodeInf.Name {
 			continue
@@ -685,7 +685,7 @@ func (tp *VNPU) updateNodeOtherWholeCardByUseMap(nodeInf *api.NodeInfo, useMap m
 	for cardName := range useMap {
 		// cardName is Ascend710-0
 		tmpSlice := strings.Split(cardName, "-")
-		if len(tmpSlice) < util.ConstIntNum2 {
+		if len(tmpSlice) < util.NPUIndex2 {
 			return fmt.Errorf("%s err card name %s", nodeInf.Name, cardName)
 		}
 		resName := vnpuutil.NPUCardNamePrefix + tmpSlice[0]
@@ -779,7 +779,7 @@ func (tp *VNPU) InitVNPUPluginByNodeInfo(nodeInf *api.NodeInfo) error {
 }
 
 func (tp *VNPU) getNodePreUseInfo(nodeInf *api.NodeInfo) (map[string]int, error) {
-	preUseMap := make(map[string]int, util.ConstIntNum3)
+	preUseMap := make(map[string]int, util.NPUIndex3)
 	cacheUseMap, getErr := tp.getNodeUseInfoFromVNPUCache(nodeInf)
 	if getErr != nil {
 		klog.V(util.LogErrorLev).Infof("%s getNodePreUseInfo :%v", tp.Name(), getErr)

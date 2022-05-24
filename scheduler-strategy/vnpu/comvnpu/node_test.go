@@ -191,8 +191,8 @@ func buildPreHandleVNPUTestCases() preHandleVNPUTests {
 	node0 := ascendtest.FakeNormalTestNode("node0")
 	ascendtest.SetTestNPUNodeAnnotation(node0, vnpuutil.NPU910CardCoreKey, "0-32c-32c,1-32c-30c")
 	ascendtest.SetTestNPUNodeAnnotation(node0, vnpuutil.NPU910CardName, "Ascend91-0,Ascend91-1")
-	job0 := ascendtest.FakeNormalTestJobByCreatTime("pg0", util.ConstIntNum2, 0)
-	job1 := ascendtest.FakeNormalTestJobByCreatTime("pg1", util.ConstIntNum2, 1)
+	job0 := ascendtest.FakeNormalTestJobByCreatTime("pg0", util.NPUIndex2, 0)
+	job1 := ascendtest.FakeNormalTestJobByCreatTime("pg1", util.NPUIndex2, 1)
 
 	ssn1 := ascendtest.FakeNormalSSN()
 	ascendtest.AddJobIntoFakeSSN(ssn1, job0)
@@ -268,7 +268,7 @@ type reduceTheAllocChipFromNodeOtherTests struct {
 }
 
 func buildReduceTheAllocChipFromNodeOther01TestCase() reduceTheAllocChipFromNodeOtherTests {
-	job0 := ascendtest.FakeNormalTestJobByCreatTime("pg0", util.ConstIntNum2, 0)
+	job0 := ascendtest.FakeNormalTestJobByCreatTime("pg0", util.NPUIndex2, 0)
 	ascendtest.SetFakeJobRequestSource(job0, npuV710CardName2c, 1)
 	node0 := ascendtest.FakeNormalTestNode("node0")
 	ascendtest.SetTestNPUNodeAnnotation(node0, vnpuutil.NPU710CardCoreKey, "0-32c-32c,1-32c-32c")
@@ -286,7 +286,7 @@ func buildReduceTheAllocChipFromNodeOther01TestCase() reduceTheAllocChipFromNode
 }
 
 func buildReduceTheAllocChipFromNodeOther02TestCase() reduceTheAllocChipFromNodeOtherTests {
-	job2 := ascendtest.FakeNormalTestJobByCreatTime("pg2", util.ConstIntNum2, 0)
+	job2 := ascendtest.FakeNormalTestJobByCreatTime("pg2", util.NPUIndex2, 0)
 	ascendtest.SetFakeJobRequestSource(job2, npuV710CardName2c, 1)
 	node2 := ascendtest.FakeNormalTestNode("node2")
 	ascendtest.SetTestNPUNodeAnnotation(node2, vnpuutil.NPU710CardCoreKey, "0-32c-32c,1-32c-30c")

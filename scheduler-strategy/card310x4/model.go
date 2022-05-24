@@ -49,16 +49,16 @@ func initOneCardPriNodeGroups(
 	// priority:1>3>2>4
 	for _, cardNumGroup := range cardNumGroups {
 		switch len(cardNumGroup) {
-		case util.ConstIntNum1:
-			bestGrade = util.ConstIntNum0
-		case util.ConstIntNum3:
-			bestGrade = min(bestGrade, util.ConstIntNum1)
-		case util.ConstIntNum2:
-			bestGrade = min(bestGrade, util.ConstIntNum2)
+		case util.NPUIndex1:
+			bestGrade = util.NPUIndex0
+		case util.NPUIndex3:
+			bestGrade = min(bestGrade, util.NPUIndex1)
+		case util.NPUIndex2:
+			bestGrade = min(bestGrade, util.NPUIndex2)
 		case cardNPUNumber:
-			bestGrade = min(bestGrade, util.ConstIntNum3)
+			bestGrade = min(bestGrade, util.NPUIndex3)
 		}
-		if bestGrade == util.ConstIntNum0 {
+		if bestGrade == util.NPUIndex0 {
 			break
 		}
 	}
@@ -88,14 +88,14 @@ func initTwoCardPriNodeGroups(
 	// priority:2>3>4
 	for _, cardNumGroup := range cardNumGroups {
 		switch len(cardNumGroup) {
-		case util.ConstIntNum2:
-			bestGrade = util.ConstIntNum0
-		case util.ConstIntNum3:
-			bestGrade = min(bestGrade, util.ConstIntNum1)
+		case util.NPUIndex2:
+			bestGrade = util.NPUIndex0
+		case util.NPUIndex3:
+			bestGrade = min(bestGrade, util.NPUIndex1)
 		case cardNPUNumber:
-			bestGrade = min(bestGrade, util.ConstIntNum2)
+			bestGrade = min(bestGrade, util.NPUIndex2)
 		}
-		if bestGrade == util.ConstIntNum0 {
+		if bestGrade == util.NPUIndex0 {
 			break
 		}
 	}
@@ -126,12 +126,12 @@ func initThreeCardPriNodeGroups(
 	// priority:3>4
 	for _, cardNumGroup := range cardNumGroups {
 		switch len(cardNumGroup) {
-		case util.ConstIntNum3:
-			bestGrade = util.ConstIntNum0
+		case util.NPUIndex3:
+			bestGrade = util.NPUIndex0
 		case cardNPUNumber:
-			bestGrade = min(bestGrade, util.ConstIntNum1)
+			bestGrade = min(bestGrade, util.NPUIndex1)
 		}
-		if bestGrade == util.ConstIntNum0 {
+		if bestGrade == util.NPUIndex0 {
 			break
 		}
 	}
@@ -163,7 +163,7 @@ func initFourCardPriNodeGroups(
 	for _, cardNumGroup := range cardNumGroups {
 		if len(cardNumGroup) == cardNPUNumber {
 			// A group
-			bestGrade = util.ConstIntNum0
+			bestGrade = util.NPUIndex0
 			break
 		}
 	}
@@ -197,13 +197,13 @@ func insertNodeInPriGroup(
 	}
 
 	switch taskReqNPU {
-	case util.ConstIntNum0:
+	case util.NPUIndex0:
 		klog.V(util.LogInfoLev).Infof("%s initPriNodeGroups task npu is 0.", PluginName)
-	case util.ConstIntNum1:
+	case util.NPUIndex1:
 		err = initOneCardPriNodeGroups(cardNumGroups, priNodeGroups, addPriNodeGroupFn)
-	case util.ConstIntNum2:
+	case util.NPUIndex2:
 		err = initTwoCardPriNodeGroups(cardNumGroups, priNodeGroups, addPriNodeGroupFn)
-	case util.ConstIntNum3:
+	case util.NPUIndex3:
 		err = initThreeCardPriNodeGroups(cardNumGroups, priNodeGroups, addPriNodeGroupFn)
 	case cardNPUNumber:
 		err = initFourCardPriNodeGroups(cardNumGroups, priNodeGroups, addPriNodeGroupFn)
@@ -220,17 +220,17 @@ func getNPUAllocPriorityArray(taskNPUNumber int) ([cardNPUNumber]int, error) {
 	var priorityArray [cardNPUNumber]int
 	var err = error(nil)
 	switch taskNPUNumber {
-	case util.ConstIntNum0:
+	case util.NPUIndex0:
 		klog.V(util.LogInfoLev).Infof("%s task req npu is 0.", PluginName)
-	case util.ConstIntNum1:
+	case util.NPUIndex1:
 		// priority:1>3>2>4
-		priorityArray = [cardNPUNumber]int{1, util.ConstIntNum3, util.ConstIntNum2, cardNPUNumber}
-	case util.ConstIntNum2:
+		priorityArray = [cardNPUNumber]int{1, util.NPUIndex3, util.NPUIndex2, cardNPUNumber}
+	case util.NPUIndex2:
 		// priority：2>3>4
-		priorityArray = [cardNPUNumber]int{util.ConstIntNum2, util.ConstIntNum3, cardNPUNumber}
-	case util.ConstIntNum3:
+		priorityArray = [cardNPUNumber]int{util.NPUIndex2, util.NPUIndex3, cardNPUNumber}
+	case util.NPUIndex3:
 		// priority：3>4
-		priorityArray = [cardNPUNumber]int{util.ConstIntNum3, cardNPUNumber}
+		priorityArray = [cardNPUNumber]int{util.NPUIndex3, cardNPUNumber}
 	case cardNPUNumber:
 		priorityArray = [cardNPUNumber]int{cardNPUNumber}
 	default:

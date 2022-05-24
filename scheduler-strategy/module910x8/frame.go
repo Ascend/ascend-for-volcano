@@ -492,7 +492,7 @@ func (tp *module910x8) GetResourcePreVal() string {
 
 // GetPluginDefaultJobSchedulerConfig get plugin default job scheduler config.
 func (tp *module910x8) GetPluginDefaultJobSchedulerConfig() map[string]string {
-	defaultSchedulerConfig := make(map[string]string, npuutil.ConstIntNum1)
+	defaultSchedulerConfig := make(map[string]string, npuutil.NPUIndex1)
 	defaultSchedulerConfig[archSelector] = huaweiArchArm + "|" + huaweiArchX86
 	return defaultSchedulerConfig
 }

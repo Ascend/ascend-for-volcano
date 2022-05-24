@@ -75,7 +75,7 @@ func WriteVNPUAllocInfDataIntoCacheCM(ssn *framework.Session) error {
 // needNPU like huawei.com/Ascend910-16c
 func ChangeReqVNPUToCores(needNPU string) (int, error) {
 	split := strings.Split(needNPU, "-")
-	if len(split) != util.ConstIntNum2 {
+	if len(split) != util.NPUIndex2 {
 		return 0, fmt.Errorf("err npu resource %s", needNPU)
 	}
 	tmp := split[1]
@@ -88,7 +88,7 @@ func updateCMCardData(dataSet, inDataSet []CardVNPUs) ([]CardVNPUs, error) {
 		return append(dataSet, inDataSet...), nil
 	}
 
-	tmpMap := make(map[string]CardVNPUs, util.ConstIntNum3)
+	tmpMap := make(map[string]CardVNPUs, util.NPUIndex3)
 	for _, firData := range dataSet {
 		tmp := firData
 		tmpMap[tmp.CardName] = tmp
@@ -192,7 +192,7 @@ func GetVNPUCMData(cacheData VNPUAllocInfCache) map[string]string {
 		klog.V(util.LogErrorLev).Infof("marshalCacheDataToString err: %v.", err)
 		return nil
 	}
-	dataBuffer := make(map[string]string, util.ConstIntNum3)
+	dataBuffer := make(map[string]string, util.NPUIndex3)
 	dataBuffer[VNPCMDataKey] = tmp
 	return dataBuffer
 }
@@ -204,7 +204,7 @@ func GetVNPUCacheCMData(cacheData VNPUAllocInfCache) map[string]string {
 		klog.V(util.LogErrorLev).Infof("marshalCacheDataToString err: %v.", err)
 		return nil
 	}
-	cacheBuffer := make(map[string]string, util.ConstIntNum3)
+	cacheBuffer := make(map[string]string, util.NPUIndex3)
 	cacheBuffer[VNPCMDataKey] = tmp
 	return cacheBuffer
 }
@@ -256,7 +256,7 @@ func IsNPUResourceStableInNode(kind string, tmpNode *api.NodeInfo) bool {
 
 // IsVJobRunning check whether the job is running or not.
 func IsVJobRunning(job *api.JobInfo) bool {
-	if len(job.Tasks) > util.ConstIntNum2 {
+	if len(job.Tasks) > util.NPUIndex2 {
 		klog.V(util.LogInfoLev).Infof("%s has wrong tasks %#v", job.UID, job.Tasks)
 		return false
 	}
@@ -271,7 +271,7 @@ func IsVJobRunning(job *api.JobInfo) bool {
 
 // IsVJobCanPreHandle check whether the job is pending or inQueue.
 func IsVJobCanPreHandle(job *api.JobInfo) bool {
-	if len(job.Tasks) > util.ConstIntNum2 {
+	if len(job.Tasks) > util.NPUIndex2 {
 		klog.V(util.LogErrorLev).Infof("%s has wrong tasks %+v", job.UID, job.Tasks)
 		return false
 	}

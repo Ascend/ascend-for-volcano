@@ -119,7 +119,7 @@ func synReSchedulerJobCache(ssn *framework.Session, tmpValue interface{}) error 
 }
 
 func getRunningJobUsedNodes(job *api.JobInfo) (map[string]*v1.Pod, error) {
-	var nodeNames = make(map[string]*v1.Pod, util.ConstIntNum3)
+	var nodeNames = make(map[string]*v1.Pod, util.NPUIndex3)
 
 	for _, task := range job.Tasks {
 		nodeNames[task.NodeName] = task.Pod
@@ -563,8 +563,8 @@ func GetRecordJobPods(dJob *api.JobInfo) (map[string]int64, map[string]types.UID
 		return nil, nil, fmt.Errorf("none job %v in cache", jobID)
 	}
 
-	jobPodsTime := make(map[string]int64, util.ConstIntNum3)
-	jobPodsUID := make(map[string]types.UID, util.ConstIntNum3)
+	jobPodsTime := make(map[string]int64, util.NPUIndex3)
+	jobPodsUID := make(map[string]types.UID, util.NPUIndex3)
 	for k, v := range value.PodsName {
 		tmpTime := value.PodsCreatTime[k]
 		tmpUID := value.PodsUID[k]
@@ -604,7 +604,7 @@ func isJobGraceDeletedSuccess(dJob *api.JobInfo) bool {
 
 func getFaultJobRankIDCMNameByJobID(dJob api.JobID) (string, error) {
 	temp := strings.Split(string(dJob), "/")
-	if len(temp) != util.ConstIntNum2 {
+	if len(temp) != util.NPUIndex2 {
 		msg := fmt.Errorf("illegal jobID: %v", dJob)
 		klog.V(util.LogErrorLev).Infof("getFaultJobRankIDCMNameByJobID %v.", msg)
 		return "", msg
@@ -660,7 +660,7 @@ func GetNeedForceDeleteDelayingJobs(ssn *framework.Session,
 }
 
 func getFaultJobPODRankIndexMapFromCache(restartJob *api.JobInfo) (map[string]string, error) {
-	podRankIndexes := make(map[string]string, util.ConstIntNum3)
+	podRankIndexes := make(map[string]string, util.NPUIndex3)
 	for _, task := range restartJob.Tasks {
 		fTask, getErr := getReSchedulerTasksFromCache(task)
 		if getErr != nil {
@@ -693,7 +693,7 @@ func GetGraceDeleteJobsFromCache() (map[api.JobID]ReSchedulerTasks, error) {
 		return nil, getErr
 	}
 
-	deleteJobMap := make(map[api.JobID]ReSchedulerTasks, util.ConstIntNum3)
+	deleteJobMap := make(map[api.JobID]ReSchedulerTasks, util.NPUIndex3)
 	for jobUID, reSchedulerTasks := range jobMap {
 		if reSchedulerTasks.GraceTaskFlag == true {
 			deleteJobMap[jobUID] = reSchedulerTasks
@@ -803,7 +803,7 @@ func getFaultNPUJobCMData(job *api.JobInfo) (*FaultRankIdsJobCMData, error) {
 }
 
 func getJobFaultNPURankIDCMData(job *api.JobInfo) (map[string]string, error) {
-	faultRankIdsMap := make(map[string]string, util.ConstIntNum3)
+	faultRankIdsMap := make(map[string]string, util.NPUIndex3)
 
 	faultRankIds, getErr := getFaultNPUJobCMData(job)
 	if getErr != nil {

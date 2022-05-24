@@ -34,7 +34,7 @@ func (tp *ChipV910) GetResourcePreVal() string {
 
 // GetPluginDefaultJobSchedulerConfig get plugin default job scheduler config.
 func (tp *ChipV910) GetPluginDefaultJobSchedulerConfig() map[string]string {
-	defaultSchedulerConfig := make(map[string]string, util.ConstIntNum1)
+	defaultSchedulerConfig := make(map[string]string, util.NPUIndex1)
 	defaultSchedulerConfig[util.ArchSelector] = util.HuaweiArchArm + "|" + util.HuaweiArchX86
 	defaultSchedulerConfig[util.AcceleratorType] = util.CardAcceleratorType + "|" + util.ModuleAcceleratorType
 	return defaultSchedulerConfig

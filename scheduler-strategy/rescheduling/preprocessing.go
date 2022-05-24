@@ -27,7 +27,7 @@ import (
 )
 
 func init() {
-	ReSchedulerCache = make(map[string]interface{}, util.ConstIntNum3)
+	ReSchedulerCache = make(map[string]interface{}, util.NPUIndex3)
 	reSchedulerJobController = map[string]struct{}{
 		JobGraceRescheduleLabelValue: {},
 		JobForceRescheduleLabelValue: {},
@@ -71,7 +71,7 @@ func updateReSchedulerDataFromSession(ssn *framework.Session) error {
 
 func getJobUsedNodeRankIds(job *api.JobInfo, nodeAndPods map[string]*v1.Pod) (
 	map[api.JobID]FaultRankIDRecordJobCMData, error) {
-	nodeRankIds := make(map[api.JobID]FaultRankIDRecordJobCMData, util.ConstIntNum3)
+	nodeRankIds := make(map[api.JobID]FaultRankIDRecordJobCMData, util.NPUIndex3)
 	var PodsName, rankIds []string
 	var PodsUID []types.UID
 	var PodsCreatTime []int64
@@ -124,7 +124,7 @@ func addJobsRankIdsIntoRankIds(jobsRankIds map[api.JobID]FaultRankIDRecordJobCMD
 	jobsRankIdsFromCache, getErr := getRankIDJobsFromCache()
 	if getErr != nil {
 		klog.V(util.LogErrorLev).Infof("addJobsRankIdsIntoCache not contain node fault :%v.", getErr)
-		jobsRankIdsFromCache = make(map[api.JobID]FaultRankIDRecordJobCMData, util.ConstIntNum3)
+		jobsRankIdsFromCache = make(map[api.JobID]FaultRankIDRecordJobCMData, util.NPUIndex3)
 	}
 
 	for jobID, rankIDData := range jobsRankIds {
@@ -142,7 +142,7 @@ func addJobUseNodeNPUsIntoCard(nodeAndPods map[string]*v1.Pod) error {
 		klog.V(util.LogErrorLev).Infof("getFaultNodesFromCache %v.", err)
 		return err
 	}
-	tmpFaultNPUsMap := make(map[string]FaultNPUsOnNode, util.ConstIntNum3)
+	tmpFaultNPUsMap := make(map[string]FaultNPUsOnNode, util.NPUIndex3)
 	for nodeName, pod := range nodeAndPods {
 		if _, ok := allFaultNodes[nodeName]; !ok {
 			continue
@@ -552,7 +552,7 @@ func UpdateFaultNPUInfFromCM(ssn *framework.Session) error {
 }
 
 func convertToReSchedulerJobsMapFromCM(buffer string) (map[string]ReSchedulerTasks, error) {
-	reSchedulerJob := make(map[string]ReSchedulerTasks, util.ConstIntNum3)
+	reSchedulerJob := make(map[string]ReSchedulerTasks, util.NPUIndex3)
 	if unmarshalErr := json.Unmarshal([]byte(buffer), &reSchedulerJob); unmarshalErr != nil {
 		klog.V(util.LogInfoLev).Infof("convertToReSchedulerJobsMapFromCM Unmarshal: %v.", unmarshalErr)
 		return nil, unmarshalErr

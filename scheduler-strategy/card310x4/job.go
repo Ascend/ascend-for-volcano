@@ -19,7 +19,7 @@ import (
 
 func getCardNPUJobDefaultSelectorConfig() map[string]string {
 	var defaultSchedulerConfig map[string]string
-	defaultSchedulerConfig = make(map[string]string, util.ConstIntNum3)
+	defaultSchedulerConfig = make(map[string]string, util.NPUIndex3)
 
 	defaultSchedulerConfig[archSelector] = huaweiArchArm + "|" + huaweiArchX86
 	defaultSchedulerConfig[acceleratorType] = cardAcceleratorType + "|" + chipAcceleratorType
@@ -59,7 +59,7 @@ func CheckSingleTrainMode(job *api.JobInfo) error {
 
 		klog.V(util.LogDebugLev).Infof("%s check Card Mode %s require %d npu.", PluginName, task.Name, taskNPU)
 
-		if taskNPU < util.ConstIntNum1 || taskNPU > cardNPUNumber {
+		if taskNPU < util.NPUIndex1 || taskNPU > cardNPUNumber {
 			return fmt.Errorf("%s single trainning not match task NPU number:%d", job.Name, taskNPU)
 		}
 	}
@@ -81,7 +81,7 @@ func checkCardDistributeTrainMode(job *api.JobInfo, nodeNPU int) error {
 
 		klog.V(util.LogDebugLev).Infof("%s check Card Mode %s require %d npu.", PluginName, task.Name, taskNPU)
 
-		if taskNPU < util.ConstIntNum1 || taskNPU > cardNPUNumber {
+		if taskNPU < util.NPUIndex1 || taskNPU > cardNPUNumber {
 			return fmt.Errorf("CardDistributeTrain %s req npu [%d] but node [%d]", task.Name, taskNPU, nodeNPU)
 		}
 	}
@@ -94,7 +94,7 @@ func validJobModel(job *api.JobInfo) error {
 	taskNum := len(job.Tasks)
 	var nodeNPU = cardNPUNumber
 
-	if taskNum <= util.ConstIntNum1 {
+	if taskNum <= util.NPUIndex1 {
 		if err = CheckSingleTrainMode(job); err != nil {
 			return err
 		}

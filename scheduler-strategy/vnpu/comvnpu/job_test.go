@@ -36,10 +36,10 @@ type orderVJobsByCreateTimeTests struct {
 }
 
 func buildOrderVJobsByCreateTimeTestCases() []orderVJobsByCreateTimeTests {
-	job0 := ascendtest.FakeNormalTestJobByCreatTime("pg0", util.ConstIntNum2, 0)
-	job1 := ascendtest.FakeNormalTestJobByCreatTime("pg1", util.ConstIntNum2, 1)
-	job2 := ascendtest.FakeNormalTestJobByCreatTime("pg2", util.ConstIntNum2, constIntNum2)
-	job3 := ascendtest.FakeNormalTestJobByCreatTime("pg3", util.ConstIntNum2, constIntNum4)
+	job0 := ascendtest.FakeNormalTestJobByCreatTime("pg0", util.NPUIndex2, 0)
+	job1 := ascendtest.FakeNormalTestJobByCreatTime("pg1", util.NPUIndex2, 1)
+	job2 := ascendtest.FakeNormalTestJobByCreatTime("pg2", util.NPUIndex2, constIntNum2)
+	job3 := ascendtest.FakeNormalTestJobByCreatTime("pg3", util.NPUIndex2, constIntNum4)
 
 	testCases := []orderVJobsByCreateTimeTests{
 		{
@@ -97,7 +97,7 @@ type getVJobMeetNodeListTests []struct {
 
 func buildGetVJobMeetNodeListTestCases() getVJobMeetNodeListTests {
 	const npuCoreNum = 32
-	job0 := ascendtest.FakeNormalTestJobByCreatTime("pg0", util.ConstIntNum2, 0)
+	job0 := ascendtest.FakeNormalTestJobByCreatTime("pg0", util.NPUIndex2, 0)
 	ascendtest.AddTestJobPodGroup(job0)
 
 	setJobResourceReq(job0, npuV910CardName16c, float64(1))

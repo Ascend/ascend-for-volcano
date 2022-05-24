@@ -223,7 +223,7 @@ func (tp *VNPU) CheckNodeNPUByTaskFn(vTask *api.TaskInfo, node *api.NodeInfo, _ 
 // GetNPUAffinityBestNodesFn initialize a mapping between nodes and priorities
 func (tp *VNPU) GetNPUAffinityBestNodesFn(task *api.TaskInfo, nodes []*api.NodeInfo, _ bool) (map[string]int, error) {
 	klog.V(util.LogDebugLev).Infof("Get NPU affinity best node for task %s.", task.Name)
-	var bestNodesMap = make(map[string]int, util.ConstIntNum3)
+	var bestNodesMap = make(map[string]int, util.NPUIndex3)
 
 	for _, node := range nodes {
 		if node == nil {

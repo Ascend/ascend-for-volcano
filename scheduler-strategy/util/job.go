@@ -49,7 +49,7 @@ func ValidJobSelector(job *api.JobInfo, confs []conf.Configuration) error {
 
 // GetJobSelectors Get job selectors.
 func GetJobSelectors(job *api.JobInfo) map[string]string {
-	var jobSelector = make(map[string]string, ConstIntNum3)
+	var jobSelector = make(map[string]string, NPUIndex3)
 
 	for _, task := range job.Tasks {
 		taskSelector := getTaskSelectors(task)
@@ -109,7 +109,7 @@ func CheckSingleTrainMode(job *api.JobInfo) error {
 
 // GetJobLabels Get job labels.
 func GetJobLabels(job *api.JobInfo) map[string]string {
-	var jobLabel = make(map[string]string, ConstIntNum3)
+	var jobLabel = make(map[string]string, NPUIndex3)
 
 	for _, task := range job.Tasks {
 		taskSelector := GetTaskLabels(task)

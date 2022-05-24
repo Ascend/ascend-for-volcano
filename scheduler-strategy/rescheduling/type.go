@@ -148,7 +148,7 @@ type TaskUsedRankIndex struct {
 	UpdateTime int64
 }
 
-var reSchedulerJobController = make(map[string]struct{}, util.ConstIntNum3)
+var reSchedulerJobController = make(map[string]struct{}, util.NPUIndex3)
 
 // FaultRankIDRecordJobCMData record in volcano fault cm, key is job's uuid.
 type FaultRankIDRecordJobCMData struct {

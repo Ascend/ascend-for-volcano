@@ -79,7 +79,7 @@ func isSelectorMeetJob(jobSelectors, schedulerConf map[string]string) bool {
 
 func getDefaultSchedulerSelectorConfig() map[string]string {
 	var defaultSchedulerConfig map[string]string
-	defaultSchedulerConfig = make(map[string]string, ConstIntNum3)
+	defaultSchedulerConfig = make(map[string]string, NPUIndex3)
 
 	defaultSchedulerConfig[ArchSelector] = HuaweiArchArm + "|" + HuaweiArchX86
 	defaultSchedulerConfig[accelerator] = accelerator910Value + "|" + accelerator310Value
@@ -92,7 +92,7 @@ func getDefaultSchedulerSelectorConfig() map[string]string {
 // GetSchedulerSelectorConfig Get selector from volcano config file.
 func GetSchedulerSelectorConfig(confs []conf.Configuration) map[string]string {
 	var customerScheduler map[string]string
-	customerScheduler = make(map[string]string, ConstIntNum2)
+	customerScheduler = make(map[string]string, NPUIndex2)
 
 	configuration, err := GetConfigFromSchedulerConfigMap(CMSelectorKey, confs)
 	if err != nil {
