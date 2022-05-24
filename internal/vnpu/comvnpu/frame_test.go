@@ -261,8 +261,10 @@ func TestVnpuPreCheckNodeFnTaskError(t *testing.T) {
 				reqNPUType: npuV910CardName16c, reqNpuNum: "1"})
 			delete(pod.Spec.NodeSelector, util2.ArchSelector)
 			task := api.NewTaskInfo(pod)
+			confs = []conf.Configuration{{Name: util2.CMInitParamKey,
+				Arguments: map[string]string{util2.SegmentEnable: "false"}}}
 			result := vnpu.PreCheckNodeFn(task, node, confs)
-			convey.So(result, convey.ShouldBeNil)
+			convey.So(result, convey.ShouldNotBeNil)
 		})
 		convey.Convey("PreCheckNodeFn() should return nil when task don't have selector and no resource requested", func() {
 			vnpu := &VNPU{}
@@ -276,8 +278,10 @@ func TestVnpuPreCheckNodeFnTaskError(t *testing.T) {
 				reqNPUType: "", reqNpuNum: ""})
 			delete(pod.Spec.NodeSelector, util2.ArchSelector)
 			task := api.NewTaskInfo(pod)
+			confs = []conf.Configuration{{Name: util2.CMInitParamKey,
+				Arguments: map[string]string{util2.SegmentEnable: "false"}}}
 			result := vnpu.PreCheckNodeFn(task, node, confs)
-			convey.So(result, convey.ShouldBeNil)
+			convey.So(result, convey.ShouldNotBeNil)
 		})
 	})
 }
@@ -295,18 +299,22 @@ func TestVnpuPreCheckNodeFnNodeError(t *testing.T) {
 				podName: "npu-test-12", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: npuV910CardName16c, reqNpuNum: "1"}))
 			setNodeLabel(node.Node, util2.ArchSelector, "")
+			confs = []conf.Configuration{{Name: util2.CMInitParamKey,
+				Arguments: map[string]string{util2.SegmentEnable: "false"}}}
 			result := vnpu.PreCheckNodeFn(task, node, confs)
-			convey.So(result, convey.ShouldBeNil)
+			convey.So(result, convey.ShouldNotBeNil)
 		})
 		convey.Convey("PreCheckNodeFn() should return error when selectors mismatch with labels", func() {
 			task := api.NewTaskInfo(buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-11",
 				podName: "npu-test-13", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: npuV910CardName16c, reqNpuNum: "1"}))
 			// build a node with mismatch selector
-			nodeArm := buildNPUNode(VNodeInfo{nodeName: nodeName, nodeArch: util2.HuaweiArchArm, cpu: "192", mem: "755Gi",
+			nodeArm := buildNPUNode(VNodeInfo{nodeName: nodeName, nodeArch: util2.HuaweiArchX86, cpu: "192", mem: "755Gi",
 				npuAllocateNum: "2", npuTop: "Ascend910-16c-140-1,Ascend910-16c-141-1"})
+			confs = []conf.Configuration{{Name: util2.CMInitParamKey,
+				Arguments: map[string]string{util2.SegmentEnable: "false"}}}
 			result := vnpu.PreCheckNodeFn(task, nodeArm, confs)
-			convey.So(result, convey.ShouldBeNil)
+			convey.So(result, convey.ShouldNotBeNil)
 		})
 	})
 }
@@ -324,8 +332,12 @@ func TestVnpuPreCheckNodeFnSuccess(t *testing.T) {
 			task := api.NewTaskInfo(buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-12",
 				podName: "npu-test-14", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: npuV910CardName16c, reqNpuNum: "1"}))
+			confs = []conf.Configuration{{Name: util2.CMInitParamKey,
+				Arguments: map[string]string{util2.SegmentEnable: "false"}}}
+			confs = []conf.Configuration{{Name: util2.CMInitParamKey,
+				Arguments: map[string]string{util2.SegmentEnable: "false"}}}
 			result := vnpu.PreCheckNodeFn(task, node, confs)
-			convey.So(result, convey.ShouldBeNil)
+			convey.So(result, convey.ShouldNotBeNil)
 		})
 	})
 }
