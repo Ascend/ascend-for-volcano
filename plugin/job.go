@@ -25,8 +25,8 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/rescheduling"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/rescheduling"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/util"
 )
 
 func getJobHandle(obj interface{}) *api.JobInfo {
@@ -140,6 +140,7 @@ func ForceDeleteFaultPod(ssn *framework.Session, nameSpace string, podName strin
 }
 
 func forceDeleteFaultJob(ssn *framework.Session, job *api.JobInfo) error {
+	klog.V(logErrorLev).Infof("%s %s will be force delete.", PluginName, job.UID)
 	for _, task := range job.Tasks {
 		pod := task.Pod
 		if err := ForceDeleteFaultPod(ssn, task.Namespace, pod.Name, pod.UID); err != nil {
@@ -147,10 +148,12 @@ func forceDeleteFaultJob(ssn *framework.Session, job *api.JobInfo) error {
 			continue
 		}
 	}
+	klog.V(logErrorLev).Infof("%s %s has done force delete.", PluginName, job.UID)
 	return nil
 }
 
 func graceDeleteFaultJob(ssn *framework.Session, job *api.JobInfo, reason string) error {
+	klog.V(logErrorLev).Infof("%s %s will be grace delete for %v", PluginName, job.UID, reason)
 	for _, task := range job.Tasks {
 		if err := ssn.Evict(task, reason); err != nil {
 			klog.V(logErrorLev).Infof("%s Failed to restart %s : %v", PluginName, task.UID, err)
@@ -158,6 +161,7 @@ func graceDeleteFaultJob(ssn *framework.Session, job *api.JobInfo, reason string
 			return err
 		}
 	}
+	klog.V(logErrorLev).Infof("%s %s has done grace delete.", PluginName, job.UID)
 	return nil
 }
 

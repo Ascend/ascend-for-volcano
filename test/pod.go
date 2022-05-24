@@ -4,17 +4,18 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 
 /*
 
-Package ascendtest is using for HuaWei Ascend pin scheduling test.
+Package test is using for HuaWei Ascend pin scheduling test.
 
 */
-package ascendtest
+package test
 
 import (
 	"fmt"
-	v1 "k8s.io/api/core/v1"
+	"strconv"
+
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"strconv"
 	schedulingv1 "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 	"volcano.sh/volcano/pkg/scheduler/api"
 )
@@ -49,7 +50,7 @@ func BuildNPUPod(pod NPUPod) *v1.Pod {
 // SetTestNPUPodAnnotation set NPU pod annotation for add pod use npu resource.
 func SetTestNPUPodAnnotation(pod *v1.Pod, key string, value string) {
 	if pod.Annotations == nil {
-		pod.Annotations = make(map[string]string, constIntNum3)
+		pod.Annotations = make(map[string]string, npuIndex3)
 	}
 
 	pod.Annotations[key] = value
@@ -58,7 +59,7 @@ func SetTestNPUPodAnnotation(pod *v1.Pod, key string, value string) {
 // SetTestNPUPodSelector set NPU pod selector.
 func SetTestNPUPodSelector(pod *v1.Pod, key string, value string) {
 	if pod.Spec.NodeSelector == nil {
-		pod.Spec.NodeSelector = make(map[string]string, constIntNum3)
+		pod.Spec.NodeSelector = make(map[string]string, npuIndex3)
 	}
 
 	pod.Spec.NodeSelector[key] = value

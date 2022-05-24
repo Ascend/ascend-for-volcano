@@ -17,14 +17,14 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
-	npuapi "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/npuinterface"
+	npuapi "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/api"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/card310x4"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/card910x2"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/chip310x4"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/chip710"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/module910x8"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu/comvnpu"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/card310x4"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/card910x2"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/chip310x4"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/chip710"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/module910x8"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/vnpu/comvnpu"
 )
 
 var sHandler *plugin.ScheduleHandler

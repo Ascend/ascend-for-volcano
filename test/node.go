@@ -4,18 +4,20 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 
 /*
 
-Package ascendtest is using for HuaWei Ascend pin scheduling test.
+Package test is using for HuaWei Ascend pin scheduling test.
 
 */
-package ascendtest
+package test
 
 import (
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strconv"
 	"strings"
+
+	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
+
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/util"
 )
 
 // SetNPUNodeLabel set NPU node label.
@@ -26,7 +28,7 @@ func SetNPUNodeLabel(node *v1.Node, labelKey string, labelValue string) {
 	}
 
 	if node.Labels == nil {
-		node.Labels = make(map[string]string, constIntNum3)
+		node.Labels = make(map[string]string, npuIndex3)
 	}
 
 	node.Labels[labelKey] = labelValue
@@ -35,7 +37,7 @@ func SetNPUNodeLabel(node *v1.Node, labelKey string, labelValue string) {
 // SetTestNPUNodeOther set NPU node other for add npu resource.
 func SetTestNPUNodeOther(node *api.NodeInfo, key string, value string) {
 	if node.Others == nil {
-		node.Others = make(map[string]interface{}, constIntNum3)
+		node.Others = make(map[string]interface{}, npuIndex3)
 	}
 
 	node.Others[key] = value
@@ -45,7 +47,7 @@ func SetTestNPUNodeOther(node *api.NodeInfo, key string, value string) {
 func SetTestNPUNodeAnnotation(node *api.NodeInfo, name string, value string) {
 	SetTestNPUNodeOther(node, name, value)
 	if node.Node.Annotations == nil {
-		node.Node.Annotations = make(map[string]string, constIntNum3)
+		node.Node.Annotations = make(map[string]string, npuIndex3)
 	}
 
 	node.Node.Annotations[name] = value
@@ -79,12 +81,12 @@ func BuildNPUNode(node NPUNode) *v1.Node {
 func FakeNormalTestNode(name string) *api.NodeInfo {
 	node := NPUNode{
 		Name:        name,
-		Capacity:    make(v1.ResourceList, constIntNum3),
-		Allocatable: make(v1.ResourceList, constIntNum3),
-		Labels:      make(map[string]string, constIntNum3),
-		Selector:    make(map[string]string, constIntNum3),
-		Annotation:  make(map[string]string, constIntNum3),
-		Other:       make(map[string]interface{}, constIntNum3),
+		Capacity:    make(v1.ResourceList, npuIndex3),
+		Allocatable: make(v1.ResourceList, npuIndex3),
+		Labels:      make(map[string]string, npuIndex3),
+		Selector:    make(map[string]string, npuIndex3),
+		Annotation:  make(map[string]string, npuIndex3),
+		Other:       make(map[string]interface{}, npuIndex3),
 	}
 	nodeInfo := api.NewNodeInfo(BuildNPUNode(node))
 	return nodeInfo

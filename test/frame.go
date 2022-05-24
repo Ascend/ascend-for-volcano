@@ -4,10 +4,10 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 
 /*
 
-Package ascendtest is using for HuaWei Ascend pin scheduling test.
+Package test is using for HuaWei Ascend pin scheduling test.
 
 */
-package ascendtest
+package test
 
 import (
 	"fmt"
@@ -62,14 +62,14 @@ func FakeNormalSSN() *framework.Session {
 		StatusUpdater: &util.FakeStatusUpdater{},
 		VolumeBinder:  &util.FakeVolumeBinder{},
 
-		Recorder: record.NewFakeRecorder(constIntNum3),
+		Recorder: record.NewFakeRecorder(npuIndex3),
 	}
 
-	nodes := FakeNormalTestNodes(constIntNum3)
+	nodes := FakeNormalTestNodes(npuIndex3)
 	for _, node := range nodes {
 		schedulerCache.AddNode(node.Node)
 	}
-	jobInf := FakeNormalTestJob("pg1", constIntNum3)
+	jobInf := FakeNormalTestJob("pg1", npuIndex3)
 	for _, task := range jobInf.Tasks {
 		schedulerCache.AddPod(task.Pod)
 	}
