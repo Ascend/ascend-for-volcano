@@ -433,7 +433,7 @@ func (tp *VNPU) GetAllNeedAllocVJobsFromCache(ssn *framework.Session) ([]*api.Jo
 
 // GetClusterAllResourceFromSsn get cluster all core used.
 func (tp *VNPU) GetClusterAllResourceFromSsn(ssn *framework.Session) (map[string]int, error) {
-	var allocatableResource = make(map[string]int, util.ConstIntNum8)
+	var allocatableResource = make(map[string]int, util.NPUIndex8)
 	for _, nodInf := range ssn.Nodes {
 		nodeCoresInf, coresErr := tp.GetNodeNPUCoreInfoMap(nodInf)
 		if coresErr != nil {

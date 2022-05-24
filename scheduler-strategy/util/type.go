@@ -24,8 +24,16 @@ const (
 	ConstIntNum2 = 2
 	// ConstIntNum3 for const 3.
 	ConstIntNum3 = 3
-	// ConstIntNum8 for const 8.
-	ConstIntNum8 = 8
+	// NPUIndex4 for const 4.
+	NPUIndex4 = 4
+	// NPUIndex5 for const 5.
+	NPUIndex5 = 5
+	// NPUIndex6 for const 6.
+	NPUIndex6 = 6
+	// NPUIndex7 for const 7.
+	NPUIndex7 = 7
+	// NPUIndex8 for const 8.
+	NPUIndex8 = 8
 	// ConstIntNum10 for const 10.
 	ConstIntNum10 = 10
 	// NPUHex for const 1000,volcano frame used.

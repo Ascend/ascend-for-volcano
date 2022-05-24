@@ -33,7 +33,7 @@ func GetNodeIdleNPUNum(node *api.NodeInfo, npuCardName string) (int, error) {
 
 // GetNodeAvailNPUIdsFromAnno Get node npu available number
 func GetNodeAvailNPUIdsFromAnno(node *api.NodeInfo, npuCardName string) (map[int]struct{}, error) {
-	idsMap := make(map[int]struct{}, ConstIntNum8)
+	idsMap := make(map[int]struct{}, NPUIndex8)
 	chipStr, getErr := GetNPUAllocCardsFromNodeOthers(node, npuCardName)
 	if getErr != nil || chipStr == "" {
 		klog.V(LogDebugLev).Infof("GetNodeAvailNPUIdsFromAnno %s %s %v", node.Name, npuCardName, getErr)
