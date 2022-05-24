@@ -672,7 +672,7 @@ func TestCnpuScoreBestNPUNodesFn(t *testing.T) {
 		npu := New(PluginName)
 		bestNodes := map[string]int{
 			nodeName1: 0,
-			nodeName2: util.ConstIntNum2,
+			nodeName2: util.NPUIndex2,
 		}
 		pod := buildNPUPod(CPodInfo{namespace: "default", groupName: "npu-group-18",
 			podName: "npu-test-18", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
@@ -707,7 +707,7 @@ func TestCnpuScoreBestNPUNodesFnError(t *testing.T) {
 		npu := New(PluginName)
 		bestNodes := map[string]int{
 			nodeName1: 0,
-			nodeName2: util.ConstIntNum3,
+			nodeName2: util.NPUIndex3,
 		}
 		pod := buildNPUPod(CPodInfo{namespace: "default", groupName: "npu-group-121",
 			podName: "npu-test-121", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
@@ -742,7 +742,7 @@ func TestCnpuUpdateNPUNodeUsedCardFn1(t *testing.T) {
 		}
 
 		convey.Convey("UpdateNPUNodeUsedCardFn() should successfully update node.others", func() {
-			top := []int{0, util.ConstIntNum3, NPUID61, NPUID62}
+			top := []int{0, util.NPUIndex3, NPUID61, NPUID62}
 			expectedResult := map[string]interface{}{
 				a310NPUCardName: "Ascend310-1,Ascend310-2,Ascend310-63",
 			}
@@ -764,7 +764,7 @@ func TestCnpuUpdateNPUNodeUsedCardFn2(t *testing.T) {
 			node.Others = map[string]interface{}{
 				a310NPUCardName: "Ascend310-0,Ascend310-2,Ascend310-3,Ascend310-1",
 			}
-			top := []int{0, 1, util.ConstIntNum2, util.ConstIntNum3}
+			top := []int{0, 1, util.NPUIndex2, util.NPUIndex3}
 			expectedResult := map[string]interface{}{
 				a310NPUCardName: "",
 			}
@@ -841,7 +841,7 @@ func TestCnpuUpdateReleaseNPUNodeTopologyFn(t *testing.T) {
 			a310NPUCardName: "Ascend310-0,Ascend310-2",
 		}
 		convey.Convey("UpdateNPUNodeUsedCardFn() should successfully update node.others", func() {
-			top := []int{1, util.ConstIntNum3}
+			top := []int{1, util.NPUIndex3}
 			err := npu.UpdateReleaseNPUNodeTopologyFn(node, top)
 			convey.So(err, convey.ShouldBeNil)
 			// 0, 1, 2, 3  disorderly
@@ -873,7 +873,7 @@ func TestCnpuUpdateReleaseNPUNodeTopologyFnError(t *testing.T) {
 			node.Others = map[string]interface{}{
 				a310NPUCardName: "Ascend310-0Ascend310-2",
 			}
-			top := []int{0, util.ConstIntNum3}
+			top := []int{0, util.NPUIndex3}
 			err := npu.UpdateReleaseNPUNodeTopologyFn(node, top)
 			convey.So(err, convey.ShouldBeError)
 		})
@@ -892,7 +892,7 @@ func TestCnpuGetAllocatedNPUFromTopologyFn(t *testing.T) {
 			task := api.NewTaskInfo(pod)
 			node := buildNPUNode(CNodeInfo{nodeName: nodeName, nodeArch: huaweiArchArm, cpu: "192", mem: "755Gi",
 				npuAllocateNum: "2", npuTop: "Ascend310-0,Ascend310-3"})
-			expectedResult := []int{0, util.ConstIntNum3}
+			expectedResult := []int{0, util.NPUIndex3}
 			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node, false)
 			convey.So(err, convey.ShouldBeNil)
 			convey.So(result, convey.ShouldResemble, expectedResult)
@@ -1066,8 +1066,8 @@ func buildNPUPod(podInfo CPodInfo) *v1.Pod {
 	pod := util2.BuildPod(podInfo.namespace, podInfo.podName, podInfo.nodeName, v1.PodPending,
 		buildNPUResourceList(podInfo.reqCPUNum, podInfo.reqMem,
 			v1.ResourceName(podInfo.reqNPUType), podInfo.reqNpuNum),
-		podInfo.groupName, make(map[string]string, util.ConstIntNum2),
-		make(map[string]string, util.ConstIntNum2))
+		podInfo.groupName, make(map[string]string, util.NPUIndex2),
+		make(map[string]string, util.NPUIndex2))
 
 	setPodSelector(pod, archSelector, huaweiArchX86)
 	ascendtest.SetTestNPUPodSelector(pod, archSelector, huaweiArchX86)
@@ -1097,10 +1097,10 @@ func buildNPUResourceList(CCpu string, CMemory string, npuResourceType v1.Resour
 }
 
 func buildNPUNode(CNode CNodeInfo) *api.NodeInfo {
-	nodeCapacity := buildNPUResourceList(CNode.cpu, CNode.mem, a310NPUCardName, strconv.Itoa(util.ConstIntNum2))
+	nodeCapacity := buildNPUResourceList(CNode.cpu, CNode.mem, a310NPUCardName, strconv.Itoa(util.NPUIndex2))
 	nodeAlloc := buildNPUResourceList(CNode.cpu, CNode.mem, a310NPUCardName, CNode.npuAllocateNum)
-	labels := make(map[string]string, util.ConstIntNum2)
-	ann := make(map[string]string, util.ConstIntNum2)
+	labels := make(map[string]string, util.NPUIndex2)
+	ann := make(map[string]string, util.NPUIndex2)
 
 	v1node := &v1.Node{
 		ObjectMeta: metav1.ObjectMeta{

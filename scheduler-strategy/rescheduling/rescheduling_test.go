@@ -12,19 +12,21 @@ package rescheduling
 import (
 	"errors"
 	"fmt"
-	"github.com/agiledragon/gomonkey/v2"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"reflect"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/agiledragon/gomonkey/v2"
+	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
+
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
+	test "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
 )
 
 type addScoreByFaultNPUTaskTestArgs struct {
@@ -33,23 +35,23 @@ type addScoreByFaultNPUTaskTestArgs struct {
 	cacheFun func()
 }
 
-type addScoreByFaultNPUTaskTestTests []struct {
+type addScoreByFaultNPUTaskTestTest struct {
 	name    string
 	args    addScoreByFaultNPUTaskTestArgs
 	want    map[string]float64
 	wantErr error
 }
 
-func buildAddScoreByFaultNPUTaskTestCases() addScoreByFaultNPUTaskTestTests {
-	task1 := ascendtest.FakeNormalTestTasks(1)[0]
+func buildAddScoreByFaultNPUTaskTestCases() []addScoreByFaultNPUTaskTestTest {
+	task1 := test.FakeNormalTestTasks(1)[0]
 	testScoreMap := map[string]float64{task1.NodeName: node910X8NPUNum * node910X8NPUNum}
 	const tmpNumber = 123456
-	testCases := addScoreByFaultNPUTaskTestTests{
+	testCases := []addScoreByFaultNPUTaskTestTest{
 		{
 			name:    "01-scoreMap-nil-test",
 			args:    addScoreByFaultNPUTaskTestArgs{task: task1, scoreMap: nil, cacheFun: func() {}},
 			want:    nil,
-			wantErr: errors.New("AddScoreByFaultNPUTask scoreMap is nil"),
+			wantErr: errors.New("add score by fault NPU task scoreMap is nil"),
 		},
 		{
 			name: "02-no-cache-err-test",
@@ -57,7 +59,7 @@ func buildAddScoreByFaultNPUTaskTestCases() addScoreByFaultNPUTaskTestTests {
 				task:     task1,
 				scoreMap: testScoreMap,
 				cacheFun: func() {
-					ReSchedulerCache = make(map[string]interface{}, util.ConstIntNum2)
+					ReSchedulerCache = make(map[string]interface{}, util.NPUIndex2)
 					reTask := map[api.JobID]ReSchedulerTasks{
 						"haha": {nil, nil, nil, nil, nil, task1.Namespace, false, tmpNumber}}
 					ReSchedulerCache[CmJobKind] = reTask
@@ -72,7 +74,7 @@ func buildAddScoreByFaultNPUTaskTestCases() addScoreByFaultNPUTaskTestTests {
 				task:     task1,
 				scoreMap: testScoreMap,
 				cacheFun: func() {
-					ReSchedulerCache = make(map[string]interface{}, util.ConstIntNum2)
+					ReSchedulerCache = make(map[string]interface{}, util.NPUIndex2)
 					reTask := map[api.JobID]ReSchedulerTasks{
 						task1.Job: {nil, nil, nil, nil, nil, task1.Namespace, false, tmpNumber}}
 					ReSchedulerCache[CmJobKind] = reTask
@@ -109,14 +111,14 @@ type checkFaultJobNodeArgs struct {
 	cacheFun func()
 }
 
-type checkFaultJobNodeTests []struct {
+type checkFaultJobNodeTest struct {
 	name    string
 	args    checkFaultJobNodeArgs
 	wantErr error
 }
 
 func addTestTaskIntoReSchedulerCache(tasks ...*api.TaskInfo) {
-	var reTask = make(map[api.JobID]ReSchedulerTasks, util.ConstIntNum2)
+	var reTask = make(map[api.JobID]ReSchedulerTasks, util.NPUIndex2)
 	const tmpNumber = 123456
 	if len(tasks) == 0 {
 		reTask = map[api.JobID]ReSchedulerTasks{
@@ -138,7 +140,7 @@ func addTestTaskIntoReSchedulerCache(tasks ...*api.TaskInfo) {
 }
 
 func addTestNodeIntoReSchedulerCache(nodes ...*api.NodeInfo) {
-	var faultNode = make(map[string]FaultNodeState, util.ConstIntNum2)
+	var faultNode = make(map[string]FaultNodeState, util.NPUIndex2)
 	const testHeartBeat1 = 12345
 
 	if len(nodes) == 0 {
@@ -167,13 +169,13 @@ func addTestNodeIntoReSchedulerCache(nodes ...*api.NodeInfo) {
 }
 
 func initTestReSchedulerCache() {
-	ReSchedulerCache = make(map[string]interface{}, util.ConstIntNum2)
+	ReSchedulerCache = make(map[string]interface{}, util.NPUIndex2)
 }
 
-func buildCheckFaultJobNodeTestCases() checkFaultJobNodeTests {
-	tasks := ascendtest.FakeNormalTestTasks(util.ConstIntNum2)
-	nodes := ascendtest.FakeNormalTestNodes(util.ConstIntNum2)
-	testCases := checkFaultJobNodeTests{
+func buildCheckFaultJobNodeTestCases() []checkFaultJobNodeTest {
+	tasks := test.FakeNormalTestTasks(util.NPUIndex2)
+	nodes := test.FakeNormalTestNodes(util.NPUIndex2)
+	testCases := []checkFaultJobNodeTest{
 		{
 			name: "01-task in npu fault task-test",
 			args: checkFaultJobNodeArgs{
@@ -239,15 +241,15 @@ type getDistributeUsableNPUTopArgs struct {
 	netUnhealthyCards []int
 }
 
-type getDistributeUsableNPUTopTests []struct {
+type getDistributeUsableNPUTopTest struct {
 	name string
 	args getDistributeUsableNPUTopArgs
 	want []int
 }
 
-func buildGetDistributeUsableNPUTopTestCases() getDistributeUsableNPUTopTests {
+func buildGetDistributeUsableNPUTopTestCases() []getDistributeUsableNPUTopTest {
 	const constIntNum7 = 7
-	testCases := getDistributeUsableNPUTopTests{
+	testCases := []getDistributeUsableNPUTopTest{
 		{
 			name: "01-nil node top-test",
 			args: getDistributeUsableNPUTopArgs{
@@ -267,10 +269,10 @@ func buildGetDistributeUsableNPUTopTestCases() getDistributeUsableNPUTopTests {
 		{
 			name: "03-normal top-test",
 			args: getDistributeUsableNPUTopArgs{
-				nodeNPUTopology:   []int{0, 1, util.ConstIntNum2, util.ConstIntNum3, constIntNum7},
+				nodeNPUTopology:   []int{0, 1, util.NPUIndex2, util.NPUIndex3, constIntNum7},
 				netUnhealthyCards: []int{0, 1},
 			},
-			want: []int{util.ConstIntNum2, util.ConstIntNum3, constIntNum7},
+			want: []int{util.NPUIndex2, util.NPUIndex3, constIntNum7},
 		},
 	}
 	return testCases
@@ -294,7 +296,7 @@ type getFaultNPUJobsArgs struct {
 	cacheFun func()
 }
 
-type getFaultNPUJobsTests []struct {
+type getFaultNPUJobsTest struct {
 	name    string
 	args    getFaultNPUJobsArgs
 	want    []FaultNPUJob
@@ -318,15 +320,15 @@ func addTestJobRankIndex(job *api.JobInfo) {
 	}
 }
 
-func buildGetFaultNPUJobsTestCases() getFaultNPUJobsTests {
-	jobInf := ascendtest.FakeNormalTestJob("pg1", util.ConstIntNum2)
-	nodes := ascendtest.FakeNormalTestNodes(1)
-	testCases := getFaultNPUJobsTests{
+func buildGetFaultNPUJobsTestCases() []getFaultNPUJobsTest {
+	jobInf := test.FakeNormalTestJob("pg1", util.NPUIndex2)
+	nodes := test.FakeNormalTestNodes(1)
+	testCases := []getFaultNPUJobsTest{
 		{
 			name: "01-job not set reschedule label-test",
 			args: getFaultNPUJobsArgs{
 				jobs: map[string]*api.JobInfo{jobInf.Name: jobInf}, cacheFun: func() {
-					ascendtest.AddTestJobLabel(jobInf, "haha", "who")
+					test.AddTestJobLabel(jobInf, "haha", "who")
 				},
 			},
 			wantErr: errors.New("get none faultNPUJobs"),
@@ -335,7 +337,7 @@ func buildGetFaultNPUJobsTestCases() getFaultNPUJobsTests {
 			name: "02-job not has fault resources-test",
 			args: getFaultNPUJobsArgs{
 				jobs: map[string]*api.JobInfo{jobInf.Name: jobInf}, cacheFun: func() {
-					ascendtest.AddTestJobLabel(jobInf, jobRescheduleLabelKey, JobGraceRescheduleLabelValue)
+					test.AddTestJobLabel(jobInf, jobRescheduleLabelKey, JobGraceRescheduleLabelValue)
 					initTestReSchedulerCache()
 					addTestNodeIntoReSchedulerCache()
 				},
@@ -346,7 +348,7 @@ func buildGetFaultNPUJobsTestCases() getFaultNPUJobsTests {
 			name: "03-job not has rankIndex-test",
 			args: getFaultNPUJobsArgs{
 				jobs: map[string]*api.JobInfo{jobInf.Name: jobInf}, cacheFun: func() {
-					ascendtest.AddTestJobLabel(jobInf, jobRescheduleLabelKey, JobForceRescheduleLabelValue)
+					test.AddTestJobLabel(jobInf, jobRescheduleLabelKey, JobForceRescheduleLabelValue)
 					initTestReSchedulerCache()
 					addTestNodeIntoReSchedulerCache(nodes[0])
 				},
@@ -357,7 +359,7 @@ func buildGetFaultNPUJobsTestCases() getFaultNPUJobsTests {
 			name: "04-job not has rankIndex-test",
 			args: getFaultNPUJobsArgs{
 				jobs: map[string]*api.JobInfo{jobInf.Name: jobInf}, cacheFun: func() {
-					ascendtest.AddTestJobLabel(jobInf, jobRescheduleLabelKey, JobForceRescheduleLabelValue)
+					test.AddTestJobLabel(jobInf, jobRescheduleLabelKey, JobForceRescheduleLabelValue)
 					initTestReSchedulerCache()
 					addTestNodeIntoReSchedulerCache(nodes[0])
 					addTestJobRankIndex(jobInf)
@@ -390,18 +392,18 @@ type getFaultTaskUseNodeInfoArgs struct {
 	cacheFun func()
 }
 
-type getFaultTaskUseNodeInfoTests []struct {
+type getFaultTaskUseNodeInfoTest struct {
 	name    string
 	args    getFaultTaskUseNodeInfoArgs
 	wantErr error
 }
 
-func buildGetFaultTaskUseNodeInfoTestCases() getFaultTaskUseNodeInfoTests {
+func buildGetFaultTaskUseNodeInfoTestCases() []getFaultTaskUseNodeInfoTest {
 	const constNum4, constNum3 = 4, 3
-	tasks := ascendtest.FakeNormalTestTasks(constNum4)
-	nodes := ascendtest.FakeNormalTestNodes(constNum4)
-	ssnTest := ascendtest.FakeNormalSSN()
-	testCases := getFaultTaskUseNodeInfoTests{
+	tasks := test.FakeNormalTestTasks(constNum4)
+	nodes := test.FakeNormalTestNodes(constNum4)
+	ssnTest := test.FakeNormalSSN()
+	testCases := []getFaultTaskUseNodeInfoTest{
 		{
 			name: "01-task not in fault task list-test",
 			args: getFaultTaskUseNodeInfoArgs{
@@ -409,8 +411,7 @@ func buildGetFaultTaskUseNodeInfoTestCases() getFaultTaskUseNodeInfoTests {
 					initTestReSchedulerCache()
 					addTestTaskIntoReSchedulerCache()
 				},
-			},
-			wantErr: fmt.Errorf("no %v in jobMap", tasks[0].Job),
+			}, wantErr: fmt.Errorf("no %v in jobMap", tasks[0].Job),
 		},
 		{
 			name: "02-task use node not ssn node list-test",
@@ -419,8 +420,7 @@ func buildGetFaultTaskUseNodeInfoTestCases() getFaultTaskUseNodeInfoTests {
 					initTestReSchedulerCache()
 					addTestTaskIntoReSchedulerCache(tasks[constNum3])
 				},
-			},
-			wantErr: fmt.Errorf("get node name %s failed", tasks[constNum3].NodeName),
+			}, wantErr: fmt.Errorf("get node name %s failed", tasks[constNum3].NodeName),
 		},
 		{
 			name: "03-task use node in fault node list-test",
@@ -431,7 +431,8 @@ func buildGetFaultTaskUseNodeInfoTestCases() getFaultTaskUseNodeInfoTests {
 					addTestNodeIntoReSchedulerCache(nodes[0])
 				},
 			},
-			wantErr: fmt.Errorf("GetFaultTaskUseNodeInfo %s in fault node list", tasks[0].NodeName),
+			wantErr: fmt.Errorf("get fault task used node info %s in fault node list",
+				tasks[0].NodeName),
 		},
 		{
 			name: "04-task use node which not fault resource-test",
@@ -441,8 +442,7 @@ func buildGetFaultTaskUseNodeInfoTestCases() getFaultTaskUseNodeInfoTests {
 					addTestTaskIntoReSchedulerCache(tasks[0])
 					addTestNodeIntoReSchedulerCache(nodes[constNum3])
 				},
-			},
-			wantErr: nil,
+			}, wantErr: nil,
 		},
 	}
 	return testCases
@@ -468,14 +468,14 @@ type getNetworkUnhealthyCardsArgs struct {
 	cacheFun func()
 }
 
-type getNetworkUnhealthyCardsTests []struct {
+type getNetworkUnhealthyCardsTest struct {
 	name string
 	args getNetworkUnhealthyCardsArgs
 	want []int
 }
 
 func addTestCardIntoReSchedulerCache(nodeName string, faultCards, netUnhealthyCards []string) {
-	var reCard = make(map[string]FaultNPUsOnNode, util.ConstIntNum2)
+	var reCard = make(map[string]FaultNPUsOnNode, util.NPUIndex2)
 
 	reCard[nodeName] = FaultNPUsOnNode{
 		NodeName:             nodeName,
@@ -486,10 +486,10 @@ func addTestCardIntoReSchedulerCache(nodeName string, faultCards, netUnhealthyCa
 	ReSchedulerCache[CmCardKind] = reCard
 }
 
-func buildTestGetNetworkUnhealthyCardsTestCases() getNetworkUnhealthyCardsTests {
+func buildTestGetNetworkUnhealthyCardsTestCases() []getNetworkUnhealthyCardsTest {
 	const constNum4 = 4
-	nodes := ascendtest.FakeNormalTestNodes(constNum4)
-	testCases := getNetworkUnhealthyCardsTests{
+	nodes := test.FakeNormalTestNodes(constNum4)
+	testCases := []getNetworkUnhealthyCardsTest{
 		{
 			name: "01-no ReSchedulerCache-test",
 			args: getNetworkUnhealthyCardsArgs{
@@ -529,7 +529,7 @@ type getRestartNPUFaultJobsArgs struct {
 	jobs         map[string]*api.JobInfo
 }
 
-type getRestartNPUFaultJobsTests []struct {
+type getRestartNPUFaultJobsTest struct {
 	name    string
 	args    getRestartNPUFaultJobsArgs
 	want    []*api.JobInfo
@@ -541,10 +541,10 @@ func addJobIntoFaultNPUJobStruct(job *api.JobInfo) FaultNPUJob {
 		faultNPUJobBase: faultNPUJobBase{
 			jobName:          job.Name,
 			namespace:        job.Namespace,
-			taskUseRankIndex: make(map[string]string, util.ConstIntNum2),
-			taskUseNode:      make(map[string]string, util.ConstIntNum2),
+			taskUseRankIndex: make(map[string]string, util.NPUIndex2),
+			taskUseNode:      make(map[string]string, util.NPUIndex2),
 		},
-		taskUseNPUs: make(map[string]string, util.ConstIntNum2),
+		taskUseNPUs: make(map[string]string, util.NPUIndex2),
 	}
 
 	i := 0
@@ -558,10 +558,10 @@ func addJobIntoFaultNPUJobStruct(job *api.JobInfo) FaultNPUJob {
 	return faultJob
 }
 
-func buildTestGetRestartNPUFaultJobsTestCases() getRestartNPUFaultJobsTests {
-	job := ascendtest.FakeNormalTestJob("pg1", util.ConstIntNum2)
+func buildTestGetRestartNPUFaultJobsTestCases() []getRestartNPUFaultJobsTest {
+	job := test.FakeNormalTestJob("pg1", util.NPUIndex2)
 	faultJob := addJobIntoFaultNPUJobStruct(job)
-	testCases := getRestartNPUFaultJobsTests{
+	testCases := []getRestartNPUFaultJobsTest{
 		{
 			name: "01-no restart jobs-test",
 			args: getRestartNPUFaultJobsArgs{
@@ -604,16 +604,16 @@ type isDistributedJobArgs struct {
 	job *api.JobInfo
 }
 
-type isDistributedJobTests []struct {
+type isDistributedJobTest struct {
 	name string
 	args isDistributedJobArgs
 	want bool
 }
 
-func buildsDistributedJobTestCases() isDistributedJobTests {
-	job1 := ascendtest.FakeNormalTestJob("pg1", 1)
-	job2 := ascendtest.FakeNormalTestJob("pg1", util.ConstIntNum2)
-	testCases := isDistributedJobTests{
+func buildsDistributedJobTestCases() []isDistributedJobTest {
+	job1 := test.FakeNormalTestJob("pg1", 1)
+	job2 := test.FakeNormalTestJob("pg1", util.NPUIndex2)
+	testCases := []isDistributedJobTest{
 		{
 			name: "01-not distributed job-test",
 			args: isDistributedJobArgs{
@@ -649,15 +649,15 @@ type isNPUFaultTaskArgs struct {
 	cacheFun func()
 }
 
-type isNPUFaultTaskTests []struct {
+type isNPUFaultTaskTest struct {
 	name string
 	args isNPUFaultTaskArgs
 	want bool
 }
 
-func buildsIsNPUFaultTaskTestCases() isNPUFaultTaskTests {
-	tasks := ascendtest.FakeNormalTestTasks(util.ConstIntNum2)
-	testCases := isNPUFaultTaskTests{
+func buildsIsNPUFaultTaskTestCases() []isNPUFaultTaskTest {
+	tasks := test.FakeNormalTestTasks(util.NPUIndex2)
+	testCases := []isNPUFaultTaskTest{
 		{
 			name: "01-no ReSchedulerCache-test",
 			args: isNPUFaultTaskArgs{
@@ -709,15 +709,15 @@ type isNodeInFaultNodeListArgs struct {
 	cacheFun func()
 }
 
-type isNodeInFaultNodeListTests []struct {
+type isNodeInFaultNodeListTest struct {
 	name string
 	args isNodeInFaultNodeListArgs
 	want bool
 }
 
-func buildIsNodeInFaultNodeListTestCases() isNodeInFaultNodeListTests {
-	nodes := ascendtest.FakeNormalTestNodes(util.ConstIntNum2)
-	testCases := isNodeInFaultNodeListTests{
+func buildIsNodeInFaultNodeListTestCases() []isNodeInFaultNodeListTest {
+	nodes := test.FakeNormalTestNodes(util.NPUIndex2)
+	testCases := []isNodeInFaultNodeListTest{
 		{
 			name: "01-no ReSchedulerCache-test",
 			args: isNodeInFaultNodeListArgs{
@@ -770,7 +770,7 @@ type recordFaultInfInCacheArgs struct {
 	cacheFun  func()
 }
 
-type recordFaultInfInCacheTests []struct {
+type recordFaultInfInCacheTest struct {
 	name    string
 	args    recordFaultInfInCacheArgs
 	wantErr error
@@ -804,18 +804,18 @@ func setTestSsnNode(ssn *framework.Session, setData interface{}) {
 	case FaultNodeState:
 		setTestNodeSateFaultInSSN(ssn, value)
 	default:
-		ascendtest.PrintError("not support type:%+v", setData)
+		test.PrintError("not support type:%+v", setData)
 	}
 }
 
-func buildRecordFaultInfInCacheTestCases() recordFaultInfInCacheTests {
+func buildRecordFaultInfInCacheTestCases() []recordFaultInfInCacheTest {
 	const constNumber64 = 12345677
-	ssnTest := ascendtest.FakeNormalSSN()
+	ssnTest := test.FakeNormalSSN()
 	fNPUs := FaultNPUsOnNode{NodeName: "node1", FaultNPUs: []string{"Ascend910-0", "Ascend910-1", "Ascend910-1"},
 		NetworkUnhealthyNPUs: []string{}, UpdateTime: constNumber64}
 	fNode := FaultNodeState{NodeName: "node1", HealthCode: 0, UpdateTime: constNumber64, Heartbeat: constNumber64,
 		HeartbeatInterval: nodeUpdateTime}
-	testCases := recordFaultInfInCacheTests{
+	testCases := []recordFaultInfInCacheTest{
 		{
 			name: "01-record fault success-test",
 			args: recordFaultInfInCacheArgs{
@@ -850,14 +850,14 @@ type releaseFaultJobTakeNodesArgs struct {
 	cacheFun func()
 }
 
-type releaseFaultJobTakeNodesTests []struct {
+type releaseFaultJobTakeNodesTest struct {
 	name    string
 	args    releaseFaultJobTakeNodesArgs
 	wantErr error
 }
 
 func addTestJobIntoReSchedulerCache(job *api.JobInfo) {
-	var reJobs = make(map[api.JobID]ReSchedulerTasks, util.ConstIntNum2)
+	var reJobs = make(map[api.JobID]ReSchedulerTasks, util.NPUIndex2)
 	const tmpNumber = 123456
 	if job == nil {
 		reJobs = map[api.JobID]ReSchedulerTasks{
@@ -878,10 +878,10 @@ func addTestJobIntoReSchedulerCache(job *api.JobInfo) {
 	ReSchedulerCache[CmJobKind] = reJobs
 }
 
-func buildReleaseFaultJobTakeNodesTestCases() releaseFaultJobTakeNodesTests {
-	fakeJob := ascendtest.FakeNormalTestJob("pg", util.ConstIntNum3)
-	fakeJob1 := ascendtest.FakeNormalTestJob("pg", util.ConstIntNum3)
-	testCases := releaseFaultJobTakeNodesTests{
+func buildReleaseFaultJobTakeNodesTestCases() []releaseFaultJobTakeNodesTest {
+	fakeJob := test.FakeNormalTestJob("pg", util.NPUIndex3)
+	fakeJob1 := test.FakeNormalTestJob("pg", util.NPUIndex3)
+	testCases := []releaseFaultJobTakeNodesTest{
 		{
 			name: "01-no record fault Cache-test",
 			args: releaseFaultJobTakeNodesArgs{
@@ -935,16 +935,16 @@ type setFaultJobPodIndexArgs struct {
 	cacheFun func()
 }
 
-type setFaultJobPodIndexTests []struct {
+type setFaultJobPodIndexTest struct {
 	name    string
 	args    setFaultJobPodIndexArgs
 	wantErr error
 }
 
-func buildSetFaultJobPodIndexTestCases() setFaultJobPodIndexTests {
-	tasks := ascendtest.FakeNormalTestTasks(util.ConstIntNum2)
-	nodes := ascendtest.FakeNormalTestNodes(util.ConstIntNum2)
-	testCases := setFaultJobPodIndexTests{
+func buildSetFaultJobPodIndexTestCases() []setFaultJobPodIndexTest {
+	tasks := test.FakeNormalTestTasks(util.NPUIndex2)
+	nodes := test.FakeNormalTestNodes(util.NPUIndex2)
+	testCases := []setFaultJobPodIndexTest{
 		{
 			name: "01-no record fault Cache-test",
 			args: setFaultJobPodIndexArgs{
@@ -972,7 +972,7 @@ func buildSetFaultJobPodIndexTestCases() setFaultJobPodIndexTests {
 					addTestTaskIntoReSchedulerCache(tasks[0])
 				},
 			},
-			wantErr: errors.New("no rankIndex cache"),
+			wantErr: nil,
 		},
 	}
 	return testCases
@@ -998,21 +998,21 @@ type setFaultInNodeAndJobsArgs struct {
 	cacheFun func()
 }
 
-type setFaultInNodeAndJobsTests []struct {
+type setFaultInNodeAndJobsTest struct {
 	ssn     *framework.Session
 	name    string
 	args    setFaultInNodeAndJobsArgs
 	wantErr error
 }
 
-func buildSetFaultInNodeAndJobsTestCases() setFaultInNodeAndJobsTests {
-	testSsn := ascendtest.FakeNormalSSN()
-	fakeJob1 := ascendtest.FakeNormalTestJob("pg", util.ConstIntNum3)
-	fakeJob2 := ascendtest.FakeNormalTestJob("pg1", util.ConstIntNum3)
+func buildSetFaultInNodeAndJobsTestCases() []setFaultInNodeAndJobsTest {
+	testSsn := test.FakeNormalSSN()
+	fakeJob1 := test.FakeNormalTestJob("pg", util.NPUIndex3)
+	fakeJob2 := test.FakeNormalTestJob("pg1", util.NPUIndex3)
 	mapJob1 := map[string]*api.JobInfo{fakeJob1.Name: fakeJob1}
 	mapJob2 := map[string]*api.JobInfo{fakeJob2.Name: fakeJob2}
 	faultJob1 := addJobIntoFaultNPUJobStruct(fakeJob1)
-	testCases := setFaultInNodeAndJobsTests{
+	testCases := []setFaultInNodeAndJobsTest{
 		{
 			ssn:  testSsn,
 			name: "01-job not in record fault Cache-test",
@@ -1057,7 +1057,7 @@ type readFaultNPUJobsFromCMArgs struct {
 	cacheFunAfter  func()
 }
 
-type readFaultNPUJobsFromCMTests []struct {
+type readFaultNPUJobsFromCMTest struct {
 	name    string
 	args    readFaultNPUJobsFromCMArgs
 	wantErr error
@@ -1087,15 +1087,15 @@ func fakeErrorHeartbeatCmData(_ kubernetes.Interface, _, _ string) (*v1.ConfigMa
 	return faultNPUConfigMap, nil
 }
 
-func buildReadFaultNPUJobsFromCMTestCases() readFaultNPUJobsFromCMTests {
-	testSsn := ascendtest.FakeNormalSSN()
-	job1 := ascendtest.FakeNormalTestJob("pg1", util.ConstIntNum2)
-	nodes := ascendtest.FakeNormalTestNodes(1)
+func buildReadFaultNPUJobsFromCMTestCases() []readFaultNPUJobsFromCMTest {
+	testSsn := test.FakeNormalSSN()
+	job1 := test.FakeNormalTestJob("pg1", util.NPUIndex2)
+	nodes := test.FakeNormalTestNodes(1)
 	addTestNodeIntoReSchedulerCache(nodes[0])
-	ascendtest.SetNPUNodeLabel(testSsn.Nodes[nodes[0].Name].Node, nodeDEnableKey, nodeDEnableOnValue)
+	test.SetNPUNodeLabel(testSsn.Nodes[nodes[0].Name].Node, nodeDEnableKey, nodeDEnableOnValue)
 
 	var tmpPatche *gomonkey.Patches
-	testCases := readFaultNPUJobsFromCMTests{
+	testCases := []readFaultNPUJobsFromCMTest{
 		{
 			name: "01-read from config map success Cache-test",
 			args: readFaultNPUJobsFromCMArgs{
@@ -1104,7 +1104,9 @@ func buildReadFaultNPUJobsFromCMTestCases() readFaultNPUJobsFromCMTests {
 					addTestJobIntoReSchedulerCache(job1)
 					tmpPatche = gomonkey.ApplyFunc(util.GetConfigMapWithRetry, fakeErrorHeartbeatCmData)
 				}, cacheFunAfter: func() {
-					tmpPatche.Reset()
+					if tmpPatche != nil {
+						tmpPatche.Reset()
+					}
 				},
 			},
 			wantErr: nil,
@@ -1135,14 +1137,14 @@ type writeReSchedulerDataToCMArgs struct {
 	cacheFunAfter   func()
 }
 
-type writeReSchedulerDataToCMTests []struct {
+type writeReSchedulerDataToCMTest struct {
 	name    string
 	args    writeReSchedulerDataToCMArgs
 	wantErr error
 }
 
 func addTestHeartbeatIntoReSchedulerCache(nodeName string) {
-	var reCard = make(map[string]NormalNodeHeartbeat, util.ConstIntNum2)
+	var reCard = make(map[string]NormalNodeHeartbeat, util.NPUIndex2)
 	const tmpNumber = 123456
 	reCard[nodeName] = NormalNodeHeartbeat{
 		NodeDHeartbeat:      tmpNumber,
@@ -1153,14 +1155,14 @@ func addTestHeartbeatIntoReSchedulerCache(nodeName string) {
 	ReSchedulerCache[CmNodeHeartbeatKind] = reCard
 }
 
-func buildWriteReSchedulerDataToCMTestCases() writeReSchedulerDataToCMTests {
-	testSsn := ascendtest.FakeNormalSSN()
-	job1 := ascendtest.FakeNormalTestJob("pg1", util.ConstIntNum2)
-	nodes := ascendtest.FakeNormalTestNodes(1)
-	ascendtest.SetNPUNodeLabel(testSsn.Nodes[nodes[0].Name].Node, nodeDEnableKey, nodeDEnableOnValue)
+func buildWriteReSchedulerDataToCMTestCases() []writeReSchedulerDataToCMTest {
+	testSsn := test.FakeNormalSSN()
+	job1 := test.FakeNormalTestJob("pg1", util.NPUIndex2)
+	nodes := test.FakeNormalTestNodes(1)
+	test.SetNPUNodeLabel(testSsn.Nodes[nodes[0].Name].Node, nodeDEnableKey, nodeDEnableOnValue)
 
 	var tmpPatche *gomonkey.Patches
-	testCases := writeReSchedulerDataToCMTests{
+	testCases := []writeReSchedulerDataToCMTest{
 		{
 			name: "01-write data to config map success Cache-test Cache-test",
 			args: writeReSchedulerDataToCMArgs{
@@ -1175,7 +1177,9 @@ func buildWriteReSchedulerDataToCMTestCases() writeReSchedulerDataToCMTests {
 							return nil
 						})
 				}, cacheFunAfter: func() {
-					tmpPatche.Reset()
+					if tmpPatche != nil {
+						tmpPatche.Reset()
+					}
 				},
 			},
 			wantErr: nil,

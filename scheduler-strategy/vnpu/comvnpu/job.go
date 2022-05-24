@@ -55,7 +55,7 @@ func (tp *VNPU) ValidJobResource(job *api.JobInfo) error {
 // GetNPUJobDefaultSelectorConfig get selectors for Vnpu
 func (tp *VNPU) GetNPUJobDefaultSelectorConfig() map[string]string {
 	var defaultSchedulerConfig map[string]string
-	defaultSchedulerConfig = make(map[string]string, util.ConstIntNum3)
+	defaultSchedulerConfig = make(map[string]string, util.NPUIndex3)
 
 	defaultSchedulerConfig[util.ArchSelector] = util.HuaweiArchArm + "|" + util.HuaweiArchX86
 
@@ -107,7 +107,7 @@ func (tp *VNPU) GetNPUTypeByResourceName(tmp string) (string, error) {
 	if len(split) == 1 {
 		return tmp, nil
 	}
-	if len(split) != util.ConstIntNum2 {
+	if len(split) != util.NPUIndex2 {
 		klog.V(util.LogDebugLev).Infof("GetNPUTypeByResourceName get err: %v.", split)
 		return "", errors.New("err resource")
 	}

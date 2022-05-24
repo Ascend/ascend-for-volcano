@@ -13,14 +13,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/klog"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
+
+	"k8s.io/api/core/v1"
+	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
+
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/util"
 )
 
@@ -76,15 +78,15 @@ func getCMNodeWriteData(nodeData interface{}) (string, error) {
 func getNodeHeartbeatInfoFromCache(node *api.NodeInfo) (NormalNodeHeartbeat, error) {
 	tmp, mapOK := ReSchedulerCache[CmNodeHeartbeatKind]
 	if !mapOK {
-		return NormalNodeHeartbeat{}, fmt.Errorf("ReSchedulerCache no kind of %v", CmNodeHeartbeatKind)
+		return NormalNodeHeartbeat{}, fmt.Errorf("no reschedule cache kind of %v", CmNodeHeartbeatKind)
 	}
 	nodesHeartBeat, ok := tmp.(map[string]NormalNodeHeartbeat)
 	if !ok {
-		return NormalNodeHeartbeat{}, fmt.Errorf("getNodeHeartbeatFromCache assert %v failed", tmp)
+		return NormalNodeHeartbeat{}, fmt.Errorf("get node heartbeat from cache assert %v failed", tmp)
 	}
 	nodeHeartBeat, getOk := nodesHeartBeat[node.Name]
 	if !getOk {
-		return NormalNodeHeartbeat{}, fmt.Errorf("getNodeHeartbeatFromCache %s nonexistent", node.Name)
+		return NormalNodeHeartbeat{}, fmt.Errorf("get node heartbeat from cache %s nonexistent", node.Name)
 	}
 
 	return nodeHeartBeat, nil
@@ -98,7 +100,7 @@ func getNodeHeartbeatIntervalAndUpdateTimeFromCache(node *api.NodeInfo) (int64, 
 	}
 
 	heartbeatInterval := heartbeatInfo.HeartbeatInterval
-	maxInterval := int64(heartbeatInterval) * util.ConstIntNum3
+	maxInterval := int64(heartbeatInterval) * util.NPUIndex3
 
 	updateHeartbeatTime := heartbeatInfo.UpdateHeartbeatTime
 	return maxInterval, updateHeartbeatTime, nil
@@ -139,18 +141,17 @@ func synReSchedulerNodeCache(ssn *framework.Session, tmpValue interface{}) error
 		return msg
 	}
 
+	newNodeMap := make(map[string]FaultNodeState, util.NPUIndex3)
 	for nodeName, faultNode := range nodeMap {
 		// 	No node
 		nodeInf, ok := ssn.Nodes[nodeName]
 		if !ok {
 			klog.V(util.LogErrorLev).Infof("delete %s from configMap due to not existence.", nodeName)
-			delete(nodeMap, nodeName)
 			continue
 		}
 		// For node changed health (Automatic recovery).
 		if isNodeHealth(nodeInf) {
 			klog.V(util.LogErrorLev).Infof("delete %s from configMap due to node change health.", nodeName)
-			delete(nodeMap, nodeName)
 			continue
 		}
 		// For Node doesn't last too long
@@ -158,16 +159,17 @@ func synReSchedulerNodeCache(ssn *framework.Session, tmpValue interface{}) error
 		nowTime := time.Now().Unix()
 		if nowTime-preTime > maxIntervalTime {
 			klog.V(util.LogErrorLev).Infof("delete %s from CM for overTime %v => %v.", nodeName, nowTime, preTime)
-			delete(nodeMap, nodeName)
+			continue
 		}
+		newNodeMap[nodeName] = faultNode
 	}
-	ReSchedulerCache[CmNodeKind] = nodeMap
+	ReSchedulerCache[CmNodeKind] = newNodeMap
 
 	return nil
 }
 
 func updateNodeIntoNodesHeartbeatTmp(ssn *framework.Session) error {
-	nodesHeartbeat := make(map[string]NormalNodeHeartbeat, util.ConstIntNum3)
+	nodesHeartbeat := make(map[string]NormalNodeHeartbeat, util.NPUIndex3)
 	temp, ok := ReSchedulerCache[CmNodeHeartbeatKind]
 	if ok {
 		nodesHeartbeat, ok = temp.(map[string]NormalNodeHeartbeat)
@@ -225,19 +227,19 @@ func synNodeHeartbeatCache(ssn *framework.Session, tmpValue interface{}) error {
 		klog.V(util.LogErrorLev).Infof("synNodeHeartbeatCache %v.", msg)
 		return msg
 	}
-
+	newNodesHeartbeat := make(map[string]NormalNodeHeartbeat, util.NPUIndex3)
 	// delete nonexistent node
-	for nodeName := range nodesHeartbeat {
+	for nodeName, value := range nodesHeartbeat {
 		// 	No info
 		_, ok := ssn.Nodes[nodeName]
 		if !ok {
 			klog.V(util.LogErrorLev).Infof("delete %s from heartbeat due to not existence.", nodeName)
-			delete(nodesHeartbeat, nodeName)
 			continue
 		}
+		newNodesHeartbeat[nodeName] = value
 	}
 
-	ReSchedulerCache[CmNodeHeartbeatKind] = nodesHeartbeat
+	ReSchedulerCache[CmNodeHeartbeatKind] = newNodesHeartbeat
 
 	return nil
 }
@@ -261,6 +263,7 @@ func synJobRankIdsCache(ssn *framework.Session, tmpValue interface{}) error {
 		return msg
 	}
 	// delete nonexistent rankIds
+	newJobRankIds := make(map[api.JobID]FaultRankIDRecordJobCMData, util.NPUIndex3)
 	for jobID, value := range jobRankIds {
 		// 	No info
 		_, ok := ssn.Jobs[jobID]
@@ -270,12 +273,12 @@ func synJobRankIdsCache(ssn *framework.Session, tmpValue interface{}) error {
 			if err := deleteRedundantRankIDCM(ssn, value.NameSpace, jobID); err != nil {
 				klog.V(util.LogErrorLev).Infof("synJobRankIdsCache delete RankIdCM %v.", err)
 			}
-			delete(jobRankIds, jobID)
 			continue
 		}
+		newJobRankIds[jobID] = value
 	}
 
-	ReSchedulerCache[CmJobRankIds] = jobRankIds
+	ReSchedulerCache[CmJobRankIds] = newJobRankIds
 
 	return nil
 }
@@ -288,19 +291,17 @@ func synReSchedulerCardCache(ssn *framework.Session, tmpValue interface{}) error
 		klog.V(util.LogErrorLev).Infof("synReSchedulerCardCache %v.", msg)
 		return msg
 	}
-
+	newCardMap := make(map[string]FaultNPUsOnNode, util.NPUIndex3)
 	for nodeName, cards := range cardMap {
 		// 	No info
 		nodeInf, ok := ssn.Nodes[nodeName]
 		if !ok {
 			klog.V(util.LogErrorLev).Infof("delete %s from configMap due to not existence.", nodeName)
-			delete(cardMap, nodeName)
 			continue
 		}
 		// No fault NPUs.
 		if !isNodeHasFaultNPUs(nodeInf) {
 			klog.V(util.LogErrorLev).Infof("delete %s from configMap due to card change health.", nodeName)
-			delete(cardMap, nodeName)
 			continue
 		}
 		// Timeout to delete
@@ -308,10 +309,11 @@ func synReSchedulerCardCache(ssn *framework.Session, tmpValue interface{}) error
 		nowTime := time.Now().Unix()
 		if nowTime-preTime > maxIntervalTime {
 			klog.V(util.LogErrorLev).Infof("delete %s from CM for overTime %v => %v.", nodeName, nowTime, preTime)
-			delete(cardMap, nodeName)
+			continue
 		}
+		newCardMap[nodeName] = cards
 	}
-	ReSchedulerCache[CmCardKind] = cardMap
+	ReSchedulerCache[CmCardKind] = newCardMap
 
 	return nil
 }
@@ -474,7 +476,8 @@ func getInoperableNPUCards(nodes map[string]*api.NodeInfo, npuNumber int) ([]Fau
 		if err != nil && netErr != nil {
 			continue
 		}
-		faultNPUs = append(faultNPUs, FaultNPUsOnNode{nodeInfo.Name, npus, networkNPUs, time.Now().Unix()})
+		faultNPUs = append(faultNPUs, FaultNPUsOnNode{NodeName: nodeInfo.Name, FaultNPUs: npus,
+			NetworkUnhealthyNPUs: networkNPUs, UpdateTime: time.Now().Unix()})
 	}
 
 	if len(faultNPUs) == 0 {
@@ -490,10 +493,10 @@ func getFaultNodePODAndRankIndex(job *api.JobInfo, nodes map[string]*v1.Pod) (Fa
 		faultNPUJobBase: faultNPUJobBase{
 			jobName:          job.Name,
 			namespace:        job.Namespace,
-			taskUseRankIndex: make(map[string]string, util.ConstIntNum3),
-			taskUseNode:      make(map[string]string, util.ConstIntNum3),
+			taskUseRankIndex: make(map[string]string, util.NPUIndex3),
+			taskUseNode:      make(map[string]string, util.NPUIndex3),
 		},
-		taskUseNPUs: make(map[string]string, util.ConstIntNum3),
+		taskUseNPUs: make(map[string]string, util.NPUIndex3),
 	}
 
 	for _, task := range job.Tasks {
@@ -579,7 +582,7 @@ func GetFaultTaskUseNodeInfo(task *api.TaskInfo, ssn *framework.Session) (*api.N
 	}
 
 	if IsNodeInFaultNodeList(node) {
-		return nil, fmt.Errorf("GetFaultTaskUseNodeInfo %s in fault node list", nodeName)
+		return nil, fmt.Errorf("get fault task used node info %s in fault node list", nodeName)
 	}
 	return node, nil
 }

@@ -16,14 +16,14 @@ const (
 	LogInfoLev = 3
 	// LogDebugLev for log debug.
 	LogDebugLev = 4
-	// ConstIntNum0 for const 0.
-	ConstIntNum0 = 0
-	// ConstIntNum1 for const 1.
-	ConstIntNum1 = 1
-	// ConstIntNum2 for const 2.
-	ConstIntNum2 = 2
-	// ConstIntNum3 for const 3.
-	ConstIntNum3 = 3
+	// NPUIndex0 for const 0.
+	NPUIndex0 = 0
+	// NPUIndex1 for const 1.
+	NPUIndex1 = 1
+	// NPUIndex2 for const 2.
+	NPUIndex2 = 2
+	// NPUIndex3 for const 3.
+	NPUIndex3 = 3
 	// NPUIndex4 for const 4.
 	NPUIndex4 = 4
 	// NPUIndex5 for const 5.

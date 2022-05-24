@@ -99,7 +99,7 @@ func getPodRankIndex(pod *v1.Pod) (string, error) {
 // AddScoreByFaultNPUTask returns nil to indicate that it is selected, and anything else to indicate that it is not.
 func AddScoreByFaultNPUTask(task *api.TaskInfo, scoreMap map[string]float64) (map[string]float64, error) {
 	if len(scoreMap) == 0 {
-		mgs := fmt.Errorf("AddScoreByFaultNPUTask scoreMap is nil")
+		mgs := fmt.Errorf("add score by fault NPU task scoreMap is nil")
 		klog.V(util.LogErrorLev).Infof("%v.", mgs)
 		return scoreMap, mgs
 	}
@@ -138,14 +138,12 @@ func setOnOldNodeTaskRankIndex(rTask ReSchedulerTasks, task *api.TaskInfo, node 
 	nodeAndIndexList, getOldErr := getOldTaskNodeAndIndexList(rTask)
 	if getOldErr != nil {
 		klog.V(util.LogErrorLev).Infof("getOldTaskNodeAndIndexList: %v.", getOldErr)
+		return getOldErr
 	}
 
 	if rankIndex, ok := nodeAndIndexList[node.Name]; ok {
-		klog.V(util.LogInfoLev).Infof("%d: %s set old %s rankIndex %v.", now, task.Name, node.Name, rankIndex)
 		task.Pod.Annotations[podRankIndex] = rankIndex
-		if updateErr := updateRankIndexMapByTask(task, rankIndex, now); updateErr != nil {
-			return updateErr
-		}
+		klog.V(util.LogInfoLev).Infof("%d: %s set old %s rankIndex %v.", now, task.Name, node.Name, rankIndex)
 		return nil
 	}
 	return fmt.Errorf("%s not the previously used by the %s", node.Name, task.Name)
@@ -206,11 +204,11 @@ func setOnNewNodeTaskRankIndex(task *api.TaskInfo, node *api.NodeInfo, now int64
 				continue
 			}
 		}
-		klog.V(util.LogInfoLev).Infof("%d: %s set new %s rankIndex %v.", now, task.Name, node.Name, rankIndex)
-		task.Pod.Annotations[podRankIndex] = rankIndex
 		if updateErr := updateRankIndexMapByTask(task, rankIndex, now); updateErr != nil {
 			return updateErr
 		}
+		task.Pod.Annotations[podRankIndex] = rankIndex
+		klog.V(util.LogInfoLev).Infof("%d: %s set new %s rankIndex %v.", now, task.Name, node.Name, rankIndex)
 		return nil
 	}
 
@@ -224,15 +222,15 @@ func setReSchedulerTaskRankIndex(rTask ReSchedulerTasks, task *api.TaskInfo, nod
 	if setOldNodeErr == nil {
 		return nil
 	}
-	klog.V(util.LogInfoLev).Infof("setReSchedulerTaskRankIndex %v.", setOldNodeErr)
+	klog.V(util.LogInfoLev).Infof("setReSchedulerTaskRankIndex on old node %v.", setOldNodeErr)
 
 	setNewNodeErr := setOnNewNodeTaskRankIndex(task, node, now)
 	if setNewNodeErr != nil {
-		klog.V(util.LogInfoLev).Infof("setReSchedulerTaskRankIndex %v.", setNewNodeErr)
+		klog.V(util.LogInfoLev).Infof("setReSchedulerTaskRankIndex on new node %v.", setNewNodeErr)
 		return setNewNodeErr
 	}
 
-	klog.V(util.LogInfoLev).Infof("setReSchedulerTaskRankIndex %s on %s success.", task.Name, node.Name)
+	klog.V(util.LogInfoLev).Infof("setReSchedulerTaskRankIndex %s on new %s success.", task.Name, node.Name)
 	return nil
 }
 
@@ -246,7 +244,7 @@ func SetFaultJobPodIndex(task *api.TaskInfo, node *api.NodeInfo) error {
 	}
 
 	if setErr := setReSchedulerTaskRankIndex(tmpValue, task, node); setErr != nil {
-		klog.V(util.LogInfoLev).Infof("setReSchedulerTaskRankIndex %s %v.", task.Name, setErr)
+		klog.V(util.LogInfoLev).Infof("SetFaultJobPodIndex %s %v.", task.Name, setErr)
 		return setErr
 	}
 	return nil

@@ -51,7 +51,7 @@ func (cn *Scheduler) validJobModel(job *api.JobInfo) error {
 		}
 		klog.V(util.LogDebugLev).Infof("%s check Card Mode %s require %d npu.", cn.PluginName, task.Name, taskNPU)
 
-		if taskNPU < util.ConstIntNum1 || taskNPU > NodeNPUNumber {
+		if taskNPU < util.NPUIndex1 || taskNPU > NodeNPUNumber {
 			return fmt.Errorf("%s single trainning not match task NPU number:%d", job.Name, taskNPU)
 		}
 	}
