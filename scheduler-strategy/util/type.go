@@ -24,6 +24,14 @@ const (
 	ConstIntNum2 = 2
 	// ConstIntNum3 for const 3.
 	ConstIntNum3 = 3
+	// ConstIntNum4 for const 4.
+	ConstIntNum4 = 4
+	// ConstIntNum5 for const 5.
+	ConstIntNum5 = 5
+	// ConstIntNum6 for const 6.
+	ConstIntNum6 = 6
+	// ConstIntNum7 for const 7.
+	ConstIntNum7 = 7
 	// ConstIntNum8 for const 8.
 	ConstIntNum8 = 8
 	// ConstIntNum10 for const 10.
