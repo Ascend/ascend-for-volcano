@@ -425,7 +425,7 @@ func (tp *VNPU) GetVJobMeetNode(nodeList []*api.NodeInfo) (*api.NodeInfo, error)
 }
 
 func (tp *VNPU) getMeetChipsInNode(needCores int, nodeInf *api.NodeInfo) (map[int]int, error) {
-	var chipCores = make(map[int]int, util.ConstIntNum8)
+	var chipCores = make(map[int]int, util.NPUIndex8)
 	// Get from whole card.
 	idsMap, numErr := util.GetNodeAvailNPUIdsFromAnno(nodeInf, tp.Attr.AnnoName)
 	if numErr != nil {

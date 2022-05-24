@@ -808,7 +808,7 @@ func TestCnpuGetReleaseNPUTopologyFn(t *testing.T) {
 			reqNPUType: a310NPUCardName, reqNpuNum: "2"}))
 		convey.Convey("GetReleaseNPUTopologyFn() should return correct card id slice", func() {
 			task.Pod.Annotations[a310NPUCardName] = "Ascend310-0,Ascend310-4"
-			expectedResult := []int{0, util.ConstIntNum4}
+			expectedResult := []int{0, util.NPUIndex4}
 			result, err := npu.GetReleaseNPUTopologyFn(task)
 			convey.So(err, convey.ShouldBeNil)
 			convey.So(result, convey.ShouldResemble, expectedResult)

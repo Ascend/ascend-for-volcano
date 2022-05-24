@@ -539,7 +539,7 @@ func TestCnpuUpdateNPUNodeUsedCardFn1(t *testing.T) {
 				"Ascend910-5,Ascend910-7"})
 
 		convey.Convey("UpdateNPUNodeUsedCardFn() should successfully update node.others", func() {
-			top := []int{0, util2.ConstIntNum4}
+			top := []int{0, util2.NPUIndex4}
 			expectedResult := map[string]interface{}{
 				a300TNPUCardName: "Ascend910-2,Ascend910-1,Ascend910-3,Ascend910-6,Ascend910-5,Ascend910-7",
 			}
@@ -563,8 +563,8 @@ func TestCnpuUpdateNPUNodeUsedCardFn2(t *testing.T) {
 				a300TNPUCardName: "Ascend910-2,Ascend910-0,Ascend910-1,Ascend910-3,Ascend910-6,Ascend910-4," +
 					"Ascend910-5,Ascend910-7",
 			}
-			top := []int{0, 1, constIntNum2, constIntNum3, npuNumPerHccs, util2.ConstIntNum5, util2.ConstIntNum6,
-				util2.ConstIntNum7}
+			top := []int{0, 1, constIntNum2, constIntNum3, npuNumPerHccs, util2.NPUIndex5, util2.NPUIndex6,
+				util2.NPUIndex7}
 			expectedResult := map[string]interface{}{
 				a300TNPUCardName: "",
 			}
@@ -592,7 +592,7 @@ func TestCnpuUpdateNPUNodeUsedCardFnError1(t *testing.T) {
 		convey.Convey("UpdateNPUNodeUsedCardFn() should return error when node's npuTop is empty", func() {
 			node := buildNPUNode(CNodeInfo{nodeName: nodeName, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
 				npuAllocateNum: "8", npuTop: ""})
-			top := []int{0, util2.ConstIntNum4}
+			top := []int{0, util2.NPUIndex4}
 			err := npu.UpdateNPUNodeUsedCardFn(node, top)
 			convey.So(err, convey.ShouldBeError)
 		})
@@ -609,7 +609,7 @@ func TestCnpuGetReleaseNPUTopologyFn(t *testing.T) {
 			reqNPUType: a300TNPUCardName, reqNpuNum: "2"}))
 		convey.Convey("GetReleaseNPUTopologyFn() should return correct card id slice", func() {
 			task.Pod.Annotations[a300TNPUCardName] = "Ascend910-0,Ascend910-4"
-			expectedResult := []int{0, util2.ConstIntNum4}
+			expectedResult := []int{0, util2.NPUIndex4}
 			result, err := npu.GetReleaseNPUTopologyFn(task)
 			convey.So(err, convey.ShouldBeNil)
 			convey.So(result, convey.ShouldResemble, expectedResult)
@@ -639,7 +639,7 @@ func TestCnpuUpdateReleaseNPUNodeTopologyFn(t *testing.T) {
 		node := buildNPUNode(CNodeInfo{nodeName: nodeName, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
 			npuAllocateNum: "8", npuTop: "Ascend910-2,Ascend910-1,Ascend910-3,Ascend910-6,Ascend910-5,Ascend910-7"})
 		convey.Convey("UpdateNPUNodeUsedCardFn() should successfully update node.others", func() {
-			top := []int{0, util2.ConstIntNum4}
+			top := []int{0, util2.NPUIndex4}
 			err := npu.UpdateReleaseNPUNodeTopologyFn(node, top)
 			convey.So(err, convey.ShouldBeNil)
 		})
@@ -669,7 +669,7 @@ func TestCnpuUpdateReleaseNPUNodeTopologyFnError(t *testing.T) {
 			node.Others = map[string]interface{}{
 				a300TNPUCardName: "Ascend910-0Ascend910-4",
 			}
-			top := []int{0, util2.ConstIntNum4}
+			top := []int{0, util2.NPUIndex4}
 			err := npu.UpdateReleaseNPUNodeTopologyFn(node, top)
 			convey.So(err, convey.ShouldBeError)
 		})
@@ -769,7 +769,7 @@ func TestCnpuSetNPUTopologyToPodFn(t *testing.T) {
 			convey.So(task.Pod.Annotations[a300TNPUCardName], convey.ShouldEqual, "")
 		})
 		convey.Convey("SetNPUTopologyToPodFn() should write correct info in pod annotation", func() {
-			top := []int{0, util2.ConstIntNum4}
+			top := []int{0, util2.NPUIndex4}
 			expectedResult := "Ascend910-0,Ascend910-4"
 			err := npu.SetNPUTopologyToPodFn(task, top)
 			convey.So(err, convey.ShouldBeNil)
