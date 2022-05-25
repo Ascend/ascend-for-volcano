@@ -73,7 +73,7 @@ func (hwNPU *ScheduleHandler) BatchNodeOrderFn(
 	klog.V(logInfoLev).Infof("Enter batchNodeOrderFn")
 	defer klog.V(logInfoLev).Infof("leaving batchNodeOrderFn")
 
-	if task == nil || nodes == nil {
+	if task == nil || len(nodes) == 0 {
 		klog.V(logErrorLev).Infof("%s batchNodeOrderFn got null parameter(s), which is invalid.", PluginName)
 		return nil, errors.New("got null parameter(s)")
 	}
