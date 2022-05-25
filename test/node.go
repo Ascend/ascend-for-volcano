@@ -35,12 +35,12 @@ func SetNPUNodeLabel(node *v1.Node, labelKey string, labelValue string) {
 }
 
 // SetTestNPUNodeOther set NPU node other for add npu resource.
-func SetTestNPUNodeOther(node *api.NodeInfo, key string, value string) {
+func SetTestNPUNodeOther(node *api.NodeInfo, otherName, value string) {
 	if node.Others == nil {
 		node.Others = make(map[string]interface{}, npuIndex3)
 	}
 
-	node.Others[key] = value
+	node.Others[otherName] = value
 }
 
 // SetTestNPUNodeAnnotation set NPU node annotation for add fault npu resource.

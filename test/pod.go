@@ -16,7 +16,7 @@ import (
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	schedulingv1 "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
+	"volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 	"volcano.sh/volcano/pkg/scheduler/api"
 )
 
@@ -37,7 +37,7 @@ func BuildNPUPod(pod NPUPod) *v1.Pod {
 			Namespace: pod.Namespace,
 			Labels:    pod.Labels,
 			Annotations: map[string]string{
-				schedulingv1.KubeGroupNameAnnotationKey: pod.GroupName,
+				v1beta1.KubeGroupNameAnnotationKey: pod.GroupName,
 			},
 		},
 		Status: v1.PodStatus{
@@ -48,21 +48,21 @@ func BuildNPUPod(pod NPUPod) *v1.Pod {
 }
 
 // SetTestNPUPodAnnotation set NPU pod annotation for add pod use npu resource.
-func SetTestNPUPodAnnotation(pod *v1.Pod, key string, value string) {
+func SetTestNPUPodAnnotation(pod *v1.Pod, annoName, value string) {
 	if pod.Annotations == nil {
 		pod.Annotations = make(map[string]string, npuIndex3)
 	}
 
-	pod.Annotations[key] = value
+	pod.Annotations[annoName] = value
 }
 
 // SetTestNPUPodSelector set NPU pod selector.
-func SetTestNPUPodSelector(pod *v1.Pod, key string, value string) {
+func SetTestNPUPodSelector(pod *v1.Pod, selectorName, value string) {
 	if pod.Spec.NodeSelector == nil {
 		pod.Spec.NodeSelector = make(map[string]string, npuIndex3)
 	}
 
-	pod.Spec.NodeSelector[key] = value
+	pod.Spec.NodeSelector[selectorName] = value
 }
 
 // FakeNormalTestTasks fake normal test tasks.

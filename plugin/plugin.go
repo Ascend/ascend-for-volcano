@@ -83,11 +83,13 @@ type ScheduleHandler struct {
 	VJobRunHandleFns map[string]npuapi.VNPUJobRunningHandleFn
 }
 
+// AddPreHandleVNPU Add preHandle VNPU function at adapter pattern.
 func (hwNPU *ScheduleHandler) AddPreHandleVNPU(pluginName string, fn npuapi.PreHandleVNPUFn) {
 	hwNPU.PreHandleVNPUFns[pluginName] = fn
 	klog.V(logDebugLev).Infof("PreHandleVNPUFns :%v add.", pluginName)
 }
 
+// AddVJobRunHandle Add vJob run handle function at adapter pattern.
 func (hwNPU *ScheduleHandler) AddVJobRunHandle(pluginName string, fn npuapi.VNPUJobRunningHandleFn) {
 	hwNPU.VJobRunHandleFns[pluginName] = fn
 	klog.V(logDebugLev).Infof("VJobRunHandle :%v add.", pluginName)
@@ -295,6 +297,7 @@ func (hwNPU *ScheduleHandler) getNPUPlugin(obj interface{}) HwNPUSchedulerPlugin
 	return nil
 }
 
+// BeforeCloseHandler  the function handler before session close.
 func (hwNPU *ScheduleHandler) BeforeCloseHandler(ssn *framework.Session) {
 	// deal fault ReScheduler
 	if err := rescheduling.WriteReSchedulerDataToCM(ssn, rescheduling.ReSchedulerCache); err != nil {

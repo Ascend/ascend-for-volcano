@@ -56,14 +56,14 @@ func AddTestJobPodGroup(job *api.JobInfo) {
 }
 
 // AddTestJobLabel add test job's label.
-func AddTestJobLabel(job *api.JobInfo, key, value string) {
+func AddTestJobLabel(job *api.JobInfo, labelName, value string) {
 	if job.PodGroup == nil {
 		AddTestJobPodGroup(job)
 	}
 	if job.PodGroup.Labels == nil {
 		job.PodGroup.Labels = make(map[string]string, npuIndex3)
 	}
-	job.PodGroup.Labels = map[string]string{key: value}
+	job.PodGroup.Labels = map[string]string{labelName: value}
 }
 
 // FakeNormalTestJob make normal test job.
