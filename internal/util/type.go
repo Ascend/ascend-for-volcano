@@ -54,8 +54,8 @@ const (
 	accelerator310Value = "huawei-Ascend310"
 	// Fault910NPU  get 910 Fault npus.
 	Fault910NPU = "huawei.com/Ascend910-Unhealthy"
-	// Fault710NPU get 710 Fault npus.
-	Fault710NPU = "huawei.com/Ascend710-Unhealthy"
+	// Fault310PNPU get 310P Fault npus.
+	Fault310PNPU = "huawei.com/Ascend310P-Unhealthy"
 	// AcceleratorType for selector.
 	AcceleratorType = "accelerator-type"
 	// CardAcceleratorType for card mode.

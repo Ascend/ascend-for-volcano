@@ -590,7 +590,7 @@ func (tp *VNPU) GetVJobReqNPUCoreNum(vJob *api.JobInfo) (int, error) {
 	return coreNum, nil
 }
 
-// reduceTheAllocChipFromNodeOther chip is Ascend710-0
+// reduceTheAllocChipFromNodeOther chip is Ascend310P-0
 func (tp *VNPU) reduceTheAllocChipFromNodeOther(chip string, vJob *api.JobInfo, nodeInf *api.NodeInfo) error {
 	chipSlice := strings.Split(chip, "-")
 	if len(chipSlice) != util.NPUIndex2 {
@@ -657,7 +657,7 @@ func (tp *VNPU) getNodeUseInfoFromNode(nodeInf *api.NodeInfo) (map[string]int, e
 	return tmp, nil
 }
 
-// getNodeUseInfoFromVNPUCache the format key like Ascend710-0.
+// getNodeUseInfoFromVNPUCache the format key like Ascend310P-0.
 func (tp *VNPU) getNodeUseInfoFromVNPUCache(nodeInf *api.NodeInfo) (map[string]int, error) {
 	tmp := make(map[string]int, util.NPUIndex3)
 	for _, value := range vnpuutil.VNPUAllocData.Cache {
@@ -683,7 +683,7 @@ func (tp *VNPU) getNodeUseInfoFromVNPUCache(nodeInf *api.NodeInfo) (map[string]i
 // updateNodeOtherWholeCardByUseMap for node and useMap is corresponding, must use getNodeUseInfoFromVNPUCache before.
 func (tp *VNPU) updateNodeOtherWholeCardByUseMap(nodeInf *api.NodeInfo, useMap map[string]int) error {
 	for cardName := range useMap {
-		// cardName is Ascend710-0
+		// cardName is Ascend310P-0
 		tmpSlice := strings.Split(cardName, "-")
 		if len(tmpSlice) < util.NPUIndex2 {
 			return fmt.Errorf("%s err card name %s", nodeInf.Name, cardName)
@@ -719,7 +719,7 @@ func (tp *VNPU) updateNodeOtherCardCoresByUseMap(nodeInf *api.NodeInfo, useMap m
 		return fmt.Errorf("%s nil parameter", nodeInf.Name)
 	}
 	for cardName, useCores := range useMap {
-		// cardName is Ascend710-0
+		// cardName is Ascend310P-0
 		nodeCoresInf, coresErr := tp.GetNodeNPUCoreInfoMap(nodeInf)
 		if coresErr != nil {
 			klog.V(util.LogErrorLev).Infof("%s IsVNPUNodeMeetReqResource %v.", tp.Name(), coresErr)

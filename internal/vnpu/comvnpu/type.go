@@ -22,7 +22,7 @@ const (
 
 // VNPU common type
 type VNPU struct {
-	// abstract v910x2,v910x8,v710.
+	// abstract v910x2,v910x8,v310P.
 	Plugin VNPUHandler
 	// the element for vnpu, all VNPU scheduler plugin need include.
 	Attr vnpuutil.ComVNPU

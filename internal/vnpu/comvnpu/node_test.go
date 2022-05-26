@@ -275,17 +275,17 @@ type reduceTheAllocChipFromNodeOtherTests struct {
 
 func buildReduceTheAllocChipFromNodeOther01TestCase() reduceTheAllocChipFromNodeOtherTests {
 	job0 := test.FakeNormalTestJobByCreatTime("pg0", util.NPUIndex2, 0)
-	test.SetFakeJobRequestSource(job0, npuV710CardName2c, 1)
+	test.SetFakeJobRequestSource(job0, npuV310PCardName2c, 1)
 	node0 := test.FakeNormalTestNode("node0")
-	test.SetTestNPUNodeAnnotation(node0, vnpuutil.NPU710CardCoreKey, "0-32c-32c,1-32c-32c")
-	test.SetTestNPUNodeAnnotation(node0, vnpuutil.NPU710CardName, "Ascend710-0,Ascend710-1")
+	test.SetTestNPUNodeAnnotation(node0, vnpuutil.NPU310PCardCoreKey, "0-32c-32c,1-32c-32c")
+	test.SetTestNPUNodeAnnotation(node0, vnpuutil.NPU310PCardName, "Ascend310P-0,Ascend310P-1")
 	test01 := reduceTheAllocChipFromNodeOtherTests{
 		name: "01-ReduceTheAllocChipFromNodeOther reduceNodeOther-test",
 		fields: VNPU{
-			Attr: vnpuutil.ComVNPU{NPUCardCoreKey: vnpuutil.NPU710CardCoreKey,
-				HwEntity: plugin.HwEntity{AnnoName: vnpuutil.NPU710CardName, AnnoPreVal: vnpuutil.NPUCardNamePrefix}},
+			Attr: vnpuutil.ComVNPU{NPUCardCoreKey: vnpuutil.NPU310PCardCoreKey,
+				HwEntity: plugin.HwEntity{AnnoName: vnpuutil.NPU310PCardName, AnnoPreVal: vnpuutil.NPUCardNamePrefix}},
 		},
-		args:    reduceTheAllocChipFromNodeOtherArgs{chip: "Ascend710-0", vJob: job0, nodeInf: node0},
+		args:    reduceTheAllocChipFromNodeOtherArgs{chip: "Ascend310P-0", vJob: job0, nodeInf: node0},
 		wantErr: nil,
 	}
 	return test01
@@ -293,17 +293,17 @@ func buildReduceTheAllocChipFromNodeOther01TestCase() reduceTheAllocChipFromNode
 
 func buildReduceTheAllocChipFromNodeOther02TestCase() reduceTheAllocChipFromNodeOtherTests {
 	job2 := test.FakeNormalTestJobByCreatTime("pg2", util.NPUIndex2, 0)
-	test.SetFakeJobRequestSource(job2, npuV710CardName2c, 1)
+	test.SetFakeJobRequestSource(job2, npuV310PCardName2c, 1)
 	node2 := test.FakeNormalTestNode("node2")
-	test.SetTestNPUNodeAnnotation(node2, vnpuutil.NPU710CardCoreKey, "0-32c-32c,1-32c-30c")
-	test.SetTestNPUNodeAnnotation(node2, vnpuutil.NPU710CardName, "Ascend710-0")
+	test.SetTestNPUNodeAnnotation(node2, vnpuutil.NPU310PCardCoreKey, "0-32c-32c,1-32c-30c")
+	test.SetTestNPUNodeAnnotation(node2, vnpuutil.NPU310PCardName, "Ascend310P-0")
 	test02 := reduceTheAllocChipFromNodeOtherTests{
 		name: "01-ReduceTheAllocChipFromNodeOther reduceNodeOther-test",
 		fields: VNPU{
-			Attr: vnpuutil.ComVNPU{NPUCardCoreKey: vnpuutil.NPU710CardCoreKey,
-				HwEntity: plugin.HwEntity{AnnoName: vnpuutil.NPU710CardName, AnnoPreVal: vnpuutil.NPUCardNamePrefix}},
+			Attr: vnpuutil.ComVNPU{NPUCardCoreKey: vnpuutil.NPU310PCardCoreKey,
+				HwEntity: plugin.HwEntity{AnnoName: vnpuutil.NPU310PCardName, AnnoPreVal: vnpuutil.NPUCardNamePrefix}},
 		},
-		args:    reduceTheAllocChipFromNodeOtherArgs{chip: "Ascend710-1", vJob: job2, nodeInf: node2},
+		args:    reduceTheAllocChipFromNodeOtherArgs{chip: "Ascend310P-1", vJob: job2, nodeInf: node2},
 		wantErr: nil,
 	}
 	return test02

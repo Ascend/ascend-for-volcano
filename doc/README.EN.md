@@ -315,7 +315,7 @@ Affinity scheduling of Huawei Ascend AI Processors is based on the plugin mechan
 │   │   ├── model.go
 │   │   ├── node.go
 │   │   └── type.go
-│   ├── chip710                                            # Directory of common code for Ascend 710 AI Processor scheduling
+│   ├── chip310P                                            # Directory of common code for Ascend 310P AI Processor scheduling
 │   │   ├── frame.go
 │   │   └── type.go
 │   ├── common                                             # Directory of common code for vNPU scheduling

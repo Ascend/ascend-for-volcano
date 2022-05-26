@@ -41,7 +41,7 @@ func GetNodeAvailNPUIdsFromAnno(node *api.NodeInfo, npuCardName string) (map[int
 	}
 	chipSlice := strings.Split(chipStr, ",")
 	for _, chip := range chipSlice {
-		// chip like Ascend710-4
+		// chip like Ascend310P-4
 		cardSlice := strings.Split(chip, "-")
 		cardStr := cardSlice[len(cardSlice)-1]
 		cardID, covErr := strconv.Atoi(cardStr)

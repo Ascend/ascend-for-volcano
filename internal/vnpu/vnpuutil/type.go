@@ -21,22 +21,22 @@ const (
 	PluginName = "Vnpu"
 	// PluginNameBy910VNPU 910 vnpu plugin.
 	PluginNameBy910VNPU = "910-VNPU"
-	// PluginNameBy710VNPU 710 vnpu plugin.
-	PluginNameBy710VNPU = "710-VNPU"
+	// PluginNameBy310PVNPU 310P vnpu plugin.
+	PluginNameBy310PVNPU = "310P-VNPU"
 	// NPUCardNamePrefix huawei.com/ for judge npu resource.
 	NPUCardNamePrefix = "huawei.com/"
 	// NPUIdentifyName to identify the NPU
 	NPUIdentifyName = util.CommCardPreName
 	// NPU910CardName for judge 910 npu resource.
 	NPU910CardName = "huawei.com/Ascend910"
-	// NPU710CardName for judge 710 npu resource.
-	NPU710CardName = "huawei.com/Ascend710"
+	// NPU310PCardName for judge 310P npu resource.
+	NPU310PCardName = "huawei.com/Ascend310P"
 	// UNKnownPluginName unknown vnpu plugin
 	UNKnownPluginName = "unknown"
 	// NPU910CardCoreKey for npu card core. like chipId-allCores-freeCores example:4-32c-4c
 	NPU910CardCoreKey = "huawei.com/Ascend910-spec"
-	// NPU710CardCoreKey for npu card core. like chipId-allCores-notCutCores example:4-8c-4c
-	NPU710CardCoreKey = "huawei.com/Ascend710-spec"
+	// NPU310PCardCoreKey for npu card core. like chipId-allCores-notCutCores example:4-8c-4c
+	NPU310PCardCoreKey = "huawei.com/Ascend310P-spec"
 	// NodesNoMeetNPUReqError error for insufficient npus on the schedulable nodes.
 	NodesNoMeetNPUReqError = "insufficient npus on the schedulable nodes in cluster"
 	// NodeNotStableWarning error for unstable npu node.
@@ -66,7 +66,7 @@ const (
 
 // ComVNPU common type
 type ComVNPU struct {
-	// vNPU chip name. Like cardV910x2,chip710,moduleV910x8 and so on.
+	// vNPU chip name. Like cardV910x2,chip310P,moduleV910x8 and so on.
 	plugin.HwEntity
 	// The vNPU chip divide name. Like huawei.com/Ascend910-16c,huawei.com/Ascend910-8c and so on.
 	DivideKinds []string
@@ -84,9 +84,9 @@ type VNPUAllocInf struct {
 	ReqNPUType string
 	// NodeName preallocate node name.
 	NodeName string
-	// ReqCardName preallocate NPU chip name(Ascend910-0,Ascend710-0), for one job one pod one card.
+	// ReqCardName preallocate NPU chip name(Ascend910-0,Ascend310P-0), for one job one pod one card.
 	ReqCardName string
-	// AllocCardName preallocate NPU chip name(Ascend710-2c-100-1), for one job one pod one card.
+	// AllocCardName preallocate NPU chip name(Ascend310P-2c-100-1), for one job one pod one card.
 	AllocCardName string
 	// AllocFlag preallocate deal flag :after preprocess success.
 	AllocFlag bool

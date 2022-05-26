@@ -26,7 +26,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/util"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu/modulev710"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu/modulev310P"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu/modulev910"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu/vnpuutil"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
@@ -109,7 +109,7 @@ func (tp *VNPU) GetVNPUCacheFromCacheCM(ssn *framework.Session) error {
 	return nil
 }
 
-// PreHandleVNPU Only for abstract VNPU, not v910,v710 and so on.
+// PreHandleVNPU Only for abstract VNPU, not v910,v310P and so on.
 func (tp *VNPU) PreHandleVNPU(ssn *framework.Session) error {
 	if !vnpuutil.CheckVNPUSegmentEnable(ssn) {
 		klog.V(util.LogDebugLev).Info("PreHandleVNPU segment not enable.")
@@ -368,13 +368,13 @@ func (tp *VNPU) InitVNPUPluginByType(reqNpuType string) error {
 		tp.Attr = v910x8.ComVNPU
 		var s VNPUHandler = v910x8
 		tp.Plugin = s
-	case vnpuutil.PluginNameBy710VNPU:
-		v710 := &modulev710.ChipV710{}
-		if err := v710.InitVNPUPlugin(); err != nil {
+	case vnpuutil.PluginNameBy310PVNPU:
+		v310P := &modulev310P.ChipV310P{}
+		if err := v310P.InitVNPUPlugin(); err != nil {
 			break
 		}
-		tp.Attr = v710.ComVNPU
-		var f VNPUHandler = v710
+		tp.Attr = v310P.ComVNPU
+		var f VNPUHandler = v310P
 		tp.Plugin = f
 	default:
 		supErr := fmt.Errorf("not support plugin type :%s", reqNpuType)
@@ -469,12 +469,12 @@ func (tp *VNPU) AllocCacheVJobsIntoCache(jobs []*api.JobInfo, res map[string]int
 				return pluginErr
 			}
 			tp.Attr = v910Plugin.ComVNPU
-		case vnpuutil.PluginNameBy710VNPU:
-			v710Plugin := &modulev710.ChipV710{}
-			if pluginErr := v710Plugin.InitVNPUPlugin(); pluginErr != nil {
+		case vnpuutil.PluginNameBy310PVNPU:
+			v310PPlugin := &modulev310P.ChipV310P{}
+			if pluginErr := v310PPlugin.InitVNPUPlugin(); pluginErr != nil {
 				return pluginErr
 			}
-			tp.Attr = v710Plugin.ComVNPU
+			tp.Attr = v310PPlugin.ComVNPU
 		default:
 			klog.V(util.LogErrorLev).Infof("unknown VNPU chip type %s.", pluginName)
 			return nil

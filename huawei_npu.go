@@ -21,7 +21,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/card310x4"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/card910x2"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/chip310x4"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/chip710"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/chip310P"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/module910x8"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu/comvnpu"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
@@ -141,7 +141,7 @@ func HandlerStart() *plugin.ScheduleHandler {
 	scheduleHandler.RegisterNPUScheduler(module910x8.PluginName, module910x8.New)
 	scheduleHandler.RegisterNPUScheduler(card310x4.PluginName, card310x4.New)
 	scheduleHandler.RegisterNPUScheduler(chip310x4.PluginName, chip310x4.New)
-	scheduleHandler.RegisterNPUScheduler(chip710.PluginName, chip710.New)
+	scheduleHandler.RegisterNPUScheduler(chip310P.PluginName, chip310P.New)
 	scheduleHandler.RegisterNPUScheduler(comvnpu.PluginName, comvnpu.New)
 
 	return scheduleHandler

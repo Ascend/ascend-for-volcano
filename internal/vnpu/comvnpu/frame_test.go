@@ -23,7 +23,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/util"
 
 	util2 "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/util"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu/modulev710"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu/modulev310P"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu/modulev910"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu/vnpuutil"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
@@ -39,7 +39,7 @@ const (
 	constIntNum4         = 4
 	npuV910CardName16c   = "huawei.com/Ascend910-16c"
 	npuV910CardName2c    = "huawei.com/Ascend910-2c"
-	npuV710CardName2c    = "huawei.com/Ascend710-2c"
+	npuV310PCardName2c    = "huawei.com/Ascend310P-2c"
 	invalidResourceType  = "huawei.com/Ascend910-5c"
 	noPrefixResourceType = "no-prefix"
 	validNum             = 1000
@@ -225,11 +225,11 @@ func TestVnpuValidNPUJobFnInvalidReq(t *testing.T) {
 func TestVnpuValidNPUJobFnSuccess(t *testing.T) {
 	convey.Convey("Test job ValidNPUJobFn Success", t, func() {
 		vnpu := &VNPU{}
-		vnpu710 := &modulev710.ChipV710{}
-		if getErr := vnpu710.InitVNPUPlugin(); getErr != nil {
+		vnpu310P := &modulev310P.ChipV310P{}
+		if getErr := vnpu310P.InitVNPUPlugin(); getErr != nil {
 			return
 		}
-		vnpu.Attr = vnpu710.ComVNPU
+		vnpu.Attr = vnpu310P.ComVNPU
 		var tasks []*api.TaskInfo
 		uid := api.JobID("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx4")
 
@@ -237,9 +237,9 @@ func TestVnpuValidNPUJobFnSuccess(t *testing.T) {
 			tasks = append(tasks, api.NewTaskInfo(buildNPUPod(
 				VPodInfo{namespace: "default", groupName: "npu-group-7",
 					podName: "npu-test-3", nodeName: nodeName, reqCPUNum: "10", reqMem: "10Gi",
-					reqNPUType: npuV710CardName2c, reqNpuNum: "1"})))
+					reqNPUType: npuV310PCardName2c, reqNpuNum: "1"})))
 			job := api.NewJobInfo(uid, tasks...)
-			setJobResourceReq(job, npuV710CardName2c, float64(1))
+			setJobResourceReq(job, npuV310PCardName2c, float64(1))
 			test.AddTestJobPodGroup(job)
 			result := vnpu.ValidNPUJobFn(job)
 			convey.So(result, convey.ShouldBeNil)
@@ -268,11 +268,11 @@ func TestVnpuPreCheckNodeFnTaskError(t *testing.T) {
 		})
 		convey.Convey("PreCheckNodeFn() should return nil when task don't have selector and no resource requested", func() {
 			vnpu := &VNPU{}
-			vnpu710 := &modulev710.ChipV710{}
-			if getErr := vnpu710.InitVNPUPlugin(); getErr != nil {
+			vnpu310P := &modulev310P.ChipV310P{}
+			if getErr := vnpu310P.InitVNPUPlugin(); getErr != nil {
 				return
 			}
-			vnpu.Attr = vnpu710.ComVNPU
+			vnpu.Attr = vnpu310P.ComVNPU
 			pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-9",
 				podName: "npu-test-11'", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: "", reqNpuNum: ""})

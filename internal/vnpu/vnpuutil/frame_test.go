@@ -78,8 +78,8 @@ func buildGetVNPUCMData03TestCases(tmpPatche *gomonkey.Patches) getVNPUCMDataTes
 				"huawei.com/Ascend910-8c", "k8smaster", "Ascend910-5",
 				"Ascend910-8c-180-5", false, timeTmp},
 				{api.JobID("btg-test/mindx-dls-npu-8c"),
-					"huawei.com/Ascend710-2c", "ubuntu-05", "Ascend710-0",
-					"Ascend710-2c-100-0", false, timeTmp},
+					"huawei.com/Ascend310P-2c", "ubuntu-05", "Ascend310P-0",
+					"Ascend310P-2c-100-0", false, timeTmp},
 			}, CheckCode: checkCode},
 			cacheFunBefore: func() {
 				tmpPatche = gomonkey.ApplyFunc(time.Now,
