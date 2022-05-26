@@ -11,13 +11,15 @@ package plugin
 
 import (
 	"errors"
-	"k8s.io/klog"
 	"reflect"
+
+	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
-	npuapi "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/npuinterface"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/rescheduling"
+
+	npuapi "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/api"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/rescheduling"
 )
 
 // NPUBuilder PluginBuilder plugin management
@@ -69,8 +71,6 @@ type HwNPUSchedulerPlugin interface {
 type ScheduleHandler struct {
 	// for object
 	HuaweiNPUs map[string]HwNPUSchedulerPlugin
-	// for object
-	PluginEntity map[string]HwEntity
 	// For object functions
 	InitNodesNPUAllocTopologyFns map[string]npuapi.InitNodesNPUTopologyFn
 	// Handle NPU fault chip/node functions.
@@ -83,11 +83,13 @@ type ScheduleHandler struct {
 	VJobRunHandleFns map[string]npuapi.VNPUJobRunningHandleFn
 }
 
+// AddPreHandleVNPU Add preHandle VNPU function at adapter pattern.
 func (hwNPU *ScheduleHandler) AddPreHandleVNPU(pluginName string, fn npuapi.PreHandleVNPUFn) {
 	hwNPU.PreHandleVNPUFns[pluginName] = fn
 	klog.V(logDebugLev).Infof("PreHandleVNPUFns :%v add.", pluginName)
 }
 
+// AddVJobRunHandle Add vJob run handle function at adapter pattern.
 func (hwNPU *ScheduleHandler) AddVJobRunHandle(pluginName string, fn npuapi.VNPUJobRunningHandleFn) {
 	hwNPU.VJobRunHandleFns[pluginName] = fn
 	klog.V(logDebugLev).Infof("VJobRunHandle :%v add.", pluginName)
@@ -113,16 +115,40 @@ func (hwNPU *ScheduleHandler) AddClusterNodePredicateFn(pluginName string, fn np
 
 // RegisterNPUScheduler register the plugin
 func (hwNPU *ScheduleHandler) RegisterNPUScheduler(name string, pc NPUBuilder) {
-	temp := pc(name)
-	hwNPU.HuaweiNPUs[name] = temp
-	en, ok := temp.(*HwEntity)
-	if !ok {
-		klog.V(logErrorLev).Infof("NPU plugin entity [%v] register failed.", name)
+	if _, ok := hwNPU.HuaweiNPUs[name]; ok {
+		klog.V(logInfoLev).Infof("NPU Scheduler[%v] has been registered before.", name)
 		return
 	}
 
-	hwNPU.PluginEntity[name] = *en
+	temp := pc(name)
+	hwNPU.HuaweiNPUs[name] = temp
 	klog.V(logInfoLev).Infof("NPU Scheduler[%v] registered.", name)
+	// for npu scheduler start.
+	temp.OnHandlerStart(hwNPU)
+}
+
+// UnRegisterNPUScheduler unRegister the plugin
+func (hwNPU *ScheduleHandler) UnRegisterNPUScheduler(name string) error {
+	if hwNPU == nil {
+		return errors.New("nil parameters")
+	}
+	if _, ok := hwNPU.HuaweiNPUs[name]; ok {
+		hwNPU.HuaweiNPUs[name] = nil
+		delete(hwNPU.HuaweiNPUs, name)
+		klog.V(logErrorLev).Infof("NPU Scheduler[%v] delete.", name)
+	}
+	klog.V(logDebugLev).Infof("NPU Scheduler[%v] unRegistered.", name)
+	return nil
+}
+
+// IsPluginRegistered Determine if the plug-in is registered.
+func (hwNPU *ScheduleHandler) IsPluginRegistered(name string) bool {
+	if hwNPU == nil {
+		klog.V(logErrorLev).Infof("IsPluginRegistered nil parameters.")
+		return false
+	}
+	_, ok := hwNPU.HuaweiNPUs[name]
+	return ok
 }
 
 // GetNPUScheduler get the NPU scheduler by name
@@ -146,12 +172,12 @@ func (hwNPU *ScheduleHandler) InitNPUSession(ssn *framework.Session) {
 	}
 	// Handle VNPU 910,710
 	if err := hwNPU.preHandleVNPUFn(ssn); err != nil {
-		klog.V(logErrorLev).Infof("preprocess virtual NPU :%v .", err)
+		klog.V(logDebugLev).Infof("preprocess virtual NPU :%v.", err)
 	}
 }
 
 func (hwNPU *ScheduleHandler) getHWPluginByTask(task *api.TaskInfo) (HwNPUSchedulerPlugin, error) {
-	var err = error(nil)
+	var err = errors.New("nil plugin")
 	var hwNPUPlugin HwNPUSchedulerPlugin
 
 	for _, myNPUPlugin := range hwNPU.HuaweiNPUs {
@@ -271,6 +297,7 @@ func (hwNPU *ScheduleHandler) getNPUPlugin(obj interface{}) HwNPUSchedulerPlugin
 	return nil
 }
 
+// BeforeCloseHandler  the function handler before session close.
 func (hwNPU *ScheduleHandler) BeforeCloseHandler(ssn *framework.Session) {
 	// deal fault ReScheduler
 	if err := rescheduling.WriteReSchedulerDataToCM(ssn, rescheduling.ReSchedulerCache); err != nil {

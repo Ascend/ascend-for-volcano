@@ -4,17 +4,18 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 
 /*
 
-Package ascendtest is using for HuaWei Ascend pin scheduling test.
+Package test is using for HuaWei Ascend pin scheduling test.
 
 */
-package ascendtest
+package test
 
 import (
 	"fmt"
-	v1 "k8s.io/api/core/v1"
+	"time"
+
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"time"
 	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 )
@@ -28,7 +29,7 @@ func SetTestJobPodGroupStatus(job *api.JobInfo, status scheduling.PodGroupPhase)
 
 // AddTestJobPodGroup set test job pg.
 func AddTestJobPodGroup(job *api.JobInfo) {
-	var minRes = make(v1.ResourceList, constIntNum3)
+	var minRes = make(v1.ResourceList, npuIndex3)
 	if job == nil || job.PodGroup != nil {
 		return
 	}
@@ -55,14 +56,14 @@ func AddTestJobPodGroup(job *api.JobInfo) {
 }
 
 // AddTestJobLabel add test job's label.
-func AddTestJobLabel(job *api.JobInfo, key, value string) {
+func AddTestJobLabel(job *api.JobInfo, labelName, value string) {
 	if job.PodGroup == nil {
 		AddTestJobPodGroup(job)
 	}
 	if job.PodGroup.Labels == nil {
-		job.PodGroup.Labels = make(map[string]string, constIntNum3)
+		job.PodGroup.Labels = make(map[string]string, npuIndex3)
 	}
-	job.PodGroup.Labels = map[string]string{key: value}
+	job.PodGroup.Labels = map[string]string{labelName: value}
 }
 
 // FakeNormalTestJob make normal test job.
@@ -89,7 +90,7 @@ func SetFakeJobRequestSource(fJob *api.JobInfo, name string, value int) {
 	AddTestJobPodGroup(fJob)
 	SetTestJobPodGroupStatus(fJob, scheduling.PodGroupPending)
 
-	var minRes = make(v1.ResourceList, constIntNum3)
+	var minRes = make(v1.ResourceList, npuIndex3)
 	minRes[v1.ResourceName(name)] = resource.MustParse(fmt.Sprintf("%f", float64(value)))
 	fJob.PodGroup.Spec.MinResources = &minRes
 	if fJob.TotalRequest == nil {

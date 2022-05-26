@@ -4,15 +4,15 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 
 /*
 
-Package ascendtest is using for HuaWei Ascend pin scheduling test.
+Package test is using for HuaWei Ascend pin scheduling test.
 
 */
-package ascendtest
+package test
 
-import v1 "k8s.io/api/core/v1"
+import "k8s.io/api/core/v1"
 
 const (
-	constIntNum3 = 3
+	npuIndex3 = 3
 )
 
 // NPUPod test NPU pod struct

@@ -11,11 +11,12 @@ package main
 
 import (
 	"volcano.sh/volcano/pkg/scheduler/framework"
+
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 )
 
 // PluginName use in frame
-var PluginName = "volcano-npu-v2.0.4"
+var PluginName = "volcano-npu-v3.0.0"
 
 const (
 	logErrorLev = 1

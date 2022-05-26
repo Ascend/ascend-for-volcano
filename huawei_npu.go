@@ -17,14 +17,14 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
-	npuapi "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/npuinterface"
+	npuapi "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/api"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/card310x4"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/card910x2"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/chip310x4"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/chip710"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/module910x8"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu/comvnpu"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/card310x4"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/card910x2"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/chip310x4"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/chip710"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/module910x8"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/scheduler-strategy/vnpu/comvnpu"
 )
 
 var sHandler *plugin.ScheduleHandler
@@ -43,6 +43,7 @@ func init() {
 	sHandler = HandlerStart()
 }
 
+// checkSession check the ssn's parameters
 func checkSession(ssn *framework.Session) error {
 	if ssn == nil {
 		klog.V(logErrorLev).Infof("%s OnSessionOpen got a null session hence doing nothing.", PluginName)
@@ -125,7 +126,6 @@ func (tp *huaweiNPUPlugin) OnSessionClose(ssn *framework.Session) {
 func HandlerStart() *plugin.ScheduleHandler {
 	scheduleHandler := &plugin.ScheduleHandler{
 		HuaweiNPUs:       map[string]plugin.HwNPUSchedulerPlugin{},
-		PluginEntity:     map[string]plugin.HwEntity{},
 		PreHandleVNPUFns: map[string]npuapi.PreHandleVNPUFn{},
 		VJobRunHandleFns: map[string]npuapi.VNPUJobRunningHandleFn{},
 		// for object funcs
@@ -143,10 +143,6 @@ func HandlerStart() *plugin.ScheduleHandler {
 	scheduleHandler.RegisterNPUScheduler(chip310x4.PluginName, chip310x4.New)
 	scheduleHandler.RegisterNPUScheduler(chip710.PluginName, chip710.New)
 	scheduleHandler.RegisterNPUScheduler(comvnpu.PluginName, comvnpu.New)
-	// for npu scheduler start.
-	for _, huaweiNPU := range scheduleHandler.HuaweiNPUs {
-		huaweiNPU.OnHandlerStart(scheduleHandler)
-	}
 
 	return scheduleHandler
 }
