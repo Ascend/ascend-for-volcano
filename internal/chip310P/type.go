@@ -17,7 +17,7 @@ const (
 	huaweiArchX86 = "huawei-x86"
 
 	// PluginName the chip310P's plugin name.
-	PluginName         = "A310P"
+	PluginName          = "A310P"
 	a310PNPUChipName    = "huawei.com/Ascend310P"
 	a310PNPUCardPreName = "Ascend310P-"
 	a310PFaultNPUName   = "huawei.com/Ascend310P-Unhealthy"

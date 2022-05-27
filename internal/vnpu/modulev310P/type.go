@@ -15,7 +15,7 @@ import (
 
 const (
 	// PluginName the CardV310Px2's plugin name.
-	PluginName        = vnpuutil.PluginNameBy310PVNPU
+	PluginName         = vnpuutil.PluginNameBy310PVNPU
 	npu310PCardName    = vnpuutil.NPU310PCardName
 	npuV310PCardName1c = "huawei.com/Ascend310P-1c"
 	npuV310PCardName2c = "huawei.com/Ascend310P-2c"

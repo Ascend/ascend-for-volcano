@@ -39,7 +39,7 @@ const (
 	constIntNum4         = 4
 	npuV910CardName16c   = "huawei.com/Ascend910-16c"
 	npuV910CardName2c    = "huawei.com/Ascend910-2c"
-	npuV310PCardName2c    = "huawei.com/Ascend310P-2c"
+	npuV310PCardName2c   = "huawei.com/Ascend310P-2c"
 	invalidResourceType  = "huawei.com/Ascend910-5c"
 	noPrefixResourceType = "no-prefix"
 	validNum             = 1000
