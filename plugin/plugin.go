@@ -170,10 +170,6 @@ func (hwNPU *ScheduleHandler) InitNPUSession(ssn *framework.Session) {
 	if err := hwNPU.initHandleFaultNPUInf(ssn); err != nil {
 		klog.V(logDebugLev).Infof("init handle fault NPU :%v .", err)
 	}
-	// Handle VNPU 910,710
-	if err := hwNPU.preHandleVNPUFn(ssn); err != nil {
-		klog.V(logDebugLev).Infof("preprocess virtual NPU :%v.", err)
-	}
 }
 
 func (hwNPU *ScheduleHandler) getHWPluginByTask(task *api.TaskInfo) (HwNPUSchedulerPlugin, error) {
