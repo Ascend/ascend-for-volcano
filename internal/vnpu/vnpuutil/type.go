@@ -66,7 +66,7 @@ const (
 
 // ComVNPU common type
 type ComVNPU struct {
-	// vNPU chip name. Like cardV910x2,chip310P,moduleV910x8 and so on.
+	// vNPU chip name. Like cardV910x2,chip310p,moduleV910x8 and so on.
 	plugin.HwEntity
 	// The vNPU chip divide name. Like huawei.com/Ascend910-16c,huawei.com/Ascend910-8c and so on.
 	DivideKinds []string

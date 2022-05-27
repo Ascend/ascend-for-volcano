@@ -4,10 +4,10 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 
 /*
 
-Package modulev310P is using for virtual HuaWei 310P chips schedule.
+Package modulev310p is using for virtual HuaWei 310P chips schedule.
 
 */
-package modulev310P
+package modulev310p
 
 import (
 	"errors"

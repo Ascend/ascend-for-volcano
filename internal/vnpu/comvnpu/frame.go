@@ -26,7 +26,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/util"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu/modulev310P"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu/modulev310p"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu/modulev910"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu/vnpuutil"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
@@ -369,7 +369,7 @@ func (tp *VNPU) InitVNPUPluginByType(reqNpuType string) error {
 		var s VNPUHandler = v910x8
 		tp.Plugin = s
 	case vnpuutil.PluginNameBy310PVNPU:
-		v310P := &modulev310P.ChipV310P{}
+		v310P := &modulev310p.ChipV310P{}
 		if err := v310P.InitVNPUPlugin(); err != nil {
 			break
 		}
@@ -470,7 +470,7 @@ func (tp *VNPU) AllocCacheVJobsIntoCache(jobs []*api.JobInfo, res map[string]int
 			}
 			tp.Attr = v910Plugin.ComVNPU
 		case vnpuutil.PluginNameBy310PVNPU:
-			v310PPlugin := &modulev310P.ChipV310P{}
+			v310PPlugin := &modulev310p.ChipV310P{}
 			if pluginErr := v310PPlugin.InitVNPUPlugin(); pluginErr != nil {
 				return pluginErr
 			}
