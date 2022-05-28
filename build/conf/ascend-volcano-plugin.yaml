@@ -47,10 +47,8 @@ compile:
   output:
     files:
       include:
-        - sed:
-            option: "-i"
-            srcstr: "s/name: volcano-npu-.*/name: volcano-npu_{{ version }}_linux-{{ systemEnv.processor }}/"
-            curfile: "{{BASE_PATH}}/output/volcano-*.yaml"
+        - commands:
+            - command: 'sed -i "s/name: volcano-npu-.*/name: ${REL_NPU_PLUGIN}/" "${BASE_PATH}"/output/volcano-*.yaml'
         - mode:
             src:
               - "{{ BASE_PATH }}/output/*.so"
