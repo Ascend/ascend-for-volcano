@@ -27,7 +27,7 @@ then
   echo 'Failed' > $file_input
   exit 1
 else
-  gocov convert cov.out | gocov-html >"$file_detail_output"
+  gocov convert cov.out | gocov-h tml >"$file_detail_output"
   gotestsum --junitfile unit-tests.xml "${GOPATH}"/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/...
 fi
 

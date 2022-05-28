@@ -45,6 +45,10 @@ compile:
   output:
     files:
       include:
+        - sed:
+            option: "-i"
+            srcstr: "s/name: volcano-npu-.*/name: volcano-npu_{{ version }}_linux-{{ systemEnv.processor }}/"
+            curfile: "{{BASE_PATH}}/output/volcano-*.yaml"
         - mode:
             src:
               - "{{ BASE_PATH }}/output/*.so"
