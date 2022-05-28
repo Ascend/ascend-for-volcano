@@ -315,7 +315,7 @@ Affinity scheduling of Huawei Ascend AI Processors is based on the plugin mechan
 │   │   ├── model.go
 │   │   ├── node.go
 │   │   └── type.go
-│   ├── chip310P                                            # Directory of common code for Ascend 310P AI Processor scheduling
+│   ├── chip310p                                            # Directory of common code for Ascend 310P AI Processor scheduling
 │   │   ├── frame.go
 │   │   └── type.go
 │   ├── common                                             # Directory of common code for vNPU scheduling
@@ -468,7 +468,7 @@ For details, see "Installation and Deployment \> Installing MindX DL \> Installi
 </td>
 <td class="cellrowborder" valign="top" width="33.33333333333333%" headers="mcps1.1.4.1.2 "><p id="p11476901010"><a name="p11476901010"></a><a name="p11476901010"></a>2022-01-15</p>
 </td>
-<td class="cellrowborder" valign="top" width="33.33333333333333%" headers="mcps1.1.4.1.3 "><a name="ul7682144015113"></a><a name="ul7682144015113"></a><ul id="ul7682144015113"><li>Added the support for dying gasp.</li><li>Added the support for scheduling of Ascend 710 AI processors.</li><li>Fixed some issues.</li></ul>
+<td class="cellrowborder" valign="top" width="33.33333333333333%" headers="mcps1.1.4.1.3 "><a name="ul7682144015113"></a><a name="ul7682144015113"></a><ul id="ul7682144015113"><li>Added the support for dying gasp.</li><li>Added the support for scheduling of Ascend 310P AI processors.</li><li>Fixed some issues.</li></ul>
 </td>
 </tr>
 <tr id="row1851165074015"><td class="cellrowborder" valign="top" width="33.33333333333333%" headers="mcps1.1.4.1.1 "><p id="p135216508401"><a name="p135216508401"></a><a name="p135216508401"></a>v2.0.3</p>

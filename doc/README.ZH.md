@@ -315,7 +315,7 @@
 │   │   ├── model.go
 │   │   ├── node.go
 │   │   └── type.go
-│   ├── chip310P                                            # 310P 芯片调度公共代码目录
+│   ├── chip310p                                            # 310P 芯片调度公共代码目录
 │   │   ├── frame.go
 │   │   └── type.go
 │   ├── common                                             # VNPU调度公共代码目录
