@@ -315,7 +315,7 @@
 │   │   ├── model.go
 │   │   ├── node.go
 │   │   └── type.go
-│   ├── chip710                                            # 710 芯片调度公共代码目录
+│   ├── chip310p                                            # 310P 芯片调度公共代码目录
 │   │   ├── frame.go
 │   │   └── type.go
 │   ├── common                                             # VNPU调度公共代码目录
@@ -469,7 +469,7 @@
 </td>
 <td class="cellrowborder" valign="top" width="29.94299429942994%" headers="mcps1.1.4.1.2 "><p id="p11476901010"><a name="p11476901010"></a><a name="p11476901010"></a>2022-01-15</p>
 </td>
-<td class="cellrowborder" valign="top" width="43.394339433943394%" headers="mcps1.1.4.1.3 "><a name="ul7682144015113"></a><a name="ul7682144015113"></a><ul id="ul7682144015113"><li>支持临终遗言特性。</li><li>支持710调度。</li><li>修复若干问题。</li></ul>
+<td class="cellrowborder" valign="top" width="43.394339433943394%" headers="mcps1.1.4.1.3 "><a name="ul7682144015113"></a><a name="ul7682144015113"></a><ul id="ul7682144015113"><li>支持临终遗言特性。</li><li>支持310P调度。</li><li>修复若干问题。</li></ul>
 </td>
 </tr>
 <tr id="row1851165074015"><td class="cellrowborder" valign="top" width="26.662666266626662%" headers="mcps1.1.4.1.1 "><p id="p135216508401"><a name="p135216508401"></a><a name="p135216508401"></a>v2.0.3</p>

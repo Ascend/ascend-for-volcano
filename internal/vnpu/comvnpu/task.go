@@ -100,8 +100,8 @@ func (tp *VNPU) GetVTaskReqNPUType(vTask *api.TaskInfo) (string, error) {
 func (tp *VNPU) getVNPUPluginNameByReqType(reqNpuType string) string {
 	var pluginName string
 	switch reqNpuType {
-	case vnpuutil.NPU710CardName:
-		pluginName = vnpuutil.PluginNameBy710VNPU
+	case vnpuutil.NPU310PCardName:
+		pluginName = vnpuutil.PluginNameBy310PVNPU
 	case vnpuutil.NPU910CardName:
 		pluginName = vnpuutil.PluginNameBy910VNPU
 	default:

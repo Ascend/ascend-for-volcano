@@ -101,7 +101,7 @@ func (tp *VNPU) isNewVNPUJob(job *api.JobInfo) bool {
 	return true
 }
 
-// GetNPUTypeByResourceName get vJob vnpu source name, like huawei.com/Ascend710-4c.
+// GetNPUTypeByResourceName get vJob vnpu source name, like huawei.com/Ascend310P-4c.
 func (tp *VNPU) GetNPUTypeByResourceName(tmp string) (string, error) {
 	split := strings.Split(tmp, "-")
 	if len(split) == 1 {
@@ -296,8 +296,8 @@ func (tp *VNPU) GetPluginNameByJobInfo(job *api.JobInfo) (string, error) {
 	var pluginName string
 	var pluginErr error
 	switch reqNpuType {
-	case vnpuutil.NPU710CardName:
-		pluginName = vnpuutil.PluginNameBy710VNPU
+	case vnpuutil.NPU310PCardName:
+		pluginName = vnpuutil.PluginNameBy310PVNPU
 	case vnpuutil.NPU910CardName:
 		pluginName = vnpuutil.PluginNameBy910VNPU
 	default:
