@@ -34,6 +34,8 @@ compile:
       CC: "/usr/local/musl/bin/musl-gcc"
       CGO_ENABLED: "1"
     files:
+      exclude:
+        - remove: [ "{{ BASE_PATH }}/output/*.so" ]
   process:
     language: go
     compilePath: "{{ BASE_PATH }}/output"

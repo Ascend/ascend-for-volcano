@@ -40,7 +40,7 @@ compile:
     ]
   output:
     files:
-      input:
+      include:
         - mode:
             src:
               - "{{ BASE_PATH }}/output/vc-controller-manager"
