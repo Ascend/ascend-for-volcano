@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+    <!-- service-->
+	<remote name="codehub_y" fetch="ssh://git@codehub-dg-y.huawei.com:2222"/>
+    <project remote="codehub_y" name="FrameCommon/opensource/controller_manager.git" path="controller_manager" revision="master" groups="controller_manager"/>
+    <project remote="codehub_y" name="FrameCommon/opensource/scheduler.git" path="scheduler" revision="master" groups="scheduler"/>
+</manifest>

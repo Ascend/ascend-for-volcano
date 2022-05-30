@@ -1,0 +1,44 @@
+component: scheduler
+product: MindXDL
+DATE:
+systemEnv:
+  - workspace
+  - DATE
+BASE_PATH: "{{ systemEnv.workspace }}/go/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/"
+CMD_PATH: "{{ systemEnv.workspace }}/go/src/volcano.sh/volcano/cmd/"
+BASE_VER: v1.4.0
+compile:
+  input:
+    envVariables:
+      CGO_CFLAGS: "-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv"
+      CGO_CPPFLAGS: "-fstack-protector-strong -D_FORTIFY_SOURCE=2 -O2 -fPIC -ftrapv"
+      CGO_ENABLED: "1"
+      CC: "/usr/local/musl/bin/musl-gcc"
+    files:
+      exclude:
+        - remove: "{{ BASE_PATH }}/output/vc-scheduler"
+  process:
+    language: go
+    compilePath: "{{ BASE_PATH }}/output"
+    parameters: [
+      ["buildmode", "pie"],
+      ["ldflags", '-s -linkmode=external -extldflags=-Wl,-z,now -X "volcano.sh/volcano/pkg/version.Built={{ systemEnv.DATE }}" -X "volcano.sh/volcano/pkg/version.Version={{ BASE_VER }}"'],
+      ["o", "vc-scheduler {{ CMD_PATH }}/scheduler"]
+    ]
+  output:
+    files:
+      include:
+        - mode:
+            src:
+              - "{{ BASE_PATH }}/output/vc-scheduler"
+            mode: 500
+
+test:
+  input:
+  process:
+    type: ut
+    testTool: shell
+    execdir: "{{systemEnv.workspace}}/{{component}}/build"
+    parameters: ""
+    script: "test.sh"
+  output:
