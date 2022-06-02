@@ -11,6 +11,8 @@ package test
 
 import (
 	"fmt"
+	"reflect"
+	"strconv"
 	"time"
 
 	"k8s.io/api/core/v1"
@@ -56,14 +58,14 @@ func AddTestJobPodGroup(job *api.JobInfo) {
 }
 
 // AddTestJobLabel add test job's label.
-func AddTestJobLabel(job *api.JobInfo, labelName, value string) {
+func AddTestJobLabel(job *api.JobInfo, labelKey, labelValue string) {
 	if job.PodGroup == nil {
 		AddTestJobPodGroup(job)
 	}
 	if job.PodGroup.Labels == nil {
 		job.PodGroup.Labels = make(map[string]string, npuIndex3)
 	}
-	job.PodGroup.Labels = map[string]string{labelName: value}
+	job.PodGroup.Labels = map[string]string{labelKey: labelValue}
 }
 
 // FakeNormalTestJob make normal test job.
@@ -98,4 +100,47 @@ func SetFakeJobRequestSource(fJob *api.JobInfo, name string, value int) {
 		fJob.TotalRequest = reqResource
 	}
 	return
+}
+
+// UpdateFakeJobRequestSource Update job require on total,task.
+func UpdateFakeJobRequestSource(fJob *api.JobInfo, name string, value int) {
+	if fJob == nil {
+		return
+	}
+	var minRes = make(v1.ResourceList, npuIndex3)
+	minRes[v1.ResourceName(name)] = resource.MustParse(fmt.Sprintf("%f", float64(value)))
+	if fJob.TotalRequest == nil || reflect.DeepEqual(fJob.TotalRequest, api.EmptyResource()) {
+		reqResource := api.NewResource(minRes)
+		fJob.TotalRequest = reqResource
+	}
+}
+
+func setFakeJobSelector(fJob *api.JobInfo, selectorKey, selectorValue string) {
+	if fJob.Tasks == nil || len(fJob.Tasks) == 0 {
+		return
+	}
+	for _, task := range fJob.Tasks {
+		setFakePodLabel(task.Pod, selectorKey, selectorValue)
+	}
+}
+
+func setFakeJobResRequest(fJob *api.JobInfo, name v1.ResourceName, need string) {
+	resources := v1.ResourceList{}
+	AddResource(resources, name, need)
+	if fJob.Tasks == nil || len(fJob.Tasks) == 0 {
+		return
+	}
+	for _, task := range fJob.Tasks {
+		task.Resreq = api.NewResource(resources)
+	}
+}
+
+// BuildFakeJobWithSelectorAndSource build fake job with selector and request source
+func BuildFakeJobWithSelectorAndSource(jobName, selectorKey, selectorValue, npuName string, npuNum int) *api.JobInfo {
+	job := FakeNormalTestJob(jobName, 1)
+	setFakeJobSelector(job, selectorKey, selectorValue)
+	UpdateFakeJobRequestSource(job, npuName, npuNum)
+	valueString := strconv.Itoa(npuNum)
+	setFakeJobResRequest(job, v1.ResourceName(npuName), valueString)
+	return job
 }
