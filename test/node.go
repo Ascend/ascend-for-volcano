@@ -23,7 +23,6 @@ import (
 // SetNPUNodeLabel set NPU node label.
 func SetNPUNodeLabel(node *v1.Node, labelKey string, labelValue string) {
 	if labelValue == "" {
-		delete(node.Labels, labelKey)
 		return
 	}
 
@@ -35,12 +34,12 @@ func SetNPUNodeLabel(node *v1.Node, labelKey string, labelValue string) {
 }
 
 // SetTestNPUNodeOther set NPU node other for add npu resource.
-func SetTestNPUNodeOther(node *api.NodeInfo, otherName, value string) {
+func SetTestNPUNodeOther(node *api.NodeInfo, otherKey, otherValue string) {
 	if node.Others == nil {
 		node.Others = make(map[string]interface{}, npuIndex3)
 	}
 
-	node.Others[otherName] = value
+	node.Others[otherKey] = otherValue
 }
 
 // SetTestNPUNodeAnnotation set NPU node annotation for add fault npu resource.
@@ -110,4 +109,25 @@ func SetFakeNodeIdleSource(nodeInf *api.NodeInfo, name string, value int) {
 	idle := api.Resource{ScalarResources: map[v1.ResourceName]float64{
 		v1.ResourceName(name): float64(value) * util.NPUHex}}
 	nodeInf.Idle = &idle
+}
+
+// BuildNodeWithFakeOther build node with fake node other
+func BuildNodeWithFakeOther(nodeName, name string, value string) *api.NodeInfo {
+	nodeInfo := FakeNormalTestNode(nodeName)
+	if value != "" {
+		SetTestNPUNodeOther(nodeInfo, name, value)
+	}
+	return nodeInfo
+}
+
+// BuildUnstableNode build unstable node
+func BuildUnstableNode(nodeName, resourceName, otherNpuNum string, idleNpuNum int) *api.NodeInfo {
+	nodeInfo := FakeNormalTestNode(nodeName)
+	if otherNpuNum != "" {
+		SetTestNPUNodeOther(nodeInfo, resourceName, otherNpuNum)
+	}
+	if idleNpuNum != 0 {
+		SetFakeNodeIdleSource(nodeInfo, resourceName, idleNpuNum)
+	}
+	return nodeInfo
 }

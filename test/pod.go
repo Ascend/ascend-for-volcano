@@ -48,21 +48,21 @@ func BuildNPUPod(pod NPUPod) *v1.Pod {
 }
 
 // SetTestNPUPodAnnotation set NPU pod annotation for add pod use npu resource.
-func SetTestNPUPodAnnotation(pod *v1.Pod, annoName, value string) {
+func SetTestNPUPodAnnotation(pod *v1.Pod, annotationKey string, annotationValue string) {
 	if pod.Annotations == nil {
 		pod.Annotations = make(map[string]string, npuIndex3)
 	}
 
-	pod.Annotations[annoName] = value
+	pod.Annotations[annotationKey] = annotationValue
 }
 
 // SetTestNPUPodSelector set NPU pod selector.
-func SetTestNPUPodSelector(pod *v1.Pod, selectorName, value string) {
+func SetTestNPUPodSelector(pod *v1.Pod, selectorKey, selectorValue string) {
 	if pod.Spec.NodeSelector == nil {
 		pod.Spec.NodeSelector = make(map[string]string, npuIndex3)
 	}
 
-	pod.Spec.NodeSelector[selectorName] = value
+	pod.Spec.NodeSelector[selectorKey] = selectorValue
 }
 
 // FakeNormalTestTasks fake normal test tasks.
@@ -79,4 +79,29 @@ func FakeNormalTestTasks(num int) []*api.TaskInfo {
 	}
 
 	return tasks
+}
+
+// BuildPodWithReqResource build pod with request resource
+func BuildPodWithReqResource(resourceName v1.ResourceName, resourceNum string) *v1.Pod {
+	resource := v1.ResourceList{}
+	AddResource(resource, resourceName, resourceNum)
+	return BuildNPUPod(NPUPod{ReqSource: resource})
+}
+
+func setFakePodLabel(CPod *v1.Pod, selectorKey, selectorValue string) {
+	if CPod.Labels == nil {
+		CPod.Labels = make(map[string]string)
+	}
+	if selectorValue == "" {
+		CPod.Labels = make(map[string]string)
+		return
+	}
+	CPod.Labels[selectorKey] = selectorValue
+}
+
+// BuildTestTaskWithAnnotation build test task with annotation
+func BuildTestTaskWithAnnotation(npuName, npuNum, npuAllocate string) *api.TaskInfo {
+	pod := BuildPodWithReqResource(v1.ResourceName(npuName), npuNum)
+	SetTestNPUPodAnnotation(pod, npuName, npuAllocate)
+	return api.NewTaskInfo(pod)
 }
