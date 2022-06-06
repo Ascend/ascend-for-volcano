@@ -84,7 +84,7 @@ func UpdateConfigMap(k8s kubernetes.Interface, cm *v1.ConfigMap, cmName, nameSpa
 
 	if _, updateErr := k8s.CoreV1().ConfigMaps(cm.ObjectMeta.Namespace).Update(context.TODO(), cm,
 		metav1.UpdateOptions{}); updateErr != nil {
-		return fmt.Errorf("unable to update ConfigMap:%v", err)
+		return fmt.Errorf("unable to update ConfigMap:%v", updateErr)
 	}
 
 	return nil
