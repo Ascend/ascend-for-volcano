@@ -385,10 +385,10 @@ func WriteJobFaultRankIDIntoCM(ssn *framework.Session, job *api.JobInfo, cmData 
 		},
 		Data: cmData,
 	}
-	klog.V(util.LogErrorLev).Infof("WriteJobFaultRankIDIntoCacheAndCM cm is : %v/%v.",
+	klog.V(util.LogErrorLev).Infof("WriteJobFaultRankIDIntoCM cm is : %v/%v.",
 		faultRankIdsCM.Namespace, faultRankIdsCM.Name)
-	if err := util.CreateOrUpdateConfigMap(ssn.KubeClient(), faultRankIdsCM, cmName, cmNameSpace); err != nil {
-		klog.V(util.LogErrorLev).Infof("WriteJobFaultRankIDIntoCacheAndCM : %v.", err)
+	if err := util.UpdateConfigMap(ssn.KubeClient(), faultRankIdsCM, cmName, cmNameSpace); err != nil {
+		klog.V(util.LogErrorLev).Infof("WriteJobFaultRankIDIntoCM : %v.", err)
 		return err
 	}
 	return nil

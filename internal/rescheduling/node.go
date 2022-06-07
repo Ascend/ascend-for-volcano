@@ -269,10 +269,6 @@ func synJobRankIdsCache(ssn *framework.Session, tmpValue interface{}) error {
 		_, ok := ssn.Jobs[jobID]
 		if !ok {
 			klog.V(util.LogInfoLev).Infof("delete %s from jobRankIds %+v due to not existence.", jobID, jobRankIds)
-			// only job not existence can delete cm
-			if err := deleteRedundantRankIDCM(ssn, value.NameSpace, jobID); err != nil {
-				klog.V(util.LogErrorLev).Infof("synJobRankIdsCache delete RankIdCM %v.", err)
-			}
 			continue
 		}
 		newJobRankIds[jobID] = value
