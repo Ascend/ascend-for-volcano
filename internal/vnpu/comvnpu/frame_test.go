@@ -65,20 +65,6 @@ type VPodInfo struct {
 	reqNpuNum  string
 }
 
-// TestVnpuIsMyTask
-func TestVnpuIsMyTask(t *testing.T) {
-	convey.Convey("Test IsMyTask in commonv910", t, func() {
-		vnpu := &VNPU{}
-		convey.Convey("IsMyTask() should return error since it's not implemented", func() {
-			pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-4p", podName: "npu-4p",
-				nodeName: nodeName, reqCPUNum: "10", reqMem: "20Gi", reqNPUType: npuV910CardName16c, reqNpuNum: "4"})
-			task := api.NewTaskInfo(pod)
-			result := vnpu.IsMyTask(task)
-			convey.So(result, convey.ShouldBeNil)
-		})
-	})
-}
-
 // TestVnpuIsMyNode
 func TestVnpuIsMyNode(t *testing.T) {
 	convey.Convey("Test IsMyNode in commonv910", t, func() {
@@ -506,30 +492,6 @@ func TestVnpuGetAllocatedNPUFromTopologyFn(t *testing.T) {
 	})
 }
 
-// TestVnpuSetNPUTopologyToPodFn
-func TestVnpuSetNPUTopologyToPodFn(t *testing.T) {
-	convey.Convey("Test SetNPUTopologyToPodFn", t, func() {
-		vnpu := &VNPU{}
-		pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-17",
-			podName: "npu-test-19", nodeName: nodeName, reqCPUNum: "10", reqMem: "10Gi",
-			reqNPUType: npuV910CardName16c, reqNpuNum: "1"})
-		task := api.NewTaskInfo(pod)
-
-		convey.Convey("SetNPUTopologyToPodFn() should return error when top isn't of slice of string", func() {
-			var top []int
-			result := vnpu.SetNPUTopologyToPodFn(task, top)
-			convey.So(result, convey.ShouldBeError)
-		})
-		convey.Convey("SetNPUTopologyToPodFn() should write top into pod annotation", func() {
-			var top []int
-			result := vnpu.SetNPUTopologyToPodFn(task, top)
-			convey.So(result, convey.ShouldNotBeNil)
-			topFromPod := task.Pod.Annotations[npuV910CardName2c]
-			convey.So(topFromPod, convey.ShouldEqual, "")
-		})
-	})
-}
-
 // TestVnpuUpdateNPUNodeUsedCardFn
 func TestVnpuUpdateNPUNodeUsedCardFn(t *testing.T) {
 	convey.Convey("Test UpdateNPUNodeUsedCardFn", t, func() {
@@ -562,45 +524,6 @@ func TestVnpuUpdateNPUNodeUsedCardFn(t *testing.T) {
 			convey.So(result, convey.ShouldNotBeNil)
 			expectResult := "Ascend910-16c-111-0,Ascend910-16c-112-0"
 			convey.So(node.Others[npuV910CardName16c], convey.ShouldResemble, expectResult)
-		})
-	})
-}
-
-// TestVnpuGetReleaseNPUTopologyFn
-func TestVnpuGetReleaseNPUTopologyFn(t *testing.T) {
-	convey.Convey("Test GetReleaseNPUTopologyFn", t, func() {
-		vnpu := &VNPU{}
-		var expectResult []string
-
-		pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-18",
-			podName: "npu-test-20", nodeName: nodeName, reqCPUNum: "10", reqMem: "10Gi",
-			reqNPUType: npuV910CardName16c, reqNpuNum: "1"})
-		task := api.NewTaskInfo(pod)
-		convey.Convey("GetReleaseNPUTopologyFn() should return error when pod has no vnpu annotation", func() {
-			taskTopArr, err := vnpu.GetReleaseNPUTopologyFn(task)
-			convey.So(err, convey.ShouldBeError)
-			convey.So(taskTopArr, convey.ShouldResemble, expectResult)
-		})
-		convey.Convey("GetReleaseNPUTopologyFn() should return error when pod has empty annotation", func() {
-			task.Pod.Annotations[npuV910CardName16c] = ""
-			taskTopArr, err := vnpu.GetReleaseNPUTopologyFn(task)
-			convey.So(err, convey.ShouldBeError)
-			convey.So(taskTopArr, convey.ShouldResemble, expectResult)
-		})
-		convey.Convey("GetReleaseNPUTopologyFn() should return error when pod has mismatch annotation", func() {
-			topStr := "Ascend910-2c-190-1"
-			task.Pod.Annotations[npuV910CardName16c] = topStr
-			taskTopArr, err := vnpu.GetReleaseNPUTopologyFn(task)
-			convey.So(err, convey.ShouldBeError)
-			convey.So(taskTopArr, convey.ShouldResemble, expectResult)
-		})
-		convey.Convey("GetReleaseNPUTopologyFn() should return nil when pod has correct annotation", func() {
-			topStr := "Ascend910-16c-180-1"
-			task.Pod.Annotations[npuV910CardName16c] = topStr
-			expectResult = append(expectResult, topStr)
-			taskTopArr, err := vnpu.GetReleaseNPUTopologyFn(task)
-			convey.So(err, convey.ShouldBeNil)
-			convey.So(taskTopArr, convey.ShouldResemble, expectResult)
 		})
 	})
 }

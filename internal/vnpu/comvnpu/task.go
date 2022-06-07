@@ -26,6 +26,9 @@ import (
 
 // IsSelectorMeetNode Check whether the selector of the node matches that of the task.
 func (tp *VNPU) IsSelectorMeetNode(task *api.TaskInfo, node *api.NodeInfo, conf map[string]string) error {
+	if task == nil || node == nil || len(conf) == 0 {
+		return errors.New("nil parameters")
+	}
 	// Get node selectors of task
 	taskSelectors := util.GetTaskSelectors(task)
 	if len(taskSelectors) == 0 {
@@ -90,7 +93,7 @@ func (tp *VNPU) GetReleaseNPUTopologyFn(vTask *api.TaskInfo) (interface{}, error
 func (tp *VNPU) GetVTaskReqNPUType(vTask *api.TaskInfo) (string, error) {
 	tmp, getErr := util.GetReqResourceNameFromTask(vTask)
 	if getErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s GetVJobReqNPUType %s %v.", tp.Name(), vTask.Name, getErr)
+		klog.V(util.LogErrorLev).Infof("%s GetVJobReqNPUType %v.", tp.Name(), getErr)
 		return "", getErr
 	}
 
@@ -157,19 +160,24 @@ func (tp *VNPU) IsMyTask(vTask *api.TaskInfo) error {
 
 // SetNPUTopologyToPodFn write the name of the allocated devices to Pod
 func (tp *VNPU) SetNPUTopologyToPodFn(task *api.TaskInfo, top interface{}) error {
-	var vType string
-
+	if task == nil {
+		return errors.New("nil parameters")
+	}
 	topInstance, ok := top.(string)
 	if !ok {
 		return errors.New("set NPU topology to pod gets invalid argument")
 	}
 
+	var vType string
 	for _, vt := range tp.Attr.DivideKinds {
 		v := strings.TrimPrefix(vt, tp.Attr.AnnoPreVal)
 		if strings.HasPrefix(topInstance, v) {
 			vType = vt
 			break
 		}
+	}
+	if vType == "" {
+		return fmt.Errorf("%s no requets %v", task.Name, top)
 	}
 
 	klog.V(util.LogInfoLev).Infof("%s setNPUTopologyToPod begin top:%v.", tp.Name(), topInstance)

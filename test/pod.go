@@ -105,3 +105,15 @@ func BuildTestTaskWithAnnotation(npuName, npuNum, npuAllocate string) *api.TaskI
 	SetTestNPUPodAnnotation(pod, npuName, npuAllocate)
 	return api.NewTaskInfo(pod)
 }
+
+// AddFakeTaskResReq add require resource of fake task.
+func AddFakeTaskResReq(vTask *api.TaskInfo, name string, value float64) {
+	if vTask == nil {
+		return
+	}
+
+	if len(vTask.Resreq.ScalarResources) == 0 {
+		vTask.Resreq.ScalarResources = make(map[v1.ResourceName]float64, npuIndex3)
+	}
+	vTask.Resreq.ScalarResources[v1.ResourceName(name)] = value
+}

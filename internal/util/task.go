@@ -125,5 +125,5 @@ func GetReqResourceNameFromTask(vTask *api.TaskInfo) (string, error) {
 		continue
 	}
 	klog.V(LogErrorLev).Infof("GetReqResourceNameFromTask %+v.", vTask.Resreq.ScalarResources)
-	return "", fmt.Errorf("nil NPU")
+	return "", fmt.Errorf("%s nil NPU", vTask.Name)
 }
