@@ -24,15 +24,6 @@ const (
 	moduleAcceleratorType = "module"
 	maxNPUNum             = 8
 	npuNumPerHccs         = 4
-	constIntNum0          = 0
-	constIntNum1          = 1
-	constIntNum2          = 2
-	constIntNum3          = 3
-	constIntNum4          = 4
-	constIntNum5          = 5
-	constIntNum6          = 6
-	constIntNum7          = 7
-	constIntNum8          = 8
 	nodeNPUNumber         = 8
 
 	logErrorLev = 1

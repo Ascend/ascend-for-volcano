@@ -23,8 +23,10 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
 	"volcano.sh/volcano/pkg/scheduler/util"
+
+	npuutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/util"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
 )
 
 type MPodInfo struct {
@@ -477,14 +479,14 @@ func testMnpuScoreBestNPUNodesFn01(npu *module910x8, bestNodes map[string]int,
 	})
 
 	convey.Convey("ScoreBestNPUNodesFn() should return correct result with length", func() {
-		scoreMap := make(map[string]float64, constIntNum2)
+		scoreMap := make(map[string]float64, npuutil.NPUIndex2)
 		scoreMap[nodeName1] = 0
 		scoreMap[nodeName2] = 0
 		expectedResult := map[string]float64(nil)
 		result, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
 		convey.So(err, convey.ShouldBeNil)
 		convey.So(result, convey.ShouldHaveSameTypeAs, expectedResult)
-		convey.So(result, convey.ShouldHaveLength, constIntNum2)
+		convey.So(result, convey.ShouldHaveLength, npuutil.NPUIndex2)
 	})
 }
 
@@ -496,7 +498,7 @@ func testMnpuScoreBestNPUNodesFn02(npu *module910x8, bestNodes map[string]int,
 		nodeName3 = "euler3"
 	)
 	convey.Convey("ScoreBestNPUNodesFn() should return correct result with length but skip node3", func() {
-		scoreMap := make(map[string]float64, constIntNum3)
+		scoreMap := make(map[string]float64, npuutil.NPUIndex3)
 		scoreMap[nodeName1] = 0
 		scoreMap[nodeName2] = 0
 		scoreMap[nodeName3] = 0
@@ -504,7 +506,7 @@ func testMnpuScoreBestNPUNodesFn02(npu *module910x8, bestNodes map[string]int,
 		result, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
 		convey.So(err, convey.ShouldBeNil)
 		convey.So(result, convey.ShouldHaveSameTypeAs, expectedResult)
-		convey.So(result, convey.ShouldHaveLength, constIntNum3)
+		convey.So(result, convey.ShouldHaveLength, npuutil.NPUIndex3)
 		convey.So(result[nodeName3], convey.ShouldEqual, 0)
 	})
 }
@@ -522,7 +524,7 @@ func TestMnpuScoreBestNPUNodesFn(t *testing.T) {
 		npu := &module910x8{}
 		bestNodes := map[string]int{
 			nodeName1: 0,
-			nodeName2: constIntNum3,
+			nodeName2: npuutil.NPUIndex3,
 		}
 		pod := buildNPUPod(MPodInfo{namespace: "default", groupName: "npu-group-62",
 			podName: "npu-test-62", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
@@ -542,8 +544,8 @@ func TestMnpuScoreBestNPUNodesFn(t *testing.T) {
 
 		bestNodes2 := map[string]int{
 			nodeName1: 0,
-			nodeName2: constIntNum3,
-			nodeName3: constIntNum3,
+			nodeName2: npuutil.NPUIndex3,
+			nodeName3: npuutil.NPUIndex3,
 		}
 		node3 := buildNPUNode(MNodeInfo{nodeName: nodeName3, nodeArch: huaweiArchArm, cpu: "192", mem: "755Gi",
 			npuAllocateNum: "0", npuTop: "Ascend910-0,Ascend910-1"})
@@ -577,7 +579,7 @@ func TestMnpuGetAllocatedNPUFromTopologyFn(t *testing.T) {
 			task := api.NewTaskInfo(pod)
 			node := buildNPUNode(MNodeInfo{nodeName: nodeName, nodeArch: huaweiArchArm, cpu: "192", mem: "755Gi",
 				npuAllocateNum: "5", npuTop: "Ascend910-5,Ascend910-2,Ascend910-0,Ascend910-1,Ascend910-3"})
-			expectedResult := []int{constIntNum2, 0, 1, constIntNum3}
+			expectedResult := []int{npuutil.NPUIndex2, 0, 1, npuutil.NPUIndex3}
 			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node, false)
 			convey.So(err, convey.ShouldBeNil)
 			convey.So(result, convey.ShouldResemble, expectedResult)
@@ -589,7 +591,7 @@ func TestMnpuGetAllocatedNPUFromTopologyFn(t *testing.T) {
 			task := api.NewTaskInfo(pod)
 			node := buildNPUNode(MNodeInfo{nodeName: nodeName, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
 				npuAllocateNum: "2", npuTop: "Ascend910-5,Ascend910-7"})
-			expectedResult := []int{constIntNum5, constIntNum7}
+			expectedResult := []int{npuutil.NPUIndex5, npuutil.NPUIndex7}
 			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node, false)
 			convey.So(err, convey.ShouldBeNil)
 			convey.So(result, convey.ShouldResemble, expectedResult)
@@ -611,7 +613,7 @@ func TestMnpuSetNPUTopologyToPodFn(t *testing.T) {
 			convey.So(task.Pod.Annotations[npu800And9000CardName], convey.ShouldEqual, "")
 		})
 		convey.Convey("SetNPUTopologyToPodFn() should write correct info in pod annotation", func() {
-			top := []int{constIntNum2, 0, 1, constIntNum3}
+			top := []int{npuutil.NPUIndex2, 0, 1, npuutil.NPUIndex3}
 			expectedResult := "Ascend910-2,Ascend910-0,Ascend910-1,Ascend910-3"
 			err := npu.SetNPUTopologyToPodFn(task, top)
 			convey.So(err, convey.ShouldBeNil)
@@ -650,7 +652,7 @@ func TestMnpuGetReleaseNPUTopologyFn(t *testing.T) {
 			reqNPUType: npu800And9000CardName, reqNpuNum: "4"}))
 		convey.Convey("GetReleaseNPUTopologyFn() should return correct card id slice", func() {
 			task.Pod.Annotations[npu800And9000CardName] = "Ascend910-0,Ascend910-1,Ascend910-2,Ascend910-3,Ascend910-6"
-			expectedResult := []int{0, 1, constIntNum2, constIntNum3, constIntNum6}
+			expectedResult := []int{0, 1, npuutil.NPUIndex2, npuutil.NPUIndex3, npuutil.NPUIndex6}
 			result, err := npu.GetReleaseNPUTopologyFn(task)
 			convey.So(err, convey.ShouldBeNil)
 			convey.So(result, convey.ShouldResemble, expectedResult)
@@ -704,8 +706,8 @@ func buildNPUPod(podInfo MPodInfo) *v1.Pod {
 	pod := util.BuildPod(podInfo.namespace, podInfo.podName, podInfo.nodeName, v1.PodPending,
 		buildNPUResourceList(podInfo.reqCPUNum, podInfo.reqMem,
 			v1.ResourceName(podInfo.reqNPUType), podInfo.reqNpuNum),
-		podInfo.groupName, make(map[string]string, constIntNum2),
-		make(map[string]string, constIntNum2))
+		podInfo.groupName, make(map[string]string, npuutil.NPUIndex2),
+		make(map[string]string, npuutil.NPUIndex2))
 
 	setPodSelector(pod, archSelector, huaweiArchX86)
 
@@ -733,10 +735,10 @@ func buildNPUResourceList(MCpu string, MMemory string, npuResourceType v1.Resour
 }
 
 func buildNPUNode(MNode MNodeInfo) *api.NodeInfo {
-	nodeCapacity := buildNPUResourceList(MNode.cpu, MNode.mem, npu800And9000CardName, strconv.Itoa(constIntNum2))
+	nodeCapacity := buildNPUResourceList(MNode.cpu, MNode.mem, npu800And9000CardName, strconv.Itoa(npuutil.NPUIndex2))
 	nodeAlloc := buildNPUResourceList(MNode.cpu, MNode.mem, npu800And9000CardName, MNode.npuAllocateNum)
-	labels := make(map[string]string, constIntNum2)
-	ann := make(map[string]string, constIntNum2)
+	labels := make(map[string]string, npuutil.NPUIndex2)
+	ann := make(map[string]string, npuutil.NPUIndex2)
 
 	v1node := &v1.Node{
 		ObjectMeta: metav1.ObjectMeta{
@@ -766,10 +768,10 @@ func buildNPUNode(MNode MNodeInfo) *api.NodeInfo {
 }
 
 func buildNon910NPUNode(MNode MNodeInfo) *api.NodeInfo {
-	nodeCapacity := buildNPUResourceList(MNode.cpu, MNode.mem, npu310CardName, strconv.Itoa(constIntNum2))
+	nodeCapacity := buildNPUResourceList(MNode.cpu, MNode.mem, npu310CardName, strconv.Itoa(npuutil.NPUIndex2))
 	nodeAlloc := buildNPUResourceList(MNode.cpu, MNode.mem, npu310CardName, MNode.npuAllocateNum)
-	labels := make(map[string]string, constIntNum2)
-	ann := make(map[string]string, constIntNum2)
+	labels := make(map[string]string, npuutil.NPUIndex2)
+	ann := make(map[string]string, npuutil.NPUIndex2)
 
 	v1node := &v1.Node{
 		ObjectMeta: metav1.ObjectMeta{

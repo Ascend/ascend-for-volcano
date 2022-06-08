@@ -13,10 +13,11 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/util"
 
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
+
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/util"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
 )
 
@@ -38,22 +39,22 @@ func buildCheckNPUResourceStableTestCases() []getCheckNPUResourceStableMapTest {
 	nodeInfo3 := test.BuildUnstableNode("node3", npu800And9000CardName, "Ascend910-2,Ascend910-3", npuNum)
 	testCases := []getCheckNPUResourceStableMapTest{
 		{
-			name:    "test0-CheckNPUResourceStable()\ncase0: insufficient npu",
+			name:    "01-CheckNPUResourceStable()- insufficient npu-test",
 			args:    getCheckNPUResourceStableArgs{vNode: nodeInfo0},
 			wantErr: fmt.Errorf("getNodeNPUNumFromOthers %s : nil node(%s) top", nodesNoMeetNPUReqError, nodeInfo0.Name),
 		},
 		{
-			name:    "test0-CheckNPUResourceStable()\ncase1: got no idle npu",
+			name:    "02-CheckNPUResourceStable()- got no idle npu-test",
 			args:    getCheckNPUResourceStableArgs{vNode: nodeInfo1},
 			wantErr: fmt.Errorf("getNodeNPUNumFromIdle %s : get node idle npu failed", nodesNoMeetNPUReqError),
 		},
 		{
-			name:    "test0-CheckNPUResourceStable()\ncase2: resource mismatch between allocatable and idle npu",
+			name:    "03-CheckNPUResourceStable()- resource mismatch between allocatable and idle npu-test",
 			args:    getCheckNPUResourceStableArgs{vNode: nodeInfo2},
 			wantErr: fmt.Errorf("%s : node not stable for annotations(1) : idle(2)", nodeNotStableWarning),
 		},
 		{
-			name:    "test0-CheckNPUResourceStable()\ncase3: resource mismatch between allocatable and idle npu",
+			name:    "04-CheckNPUResourceStable()- success-test",
 			args:    getCheckNPUResourceStableArgs{vNode: nodeInfo3},
 			wantErr: nil,
 		},
@@ -74,9 +75,8 @@ func TestCheckNPUResourceStable(t *testing.T) {
 }
 
 type clusterNodePredicateFnArgs struct {
-	task     *api.TaskInfo
-	ssn      *framework.Session
-	cacheFun func()
+	task *api.TaskInfo
+	ssn  *framework.Session
 }
 
 type clusterNodePredicateFnTests struct {
@@ -87,22 +87,22 @@ type clusterNodePredicateFnTests struct {
 
 func buildClusterNodePredicateFnTestCases() []clusterNodePredicateFnTests {
 	task0 := test.FakeNormalTestTask("task0", "node0", "pg0")
-	test.AddFakeTaskResReq(task0, "any other name", constIntNum1*util.NPUHex)
+	test.AddFakeTaskResReq(task0, "any other name", 1*util.NPUHex)
 	ssn0 := test.FakeNormalSSN()
 
 	task1 := test.FakeNormalTestTask("task1", "node1", "pg1")
-	test.AddFakeTaskResReq(task1, npu800And9000CardName, constIntNum1*util.NPUHex)
+	test.AddFakeTaskResReq(task1, npu800And9000CardName, 1*util.NPUHex)
 	ssn1 := test.FakeNormalSSN()
 
 	testCases := []clusterNodePredicateFnTests{
 		{
-			name:    "test3-ClusterNodePredicateFn()\ncase0: not a 910 task(return in branch 1)",
-			args:    clusterNodePredicateFnArgs{task: task0, ssn: ssn0, cacheFun: func() {}},
+			name:    "01-ClusterNodePredicateFn()- not a 910 task(return in branch 1)-test",
+			args:    clusterNodePredicateFnArgs{task: task0, ssn: ssn0},
 			wantErr: nil,
 		},
 		{
-			name:    "test3-ClusterNodePredicateFn()\ncase1: is a 910 task not an NPU fault task(return in branch 2)",
-			args:    clusterNodePredicateFnArgs{task: task1, ssn: ssn1, cacheFun: func() {}},
+			name:    "test01-ClusterNodePredicateFn()- is a 910 task not an NPU fault task(return in branch 2)-test",
+			args:    clusterNodePredicateFnArgs{task: task1, ssn: ssn1},
 			wantErr: nil,
 		},
 	}
@@ -113,7 +113,6 @@ func TestClusterNodePredicateFn(t *testing.T) {
 	tests := buildClusterNodePredicateFnTestCases()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.args.cacheFun()
 			err := clusterNodePredicateFn(tt.args.task, tt.args.ssn)
 			if !reflect.DeepEqual(err, tt.wantErr) {
 				t.Errorf("clusterNodePredicateFn() error = %v, wantErr %v", err, tt.wantErr)
@@ -136,19 +135,19 @@ type getNodeHccsArrayTests struct {
 func buildGetNodeHccsArrayTestCases() []getNodeHccsArrayTests {
 	testCases := []getNodeHccsArrayTests{
 		{
-			name:  "test1-getNodeHccsArray()\ncase0: split topology to both sides",
-			args:  getNodeHccsArrayArgs{nodeTop: []int{constIntNum1, constIntNum3, constIntNum5}},
-			want:  []int{constIntNum1, constIntNum3},
-			want1: []int{constIntNum5},
+			name:  "01-getNodeHccsArray()- split topology to both sides-test",
+			args:  getNodeHccsArrayArgs{nodeTop: []int{1, util.NPUIndex3, util.NPUIndex5}},
+			want:  []int{1, util.NPUIndex3},
+			want1: []int{util.NPUIndex5},
 		},
 		{
-			name:  "test1-getNodeHccsArrayTest\ncase1: split topology to one side",
-			args:  getNodeHccsArrayArgs{nodeTop: []int{constIntNum3, constIntNum2}},
-			want:  []int{constIntNum3, constIntNum2},
+			name:  "test01-getNodeHccsArrayTest()- split topology to one side-test",
+			args:  getNodeHccsArrayArgs{nodeTop: []int{util.NPUIndex3, util.NPUIndex2}},
+			want:  []int{util.NPUIndex3, util.NPUIndex2},
 			want1: nil,
 		},
 		{
-			name:  "test1-getNodeHccsArrayTest\ncase2: split topology to neither side",
+			name:  "test02-getNodeHccsArrayTest()- split topology to neither side-test",
 			args:  getNodeHccsArrayArgs{nodeTop: []int{}},
 			want:  nil,
 			want1: nil,
@@ -193,21 +192,21 @@ func buildGetNodeNPUNumFromOthersTestCases() []getNodeNPUNumFromOthersTests {
 		"Ascend910-0,Ascend910-1,Ascend910-2,Ascend910-3,Ascend910-4,Ascend910-8")
 	testCases := []getNodeNPUNumFromOthersTests{
 		{
-			name:    "test2-getNodeNPUNumFromOthers()\ncase0: return number of devices",
+			name:    "01-getNodeNPUNumFromOthers()- return number of devices-test",
 			args:    getNodeNPUNumFromOthersArgs{nodeInfo: nodeInfo0},
-			want:    constIntNum3,
+			want:    util.NPUIndex3,
 			wantErr: nil,
 		},
 		{
-			name:    "test2-getNodeNPUNumFromOthers()\ncase1: return error owing to no device",
+			name:    "test01-getNodeNPUNumFromOthers()- return error owing to no device-test",
 			args:    getNodeNPUNumFromOthersArgs{nodeInfo: nodeInfo1},
-			want:    constIntNum0,
+			want:    0,
 			wantErr: nil,
 		},
 		{
-			name: "test2-getNodeNPUNumFromOthers()\ncase2: return error owing to device number exceed maxNum(8)",
+			name: "test02-getNodeNPUNumFromOthers()- return error owing to device number exceed maxNum(8)-test",
 			args: getNodeNPUNumFromOthersArgs{nodeInfo: nodeInfo2},
-			want: constIntNum0,
+			want: 0,
 			wantErr: fmt.Errorf("amount of npus exceeded the limitation, maximum(%d), actual(9)",
 				maxNPUNum),
 		},
@@ -255,17 +254,17 @@ func buildInitNodesNPUTopologyFnTestCases() []initNodesNPUTopologyFnTests {
 
 	testCases := []initNodesNPUTopologyFnTests{
 		{
-			name:    "test4-initNodesNPUTopologyFnArgs()\ncase0: not module type, continue and return",
+			name:    "01-initNodesNPUTopologyFnArgs()- not module type, continue and return-test",
 			args:    initNodesNPUTopologyFnArgs{nodeInfo: map[string]*api.NodeInfo{"n0": node0}},
 			wantErr: nil,
 		},
 		{
-			name:    "test4-initNodesNPUTopologyFnArgs()\ncase0: break when got no 910npu",
+			name:    "test01-initNodesNPUTopologyFnArgs()- break when got no 910npu-test",
 			args:    initNodesNPUTopologyFnArgs{nodeInfo: map[string]*api.NodeInfo{"n0": node0, "n1": node1, "n2": node2}},
 			wantErr: nil,
 		},
 		{
-			name:    "test4-initNodesNPUTopologyFnArgs()\ncase1: test success",
+			name:    "test02-initNodesNPUTopologyFnArgs()- success-test",
 			args:    initNodesNPUTopologyFnArgs{nodeInfo: map[string]*api.NodeInfo{"n0": node0, "n2": node2}},
 			wantErr: nil,
 		},

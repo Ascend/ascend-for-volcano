@@ -64,10 +64,10 @@ func getNPUAllocPriorityArray(taskNPUNumber int) ([npuNumPerHccs]int, error) {
 		klog.V(logInfoLev).Infof("%s task req npu is 0.", PluginName)
 	case 1:
 		// priority:1>3>2>4
-		priorityArray = [npuNumPerHccs]int{1, constIntNum3, constIntNum2, npuNumPerHccs}
-	case constIntNum2:
+		priorityArray = [npuNumPerHccs]int{1, util.NPUIndex3, util.NPUIndex2, npuNumPerHccs}
+	case util.NPUIndex2:
 		// priority：2>npuNumPerHccs>3
-		priorityArray = [npuNumPerHccs]int{constIntNum2, npuNumPerHccs, constIntNum3}
+		priorityArray = [npuNumPerHccs]int{util.NPUIndex2, npuNumPerHccs, util.NPUIndex3}
 	case npuNumPerHccs:
 		// priority：4
 		priorityArray = [npuNumPerHccs]int{npuNumPerHccs}
@@ -102,21 +102,21 @@ func initOneCardPriNodeGroups(sNodeInf selectNodeInf,
 		return nil
 	}
 
-	if sNodeInf.leftNPUNum == constIntNum3 || sNodeInf.rightNPUNum == constIntNum3 {
+	if sNodeInf.leftNPUNum == util.NPUIndex3 || sNodeInf.rightNPUNum == util.NPUIndex3 {
 		// B group
 		addPriNodeGroupFn(priNodeGroups[1], "B")
 		return nil
 	}
 
-	if sNodeInf.leftNPUNum == constIntNum2 || sNodeInf.rightNPUNum == constIntNum2 {
+	if sNodeInf.leftNPUNum == util.NPUIndex2 || sNodeInf.rightNPUNum == util.NPUIndex2 {
 		// C group
-		addPriNodeGroupFn(priNodeGroups[constIntNum2], "C")
+		addPriNodeGroupFn(priNodeGroups[util.NPUIndex2], "C")
 		return nil
 	}
 
 	if sNodeInf.leftNPUNum == npuNumPerHccs || sNodeInf.rightNPUNum == npuNumPerHccs {
 		// D group
-		addPriNodeGroupFn(priNodeGroups[constIntNum3], "D")
+		addPriNodeGroupFn(priNodeGroups[util.NPUIndex3], "D")
 		return nil
 	}
 
@@ -149,7 +149,7 @@ func insertNodeInPriGroup(
 		klog.V(logInfoLev).Infof("%s initPriNodeGroups task npu is 0.", PluginName)
 	case 1:
 		err = initOneCardPriNodeGroups(sNodeInf, priNodeGroups, addPriNodeGroupFn)
-	case constIntNum2:
+	case util.NPUIndex2:
 		err = initTwoCardPriNodeGroups(sNodeInf, priNodeGroups, addPriNodeGroupFn)
 	case npuNumPerHccs:
 		err = initFourCardPriNodeGroups(sNodeInf, priNodeGroups, addPriNodeGroupFn)
@@ -177,7 +177,7 @@ func initTwoCardPriNodeGroups(
 		return err
 	}
 	// priority：2>npuNumPerHccs>3
-	if sNodeInf.leftNPUNum == constIntNum2 || sNodeInf.rightNPUNum == constIntNum2 {
+	if sNodeInf.leftNPUNum == util.NPUIndex2 || sNodeInf.rightNPUNum == util.NPUIndex2 {
 		// A group
 		addPriNodeGroupFn(priNodeGroups[0], "A")
 		return nil
@@ -189,9 +189,9 @@ func initTwoCardPriNodeGroups(
 		return nil
 	}
 
-	if sNodeInf.leftNPUNum == constIntNum3 || sNodeInf.rightNPUNum == constIntNum3 {
+	if sNodeInf.leftNPUNum == util.NPUIndex3 || sNodeInf.rightNPUNum == util.NPUIndex3 {
 		// C group
-		addPriNodeGroupFn(priNodeGroups[constIntNum2], "C")
+		addPriNodeGroupFn(priNodeGroups[util.NPUIndex2], "C")
 		return nil
 	}
 
@@ -208,8 +208,8 @@ func initFourCardPriNodeGroups(
 	priNodeGroups []map[string]*npuPriNodeInf,
 	addPriNodeGroupFn initPriNodeGroupFn) error {
 
-	if len(priNodeGroups) < constIntNum2 {
-		err := fmt.Errorf("priNodeGroups's length(%d) not meet(%d)", len(priNodeGroups), constIntNum2)
+	if len(priNodeGroups) < util.NPUIndex2 {
+		err := fmt.Errorf("priNodeGroups's length(%d) not meet(%d)", len(priNodeGroups), util.NPUIndex2)
 		klog.V(logErrorLev).Infof("%s initFourCardPriNodeGroups %v.", PluginName, err.Error())
 		return err
 	}
@@ -231,8 +231,8 @@ func initEightCardPriNodeGroups(
 	priNodeGroups []map[string]*npuPriNodeInf,
 	addPriNodeGroupFn initPriNodeGroupFn) error {
 
-	if len(priNodeGroups) < constIntNum2 {
-		err := fmt.Errorf("priNodeGroups's length(%d) not enough(%d)", len(priNodeGroups), constIntNum2)
+	if len(priNodeGroups) < util.NPUIndex2 {
+		err := fmt.Errorf("priNodeGroups's length(%d) not enough(%d)", len(priNodeGroups), util.NPUIndex2)
 		klog.V(logErrorLev).Infof("%s initEightCardPriNodeGroups %v.", PluginName, err.Error())
 		return err
 	}
@@ -259,7 +259,7 @@ func judgeNodeAndTaskNPU(taskNPU int, nodeNPUTopology []int) error {
 		return nil
 	case 1:
 		reFlag = (leftCardNum > 0) || (rightCardNum > 0)
-	case constIntNum2:
+	case util.NPUIndex2:
 		reFlag = (leftCardNum > 1) || (rightCardNum > 1)
 	case npuNumPerHccs:
 		reFlag = (leftCardNum == npuNumPerHccs) || (rightCardNum == npuNumPerHccs)

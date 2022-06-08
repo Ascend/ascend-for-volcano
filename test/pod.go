@@ -80,10 +80,7 @@ func FakeNormalTestTasks(num int) []*api.TaskInfo {
 
 	for i := 0; i < num; i++ {
 		strNum := strconv.Itoa(i)
-		pod := NPUPod{
-			Namespace: "vcjob", Name: "pod" + strNum, NodeName: "node" + strNum, GroupName: "pg" + strNum, Phase: v1.PodRunning,
-		}
-		task := api.NewTaskInfo(BuildNPUPod(pod))
+		task := FakeNormalTestTask("pod"+strNum, "node"+strNum, "pg"+strNum)
 		tasks = append(tasks, task)
 	}
 

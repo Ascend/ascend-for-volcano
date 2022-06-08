@@ -72,7 +72,7 @@ func validJobModel(job *api.JobInfo) error {
 
 func getModuleNPUJobDefaultSelectorConfig() map[string]string {
 	var defaultSchedulerConfig map[string]string
-	defaultSchedulerConfig = make(map[string]string, constIntNum3)
+	defaultSchedulerConfig = make(map[string]string, util.NPUIndex3)
 
 	defaultSchedulerConfig[archSelector] = huaweiArchArm + "|" + huaweiArchX86
 
@@ -108,7 +108,7 @@ func validJobNPUNum(job *api.JobInfo) error {
 	}
 
 	if jobNPU == 1 ||
-		jobNPU == constIntNum2 ||
+		jobNPU == util.NPUIndex2 ||
 		jobNPU == npuNumPerHccs ||
 		jobNPU%nodeNPUNumber == 0 {
 		return nil
@@ -144,7 +144,7 @@ func isMyTask(task *vapi.TaskInfo) error {
 }
 
 func get910x8RunningJobs(jobs map[api.JobID]*api.JobInfo) (map[string]*api.JobInfo, error) {
-	var myJobs = make(map[string]*api.JobInfo, constIntNum3)
+	var myJobs = make(map[string]*api.JobInfo, util.NPUIndex3)
 	for _, job := range jobs {
 		if job.PodGroup.Status.Phase != scheduling.PodGroupRunning {
 			continue
