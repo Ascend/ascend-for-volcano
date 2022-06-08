@@ -456,6 +456,59 @@ func TestMnpuGetNPUAffinityBestNodesFn(t *testing.T) {
 	})
 }
 
+func testMnpuScoreBestNPUNodesFn01(npu *module910x8, bestNodes map[string]int,
+	task *api.TaskInfo, nodes []*api.NodeInfo) {
+	const (
+		nodeName1 = "euler1"
+		nodeName2 = "euler2"
+	)
+	convey.Convey("ScoreBestNPUNodesFn() should return err when scoreMap is nil", func() {
+		var scoreMap map[string]float64
+		_, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
+		convey.So(err, convey.ShouldNotBeNil)
+	})
+
+	convey.Convey("ScoreBestNPUNodesFn() should return correct result", func() {
+		scoreMap := make(map[string]float64)
+		expectedResult := map[string]float64(nil)
+		result, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
+		convey.So(err, convey.ShouldNotBeNil)
+		convey.So(result, convey.ShouldResemble, expectedResult)
+	})
+
+	convey.Convey("ScoreBestNPUNodesFn() should return correct result with length", func() {
+		scoreMap := make(map[string]float64, constIntNum2)
+		scoreMap[nodeName1] = 0
+		scoreMap[nodeName2] = 0
+		expectedResult := map[string]float64(nil)
+		result, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
+		convey.So(err, convey.ShouldBeNil)
+		convey.So(result, convey.ShouldHaveSameTypeAs, expectedResult)
+		convey.So(result, convey.ShouldHaveLength, constIntNum2)
+	})
+}
+
+func testMnpuScoreBestNPUNodesFn02(npu *module910x8, bestNodes map[string]int,
+	task *api.TaskInfo, nodes []*api.NodeInfo) {
+	const (
+		nodeName1 = "euler1"
+		nodeName2 = "euler2"
+		nodeName3 = "euler3"
+	)
+	convey.Convey("ScoreBestNPUNodesFn() should return correct result with length but skip node3", func() {
+		scoreMap := make(map[string]float64, constIntNum3)
+		scoreMap[nodeName1] = 0
+		scoreMap[nodeName2] = 0
+		scoreMap[nodeName3] = 0
+		expectedResult := map[string]float64(nil)
+		result, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
+		convey.So(err, convey.ShouldBeNil)
+		convey.So(result, convey.ShouldHaveSameTypeAs, expectedResult)
+		convey.So(result, convey.ShouldHaveLength, constIntNum3)
+		convey.So(result[nodeName3], convey.ShouldEqual, 0)
+	})
+}
+
 // TestMnpuScoreBestNPUNodesFn
 func TestMnpuScoreBestNPUNodesFn(t *testing.T) {
 	convey.Convey("Test module910x8 ScoreBestNPUNodesFn", t, func() {
@@ -485,31 +538,7 @@ func TestMnpuScoreBestNPUNodesFn(t *testing.T) {
 			npuAllocateNum: "8", npuTop: "Ascend910-5,Ascend910-2,Ascend910-0,Ascend910-1,Ascend910-3," +
 				"Ascend910-6,Ascend910-7"})
 		nodes = append(nodes, node2)
-
-		convey.Convey("ScoreBestNPUNodesFn() should return err when scoreMap is nil", func() {
-			var scoreMap map[string]float64
-			_, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
-			convey.So(err, convey.ShouldNotBeNil)
-		})
-
-		convey.Convey("ScoreBestNPUNodesFn() should return correct result", func() {
-			scoreMap := make(map[string]float64)
-			expectedResult := map[string]float64(nil)
-			result, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
-			convey.So(err, convey.ShouldNotBeNil)
-			convey.So(result, convey.ShouldResemble, expectedResult)
-		})
-
-		convey.Convey("ScoreBestNPUNodesFn() should return correct result with length", func() {
-			scoreMap := make(map[string]float64, nodeNum2)
-			scoreMap[nodeName1] = 0
-			scoreMap[nodeName2] = 0
-			expectedResult := map[string]float64(nil)
-			result, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
-			convey.So(err, convey.ShouldBeNil)
-			convey.So(result, convey.ShouldHaveSameTypeAs, expectedResult)
-			convey.So(result, convey.ShouldHaveLength, nodeNum2)
-		})
+		testMnpuScoreBestNPUNodesFn01(npu, bestNodes, task, nodes)
 
 		bestNodes2 := map[string]int{
 			nodeName1: 0,
@@ -519,19 +548,7 @@ func TestMnpuScoreBestNPUNodesFn(t *testing.T) {
 		node3 := buildNPUNode(MNodeInfo{nodeName: nodeName3, nodeArch: huaweiArchArm, cpu: "192", mem: "755Gi",
 			npuAllocateNum: "0", npuTop: "Ascend910-0,Ascend910-1"})
 		nodes = append(nodes, node3)
-
-		convey.Convey("ScoreBestNPUNodesFn() should return correct result with length but skip node3", func() {
-			scoreMap := make(map[string]float64, nodeNum3)
-			scoreMap[nodeName1] = 0
-			scoreMap[nodeName2] = 0
-			scoreMap[nodeName3] = 0
-			expectedResult := map[string]float64(nil)
-			result, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes2, task, nodes)
-			convey.So(err, convey.ShouldBeNil)
-			convey.So(result, convey.ShouldHaveSameTypeAs, expectedResult)
-			convey.So(result, convey.ShouldHaveLength, nodeNum3)
-			convey.So(result[nodeName3], convey.ShouldEqual, 0)
-		})
+		testMnpuScoreBestNPUNodesFn02(npu, bestNodes2, task, nodes)
 	})
 }
 
@@ -791,7 +808,7 @@ type preHandleFaultNPUFnTests struct {
 	wantErr error
 }
 
-func build_preHandleFaultNPUFnTestCases() []preHandleFaultNPUFnTests {
+func buildPreHandleFaultNPUFnTestCases() []preHandleFaultNPUFnTests {
 	ssn2 := test.FakeNormalSSN()
 	conf2 := []conf.Configuration{
 		{
@@ -819,8 +836,8 @@ func build_preHandleFaultNPUFnTestCases() []preHandleFaultNPUFnTests {
 	return testCases
 }
 
-func Test_preHandleFaultNPUFn(t *testing.T) {
-	tests := build_preHandleFaultNPUFnTestCases()
+func TestPreHandleFaultNPUFn(t *testing.T) {
+	tests := buildPreHandleFaultNPUFnTestCases()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := preHandleFaultNPUFn(tt.args.ssn)
@@ -841,7 +858,7 @@ type setGraceOverTimeTests struct {
 	wantErr error
 }
 
-func build_setGraceOverTimeTestCases() []setGraceOverTimeTests {
+func buildSetGraceOverTimeTestCase0() setGraceOverTimeTests {
 	ssn0 := test.FakeNormalSSN()
 	conf0 := []conf.Configuration{
 		{
@@ -858,7 +875,15 @@ func build_setGraceOverTimeTestCases() []setGraceOverTimeTests {
 		},
 	}
 	test.AddConfigIntoFakeSSN(ssn0, conf0)
+	testCase := setGraceOverTimeTests{
+		name:    "test5-setGraceOverTime()\ncase0: failure in init parameters",
+		args:    setGraceOverTimeArgs{ssn: ssn0},
+		wantErr: fmt.Errorf("cannot get configurations by name [init-params], name not in configurations"),
+	}
+	return testCase
+}
 
+func buildSetGraceOverTimeTestCase1() setGraceOverTimeTests {
 	ssn1 := test.FakeNormalSSN()
 	conf1 := []conf.Configuration{
 		{
@@ -875,7 +900,15 @@ func build_setGraceOverTimeTestCases() []setGraceOverTimeTests {
 		},
 	}
 	test.AddConfigIntoFakeSSN(ssn1, conf1)
+	testCase := setGraceOverTimeTests{
+		name:    "test5-setGraceOverTime()\ncase1: failure owing to setting grace over time to non-int value",
+		args:    setGraceOverTimeArgs{ssn: ssn1},
+		wantErr: &strconv.NumError{Num: "1.5", Func: "ParseInt", Err: strconv.ErrSyntax},
+	}
+	return testCase
+}
 
+func buildSetGraceOverTimeTestCase2() setGraceOverTimeTests {
 	ssn2 := test.FakeNormalSSN()
 	conf2 := []conf.Configuration{
 		{
@@ -892,7 +925,15 @@ func build_setGraceOverTimeTestCases() []setGraceOverTimeTests {
 		},
 	}
 	test.AddConfigIntoFakeSSN(ssn2, conf2)
+	testCase := setGraceOverTimeTests{
+		name:    "test5-setGraceOverTime()\ncase2: failure owing to setting grace over time to non-int value",
+		args:    setGraceOverTimeArgs{ssn: ssn2},
+		wantErr: errors.New("graceOverTime is out of range"),
+	}
+	return testCase
+}
 
+func buildSetGraceOverTimeTestCase3() setGraceOverTimeTests {
 	ssn3 := test.FakeNormalSSN()
 	conf3 := []conf.Configuration{
 		{
@@ -909,7 +950,15 @@ func build_setGraceOverTimeTestCases() []setGraceOverTimeTests {
 		},
 	}
 	test.AddConfigIntoFakeSSN(ssn3, conf3)
+	testCase := setGraceOverTimeTests{
+		name:    "test5-setGraceOverTime()\ncase3: success",
+		args:    setGraceOverTimeArgs{ssn: ssn3},
+		wantErr: nil,
+	}
+	return testCase
+}
 
+func buildSetGraceOverTimeTestCase4() setGraceOverTimeTests {
 	ssn4 := test.FakeNormalSSN()
 	conf4 := []conf.Configuration{
 		{
@@ -926,39 +975,27 @@ func build_setGraceOverTimeTestCases() []setGraceOverTimeTests {
 		},
 	}
 	test.AddConfigIntoFakeSSN(ssn4, conf4)
+	testCase := setGraceOverTimeTests{
+		name:    "test5-setGraceOverTime()\ncase4: no config arg called grace-over-time and return with nil",
+		args:    setGraceOverTimeArgs{ssn: ssn4},
+		wantErr: nil,
+	}
+	return testCase
+}
 
+func buildSetGraceOverTimeTestCases() []setGraceOverTimeTests {
 	testCases := []setGraceOverTimeTests{
-		{
-			name:    "test5-setGraceOverTime()\ncase0: failure in init parameters",
-			args:    setGraceOverTimeArgs{ssn: ssn0},
-			wantErr: fmt.Errorf("cannot get configurations by name [%s], name not in configurations", CMInitParamKey),
-		},
-		{
-			name:    "test5-setGraceOverTime()\ncase1: failure owing to setting grace over time to non-int value",
-			args:    setGraceOverTimeArgs{ssn: ssn1},
-			wantErr: &strconv.NumError{Num: "1.5", Func: "ParseInt", Err: strconv.ErrSyntax},
-		},
-		{
-			name:    "test5-setGraceOverTime()\ncase2: failure owing to setting grace over time to non-int value",
-			args:    setGraceOverTimeArgs{ssn: ssn2},
-			wantErr: errors.New("graceOverTime is out of range"),
-		},
-		{
-			name:    "test5-setGraceOverTime()\ncase3: success",
-			args:    setGraceOverTimeArgs{ssn: ssn3},
-			wantErr: nil,
-		},
-		{
-			name:    "test5-setGraceOverTime()\ncase4: no config arg called grace-over-time and return with nil",
-			args:    setGraceOverTimeArgs{ssn: ssn4},
-			wantErr: nil,
-		},
+		buildSetGraceOverTimeTestCase0(),
+		buildSetGraceOverTimeTestCase1(),
+		buildSetGraceOverTimeTestCase2(),
+		buildSetGraceOverTimeTestCase3(),
+		buildSetGraceOverTimeTestCase4(),
 	}
 	return testCases
 }
 
-func Test_setGraceOverTime(t *testing.T) {
-	tests := build_setGraceOverTimeTestCases()
+func TestSetGraceOverTime(t *testing.T) {
+	tests := buildSetGraceOverTimeTestCases()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := setGraceOverTime(tt.args.ssn)

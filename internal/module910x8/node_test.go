@@ -1,3 +1,12 @@
+/*
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+*/
+
+/*
+
+Package module910x8 is using for HuaWei A800/9000 Ascend910 pin affinity schedule.
+
+*/
 package module910x8
 
 import (
@@ -180,7 +189,8 @@ func buildGetNodeNPUNumFromOthersTestCases() []getNodeNPUNumFromOthersTests {
 	nodeInfo2 := test.FakeNormalTestNode("node2")
 	test.SetTestNPUNodeAnnotation(nodeInfo0, npu800And9000CardName, "Ascend910-5,Ascend910-6,Ascend910-7")
 	test.SetTestNPUNodeAnnotation(nodeInfo1, npu800And9000CardName, "")
-	test.SetTestNPUNodeAnnotation(nodeInfo2, npu800And9000CardName, "Ascend910-5,Ascend910-6,Ascend910-7,Ascend910-0,Ascend910-1,Ascend910-2,Ascend910-3,Ascend910-4,Ascend910-8")
+	test.SetTestNPUNodeAnnotation(nodeInfo2, npu800And9000CardName, "Ascend910-5,Ascend910-6,Ascend910-7,"+
+		"Ascend910-0,Ascend910-1,Ascend910-2,Ascend910-3,Ascend910-4,Ascend910-8")
 	testCases := []getNodeNPUNumFromOthersTests{
 		{
 			name:    "test2-getNodeNPUNumFromOthers()\ncase0: return number of devices",
@@ -189,9 +199,9 @@ func buildGetNodeNPUNumFromOthersTestCases() []getNodeNPUNumFromOthersTests {
 			wantErr: nil,
 		},
 		{
-			name: "test2-getNodeNPUNumFromOthers()\ncase1: return error owing to no device",
-			args: getNodeNPUNumFromOthersArgs{nodeInfo: nodeInfo1},
-			want: constIntNum0,
+			name:    "test2-getNodeNPUNumFromOthers()\ncase1: return error owing to no device",
+			args:    getNodeNPUNumFromOthersArgs{nodeInfo: nodeInfo1},
+			want:    constIntNum0,
 			wantErr: nil,
 		},
 		{
