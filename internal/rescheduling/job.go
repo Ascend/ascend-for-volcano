@@ -610,33 +610,6 @@ func isJobGraceDeletedSuccess(dJob *api.JobInfo) bool {
 	return false
 }
 
-func getFaultJobRankIDCMNameByJobID(dJob api.JobID) (string, error) {
-	temp := strings.Split(string(dJob), "/")
-	if len(temp) != util.NPUIndex2 {
-		msg := fmt.Errorf("illegal jobID: %v", dJob)
-		klog.V(util.LogErrorLev).Infof("getFaultJobRankIDCMNameByJobID %v.", msg)
-		return "", msg
-	}
-	jobName := temp[1]
-	configMapName := JobFaultRankIDCMPre + jobName
-
-	return configMapName, nil
-}
-
-func deleteRedundantRankIDCM(ssn *framework.Session, nameSpace string, dJob api.JobID) error {
-	configMapName, getErr := getFaultJobRankIDCMNameByJobID(dJob)
-	if getErr != nil {
-		klog.V(util.LogErrorLev).Infof("deleteRedundantRankIDCM %v.", getErr)
-		return getErr
-	}
-
-	klog.V(util.LogInfoLev).Infof("deleteRedundantRankIdCM %v:%v.", nameSpace, configMapName)
-	if err := util.DeleteSchedulerConfigMap(ssn, nameSpace, configMapName); err != nil {
-		return err
-	}
-	return nil
-}
-
 // GetNeedForceDeleteDelayingJobs Get delaying jobs which need be force deleted.
 func GetNeedForceDeleteDelayingJobs(ssn *framework.Session,
 	dJobs map[api.JobID]ReSchedulerTasks) ([]*api.JobInfo, error) {

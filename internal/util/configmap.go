@@ -19,7 +19,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
-	"volcano.sh/volcano/pkg/scheduler/framework"
 )
 
 // GetConfigMapWithRetry  Get config map from k8s.
@@ -70,15 +69,23 @@ func CreateOrUpdateConfigMap(k8s kubernetes.Interface, cm *v1.ConfigMap, cmName,
 	return nil
 }
 
-// DeleteSchedulerConfigMap Delete configMap.
-func DeleteSchedulerConfigMap(ssn *framework.Session, nameSpace, cmName string) error {
-	err := ssn.KubeClient().CoreV1().ConfigMaps(nameSpace).Delete(context.TODO(), cmName, metav1.DeleteOptions{})
+// UpdateConfigMap Create or update configMap.
+func UpdateConfigMap(k8s kubernetes.Interface, cm *v1.ConfigMap, cmName, nameSpace string) error {
+	cmData, err := GetConfigMapWithRetry(k8s, nameSpace, cmName)
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			klog.V(LogInfoLev).Infof("Failed to delete Configmap %v in%v: %v",
-				nameSpace, cmName, err)
-			return err
-		}
+		klog.V(LogErrorLev).Infof("UpdateConfigMap :%v.", err)
+		return err
 	}
+
+	if reflect.DeepEqual(cmData, cm) {
+		klog.V(LogDebugLev).Infof("UpdateConfigMap %v same, no need update.", cmName)
+		return nil
+	}
+
+	if _, updateErr := k8s.CoreV1().ConfigMaps(cm.ObjectMeta.Namespace).Update(context.TODO(), cm,
+		metav1.UpdateOptions{}); updateErr != nil {
+		return fmt.Errorf("unable to update ConfigMap:%v", updateErr)
+	}
+
 	return nil
 }
