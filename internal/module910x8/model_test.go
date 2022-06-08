@@ -57,7 +57,7 @@ func TestMNPUInsertNodeInPriGroup1PTasks(t *testing.T) {
 			err := insertNodeInPriGroup(task1p, sNodeInf, priNodeGroups, addPriNodeGroupFn)
 			convey.So(err, convey.ShouldBeNil)
 			convey.So(priNodeGroups[constIntNum2][nodeName], convey.ShouldNotBeNil)
-		}) // group0 has 2 npu left, group1 has 4 npu left, put in
+		})
 
 		convey.Convey("insertNodeInPriGroup() 1P should add node into the 4th group", func() {
 			sNodeInf := selectNodeInf{nodeName: nodeName, allNPUNum: constIntNum4, leftNPUNum: 0,
