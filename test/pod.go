@@ -65,6 +65,15 @@ func SetTestNPUPodSelector(pod *v1.Pod, selectorKey, selectorValue string) {
 	pod.Spec.NodeSelector[selectorKey] = selectorValue
 }
 
+// FakeNormalTestTask fake normal test task.
+func FakeNormalTestTask(name string, nodename string, groupname string) *api.TaskInfo {
+	pod := NPUPod{
+		Namespace: "vcjob", Name: name, NodeName: nodename, GroupName: groupname, Phase: v1.PodRunning,
+	}
+	task := api.NewTaskInfo(BuildNPUPod(pod))
+	return task
+}
+
 // FakeNormalTestTasks fake normal test tasks.
 func FakeNormalTestTasks(num int) []*api.TaskInfo {
 	var tasks []*api.TaskInfo

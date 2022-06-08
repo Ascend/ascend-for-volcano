@@ -10,6 +10,9 @@ Package module910x8 is using for HuaWei A800/9000 Ascend910 pin affinity schedul
 package module910x8
 
 import (
+	"errors"
+	"fmt"
+	"reflect"
 	"strconv"
 	"testing"
 
@@ -19,6 +22,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
+	"volcano.sh/volcano/pkg/scheduler/framework"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
 	"volcano.sh/volcano/pkg/scheduler/util"
 )
 
@@ -407,6 +412,16 @@ func TestMnpuCheckNodeNPUByTaskFn(t *testing.T) {
 			result := npu.CheckNodeNPUByTaskFn(task, node, true)
 			convey.So(result, convey.ShouldBeNil)
 		})
+		pod1 := buildNPUPod(MPodInfo{namespace: "default", groupName: "npu-group-13",
+			podName: "npu-test-60", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
+			reqNPUType: npu310CardName, reqNpuNum: "4"})
+		task1 := api.NewTaskInfo(pod1)
+		convey.Convey("CheckNodeNPUByTaskFn() should return error when task did not config a 910 card", func() {
+			node := buildNon910NPUNode(MNodeInfo{nodeName: nodeName, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "2", npuTop: "Ascend310-5,Ascend310-2"})
+			result := npu.CheckNodeNPUByTaskFn(task1, node, true)
+			convey.So(result, convey.ShouldBeError)
+		})
 	})
 }
 
@@ -447,6 +462,9 @@ func TestMnpuScoreBestNPUNodesFn(t *testing.T) {
 		const (
 			nodeName1 = "euler1"
 			nodeName2 = "euler2"
+			nodeName3 = "euler3"
+			nodeNum2  = 2
+			nodeNum3  = 3
 		)
 		npu := &module910x8{}
 		bestNodes := map[string]int{
@@ -480,6 +498,39 @@ func TestMnpuScoreBestNPUNodesFn(t *testing.T) {
 			result, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
 			convey.So(err, convey.ShouldNotBeNil)
 			convey.So(result, convey.ShouldResemble, expectedResult)
+		})
+
+		convey.Convey("ScoreBestNPUNodesFn() should return correct result with length", func() {
+			scoreMap := make(map[string]float64, nodeNum2)
+			scoreMap[nodeName1] = 0
+			scoreMap[nodeName2] = 0
+			expectedResult := map[string]float64(nil)
+			result, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
+			convey.So(err, convey.ShouldBeNil)
+			convey.So(result, convey.ShouldHaveSameTypeAs, expectedResult)
+			convey.So(result, convey.ShouldHaveLength, nodeNum2)
+		})
+
+		bestNodes2 := map[string]int{
+			nodeName1: 0,
+			nodeName2: constIntNum3,
+			nodeName3: constIntNum3,
+		}
+		node3 := buildNPUNode(MNodeInfo{nodeName: nodeName3, nodeArch: huaweiArchArm, cpu: "192", mem: "755Gi",
+			npuAllocateNum: "0", npuTop: "Ascend910-0,Ascend910-1"})
+		nodes = append(nodes, node3)
+
+		convey.Convey("ScoreBestNPUNodesFn() should return correct result with length but skip node3", func() {
+			scoreMap := make(map[string]float64, nodeNum3)
+			scoreMap[nodeName1] = 0
+			scoreMap[nodeName2] = 0
+			scoreMap[nodeName3] = 0
+			expectedResult := map[string]float64(nil)
+			result, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes2, task, nodes)
+			convey.So(err, convey.ShouldBeNil)
+			convey.So(result, convey.ShouldHaveSameTypeAs, expectedResult)
+			convey.So(result, convey.ShouldHaveLength, nodeNum3)
+			convey.So(result[nodeName3], convey.ShouldEqual, 0)
 		})
 	})
 }
@@ -695,4 +746,225 @@ func buildNPUNode(MNode MNodeInfo) *api.NodeInfo {
 		}
 	}
 	return node
+}
+
+func buildNon910NPUNode(MNode MNodeInfo) *api.NodeInfo {
+	nodeCapacity := buildNPUResourceList(MNode.cpu, MNode.mem, npu310CardName, strconv.Itoa(constIntNum2))
+	nodeAlloc := buildNPUResourceList(MNode.cpu, MNode.mem, npu310CardName, MNode.npuAllocateNum)
+	labels := make(map[string]string, constIntNum2)
+	ann := make(map[string]string, constIntNum2)
+
+	v1node := &v1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        MNode.nodeName,
+			Labels:      labels,
+			Annotations: ann,
+		},
+		Status: v1.NodeStatus{
+			Capacity:    nodeCapacity,
+			Allocatable: nodeAlloc,
+		},
+	}
+
+	if MNode.npuAllocateNum != "0" {
+		v1node.Annotations[npu310CardName] = MNode.npuTop
+	}
+
+	setNodeLabel(v1node, archSelector, MNode.nodeArch)
+
+	node := api.NewNodeInfo(v1node)
+	if MNode.npuAllocateNum != "0" {
+		node.Others = map[string]interface{}{
+			npu310CardName: MNode.npuTop,
+		}
+	}
+	return node
+}
+
+type preHandleFaultNPUFnArgs struct {
+	ssn *framework.Session
+}
+
+type preHandleFaultNPUFnTests struct {
+	name    string
+	args    preHandleFaultNPUFnArgs
+	wantErr error
+}
+
+func build_preHandleFaultNPUFnTestCases() []preHandleFaultNPUFnTests {
+	ssn2 := test.FakeNormalSSN()
+	conf2 := []conf.Configuration{
+		{
+			Name: "enqueue",
+			Arguments: map[string]string{
+				"overCommitFactor": "1.5",
+			},
+		},
+		{
+			Name: "allocate",
+			Arguments: map[string]string{
+				"placeholde": "placeholde",
+			},
+		},
+	}
+	test.AddConfigIntoFakeSSN(ssn2, conf2)
+	testCases := []preHandleFaultNPUFnTests{
+		{
+			name:    "test5-preHandleFaultNPUFn()\ncase2: no need to reschedule, no running job, return in step3",
+			args:    preHandleFaultNPUFnArgs{ssn: ssn2},
+			wantErr: nil,
+		},
+	}
+
+	return testCases
+}
+
+func Test_preHandleFaultNPUFn(t *testing.T) {
+	tests := build_preHandleFaultNPUFnTestCases()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := preHandleFaultNPUFn(tt.args.ssn)
+			if !reflect.DeepEqual(err, tt.wantErr) {
+				t.Errorf("preHandleFaultNPUFn() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+type setGraceOverTimeArgs struct {
+	ssn *framework.Session
+}
+
+type setGraceOverTimeTests struct {
+	name    string
+	args    setGraceOverTimeArgs
+	wantErr error
+}
+
+func build_setGraceOverTimeTestCases() []setGraceOverTimeTests {
+	ssn0 := test.FakeNormalSSN()
+	conf0 := []conf.Configuration{
+		{
+			Name: "enqueue",
+			Arguments: map[string]string{
+				"overCommitFactor": "1.5",
+			},
+		},
+		{
+			Name: "allocate",
+			Arguments: map[string]string{
+				"placeholde": "placeholde",
+			},
+		},
+	}
+	test.AddConfigIntoFakeSSN(ssn0, conf0)
+
+	ssn1 := test.FakeNormalSSN()
+	conf1 := []conf.Configuration{
+		{
+			Name: "init-params",
+			Arguments: map[string]string{
+				"grace-over-time": "1.5",
+			},
+		},
+		{
+			Name: "allocate",
+			Arguments: map[string]string{
+				"placeholde": "placeholde",
+			},
+		},
+	}
+	test.AddConfigIntoFakeSSN(ssn1, conf1)
+
+	ssn2 := test.FakeNormalSSN()
+	conf2 := []conf.Configuration{
+		{
+			Name: "init-params",
+			Arguments: map[string]string{
+				"grace-over-time": "1",
+			},
+		},
+		{
+			Name: "allocate",
+			Arguments: map[string]string{
+				"placeholde": "placeholde",
+			},
+		},
+	}
+	test.AddConfigIntoFakeSSN(ssn2, conf2)
+
+	ssn3 := test.FakeNormalSSN()
+	conf3 := []conf.Configuration{
+		{
+			Name: "init-params",
+			Arguments: map[string]string{
+				"grace-over-time": "10",
+			},
+		},
+		{
+			Name: "allocate",
+			Arguments: map[string]string{
+				"placeholde": "placeholde",
+			},
+		},
+	}
+	test.AddConfigIntoFakeSSN(ssn3, conf3)
+
+	ssn4 := test.FakeNormalSSN()
+	conf4 := []conf.Configuration{
+		{
+			Name: "init-params",
+			Arguments: map[string]string{
+				"grace-over": "10", // change the key
+			},
+		},
+		{
+			Name: "allocate",
+			Arguments: map[string]string{
+				"placeholde": "placeholde",
+			},
+		},
+	}
+	test.AddConfigIntoFakeSSN(ssn4, conf4)
+
+	testCases := []setGraceOverTimeTests{
+		{
+			name:    "test5-setGraceOverTime()\ncase0: failure in init parameters",
+			args:    setGraceOverTimeArgs{ssn: ssn0},
+			wantErr: fmt.Errorf("cannot get configurations by name [%s], name not in configurations", CMInitParamKey),
+		},
+		{
+			name:    "test5-setGraceOverTime()\ncase1: failure owing to setting grace over time to non-int value",
+			args:    setGraceOverTimeArgs{ssn: ssn1},
+			wantErr: &strconv.NumError{Num: "1.5", Func: "ParseInt", Err: strconv.ErrSyntax},
+		},
+		{
+			name:    "test5-setGraceOverTime()\ncase2: failure owing to setting grace over time to non-int value",
+			args:    setGraceOverTimeArgs{ssn: ssn2},
+			wantErr: errors.New("graceOverTime is out of range"),
+		},
+		{
+			name:    "test5-setGraceOverTime()\ncase3: success",
+			args:    setGraceOverTimeArgs{ssn: ssn3},
+			wantErr: nil,
+		},
+		{
+			name:    "test5-setGraceOverTime()\ncase4: no config arg called grace-over-time and return with nil",
+			args:    setGraceOverTimeArgs{ssn: ssn4},
+			wantErr: nil,
+		},
+	}
+	return testCases
+}
+
+func Test_setGraceOverTime(t *testing.T) {
+	tests := build_setGraceOverTimeTestCases()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := setGraceOverTime(tt.args.ssn)
+			if !reflect.DeepEqual(err, tt.wantErr) {
+				t.Errorf("setGraceOverTime() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
 }
