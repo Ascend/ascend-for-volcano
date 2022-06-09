@@ -101,7 +101,7 @@ func buildClusterNodePredicateFnTestCases() []clusterNodePredicateFnTests {
 			wantErr: nil,
 		},
 		{
-			name:    "test01-ClusterNodePredicateFn()- is a 910 task not an NPU fault task(return in branch 2)-test",
+			name:    "02-ClusterNodePredicateFn()- is a 910 task not an NPU fault task(return in branch 2)-test",
 			args:    clusterNodePredicateFnArgs{task: task1, ssn: ssn1},
 			wantErr: nil,
 		},
@@ -141,13 +141,13 @@ func buildGetNodeHccsArrayTestCases() []getNodeHccsArrayTests {
 			want1: []int{util.NPUIndex5},
 		},
 		{
-			name:  "test01-getNodeHccsArrayTest()- split topology to one side-test",
+			name:  "02-getNodeHccsArrayTest()- split topology to one side-test",
 			args:  getNodeHccsArrayArgs{nodeTop: []int{util.NPUIndex3, util.NPUIndex2}},
 			want:  []int{util.NPUIndex3, util.NPUIndex2},
 			want1: nil,
 		},
 		{
-			name:  "test02-getNodeHccsArrayTest()- split topology to neither side-test",
+			name:  "03-getNodeHccsArrayTest()- split topology to neither side-test",
 			args:  getNodeHccsArrayArgs{nodeTop: []int{}},
 			want:  nil,
 			want1: nil,
@@ -198,13 +198,13 @@ func buildGetNodeNPUNumFromOthersTestCases() []getNodeNPUNumFromOthersTests {
 			wantErr: nil,
 		},
 		{
-			name:    "test01-getNodeNPUNumFromOthers()- return error owing to no device-test",
+			name:    "02-getNodeNPUNumFromOthers()- return error owing to no device-test",
 			args:    getNodeNPUNumFromOthersArgs{nodeInfo: nodeInfo1},
 			want:    0,
 			wantErr: nil,
 		},
 		{
-			name: "test02-getNodeNPUNumFromOthers()- return error owing to device number exceed maxNum(8)-test",
+			name: "03-getNodeNPUNumFromOthers()- return error owing to device number exceed maxNum(8)-test",
 			args: getNodeNPUNumFromOthersArgs{nodeInfo: nodeInfo2},
 			want: 0,
 			wantErr: fmt.Errorf("amount of npus exceeded the limitation, maximum(%d), actual(9)",
@@ -259,12 +259,12 @@ func buildInitNodesNPUTopologyFnTestCases() []initNodesNPUTopologyFnTests {
 			wantErr: nil,
 		},
 		{
-			name:    "test01-initNodesNPUTopologyFnArgs()- break when got no 910npu-test",
+			name:    "02-initNodesNPUTopologyFnArgs()- break when got no 910npu-test",
 			args:    initNodesNPUTopologyFnArgs{nodeInfo: map[string]*api.NodeInfo{"n0": node0, "n1": node1, "n2": node2}},
 			wantErr: nil,
 		},
 		{
-			name:    "test02-initNodesNPUTopologyFnArgs()- success-test",
+			name:    "03-initNodesNPUTopologyFnArgs()- success-test",
 			args:    initNodesNPUTopologyFnArgs{nodeInfo: map[string]*api.NodeInfo{"n0": node0, "n2": node2}},
 			wantErr: nil,
 		},
