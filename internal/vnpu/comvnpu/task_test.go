@@ -71,6 +71,7 @@ func buildGetPluginNameByTaskInfoTestCases() []getPluginNameByTaskInfoTests {
 	return testCases
 }
 
+// TestGetPluginNameByTaskInfo test GetPluginNameByTaskInfo
 func TestGetPluginNameByTaskInfo(t *testing.T) {
 	tests := buildGetPluginNameByTaskInfoTestCases()
 	for _, tt := range tests {
@@ -147,6 +148,7 @@ func buildGetReleaseNPUTopologyFnTestCases() []getReleaseNPUTopologyFnTests {
 	return testCases
 }
 
+// TestGetReleaseNPUTopologyFn test GetReleaseNPUTopologyFn
 func TestGetReleaseNPUTopologyFn(t *testing.T) {
 	tests := buildGetReleaseNPUTopologyFnTestCases()
 	for _, tt := range tests {
@@ -218,6 +220,7 @@ func buildGetVTaskReqNPUTypeTestCases() []getVTaskReqNPUTypeTests {
 	return testCases
 }
 
+// TestGetVTaskReqNPUType test GetVTaskReqNPUType
 func TestGetVTaskReqNPUType(t *testing.T) {
 	tests := buildGetVTaskReqNPUTypeTestCases()
 	for _, tt := range tests {
@@ -284,6 +287,7 @@ func buildIsMyTaskTestCases() []isMyTaskTests {
 	return testCases
 }
 
+// TestIsMyTask test IsMyTask
 func TestIsMyTask(t *testing.T) {
 	tests := buildIsMyTaskTestCases()
 	for _, tt := range tests {
@@ -348,6 +352,7 @@ func buildIsSelectorMeetNodeTestCases() []isSelectorMeetNodeTests {
 	return testCases
 }
 
+// TestIsSelectorMeetNode IsSelectorMeetNode
 func TestIsSelectorMeetNode(t *testing.T) {
 	tests := buildIsSelectorMeetNodeTestCases()
 	for _, tt := range tests {
@@ -416,6 +421,7 @@ func buildSetNPUTopologyToPodTestCases() []setNPUTopologyToPodTests {
 	return testCases
 }
 
+// TestSetNPUTopologyToPodFn test SetNPUTopologyToPodFn
 func TestSetNPUTopologyToPodFn(t *testing.T) {
 	tests := buildSetNPUTopologyToPodTestCases()
 	for _, tt := range tests {

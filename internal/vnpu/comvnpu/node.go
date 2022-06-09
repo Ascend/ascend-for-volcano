@@ -229,7 +229,6 @@ func (tp *VNPU) IsVNPUNodeMeetReqResource(jobNeedNPUType string, tmpNode *api.No
 				continue
 			}
 		}
-
 		if v.UnCutCore >= chipCore {
 			return true
 		}
