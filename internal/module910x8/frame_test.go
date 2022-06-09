@@ -52,6 +52,9 @@ const (
 	acceleratorType     = "accelerator-type"
 	cardAcceleratorType = "card"
 	nodeName            = "centos"
+	nodeName1           = "euler1"
+	nodeName2           = "euler2"
+	nodeName3           = "euler3"
 )
 
 // TestMNPUName
@@ -430,11 +433,6 @@ func TestMnpuCheckNodeNPUByTaskFn(t *testing.T) {
 // TestMnpuGetNPUAffinityBestNodesFn
 func TestMnpuGetNPUAffinityBestNodesFn(t *testing.T) {
 	convey.Convey("Test module910x8 GetNPUAffinityBestNodesFn", t, func() {
-		const (
-			nodeName1 = "centos1"
-			nodeName2 = "centos2"
-			constNum  = 0
-		)
 		npu := &module910x8{}
 		pod := buildNPUPod(MPodInfo{namespace: "default", groupName: "npu-group-61",
 			podName: "npu-test-61", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
@@ -452,7 +450,7 @@ func TestMnpuGetNPUAffinityBestNodesFn(t *testing.T) {
 
 			result, err := npu.GetNPUAffinityBestNodesFn(task, nodes, false)
 
-			convey.So(result[nodeName1], convey.ShouldEqual, constNum)
+			convey.So(result[nodeName1], convey.ShouldEqual, 0)
 			convey.So(err, convey.ShouldBeNil)
 		})
 	})
@@ -460,10 +458,6 @@ func TestMnpuGetNPUAffinityBestNodesFn(t *testing.T) {
 
 func testMnpuScoreBestNPUNodesFn01(npu *module910x8, bestNodes map[string]int,
 	task *api.TaskInfo, nodes []*api.NodeInfo) {
-	const (
-		nodeName1 = "euler1"
-		nodeName2 = "euler2"
-	)
 	convey.Convey("ScoreBestNPUNodesFn() should return err when scoreMap is nil", func() {
 		var scoreMap map[string]float64
 		_, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
@@ -492,11 +486,6 @@ func testMnpuScoreBestNPUNodesFn01(npu *module910x8, bestNodes map[string]int,
 
 func testMnpuScoreBestNPUNodesFn02(npu *module910x8, bestNodes map[string]int,
 	task *api.TaskInfo, nodes []*api.NodeInfo) {
-	const (
-		nodeName1 = "euler1"
-		nodeName2 = "euler2"
-		nodeName3 = "euler3"
-	)
 	convey.Convey("ScoreBestNPUNodesFn() should return correct result with length but skip node3", func() {
 		scoreMap := make(map[string]float64, npuutil.NPUIndex3)
 		scoreMap[nodeName1] = 0
@@ -514,13 +503,6 @@ func testMnpuScoreBestNPUNodesFn02(npu *module910x8, bestNodes map[string]int,
 // TestMnpuScoreBestNPUNodesFn
 func TestMnpuScoreBestNPUNodesFn(t *testing.T) {
 	convey.Convey("Test module910x8 ScoreBestNPUNodesFn", t, func() {
-		const (
-			nodeName1 = "euler1"
-			nodeName2 = "euler2"
-			nodeName3 = "euler3"
-			nodeNum2  = 2
-			nodeNum3  = 3
-		)
 		npu := &module910x8{}
 		bestNodes := map[string]int{
 			nodeName1: 0,
@@ -860,23 +842,18 @@ type setGraceOverTimeTests struct {
 	wantErr error
 }
 
-func buildSetGraceOverTimeTestCase0() setGraceOverTimeTests {
-	ssn0 := test.FakeNormalSSN()
-	conf0 := []conf.Configuration{
-		{
-			Name: "enqueue",
-			Arguments: map[string]string{
-				"overCommitFactor": "1.5",
-			},
-		},
-		{
-			Name: "allocate",
-			Arguments: map[string]string{
-				"placeholde": "placeholde",
-			},
-		},
-	}
-	test.AddConfigIntoFakeSSN(ssn0, conf0)
+func SetConfig(name string, argument map[string]string) conf.Configuration {
+	return conf.Configuration{Name: name, Arguments: argument}
+}
+
+func buildSetGraceOverTimeSingleTestCase(confs []conf.Configuration) *framework.Session {
+	ssn := test.FakeNormalSSN()
+	test.AddConfigIntoFakeSSN(ssn, confs)
+	return ssn
+}
+
+func buildSetGraceOverTimeTestCase0(conf []conf.Configuration) setGraceOverTimeTests {
+	ssn0 := buildSetGraceOverTimeSingleTestCase(conf)
 	testCase := setGraceOverTimeTests{
 		name:    "test5-setGraceOverTime()\ncase0: failure in init parameters",
 		args:    setGraceOverTimeArgs{ssn: ssn0},
@@ -885,23 +862,8 @@ func buildSetGraceOverTimeTestCase0() setGraceOverTimeTests {
 	return testCase
 }
 
-func buildSetGraceOverTimeTestCase1() setGraceOverTimeTests {
-	ssn1 := test.FakeNormalSSN()
-	conf1 := []conf.Configuration{
-		{
-			Name: "init-params",
-			Arguments: map[string]string{
-				"grace-over-time": "1.5",
-			},
-		},
-		{
-			Name: "allocate",
-			Arguments: map[string]string{
-				"placeholde": "placeholde",
-			},
-		},
-	}
-	test.AddConfigIntoFakeSSN(ssn1, conf1)
+func buildSetGraceOverTimeTestCase1(conf []conf.Configuration) setGraceOverTimeTests {
+	ssn1 := buildSetGraceOverTimeSingleTestCase(conf)
 	testCase := setGraceOverTimeTests{
 		name:    "test5-setGraceOverTime()\ncase1: failure owing to setting grace over time to non-int value",
 		args:    setGraceOverTimeArgs{ssn: ssn1},
@@ -910,23 +872,8 @@ func buildSetGraceOverTimeTestCase1() setGraceOverTimeTests {
 	return testCase
 }
 
-func buildSetGraceOverTimeTestCase2() setGraceOverTimeTests {
-	ssn2 := test.FakeNormalSSN()
-	conf2 := []conf.Configuration{
-		{
-			Name: "init-params",
-			Arguments: map[string]string{
-				"grace-over-time": "1",
-			},
-		},
-		{
-			Name: "allocate",
-			Arguments: map[string]string{
-				"placeholde": "placeholde",
-			},
-		},
-	}
-	test.AddConfigIntoFakeSSN(ssn2, conf2)
+func buildSetGraceOverTimeTestCase2(conf []conf.Configuration) setGraceOverTimeTests {
+	ssn2 := buildSetGraceOverTimeSingleTestCase(conf)
 	testCase := setGraceOverTimeTests{
 		name:    "test5-setGraceOverTime()\ncase2: failure owing to setting grace over time to non-int value",
 		args:    setGraceOverTimeArgs{ssn: ssn2},
@@ -935,23 +882,8 @@ func buildSetGraceOverTimeTestCase2() setGraceOverTimeTests {
 	return testCase
 }
 
-func buildSetGraceOverTimeTestCase3() setGraceOverTimeTests {
-	ssn3 := test.FakeNormalSSN()
-	conf3 := []conf.Configuration{
-		{
-			Name: "init-params",
-			Arguments: map[string]string{
-				"grace-over-time": "10",
-			},
-		},
-		{
-			Name: "allocate",
-			Arguments: map[string]string{
-				"placeholde": "placeholde",
-			},
-		},
-	}
-	test.AddConfigIntoFakeSSN(ssn3, conf3)
+func buildSetGraceOverTimeTestCase3(conf []conf.Configuration) setGraceOverTimeTests {
+	ssn3 := buildSetGraceOverTimeSingleTestCase(conf)
 	testCase := setGraceOverTimeTests{
 		name:    "test5-setGraceOverTime()\ncase3: success",
 		args:    setGraceOverTimeArgs{ssn: ssn3},
@@ -960,23 +892,8 @@ func buildSetGraceOverTimeTestCase3() setGraceOverTimeTests {
 	return testCase
 }
 
-func buildSetGraceOverTimeTestCase4() setGraceOverTimeTests {
-	ssn4 := test.FakeNormalSSN()
-	conf4 := []conf.Configuration{
-		{
-			Name: "init-params",
-			Arguments: map[string]string{
-				"grace-over": "10", // change the key
-			},
-		},
-		{
-			Name: "allocate",
-			Arguments: map[string]string{
-				"placeholde": "placeholde",
-			},
-		},
-	}
-	test.AddConfigIntoFakeSSN(ssn4, conf4)
+func buildSetGraceOverTimeTestCase4(conf []conf.Configuration) setGraceOverTimeTests {
+	ssn4 := buildSetGraceOverTimeSingleTestCase(conf)
 	testCase := setGraceOverTimeTests{
 		name:    "test5-setGraceOverTime()\ncase4: no config arg called grace-over-time and return with nil",
 		args:    setGraceOverTimeArgs{ssn: ssn4},
@@ -986,12 +903,18 @@ func buildSetGraceOverTimeTestCase4() setGraceOverTimeTests {
 }
 
 func buildSetGraceOverTimeTestCases() []setGraceOverTimeTests {
+	conf0 := SetConfig("enqueue", map[string]string{"grace-over-time": "1"})
+	conf1 := SetConfig("allocate", map[string]string{"placeholde": "placeholde"})
+	conf2 := SetConfig("init-params", map[string]string{"grace-over-time": "1.5"})
+	conf3 := SetConfig("init-params", map[string]string{"grace-over-time": "1"})
+	conf4 := SetConfig("init-params", map[string]string{"grace-over-time": "10"})
+	conf5 := SetConfig("init-params", map[string]string{"grace-over": "10"})
 	testCases := []setGraceOverTimeTests{
-		buildSetGraceOverTimeTestCase0(),
-		buildSetGraceOverTimeTestCase1(),
-		buildSetGraceOverTimeTestCase2(),
-		buildSetGraceOverTimeTestCase3(),
-		buildSetGraceOverTimeTestCase4(),
+		buildSetGraceOverTimeTestCase0([]conf.Configuration{conf0, conf1}),
+		buildSetGraceOverTimeTestCase1([]conf.Configuration{conf2, conf1}),
+		buildSetGraceOverTimeTestCase2([]conf.Configuration{conf3, conf1}),
+		buildSetGraceOverTimeTestCase3([]conf.Configuration{conf4, conf1}),
+		buildSetGraceOverTimeTestCase4([]conf.Configuration{conf5, conf1}),
 	}
 	return testCases
 }
