@@ -793,30 +793,16 @@ type preHandleFaultNPUFnTests struct {
 }
 
 func buildPreHandleFaultNPUFnTestCases() []preHandleFaultNPUFnTests {
-	ssn2 := test.FakeNormalSSN()
-	conf2 := []conf.Configuration{
-		{
-			Name: "enqueue",
-			Arguments: map[string]string{
-				"overCommitFactor": "1.5",
-			},
-		},
-		{
-			Name: "allocate",
-			Arguments: map[string]string{
-				"placeholde": "placeholde",
-			},
-		},
-	}
-	test.AddConfigIntoFakeSSN(ssn2, conf2)
+	conf0 := SetConfig("enqueue", map[string]string{"overCommitFactor": "1.5"})
+	conf1 := SetConfig("allocate", map[string]string{"placeholde": "placeholde"})
+	ssn := InitSSNAndAddConfig([]conf.Configuration{conf0, conf1})
 	testCases := []preHandleFaultNPUFnTests{
 		{
-			name:    "test5-preHandleFaultNPUFn()\ncase2: no need to reschedule, no running job, return in step3",
-			args:    preHandleFaultNPUFnArgs{ssn: ssn2},
+			name:    "01-preHandleFaultNPUFn()- no need to reschedule, no running job, return in step3-test",
+			args:    preHandleFaultNPUFnArgs{ssn: ssn},
 			wantErr: nil,
 		},
 	}
-
 	return testCases
 }
 
@@ -846,16 +832,16 @@ func SetConfig(name string, argument map[string]string) conf.Configuration {
 	return conf.Configuration{Name: name, Arguments: argument}
 }
 
-func buildSetGraceOverTimeSingleTestCase(confs []conf.Configuration) *framework.Session {
+func InitSSNAndAddConfig(confs []conf.Configuration) *framework.Session {
 	ssn := test.FakeNormalSSN()
 	test.AddConfigIntoFakeSSN(ssn, confs)
 	return ssn
 }
 
 func buildSetGraceOverTimeTestCase0(conf []conf.Configuration) setGraceOverTimeTests {
-	ssn0 := buildSetGraceOverTimeSingleTestCase(conf)
+	ssn0 := InitSSNAndAddConfig(conf)
 	testCase := setGraceOverTimeTests{
-		name:    "test5-setGraceOverTime()\ncase0: failure in init parameters",
+		name:    "01-setGraceOverTime()- case0: failure in init parameters-test",
 		args:    setGraceOverTimeArgs{ssn: ssn0},
 		wantErr: fmt.Errorf("cannot get configurations by name [init-params], name not in configurations"),
 	}
@@ -863,9 +849,9 @@ func buildSetGraceOverTimeTestCase0(conf []conf.Configuration) setGraceOverTimeT
 }
 
 func buildSetGraceOverTimeTestCase1(conf []conf.Configuration) setGraceOverTimeTests {
-	ssn1 := buildSetGraceOverTimeSingleTestCase(conf)
+	ssn1 := InitSSNAndAddConfig(conf)
 	testCase := setGraceOverTimeTests{
-		name:    "test5-setGraceOverTime()\ncase1: failure owing to setting grace over time to non-int value",
+		name:    "02-setGraceOverTime()- failure owing to setting grace over time to non-int value-test",
 		args:    setGraceOverTimeArgs{ssn: ssn1},
 		wantErr: &strconv.NumError{Num: "1.5", Func: "ParseInt", Err: strconv.ErrSyntax},
 	}
@@ -873,9 +859,9 @@ func buildSetGraceOverTimeTestCase1(conf []conf.Configuration) setGraceOverTimeT
 }
 
 func buildSetGraceOverTimeTestCase2(conf []conf.Configuration) setGraceOverTimeTests {
-	ssn2 := buildSetGraceOverTimeSingleTestCase(conf)
+	ssn2 := InitSSNAndAddConfig(conf)
 	testCase := setGraceOverTimeTests{
-		name:    "test5-setGraceOverTime()\ncase2: failure owing to setting grace over time to non-int value",
+		name:    "03-setGraceOverTime()- failure owing to setting grace over time out of range-test",
 		args:    setGraceOverTimeArgs{ssn: ssn2},
 		wantErr: errors.New("graceOverTime is out of range"),
 	}
@@ -883,9 +869,9 @@ func buildSetGraceOverTimeTestCase2(conf []conf.Configuration) setGraceOverTimeT
 }
 
 func buildSetGraceOverTimeTestCase3(conf []conf.Configuration) setGraceOverTimeTests {
-	ssn3 := buildSetGraceOverTimeSingleTestCase(conf)
+	ssn3 := InitSSNAndAddConfig(conf)
 	testCase := setGraceOverTimeTests{
-		name:    "test5-setGraceOverTime()\ncase3: success",
+		name:    "04-setGraceOverTime()- case3: success-atest",
 		args:    setGraceOverTimeArgs{ssn: ssn3},
 		wantErr: nil,
 	}
@@ -893,9 +879,9 @@ func buildSetGraceOverTimeTestCase3(conf []conf.Configuration) setGraceOverTimeT
 }
 
 func buildSetGraceOverTimeTestCase4(conf []conf.Configuration) setGraceOverTimeTests {
-	ssn4 := buildSetGraceOverTimeSingleTestCase(conf)
+	ssn4 := InitSSNAndAddConfig(conf)
 	testCase := setGraceOverTimeTests{
-		name:    "test5-setGraceOverTime()\ncase4: no config arg called grace-over-time and return with nil",
+		name:    "05-setGraceOverTime()- case4: no config arg called grace-over-time and return with nil-test",
 		args:    setGraceOverTimeArgs{ssn: ssn4},
 		wantErr: nil,
 	}
