@@ -660,7 +660,7 @@ func buildAllocNewVNPUJobsFromCacheTestCases() []allocNewVNPUJobsFromCacheTests 
 	test.AddJobIntoFakeSSN(ssnTest, jobOne)
 	nodeOne := test.FakeNormalTestNode("node-1")
 	test.SetFakeNodeIdleSource(nodeOne, "huawei.com/Ascend910-16c-132-1", 1)
-	test.SetFakeNodeIdleSource(nodeOne, vnpuutil.NPU910CardName, 2)
+	test.SetFakeNodeIdleSource(nodeOne, vnpuutil.NPU910CardName, util2.NPUIndex2)
 	test.SetTestNPUNodeAnnotation(nodeOne, vnpuutil.NPU910CardName, "huawei.com/Ascend910-0,huawei.com/Ascend910-2")
 	test.SetTestNPUNodeAnnotation(nodeOne, npuV910CardName16c, "Ascend910-16c-132-1")
 	test.SetTestNPUNodeAnnotation(nodeOne, vnpuutil.NPU910CardCoreKey, "0-32c-32c,1-32c-17c,2-30c-30c")
