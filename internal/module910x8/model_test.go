@@ -257,7 +257,7 @@ func buildIsUnstableNodeMeetTaskReqNPUSourceTestCases() []IsUnstableNodeMeetTask
 
 	testCases := []IsUnstableNodeMeetTaskReqNPUSourceTests{
 		{
-			name: "test-IsUnstableNodeMeetTaskReqNPUSource()\ncase0: task require 310 npu thus return false",
+			name: "01-IsUnstableNodeMeetTaskReqNPUSource()- task require 310 npu thus return false-test",
 			args: IsUnstableNodeMeetTaskReqNPUSourceArgs{
 				task: taskInfo0,
 				node: nodeInfo0,
@@ -265,7 +265,7 @@ func buildIsUnstableNodeMeetTaskReqNPUSourceTestCases() []IsUnstableNodeMeetTask
 			want: false,
 		},
 		{
-			name: "test-IsUnstableNodeMeetTaskReqNPUSource()\ncase1: no idle resource on node",
+			name: "02-IsUnstableNodeMeetTaskReqNPUSource()- no idle resource on node-test",
 			args: IsUnstableNodeMeetTaskReqNPUSourceArgs{
 				task: taskInfo1,
 				node: nodeInfo1,
@@ -273,7 +273,7 @@ func buildIsUnstableNodeMeetTaskReqNPUSourceTestCases() []IsUnstableNodeMeetTask
 			want: false,
 		},
 		{
-			name: "test-IsUnstableNodeMeetTaskReqNPUSource()\ncase2: success",
+			name: "03-IsUnstableNodeMeetTaskReqNPUSource()- success-test",
 			args: IsUnstableNodeMeetTaskReqNPUSourceArgs{
 				task: taskInfo2,
 				node: nodeInfo2,
@@ -281,7 +281,7 @@ func buildIsUnstableNodeMeetTaskReqNPUSourceTestCases() []IsUnstableNodeMeetTask
 			want: true,
 		},
 		{
-			name: "test-IsUnstableNodeMeetTaskReqNPUSource()\ncase3: node idle npu less than task require",
+			name: "04-IsUnstableNodeMeetTaskReqNPUSource() node idle npu less than task require-test",
 			args: IsUnstableNodeMeetTaskReqNPUSourceArgs{
 				task: taskInfo3,
 				node: nodeInfo3,
