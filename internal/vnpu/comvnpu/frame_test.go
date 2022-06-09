@@ -10,9 +10,16 @@ Package comvnpu is using for virtual HuaWei Ascend910 schedule.
 package comvnpu
 
 import (
+	"errors"
 	"fmt"
+	"github.com/agiledragon/gomonkey/v2"
+	"k8s.io/client-go/kubernetes"
+	"reflect"
 	"strconv"
 	"testing"
+	"time"
+	"volcano.sh/apis/pkg/apis/scheduling"
+	"volcano.sh/volcano/pkg/scheduler/framework"
 
 	"github.com/smartystreets/goconvey/convey"
 	"k8s.io/api/core/v1"
@@ -34,9 +41,6 @@ const (
 	nodeName             = "ubuntu"
 	labelSize            = 8
 	annSize              = 8
-	constIntNum2         = 2
-	constIntNum3         = 3.0
-	constIntNum4         = 4
 	npuV910CardName16c   = "huawei.com/Ascend910-16c"
 	npuV910CardName2c    = "huawei.com/Ascend910-2c"
 	npuV310PCardName2c   = "huawei.com/Ascend310P-2c"
@@ -134,10 +138,10 @@ func TestVnpuValidNPUJobFnInvalidSelector(t *testing.T) {
 				podName: "npu-test-5", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: npuV910CardName16c, reqNpuNum: "1"})
 			delete(pod.Spec.NodeSelector, util2.ArchSelector)
-			setPodSelector(pod, invalidSelectorKey, invalidSelectorValue)
+			test.SetTestNPUPodSelector(pod, invalidSelectorKey, invalidSelectorValue)
 			tasks = append(tasks, api.NewTaskInfo(pod))
 			job := api.NewJobInfo(uid, tasks...)
-			setJobResourceReq(job, npuV910CardName16c, float64(validNum))
+			test.SetFakeJobRequestSource(job, npuV910CardName16c, validNum)
 			result := vnpu.ValidNPUJobFn(job)
 			convey.So(result, convey.ShouldNotBeNil)
 		})
@@ -145,11 +149,11 @@ func TestVnpuValidNPUJobFnInvalidSelector(t *testing.T) {
 			pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-3",
 				podName: "npu-test-6", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: npuV910CardName16c, reqNpuNum: "1"})
-			setPodSelector(pod, util2.ArchSelector, invalidSelectorValue)
+			test.SetTestNPUPodSelector(pod, util2.ArchSelector, invalidSelectorValue)
 			tasks = append(tasks, api.NewTaskInfo(pod))
 			job := api.NewJobInfo(uid, tasks...)
 			test.AddTestJobPodGroup(job)
-			setJobResourceReq(job, npuV910CardName16c, float64(validNum))
+			test.SetFakeJobRequestSource(job, npuV910CardName16c, validNum)
 			result := vnpu.ValidNPUJobFn(job)
 			convey.So(result, convey.ShouldNotBeNil)
 		})
@@ -171,10 +175,10 @@ func TestVnpuValidNPUJobFnInvalidReq(t *testing.T) {
 		convey.Convey("ValidNPUJobFn() should return error for job with invalid resource prefix", func() {
 			pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-4", podName: "npu-test-7",
 				nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi", reqNPUType: npuV910CardName16c, reqNpuNum: "1"})
-			setPodSelector(pod, util2.ArchSelector, util2.HuaweiArchArm)
+			test.SetTestNPUPodSelector(pod, util2.ArchSelector, util2.HuaweiArchArm)
 			tasks = append(tasks, api.NewTaskInfo(pod))
 			job := api.NewJobInfo(uid, tasks...)
-			setJobResourceReq(job, noPrefixResourceType, float64(validNum))
+			test.SetFakeJobRequestSource(job, noPrefixResourceType, validNum)
 			test.AddTestJobPodGroup(job)
 			result := vnpu.ValidNPUJobFn(job)
 			convey.So(result, convey.ShouldNotBeEmpty)
@@ -184,10 +188,10 @@ func TestVnpuValidNPUJobFnInvalidReq(t *testing.T) {
 				pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-5",
 					podName: "npu-test-8", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 					reqNPUType: npuV910CardName16c, reqNpuNum: "1"})
-				setPodSelector(pod, util2.ArchSelector, util2.HuaweiArchX86)
+				test.SetTestNPUPodSelector(pod, util2.ArchSelector, util2.HuaweiArchX86)
 				tasks = append(tasks, api.NewTaskInfo(pod))
 				job := api.NewJobInfo(uid, tasks...)
-				setJobResourceReq(job, invalidResourceType, float64(validNum))
+				test.SetFakeJobRequestSource(job, invalidResourceType, validNum)
 				test.AddTestJobPodGroup(job)
 				result := vnpu.ValidNPUJobFn(job)
 				convey.So(result, convey.ShouldNotBeNil)
@@ -196,11 +200,11 @@ func TestVnpuValidNPUJobFnInvalidReq(t *testing.T) {
 			pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-6",
 				podName: "npu-test-9", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: npuV910CardName16c, reqNpuNum: "1"})
-			setPodSelector(pod, util2.ArchSelector, util2.HuaweiArchX86)
+			test.SetTestNPUPodSelector(pod, util2.ArchSelector, util2.HuaweiArchX86)
 			tasks = append(tasks, api.NewTaskInfo(pod))
 			job := api.NewJobInfo(uid, tasks...)
 			test.AddTestJobPodGroup(job)
-			setJobResourceReq(job, npuV910CardName16c, float64(invalidNum))
+			test.SetFakeJobRequestSource(job, npuV910CardName16c, invalidNum)
 			result := vnpu.ValidNPUJobFn(job)
 			convey.So(result, convey.ShouldNotBeNil)
 		})
@@ -225,7 +229,7 @@ func TestVnpuValidNPUJobFnSuccess(t *testing.T) {
 					podName: "npu-test-3", nodeName: nodeName, reqCPUNum: "10", reqMem: "10Gi",
 					reqNPUType: npuV310PCardName2c, reqNpuNum: "1"})))
 			job := api.NewJobInfo(uid, tasks...)
-			setJobResourceReq(job, npuV310PCardName2c, float64(1))
+			test.SetFakeJobRequestSource(job, npuV310PCardName2c, 1)
 			test.AddTestJobPodGroup(job)
 			result := vnpu.ValidNPUJobFn(job)
 			convey.So(result, convey.ShouldBeNil)
@@ -284,7 +288,7 @@ func TestVnpuPreCheckNodeFnNodeError(t *testing.T) {
 			task := api.NewTaskInfo(buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-10",
 				podName: "npu-test-12", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: npuV910CardName16c, reqNpuNum: "1"}))
-			setNodeLabel(node.Node, util2.ArchSelector, "")
+			test.SetNPUNodeLabel(node.Node, util2.ArchSelector, "")
 			confs = []conf.Configuration{{Name: util2.CMInitParamKey,
 				Arguments: map[string]string{util2.SegmentEnable: "false"}}}
 			result := vnpu.PreCheckNodeFn(task, node, confs)
@@ -561,7 +565,7 @@ func TestVnpuinitVNodesFn(t *testing.T) {
 				npuAllocateNum: "1", npuTop: "Ascend910-16c-118-0"})
 			node3 := buildNPUNode(VNodeInfo{nodeName: "ubuntu-3", nodeArch: util2.HuaweiArchArm, cpu: "192", mem: "755Gi",
 				npuAllocateNum: "1", npuTop: "Ascend910-16c-119-0"})
-			setNodeAnnotation(node3.Node, npuV910CardName16c, "")
+			test.SetTestNPUNodeAnnotation(node3, npuV910CardName16c, "")
 			nodes := map[string]*api.NodeInfo{
 				"1": node1,
 				"2": node2,
@@ -573,50 +577,15 @@ func TestVnpuinitVNodesFn(t *testing.T) {
 	})
 }
 
-func setPodSelector(pod *v1.Pod, selectorKey string, selectorValue string) {
-	pod.Spec.NodeSelector[selectorKey] = selectorValue
-}
-
-func setNodeLabel(node *v1.Node, labelKey string, labelValue string) {
-	if labelValue == "" {
-		delete(node.Labels, labelKey)
-		return
-	}
-	node.Labels[labelKey] = labelValue
-}
-
-func setNodeAnnotation(node *v1.Node, annKey string, annValue string) {
-	if annValue == "" {
-		delete(node.Annotations, annKey)
-		return
-	}
-	node.Annotations[annKey] = annValue
-}
-
-func setJobResourceReq(job *api.JobInfo, res string, num float64) {
-	if len(job.TotalRequest.ScalarResources) == 0 {
-		job.TotalRequest.ScalarResources = make(map[v1.ResourceName]float64, constIntNum2)
-	}
-	job.TotalRequest.ScalarResources[v1.ResourceName(res)] = num
-	var minRes = make(v1.ResourceList, constIntNum3)
-	for k, v := range job.TotalRequest.ScalarResources {
-		minRes[k] = resource.MustParse(fmt.Sprintf("%f", v))
-	}
-	if job.PodGroup == nil {
-		test.AddTestJobPodGroup(job)
-	}
-	job.PodGroup.Spec.MinResources = &minRes
-}
-
 func buildNPUPod(podInfo VPodInfo) *v1.Pod {
 
 	pod := util.BuildPod(podInfo.namespace, podInfo.podName, podInfo.nodeName, v1.PodPending,
 		buildNPUResourceList(podInfo.reqCPUNum, podInfo.reqMem,
 			v1.ResourceName(podInfo.reqNPUType), podInfo.reqNpuNum),
-		podInfo.groupName, make(map[string]string, constIntNum2),
-		make(map[string]string, constIntNum2))
+		podInfo.groupName, make(map[string]string, util2.NPUIndex2),
+		make(map[string]string, util2.NPUIndex2))
 
-	setPodSelector(pod, util2.ArchSelector, util2.HuaweiArchX86)
+	test.SetTestNPUPodSelector(pod, util2.ArchSelector, util2.HuaweiArchX86)
 
 	return pod
 }
@@ -642,7 +611,7 @@ func buildNPUResourceList(cpu string, memory string, npuResourceType v1.Resource
 }
 
 func buildNPUNode(nodeInfo VNodeInfo) *api.NodeInfo {
-	nodeCapacity := buildNPUResourceList(nodeInfo.cpu, nodeInfo.mem, npuV910CardName16c, strconv.Itoa(constIntNum2))
+	nodeCapacity := buildNPUResourceList(nodeInfo.cpu, nodeInfo.mem, npuV910CardName16c, strconv.Itoa(1))
 	nodeAlloc := buildNPUResourceList(nodeInfo.cpu, nodeInfo.mem, npuV910CardName16c, nodeInfo.npuAllocateNum)
 	labels := make(map[string]string, labelSize)
 	ann := make(map[string]string, annSize)
@@ -663,8 +632,7 @@ func buildNPUNode(nodeInfo VNodeInfo) *api.NodeInfo {
 		v1node.Annotations[npuV910CardName16c] = nodeInfo.npuTop
 	}
 
-	setNodeLabel(v1node, util2.ArchSelector, nodeInfo.nodeArch)
-
+	test.SetNPUNodeLabel(v1node, util2.ArchSelector, nodeInfo.nodeArch)
 	node := api.NewNodeInfo(v1node)
 	if nodeInfo.npuAllocateNum != "0" {
 		node.Others = map[string]interface{}{
@@ -672,4 +640,193 @@ func buildNPUNode(nodeInfo VNodeInfo) *api.NodeInfo {
 		}
 	}
 	return node
+}
+
+type allocNewVNPUJobsFromCacheArgs struct {
+	ssn      *framework.Session
+	cacheFun func()
+}
+
+type allocNewVNPUJobsFromCacheTests struct {
+	name    string
+	fields  vnpuPlugin
+	args    allocNewVNPUJobsFromCacheArgs
+	wantErr error
+}
+
+func buildAllocNewVNPUJobsFromCacheTestCases() []allocNewVNPUJobsFromCacheTests {
+	ssnTest := test.FakeNormalSSN()
+	jobOne := test.FakeNormalTestJob("test-1", 1)
+	test.AddJobIntoFakeSSN(ssnTest, jobOne)
+	nodeOne := test.FakeNormalTestNode("node-1")
+	test.SetFakeNodeIdleSource(nodeOne, "huawei.com/Ascend910-16c-132-1", 1)
+	test.SetFakeNodeIdleSource(nodeOne, vnpuutil.NPU910CardName, 2)
+	test.SetTestNPUNodeAnnotation(nodeOne, vnpuutil.NPU910CardName, "huawei.com/Ascend910-0,huawei.com/Ascend910-2")
+	test.SetTestNPUNodeAnnotation(nodeOne, npuV910CardName16c, "Ascend910-16c-132-1")
+	test.SetTestNPUNodeAnnotation(nodeOne, vnpuutil.NPU910CardCoreKey, "0-32c-32c,1-32c-17c,2-30c-30c")
+	test.SetNPUNodeLabel(nodeOne.Node, util2.ArchSelector, util2.HuaweiArchArm)
+	test.SetNPUNodeLabel(nodeOne.Node, vnpuutil.VNPUNodeLabelKey, vnpuutil.VNPUNodeLabelValue)
+	testCases := []allocNewVNPUJobsFromCacheTests{
+		{
+			name: "01-AllocNewVNPUJobsFromCache() none vJobs test.",
+			args: allocNewVNPUJobsFromCacheArgs{
+				ssn: ssnTest, cacheFun: func() {
+					test.SetFakeJobRequestSource(jobOne, noPrefixResourceType, 1)
+				}},
+			wantErr: errors.New("none vJobs need alloc"),
+		},
+		{
+			name: "02-AllocNewVNPUJobsFromCache() nil npu node test.",
+			args: allocNewVNPUJobsFromCacheArgs{
+				ssn: ssnTest, cacheFun: func() {
+					test.SetFakeJobRequestSource(jobOne, npuV910CardName16c, 1)
+					addTestJobIntoVNPUAllocDataCache(jobOne)
+				}},
+			wantErr: fmt.Errorf("nil npu node"),
+		},
+		{
+			name: "03-AllocNewVNPUJobsFromCache() success test.",
+			args: allocNewVNPUJobsFromCacheArgs{
+				ssn: ssnTest, cacheFun: func() {
+					test.SetFakeJobRequestSource(jobOne, npuV910CardName16c, 1)
+					addTestJobIntoVNPUAllocDataCache(jobOne)
+					test.AddNodeIntoFakeSSN(ssnTest, nodeOne)
+				}},
+			fields: vnpuPlugin{
+				Attr: vnpuutil.ComVNPU{NPUCardCoreKey: vnpuutil.NPU910CardCoreKey,
+					HwEntity: plugin.HwEntity{AnnoName: vnpuutil.NPU910CardName,
+						AnnoPreVal: vnpuutil.NPUCardNamePrefix}},
+			},
+			wantErr: nil,
+		},
+	}
+	return testCases
+}
+
+// TestAllocNewVNPUJobsFromCache test AllocNewVNPUJobsFromCache
+func TestAllocNewVNPUJobsFromCache(t *testing.T) {
+	tests := buildAllocNewVNPUJobsFromCacheTestCases()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tp := &VNPU{
+				Plugin:               tt.fields.Plugin,
+				Attr:                 tt.fields.Attr,
+				HwNPUSchedulerPlugin: tt.fields.HwNPUSchedulerPlugin,
+			}
+			tt.args.cacheFun()
+			err := tp.AllocNewVNPUJobsFromCache(tt.args.ssn)
+			if !reflect.DeepEqual(err, tt.wantErr) {
+				t.Errorf("AllocNewVNPUJobsFromCache() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+type vJobRunHandleArgs struct {
+	ssn            *framework.Session
+	cacheFunBefore func()
+	cacheFunAfter  func()
+}
+
+type vJobRunHandleTests struct {
+	name    string
+	fields  vnpuPlugin
+	args    vJobRunHandleArgs
+	wantErr error
+}
+
+func buildVJobRunHandleTestCases() []vJobRunHandleTests {
+	ssnTest := test.FakeNormalSSN()
+	jobOne := test.FakeNormalTestJob("test-1", 1)
+	test.AddJobIntoFakeSSN(ssnTest, jobOne)
+	var tmpPatche *gomonkey.Patches
+	testCases := []vJobRunHandleTests{
+		{
+			name: "01-VJobRunHandle() nil parameters test.",
+			args: vJobRunHandleArgs{
+				ssn: ssnTest, cacheFunBefore: func() {
+					test.SetFakeJobRequestSource(jobOne, npuV910CardName16c, 1)
+					tmpPatche = gomonkey.ApplyFunc(util2.CreateOrUpdateConfigMap,
+						func(k8s kubernetes.Interface, cm *v1.ConfigMap, cmName, cmNameSpac string) error {
+							return nil
+						})
+				}, cacheFunAfter: func() {
+					if tmpPatche != nil {
+						tmpPatche.Reset()
+					}
+				}},
+			wantErr: nil,
+		},
+		{
+			name: "04-VJobRunHandle() set success test",
+			args: vJobRunHandleArgs{
+				ssn: ssnTest, cacheFunBefore: func() {
+					test.SetFakeJobRequestSource(jobOne, noPrefixResourceType, 1)
+					test.SetTestJobPodGroupStatus(jobOne, scheduling.PodGroupRunning)
+					tmpPatche = gomonkey.ApplyFunc(util2.CreateOrUpdateConfigMap,
+						func(k8s kubernetes.Interface, cm *v1.ConfigMap, cmName, cmNameSpac string) error {
+							return nil
+						})
+				}, cacheFunAfter: func() {
+					if tmpPatche != nil {
+						tmpPatche.Reset()
+					}
+				}},
+			fields: vnpuPlugin{
+				Attr: vnpuutil.ComVNPU{DivideKinds: []string{npuV910CardName16c},
+					HwEntity: plugin.HwEntity{AnnoPreVal: vnpuutil.NPUCardNamePrefix}},
+			},
+			wantErr: nil,
+		},
+	}
+	return testCases
+}
+
+// TestVJobRunHandle test VJobRunHandle
+func TestVJobRunHandle(t *testing.T) {
+	tests := buildVJobRunHandleTestCases()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tp := &VNPU{
+				Plugin:               tt.fields.Plugin,
+				Attr:                 tt.fields.Attr,
+				HwNPUSchedulerPlugin: tt.fields.HwNPUSchedulerPlugin,
+			}
+			tt.args.cacheFunBefore()
+			err := tp.VJobRunHandle(tt.args.ssn)
+			if !reflect.DeepEqual(err, tt.wantErr) {
+				t.Errorf("VJobRunHandle() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			tt.args.cacheFunAfter()
+		})
+	}
+}
+
+func addTestJobIntoVNPUAllocDataCache(jobs ...*api.JobInfo) {
+	if len(jobs) == 0 {
+		vnpuutil.VNPUAllocData.Cache = nil
+		vnpuutil.VNPUAllocData.CheckCode = 0
+		return
+	}
+
+	var cache []vnpuutil.VNPUAllocInf
+	for _, vJob := range jobs {
+		reqNpuName, typeErr := util2.GetReqResourceNameFromJob(vJob)
+		if typeErr != nil {
+			println(typeErr)
+			return
+		}
+		tmp := vnpuutil.VNPUAllocInf{
+			JobUID:        vJob.UID,
+			ReqNPUType:    reqNpuName,
+			NodeName:      "",
+			ReqCardName:   "",
+			AllocCardName: "",
+			AllocFlag:     false,
+			UpdateTime:    time.Now().Unix(),
+		}
+		cache = append(cache, tmp)
+	}
+
+	vnpuutil.VNPUAllocData.Cache = cache
 }

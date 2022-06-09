@@ -39,8 +39,10 @@ func AddNodeIntoFakeSSN(ssn *framework.Session, info *api.NodeInfo) {
 }
 
 // AddJobIntoFakeSSN Add test job into fake SSN.
-func AddJobIntoFakeSSN(ssn *framework.Session, info *api.JobInfo) {
-	ssn.Jobs[info.UID] = info
+func AddJobIntoFakeSSN(ssn *framework.Session, info ...*api.JobInfo) {
+	for _, testJob := range info {
+		ssn.Jobs[testJob.UID] = testJob
+	}
 }
 
 // AddConfigIntoFakeSSN Add test node into fake SSN.

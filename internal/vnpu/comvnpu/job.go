@@ -166,12 +166,10 @@ func (tp *VNPU) RecordNewVNPUJobInCache(job *api.JobInfo) error {
 	if checkErr := tp.CheckJobNeedPreAlloc(job); checkErr != nil {
 		return checkErr
 	}
-
 	vNPUAllocInf, allocErr := tp.getVJobReqInfFromJobInfo(job)
 	if allocErr != nil {
 		return allocErr
 	}
-
 	if err := tp.AddOrUpdateVNPUAllocInfIntoCache(vNPUAllocInf); err != nil {
 		return err
 	}

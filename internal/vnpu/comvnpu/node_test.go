@@ -218,7 +218,7 @@ func buildPreHandleVNPUTestCases() []preHandleVNPUTest {
 						})
 					tmpPatche1 = gomonkey.ApplyFunc(util.GetConfigMapWithRetry,
 						func(k8s kubernetes.Interface, cmNameSpac, cmName string) (*v1.ConfigMap, error) {
-							var cm = v1.ConfigMap{Data: make(map[string]string, constIntNum4)}
+							var cm = v1.ConfigMap{Data: make(map[string]string, util.NPUIndex4)}
 							tmp := `{"Nodes":[{"NodeName":"k8smaster","Cards":[{"CardName":"Ascend910-5",
 "Req":["huawei.com/Ascend910-8c"],"Alloc":["Ascend910-8c-180-5"]}]}],"UpdateTime":1648556261,"CheckCode":4009496266}`
 							tmp = strings.Replace(tmp, "\n", "", -1)

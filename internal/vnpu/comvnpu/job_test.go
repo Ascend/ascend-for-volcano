@@ -10,6 +10,7 @@ Package comvnpu is using for virtual HuaWei Ascend910 schedule.
 package comvnpu
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"testing"
@@ -38,8 +39,8 @@ type orderVJobsByCreateTimeTests struct {
 func buildOrderVJobsByCreateTimeTestCases() []orderVJobsByCreateTimeTests {
 	job0 := test.FakeNormalTestJobByCreatTime("pg0", util.NPUIndex2, 0)
 	job1 := test.FakeNormalTestJobByCreatTime("pg1", util.NPUIndex2, 1)
-	job2 := test.FakeNormalTestJobByCreatTime("pg2", util.NPUIndex2, constIntNum2)
-	job3 := test.FakeNormalTestJobByCreatTime("pg3", util.NPUIndex2, constIntNum4)
+	job2 := test.FakeNormalTestJobByCreatTime("pg2", util.NPUIndex2, util.NPUIndex2)
+	job3 := test.FakeNormalTestJobByCreatTime("pg3", util.NPUIndex2, util.NPUIndex4)
 
 	testCases := []orderVJobsByCreateTimeTests{
 		{
@@ -100,7 +101,7 @@ func buildGetVJobMeetNodeListTestCases() []getVJobMeetNodeListTest {
 	job0 := test.FakeNormalTestJobByCreatTime("pg0", util.NPUIndex2, 0)
 	test.AddTestJobPodGroup(job0)
 
-	setJobResourceReq(job0, npuV910CardName16c, float64(1))
+	test.SetFakeJobRequestSource(job0, npuV910CardName16c, 1)
 	node0 := test.FakeNormalTestNode("node0")
 	test.SetTestNPUNodeAnnotation(node0, vnpuutil.NPU910CardName, "Ascend910-1")
 	test.SetTestNPUNodeAnnotation(node0, vnpuutil.NPU910CardCoreKey, "1-32c-32")
@@ -152,6 +153,71 @@ func TestGetVJobMeetNodeList(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetVJobMeetNodeList() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+type recordNewVNPUJobInCacheArgs struct {
+	job      *api.JobInfo
+	cacheFun func()
+}
+
+type recordNewVNPUJobInCacheTests struct {
+	name    string
+	fields  vnpuPlugin
+	args    recordNewVNPUJobInCacheArgs
+	wantErr error
+}
+
+func buildRecordNewVNPUJobInCacheTestCases() []recordNewVNPUJobInCacheTests {
+	testJob := test.FakeNormalTestJob("test", util.NPUIndex2)
+	testCases := []recordNewVNPUJobInCacheTests{
+		{
+			name: "01-RecordNewVNPUJobInCache() no npu job.",
+			args: recordNewVNPUJobInCacheArgs{
+				job: testJob, cacheFun: func() {
+					test.SetFakeJobRequestSource(testJob, noPrefixResourceType, 1)
+				}},
+			wantErr: errors.New("nil NPU"),
+		},
+		{
+			name: "02-RecordNewVNPUJobInCache() no VNPUAllocData, should return nil",
+			args: recordNewVNPUJobInCacheArgs{
+				job: testJob, cacheFun: func() {
+					test.SetFakeJobRequestSource(testJob, npuV910CardName16c, 1)
+				}},
+			fields:  vnpuPlugin{},
+			wantErr: nil,
+		},
+		{
+			name: "03-RecordNewVNPUJobInCache() success test",
+			args: recordNewVNPUJobInCacheArgs{
+				job: testJob, cacheFun: func() {
+					test.SetFakeJobRequestSource(testJob, npuV910CardName16c, 1)
+					addTestJobIntoVNPUAllocDataCache(testJob)
+				}},
+			fields:  vnpuPlugin{},
+			wantErr: nil,
+		},
+	}
+	return testCases
+}
+
+// RecordNewVNPUJobInCache test RecordNewVNPUJobInCache
+func TestRecordNewVNPUJobInCache(t *testing.T) {
+	tests := buildRecordNewVNPUJobInCacheTestCases()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tp := &VNPU{
+				Plugin:               tt.fields.Plugin,
+				Attr:                 tt.fields.Attr,
+				HwNPUSchedulerPlugin: tt.fields.HwNPUSchedulerPlugin,
+			}
+			tt.args.cacheFun()
+			err := tp.RecordNewVNPUJobInCache(tt.args.job)
+			if !reflect.DeepEqual(err, tt.wantErr) {
+				t.Errorf("RecordNewVNPUJobInCache() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

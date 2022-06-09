@@ -89,8 +89,15 @@ func FakeNormalTestJobByCreatTime(jobName string, taskNum int, creatTime int64) 
 
 // SetFakeJobRequestSource add job require on total,task.
 func SetFakeJobRequestSource(fJob *api.JobInfo, name string, value int) {
-	AddTestJobPodGroup(fJob)
+	if fJob.PodGroup == nil {
+		AddTestJobPodGroup(fJob)
+	}
 	SetTestJobPodGroupStatus(fJob, scheduling.PodGroupPending)
+
+	if len(fJob.TotalRequest.ScalarResources) == 0 {
+		fJob.TotalRequest.ScalarResources = make(map[v1.ResourceName]float64, npuIndex3)
+	}
+	fJob.TotalRequest.ScalarResources[v1.ResourceName(name)] = float64(value)
 
 	var minRes = make(v1.ResourceList, npuIndex3)
 	minRes[v1.ResourceName(name)] = resource.MustParse(fmt.Sprintf("%f", float64(value)))
