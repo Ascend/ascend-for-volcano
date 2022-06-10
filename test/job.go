@@ -27,6 +27,7 @@ func SetTestJobPodGroupStatus(job *api.JobInfo, status scheduling.PodGroupPhase)
 	if job.PodGroup == nil {
 		AddTestJobPodGroup(job)
 	}
+	job.PodGroup.Status.Phase = status
 }
 
 // AddTestJobPodGroup set test job pg.
@@ -150,4 +151,49 @@ func BuildFakeJobWithSelectorAndSource(jobName, selectorKey, selectorValue, npuN
 	valueString := strconv.Itoa(npuNum)
 	setFakeJobResRequest(job, v1.ResourceName(npuName), valueString)
 	return job
+}
+
+// SetFakeNPUJobUseAnnotationInPod all job task set same use npus.
+func SetFakeNPUJobUseAnnotationInPod(fJob *api.JobInfo, name, value string) {
+	if fJob == nil {
+		return
+	}
+	for _, task := range fJob.Tasks {
+		SetTestNPUPodAnnotation(task.Pod, name, value)
+	}
+	return
+}
+
+// SetFakeNPUJobLabelInTask all job task set same label.
+func SetFakeNPUJobLabelInTask(fJob *api.JobInfo, name, value string) {
+	if fJob == nil {
+		return
+	}
+	for _, task := range fJob.Tasks {
+		setFakePodLabel(task.Pod, name, value)
+	}
+	return
+}
+
+// SetFakeNPUJobUseNodeNameInTask all job task set same nodeName.
+func SetFakeNPUJobUseNodeNameInTask(fJob *api.JobInfo, nodeName string) {
+	if fJob == nil {
+		return
+	}
+	for _, task := range fJob.Tasks {
+		task.NodeName = nodeName
+	}
+	return
+}
+
+// SetFakeNPUJobStatusRunning set job and it's tasks to running status.
+func SetFakeNPUJobStatusRunning(fJob *api.JobInfo) {
+	if fJob == nil {
+		return
+	}
+	fJob.PodGroup.Status.Phase = scheduling.PodGroupRunning
+	for _, task := range fJob.Tasks {
+		SetFakeNPUTaskStatus(task, api.Succeeded)
+	}
+	return
 }

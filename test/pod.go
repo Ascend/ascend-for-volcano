@@ -117,3 +117,12 @@ func AddFakeTaskResReq(vTask *api.TaskInfo, name string, value float64) {
 	}
 	vTask.Resreq.ScalarResources[v1.ResourceName(name)] = value
 }
+
+// SetFakeNPUTaskStatus task set same status.
+func SetFakeNPUTaskStatus(fTask *api.TaskInfo, status api.TaskStatus) {
+	if fTask == nil {
+		return
+	}
+	fTask.Status = status
+	return
+}
