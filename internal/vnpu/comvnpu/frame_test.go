@@ -758,7 +758,7 @@ func buildVJobRunHandleTestCases() []vJobRunHandleTests {
 			wantErr: nil,
 		},
 		{
-			name: "04-VJobRunHandle() set success test",
+			name: "02-VJobRunHandle() set success test",
 			args: vJobRunHandleArgs{
 				ssn: ssnTest, cacheFunBefore: func() {
 					test.SetFakeJobRequestSource(jobOne, noPrefixResourceType, 1)
@@ -816,6 +816,11 @@ func addTestJobIntoVNPUAllocDataCache(jobs ...*api.JobInfo) {
 			println(typeErr)
 			return
 		}
+		var testTask *api.TaskInfo
+		for _, taskIn := range vJob.Tasks {
+			testTask = taskIn
+			break
+		}
 		tmp := vnpuutil.VNPUAllocInf{
 			JobUID:        vJob.UID,
 			ReqNPUType:    reqNpuName,
@@ -825,8 +830,142 @@ func addTestJobIntoVNPUAllocDataCache(jobs ...*api.JobInfo) {
 			AllocFlag:     false,
 			UpdateTime:    time.Now().Unix(),
 		}
+		if testTask != nil {
+			tmp.NodeName = testTask.NodeName
+		}
 		cache = append(cache, tmp)
 	}
 
 	vnpuutil.VNPUAllocData.Cache = cache
+}
+
+func addTestJobReqCardNameAllocDataCache(jobName api.JobID, name string) {
+	for k, temp := range vnpuutil.VNPUAllocData.Cache {
+		if temp.JobUID == jobName {
+			temp.ReqCardName = name
+			vnpuutil.VNPUAllocData.Cache[k] = temp
+		}
+	}
+}
+
+type dealVNPUSelectNodeAndChipArgs struct {
+	task           *api.TaskInfo
+	node           *api.NodeInfo
+	cacheFunBefore func()
+}
+
+type dealVNPUSelectNodeAndChipTests struct {
+	name    string
+	fields  vnpuPlugin
+	args    dealVNPUSelectNodeAndChipArgs
+	wantErr error
+}
+
+func buildDealVNPUSelectNodeAndChipTestCases() []dealVNPUSelectNodeAndChipTests {
+	jobOne := test.FakeNormalTestJob("testJob-1", util2.NPUIndex1)
+	nodeOne := test.FakeNormalTestNode("node0")
+	test.SetTestNPUNodeAnnotation(nodeOne, util2.Fault310PNPU, "Ascend310P-1")
+	test.SetTestNPUNodeAnnotation(nodeOne, vnpuutil.NPU310PCardName, "huawei.com/Ascend310P-2")
+	var testTask *api.TaskInfo
+	for _, taskT := range jobOne.Tasks {
+		testTask = taskT
+		break
+	}
+	testCases := []dealVNPUSelectNodeAndChipTests{
+		{
+			name: "01-DealVNPUSelectNodeAndChip() job not in cache test.",
+			args: dealVNPUSelectNodeAndChipArgs{
+				task: testTask, node: nodeOne, cacheFunBefore: func() {}},
+			wantErr: fmt.Errorf("%v not in cache", jobOne.UID),
+		},
+		{
+			name: "02-DealVNPUSelectNodeAndChip() success test.",
+			args: dealVNPUSelectNodeAndChipArgs{
+				task: testTask, node: nodeOne, cacheFunBefore: func() {
+					test.SetFakeJobRequestSource(jobOne, vnpuutil.NPU310PCardName, 1*util2.NPUHex)
+					addTestJobIntoVNPUAllocDataCache(jobOne)
+					test.SetFakeNPUJobUseNodeNameInTask(jobOne, nodeOne.Name)
+					addTestJobReqCardNameAllocDataCache(jobOne.UID, "huawei.com/Ascend310P-2")
+				}},
+			wantErr: nil,
+		}}
+	return testCases
+}
+
+// TestDealVNPUSelectNodeAndChip test DealVNPUSelectNodeAndChip
+func TestDealVNPUSelectNodeAndChip(t *testing.T) {
+	tests := buildDealVNPUSelectNodeAndChipTestCases()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tp := &VNPU{
+				Plugin:               tt.fields.Plugin,
+				Attr:                 tt.fields.Attr,
+				HwNPUSchedulerPlugin: tt.fields.HwNPUSchedulerPlugin,
+			}
+			tt.args.cacheFunBefore()
+			err := tp.DealVNPUSelectNodeAndChip(tt.args.task, tt.args.node)
+			if !reflect.DeepEqual(err, tt.wantErr) {
+				t.Errorf("DealVNPUSelectNodeAndChip() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+type checkVJobCanBeDeleteByNameArgs struct {
+	vJobName       string
+	ssn            *framework.Session
+	cacheFunBefore func()
+}
+
+type checkVJobCanBeDeleteByNameTests struct {
+	name   string
+	fields vnpuPlugin
+	args   checkVJobCanBeDeleteByNameArgs
+	want   bool
+}
+
+func buildCheckVJobCanBeDeleteByNameTestCases() []checkVJobCanBeDeleteByNameTests {
+	ssnTest := test.FakeNormalSSN()
+	jobOne := test.FakeNormalTestJob("test-1", 1)
+	test.AddJobIntoFakeSSN(ssnTest, jobOne)
+	testCases := []checkVJobCanBeDeleteByNameTests{
+		{
+			name: "01-DealVNPUSelectNodeAndChip() job not in ssn,can delete test.",
+			args: checkVJobCanBeDeleteByNameArgs{
+				vJobName: jobOne.Name, ssn: ssnTest, cacheFunBefore: func() {}},
+			want: true,
+		},
+		{
+			name: "02-DealVNPUSelectNodeAndChip() job status not running ,cannot delete test.",
+			args: checkVJobCanBeDeleteByNameArgs{
+				vJobName: string(jobOne.UID), ssn: ssnTest, cacheFunBefore: func() {}},
+			want: false,
+		},
+		{
+			name: "03-DealVNPUSelectNodeAndChip() job is succeeded ,cannot delete test.",
+			args: checkVJobCanBeDeleteByNameArgs{
+				vJobName: string(jobOne.UID), ssn: ssnTest, cacheFunBefore: func() {
+					test.SetFakeNPUJobStatusRunning(jobOne)
+				}},
+			want: true,
+		}}
+	return testCases
+}
+
+// TestCheckVJobCanBeDeleteByName test CheckVJobCanBeDeleteByName
+func TestCheckVJobCanBeDeleteByName(t *testing.T) {
+	tests := buildCheckVJobCanBeDeleteByNameTestCases()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tp := &VNPU{
+				Plugin:               tt.fields.Plugin,
+				Attr:                 tt.fields.Attr,
+				HwNPUSchedulerPlugin: tt.fields.HwNPUSchedulerPlugin,
+			}
+			tt.args.cacheFunBefore()
+			if got := tp.CheckVJobCanBeDeleteByName(tt.args.vJobName, tt.args.ssn); got != tt.want {
+				t.Errorf("CheckVJobCanBeDeleteByName() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }
