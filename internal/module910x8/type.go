@@ -12,9 +12,10 @@ package module910x8
 import "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 
 const (
-	// PluginName the module910x8's plugin name.
+	// PluginName the module910x8's plugin name
 	PluginName            = "A800-9000"
 	npu800And9000CardName = "huawei.com/Ascend910"
+	npu310CardName        = "huawei.com/Ascend310"
 	podPredicateTime      = "predicate-time"
 	npu910CardPreName     = "Ascend910-"
 	archSelector          = "host-arch"
@@ -23,13 +24,6 @@ const (
 	moduleAcceleratorType = "module"
 	maxNPUNum             = 8
 	npuNumPerHccs         = 4
-	constIntNum1          = 1
-	constIntNum2          = 2
-	constIntNum3          = 3
-	constIntNum4          = 4
-	constIntNum5          = 5
-	constIntNum6          = 6
-	constIntNum7          = 7
 	nodeNPUNumber         = 8
 
 	logErrorLev = 1

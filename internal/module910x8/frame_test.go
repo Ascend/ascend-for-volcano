@@ -10,6 +10,9 @@ Package module910x8 is using for HuaWei A800/9000 Ascend910 pin affinity schedul
 package module910x8
 
 import (
+	"errors"
+	"fmt"
+	"reflect"
 	"strconv"
 	"testing"
 
@@ -19,7 +22,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
+	"volcano.sh/volcano/pkg/scheduler/framework"
 	"volcano.sh/volcano/pkg/scheduler/util"
+
+	npuutil "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/util"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
 )
 
 type MPodInfo struct {
@@ -45,6 +52,9 @@ const (
 	acceleratorType     = "accelerator-type"
 	cardAcceleratorType = "card"
 	nodeName            = "centos"
+	nodeName1           = "euler1"
+	nodeName2           = "euler2"
+	nodeName3           = "euler3"
 )
 
 // TestMNPUName
@@ -407,17 +417,22 @@ func TestMnpuCheckNodeNPUByTaskFn(t *testing.T) {
 			result := npu.CheckNodeNPUByTaskFn(task, node, true)
 			convey.So(result, convey.ShouldBeNil)
 		})
+		pod1 := buildNPUPod(MPodInfo{namespace: "default", groupName: "npu-group-13",
+			podName: "npu-test-60", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
+			reqNPUType: npu310CardName, reqNpuNum: "4"})
+		task1 := api.NewTaskInfo(pod1)
+		convey.Convey("CheckNodeNPUByTaskFn() should return error when task did not config a 910 card", func() {
+			node := buildNon910NPUNode(MNodeInfo{nodeName: nodeName, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
+				npuAllocateNum: "2", npuTop: "Ascend310-5,Ascend310-2"})
+			result := npu.CheckNodeNPUByTaskFn(task1, node, true)
+			convey.So(result, convey.ShouldBeError)
+		})
 	})
 }
 
 // TestMnpuGetNPUAffinityBestNodesFn
 func TestMnpuGetNPUAffinityBestNodesFn(t *testing.T) {
 	convey.Convey("Test module910x8 GetNPUAffinityBestNodesFn", t, func() {
-		const (
-			nodeName1 = "centos1"
-			nodeName2 = "centos2"
-			constNum  = 0
-		)
 		npu := &module910x8{}
 		pod := buildNPUPod(MPodInfo{namespace: "default", groupName: "npu-group-61",
 			podName: "npu-test-61", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
@@ -435,23 +450,63 @@ func TestMnpuGetNPUAffinityBestNodesFn(t *testing.T) {
 
 			result, err := npu.GetNPUAffinityBestNodesFn(task, nodes, false)
 
-			convey.So(result[nodeName1], convey.ShouldEqual, constNum)
+			convey.So(result[nodeName1], convey.ShouldEqual, 0)
 			convey.So(err, convey.ShouldBeNil)
 		})
+	})
+}
+
+func testMnpuScoreBestNPUNodesFn01(npu *module910x8, bestNodes map[string]int,
+	task *api.TaskInfo, nodes []*api.NodeInfo) {
+	convey.Convey("ScoreBestNPUNodesFn() should return err when scoreMap is nil", func() {
+		var scoreMap map[string]float64
+		_, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
+		convey.So(err, convey.ShouldNotBeNil)
+	})
+
+	convey.Convey("ScoreBestNPUNodesFn() should return correct result", func() {
+		scoreMap := make(map[string]float64)
+		expectedResult := map[string]float64(nil)
+		result, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
+		convey.So(err, convey.ShouldNotBeNil)
+		convey.So(result, convey.ShouldResemble, expectedResult)
+	})
+
+	convey.Convey("ScoreBestNPUNodesFn() should return correct result with length", func() {
+		scoreMap := make(map[string]float64, npuutil.NPUIndex2)
+		scoreMap[nodeName1] = 0
+		scoreMap[nodeName2] = 0
+		expectedResult := map[string]float64(nil)
+		result, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
+		convey.So(err, convey.ShouldBeNil)
+		convey.So(result, convey.ShouldHaveSameTypeAs, expectedResult)
+		convey.So(result, convey.ShouldHaveLength, npuutil.NPUIndex2)
+	})
+}
+
+func testMnpuScoreBestNPUNodesFn02(npu *module910x8, bestNodes map[string]int,
+	task *api.TaskInfo, nodes []*api.NodeInfo) {
+	convey.Convey("ScoreBestNPUNodesFn() should return correct result with length but skip node3", func() {
+		scoreMap := make(map[string]float64, npuutil.NPUIndex3)
+		scoreMap[nodeName1] = 0
+		scoreMap[nodeName2] = 0
+		scoreMap[nodeName3] = 0
+		expectedResult := map[string]float64(nil)
+		result, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
+		convey.So(err, convey.ShouldBeNil)
+		convey.So(result, convey.ShouldHaveSameTypeAs, expectedResult)
+		convey.So(result, convey.ShouldHaveLength, npuutil.NPUIndex3)
+		convey.So(result[nodeName3], convey.ShouldEqual, 0)
 	})
 }
 
 // TestMnpuScoreBestNPUNodesFn
 func TestMnpuScoreBestNPUNodesFn(t *testing.T) {
 	convey.Convey("Test module910x8 ScoreBestNPUNodesFn", t, func() {
-		const (
-			nodeName1 = "euler1"
-			nodeName2 = "euler2"
-		)
 		npu := &module910x8{}
 		bestNodes := map[string]int{
 			nodeName1: 0,
-			nodeName2: constIntNum3,
+			nodeName2: npuutil.NPUIndex3,
 		}
 		pod := buildNPUPod(MPodInfo{namespace: "default", groupName: "npu-group-62",
 			podName: "npu-test-62", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
@@ -467,20 +522,17 @@ func TestMnpuScoreBestNPUNodesFn(t *testing.T) {
 			npuAllocateNum: "8", npuTop: "Ascend910-5,Ascend910-2,Ascend910-0,Ascend910-1,Ascend910-3," +
 				"Ascend910-6,Ascend910-7"})
 		nodes = append(nodes, node2)
+		testMnpuScoreBestNPUNodesFn01(npu, bestNodes, task, nodes)
 
-		convey.Convey("ScoreBestNPUNodesFn() should return err when scoreMap is nil", func() {
-			var scoreMap map[string]float64
-			_, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
-			convey.So(err, convey.ShouldNotBeNil)
-		})
-
-		convey.Convey("ScoreBestNPUNodesFn() should return correct result", func() {
-			scoreMap := make(map[string]float64)
-			expectedResult := map[string]float64(nil)
-			result, err := npu.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
-			convey.So(err, convey.ShouldNotBeNil)
-			convey.So(result, convey.ShouldResemble, expectedResult)
-		})
+		bestNodes2 := map[string]int{
+			nodeName1: 0,
+			nodeName2: npuutil.NPUIndex3,
+			nodeName3: npuutil.NPUIndex3,
+		}
+		node3 := buildNPUNode(MNodeInfo{nodeName: nodeName3, nodeArch: huaweiArchArm, cpu: "192", mem: "755Gi",
+			npuAllocateNum: "0", npuTop: "Ascend910-0,Ascend910-1"})
+		nodes = append(nodes, node3)
+		testMnpuScoreBestNPUNodesFn02(npu, bestNodes2, task, nodes)
 	})
 }
 
@@ -509,7 +561,7 @@ func TestMnpuGetAllocatedNPUFromTopologyFn(t *testing.T) {
 			task := api.NewTaskInfo(pod)
 			node := buildNPUNode(MNodeInfo{nodeName: nodeName, nodeArch: huaweiArchArm, cpu: "192", mem: "755Gi",
 				npuAllocateNum: "5", npuTop: "Ascend910-5,Ascend910-2,Ascend910-0,Ascend910-1,Ascend910-3"})
-			expectedResult := []int{constIntNum2, 0, 1, constIntNum3}
+			expectedResult := []int{npuutil.NPUIndex2, 0, 1, npuutil.NPUIndex3}
 			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node, false)
 			convey.So(err, convey.ShouldBeNil)
 			convey.So(result, convey.ShouldResemble, expectedResult)
@@ -521,7 +573,7 @@ func TestMnpuGetAllocatedNPUFromTopologyFn(t *testing.T) {
 			task := api.NewTaskInfo(pod)
 			node := buildNPUNode(MNodeInfo{nodeName: nodeName, nodeArch: huaweiArchX86, cpu: "192", mem: "755Gi",
 				npuAllocateNum: "2", npuTop: "Ascend910-5,Ascend910-7"})
-			expectedResult := []int{constIntNum5, constIntNum7}
+			expectedResult := []int{npuutil.NPUIndex5, npuutil.NPUIndex7}
 			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node, false)
 			convey.So(err, convey.ShouldBeNil)
 			convey.So(result, convey.ShouldResemble, expectedResult)
@@ -543,7 +595,7 @@ func TestMnpuSetNPUTopologyToPodFn(t *testing.T) {
 			convey.So(task.Pod.Annotations[npu800And9000CardName], convey.ShouldEqual, "")
 		})
 		convey.Convey("SetNPUTopologyToPodFn() should write correct info in pod annotation", func() {
-			top := []int{constIntNum2, 0, 1, constIntNum3}
+			top := []int{npuutil.NPUIndex2, 0, 1, npuutil.NPUIndex3}
 			expectedResult := "Ascend910-2,Ascend910-0,Ascend910-1,Ascend910-3"
 			err := npu.SetNPUTopologyToPodFn(task, top)
 			convey.So(err, convey.ShouldBeNil)
@@ -582,7 +634,7 @@ func TestMnpuGetReleaseNPUTopologyFn(t *testing.T) {
 			reqNPUType: npu800And9000CardName, reqNpuNum: "4"}))
 		convey.Convey("GetReleaseNPUTopologyFn() should return correct card id slice", func() {
 			task.Pod.Annotations[npu800And9000CardName] = "Ascend910-0,Ascend910-1,Ascend910-2,Ascend910-3,Ascend910-6"
-			expectedResult := []int{0, 1, constIntNum2, constIntNum3, constIntNum6}
+			expectedResult := []int{0, 1, npuutil.NPUIndex2, npuutil.NPUIndex3, npuutil.NPUIndex6}
 			result, err := npu.GetReleaseNPUTopologyFn(task)
 			convey.So(err, convey.ShouldBeNil)
 			convey.So(result, convey.ShouldResemble, expectedResult)
@@ -636,8 +688,8 @@ func buildNPUPod(podInfo MPodInfo) *v1.Pod {
 	pod := util.BuildPod(podInfo.namespace, podInfo.podName, podInfo.nodeName, v1.PodPending,
 		buildNPUResourceList(podInfo.reqCPUNum, podInfo.reqMem,
 			v1.ResourceName(podInfo.reqNPUType), podInfo.reqNpuNum),
-		podInfo.groupName, make(map[string]string, constIntNum2),
-		make(map[string]string, constIntNum2))
+		podInfo.groupName, make(map[string]string, npuutil.NPUIndex2),
+		make(map[string]string, npuutil.NPUIndex2))
 
 	setPodSelector(pod, archSelector, huaweiArchX86)
 
@@ -665,10 +717,10 @@ func buildNPUResourceList(MCpu string, MMemory string, npuResourceType v1.Resour
 }
 
 func buildNPUNode(MNode MNodeInfo) *api.NodeInfo {
-	nodeCapacity := buildNPUResourceList(MNode.cpu, MNode.mem, npu800And9000CardName, strconv.Itoa(constIntNum2))
+	nodeCapacity := buildNPUResourceList(MNode.cpu, MNode.mem, npu800And9000CardName, strconv.Itoa(npuutil.NPUIndex2))
 	nodeAlloc := buildNPUResourceList(MNode.cpu, MNode.mem, npu800And9000CardName, MNode.npuAllocateNum)
-	labels := make(map[string]string, constIntNum2)
-	ann := make(map[string]string, constIntNum2)
+	labels := make(map[string]string, npuutil.NPUIndex2)
+	ann := make(map[string]string, npuutil.NPUIndex2)
 
 	v1node := &v1.Node{
 		ObjectMeta: metav1.ObjectMeta{
@@ -695,4 +747,172 @@ func buildNPUNode(MNode MNodeInfo) *api.NodeInfo {
 		}
 	}
 	return node
+}
+
+func buildNon910NPUNode(MNode MNodeInfo) *api.NodeInfo {
+	nodeCapacity := buildNPUResourceList(MNode.cpu, MNode.mem, npu310CardName, strconv.Itoa(npuutil.NPUIndex2))
+	nodeAlloc := buildNPUResourceList(MNode.cpu, MNode.mem, npu310CardName, MNode.npuAllocateNum)
+	labels := make(map[string]string, npuutil.NPUIndex2)
+	ann := make(map[string]string, npuutil.NPUIndex2)
+
+	v1node := &v1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        MNode.nodeName,
+			Labels:      labels,
+			Annotations: ann,
+		},
+		Status: v1.NodeStatus{
+			Capacity:    nodeCapacity,
+			Allocatable: nodeAlloc,
+		},
+	}
+
+	if MNode.npuAllocateNum != "0" {
+		v1node.Annotations[npu310CardName] = MNode.npuTop
+	}
+
+	setNodeLabel(v1node, archSelector, MNode.nodeArch)
+
+	node := api.NewNodeInfo(v1node)
+	if MNode.npuAllocateNum != "0" {
+		node.Others = map[string]interface{}{
+			npu310CardName: MNode.npuTop,
+		}
+	}
+	return node
+}
+
+type preHandleFaultNPUFnArgs struct {
+	ssn *framework.Session
+}
+
+type preHandleFaultNPUFnTests struct {
+	name    string
+	args    preHandleFaultNPUFnArgs
+	wantErr error
+}
+
+func buildPreHandleFaultNPUFnTestCases() []preHandleFaultNPUFnTests {
+	conf0 := SetConfig("enqueue", map[string]string{"overCommitFactor": "1.5"})
+	conf1 := SetConfig("allocate", map[string]string{"placeholde": "placeholde"})
+	ssn := InitSSNAndAddConfig([]conf.Configuration{conf0, conf1})
+	testCases := []preHandleFaultNPUFnTests{
+		{
+			name:    "01-preHandleFaultNPUFn()- no need to reschedule, no running job, return in step3-test",
+			args:    preHandleFaultNPUFnArgs{ssn: ssn},
+			wantErr: nil,
+		},
+	}
+	return testCases
+}
+
+func TestPreHandleFaultNPUFn(t *testing.T) {
+	tests := buildPreHandleFaultNPUFnTestCases()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := preHandleFaultNPUFn(tt.args.ssn)
+			if !reflect.DeepEqual(err, tt.wantErr) {
+				t.Errorf("preHandleFaultNPUFn() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+type setGraceOverTimeArgs struct {
+	ssn *framework.Session
+}
+
+type setGraceOverTimeTests struct {
+	name    string
+	args    setGraceOverTimeArgs
+	wantErr error
+}
+
+func SetConfig(name string, argument map[string]string) conf.Configuration {
+	return conf.Configuration{Name: name, Arguments: argument}
+}
+
+func InitSSNAndAddConfig(confs []conf.Configuration) *framework.Session {
+	ssn := test.FakeNormalSSN()
+	test.AddConfigIntoFakeSSN(ssn, confs)
+	return ssn
+}
+
+func buildSetGraceOverTimeTestCase0(conf []conf.Configuration) setGraceOverTimeTests {
+	ssn0 := InitSSNAndAddConfig(conf)
+	testCase := setGraceOverTimeTests{
+		name:    "01-setGraceOverTime()- case0: failure in init parameters-test",
+		args:    setGraceOverTimeArgs{ssn: ssn0},
+		wantErr: fmt.Errorf("cannot get configurations by name [init-params], name not in configurations"),
+	}
+	return testCase
+}
+
+func buildSetGraceOverTimeTestCase1(conf []conf.Configuration) setGraceOverTimeTests {
+	ssn1 := InitSSNAndAddConfig(conf)
+	testCase := setGraceOverTimeTests{
+		name:    "02-setGraceOverTime()- failure owing to setting grace over time to non-int value-test",
+		args:    setGraceOverTimeArgs{ssn: ssn1},
+		wantErr: &strconv.NumError{Num: "1.5", Func: "ParseInt", Err: strconv.ErrSyntax},
+	}
+	return testCase
+}
+
+func buildSetGraceOverTimeTestCase2(conf []conf.Configuration) setGraceOverTimeTests {
+	ssn2 := InitSSNAndAddConfig(conf)
+	testCase := setGraceOverTimeTests{
+		name:    "03-setGraceOverTime()- failure owing to setting grace over time out of range-test",
+		args:    setGraceOverTimeArgs{ssn: ssn2},
+		wantErr: errors.New("graceOverTime is out of range"),
+	}
+	return testCase
+}
+
+func buildSetGraceOverTimeTestCase3(conf []conf.Configuration) setGraceOverTimeTests {
+	ssn3 := InitSSNAndAddConfig(conf)
+	testCase := setGraceOverTimeTests{
+		name:    "04-setGraceOverTime()- case3: success-atest",
+		args:    setGraceOverTimeArgs{ssn: ssn3},
+		wantErr: nil,
+	}
+	return testCase
+}
+
+func buildSetGraceOverTimeTestCase4(conf []conf.Configuration) setGraceOverTimeTests {
+	ssn4 := InitSSNAndAddConfig(conf)
+	testCase := setGraceOverTimeTests{
+		name:    "05-setGraceOverTime()- case4: no config arg called grace-over-time and return with nil-test",
+		args:    setGraceOverTimeArgs{ssn: ssn4},
+		wantErr: nil,
+	}
+	return testCase
+}
+
+func buildSetGraceOverTimeTestCases() []setGraceOverTimeTests {
+	conf0 := SetConfig("enqueue", map[string]string{"grace-over-time": "1"})
+	conf1 := SetConfig("allocate", map[string]string{"placeholde": "placeholde"})
+	conf2 := SetConfig("init-params", map[string]string{"grace-over-time": "1.5"})
+	conf3 := SetConfig("init-params", map[string]string{"grace-over-time": "1"})
+	conf4 := SetConfig("init-params", map[string]string{"grace-over-time": "10"})
+	conf5 := SetConfig("init-params", map[string]string{"grace-over": "10"})
+	testCases := []setGraceOverTimeTests{
+		buildSetGraceOverTimeTestCase0([]conf.Configuration{conf0, conf1}),
+		buildSetGraceOverTimeTestCase1([]conf.Configuration{conf2, conf1}),
+		buildSetGraceOverTimeTestCase2([]conf.Configuration{conf3, conf1}),
+		buildSetGraceOverTimeTestCase3([]conf.Configuration{conf4, conf1}),
+		buildSetGraceOverTimeTestCase4([]conf.Configuration{conf5, conf1}),
+	}
+	return testCases
+}
+
+func TestSetGraceOverTime(t *testing.T) {
+	tests := buildSetGraceOverTimeTestCases()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := setGraceOverTime(tt.args.ssn)
+			if !reflect.DeepEqual(err, tt.wantErr) {
+				t.Errorf("setGraceOverTime() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
 }

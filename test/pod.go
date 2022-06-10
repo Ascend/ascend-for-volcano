@@ -65,16 +65,22 @@ func SetTestNPUPodSelector(pod *v1.Pod, selectorKey, selectorValue string) {
 	pod.Spec.NodeSelector[selectorKey] = selectorValue
 }
 
+// FakeNormalTestTask fake normal test task.
+func FakeNormalTestTask(name string, nodename string, groupname string) *api.TaskInfo {
+	pod := NPUPod{
+		Namespace: "vcjob", Name: name, NodeName: nodename, GroupName: groupname, Phase: v1.PodRunning,
+	}
+	task := api.NewTaskInfo(BuildNPUPod(pod))
+	return task
+}
+
 // FakeNormalTestTasks fake normal test tasks.
 func FakeNormalTestTasks(num int) []*api.TaskInfo {
 	var tasks []*api.TaskInfo
 
 	for i := 0; i < num; i++ {
 		strNum := strconv.Itoa(i)
-		pod := NPUPod{
-			Namespace: "vcjob", Name: "pod" + strNum, NodeName: "node" + strNum, GroupName: "pg" + strNum, Phase: v1.PodRunning,
-		}
-		task := api.NewTaskInfo(BuildNPUPod(pod))
+		task := FakeNormalTestTask("pod"+strNum, "node"+strNum, "pg"+strNum)
 		tasks = append(tasks, task)
 	}
 
