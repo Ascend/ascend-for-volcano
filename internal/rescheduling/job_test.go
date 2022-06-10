@@ -1,13 +1,24 @@
+/*
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+*/
+
+/*
+
+Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
+
+*/
 package rescheduling
 
 import (
 	"errors"
 	"fmt"
-	"k8s.io/apimachinery/pkg/types"
 	"reflect"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/types"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
+
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/util"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
 )
