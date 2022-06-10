@@ -1,24 +1,13 @@
-/*
-Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
-*/
-
-/*
-
-Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
-
-*/
 package rescheduling
 
 import (
 	"errors"
 	"fmt"
+	"k8s.io/apimachinery/pkg/types"
 	"reflect"
 	"testing"
-
-	"k8s.io/apimachinery/pkg/types"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
-
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/util"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
 )
@@ -208,20 +197,6 @@ type releaseFaultJobTakeNodesTest struct {
 	name    string
 	args    releaseFaultJobTakeNodesArgs
 	wantErr error
-}
-
-func getRejobs(job *api.JobInfo) map[api.JobID]ReSchedulerTasks {
-	var reJobs = make(map[api.JobID]ReSchedulerTasks, util.NPUIndex2)
-	for _, task := range job.Tasks {
-		reJobs[task.Job] = ReSchedulerTasks{
-			TaskName:    []string{task.Name},
-			NodeNames:   []string{task.NodeName},
-			RankIndexes: []string{task.Pod.Annotations[podRankIndex]},
-			Time:        nil,
-			TaskUseNPUs: []string{task.Pod.Annotations[npu800And9000CardName]},
-			NameSpace:   "vcjob"}
-	}
-	return reJobs
 }
 
 func buildReleaseFaultJobTakeNodesTestCases() []releaseFaultJobTakeNodesTest {

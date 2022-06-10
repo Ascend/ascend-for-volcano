@@ -1,76 +1,17 @@
-/*
-Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
-*/
-
-/*
-
-Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
-
-*/
 package rescheduling
 
 import (
-	"reflect"
-	"testing"
-
+	"fmt"
 	"github.com/agiledragon/gomonkey/v2"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
+	"reflect"
+	"testing"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
-
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/util"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
 )
-
-type recordFaultInfInCacheArgs struct {
-	ssn       *framework.Session
-	npuNumber int
-	cacheFun  func()
-}
-
-type recordFaultInfInCacheTest struct {
-	name    string
-	args    recordFaultInfInCacheArgs
-	wantErr error
-}
-
-func buildRecordFaultInfInCacheTestCases() []recordFaultInfInCacheTest {
-	const constNumber64 = 12345677
-	ssnTest := test.FakeNormalSSN()
-	fNPUs := FaultNPUsOnNode{NodeName: "node1", FaultNPUs: []string{"Ascend910-0", "Ascend910-1", "Ascend910-1"},
-		NetworkUnhealthyNPUs: []string{}, UpdateTime: constNumber64}
-	fNode := FaultNodeState{NodeName: "node1", HealthCode: 0, UpdateTime: constNumber64, Heartbeat: constNumber64,
-		HeartbeatInterval: nodeUpdateTime}
-	testCases := []recordFaultInfInCacheTest{
-		{
-			name: "01-record fault success-test",
-			args: recordFaultInfInCacheArgs{
-				ssn: ssnTest, npuNumber: node910X8NPUNum, cacheFun: func() {
-					initTestReSchedulerCache()
-					setTestSsnNode(ssnTest, fNPUs)
-					setTestSsnNode(ssnTest, fNode)
-				},
-			},
-			wantErr: nil,
-		},
-	}
-	return testCases
-}
-
-// TestRecordFaultInfInCache test RecordFaultInfInCache function.
-func TestRecordFaultInfInCache(t *testing.T) {
-	tests := buildRecordFaultInfInCacheTestCases()
-	for _, tt := range tests {
-		tt.args.cacheFun()
-		t.Run(tt.name, func(t *testing.T) {
-			err := RecordFaultInfInCache(tt.args.ssn, tt.args.npuNumber)
-			if !reflect.DeepEqual(err, tt.wantErr) {
-				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
 
 type setFaultInNodeAndJobsArgs struct {
 	fNPUJobs []FaultNPUJob
@@ -243,6 +184,70 @@ func TestWriteReSchedulerDataToCM(t *testing.T) {
 				t.Errorf("WriteReSchedulerDataToCM() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			tt.args.cacheFunAfter()
+		})
+	}
+}
+
+type getRankIndexMapByTaskArgs struct {
+	task      *api.TaskInfo
+	cacheFunc func()
+}
+
+type getRankIndexMapByTaskTests struct {
+	name    string
+	args    getRankIndexMapByTaskArgs
+	want    TaskUsedRankIndex
+	wantErr error
+}
+
+func buildGetRankIndexMapByTaskTestCases() []getRankIndexMapByTaskTests {
+	const tmpNumber = 123456
+	task0 := test.FakeNormalTestTask("task0", "node0", "pg0")
+	job1 := test.FakeNormalTestJob("pg1", util.NPUIndex2)
+	task1 := test.FakeNormalTestTask("task1", "node1", "pg1")
+
+	var reRankIDs = make(map[api.JobID]TaskUsedRankIndex, util.NPUIndex2)
+	reRankIDs[job1.UID] = TaskUsedRankIndex{
+		FaultNodeRankIndex: map[string]struct{ UpdateTime int64 }{
+			"node1": {tmpNumber}},
+		UpdateTime: tmpNumber}
+
+	testCases := []getRankIndexMapByTaskTests{
+		{
+			name:    "01-getRankIndexMapByTask()- no rankidx-test",
+			args:    getRankIndexMapByTaskArgs{task: task0, cacheFunc: func() {}},
+			want:    TaskUsedRankIndex{},
+			wantErr: fmt.Errorf("no rankIndex cache"),
+		},
+		{
+			name: "02-getRankIndexMapByTask()- success-test",
+			args: getRankIndexMapByTaskArgs{task: task1, cacheFunc: func() {
+				initTestReSchedulerCache()
+				addTmpAllocRankIndexIntoReschedulerCache(reRankIDs)
+			}},
+			want: TaskUsedRankIndex{
+				FaultNodeRankIndex: map[string]struct{ UpdateTime int64 }{
+					"node1": {tmpNumber}},
+				UpdateTime: tmpNumber},
+			wantErr: nil,
+		},
+	}
+	return testCases
+}
+
+func TestGetRankIndexMapByTask(t *testing.T) {
+	tests := buildGetRankIndexMapByTaskTestCases()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.args.cacheFunc()
+			got, err := getRankIndexMapByTask(tt.args.task)
+			if !reflect.DeepEqual(err, tt.wantErr) {
+				t.Errorf("getRankIndexMapByTask() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("getRankIndexMapByTask() got = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
