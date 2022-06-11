@@ -132,3 +132,12 @@ func SetFakeNPUTaskStatus(fTask *api.TaskInfo, status api.TaskStatus) {
 	fTask.Status = status
 	return
 }
+
+// SetFakeNPUPodStatus set fake pod status.
+func SetFakeNPUPodStatus(fPod *v1.Pod, status v1.PodPhase) {
+	if fPod == nil {
+		return
+	}
+	fPod.Status.Phase = status
+	return
+}

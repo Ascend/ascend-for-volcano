@@ -197,3 +197,16 @@ func SetFakeNPUJobStatusRunning(fJob *api.JobInfo) {
 	}
 	return
 }
+
+// SetFakeNPUJobStatusPending set job and it's tasks to pending status.
+func SetFakeNPUJobStatusPending(fJob *api.JobInfo) {
+	if fJob == nil {
+		return
+	}
+	fJob.PodGroup.Status.Phase = scheduling.PodGroupPending
+	for _, task := range fJob.Tasks {
+		SetFakeNPUTaskStatus(task, api.Pending)
+		SetFakeNPUPodStatus(task.Pod, v1.PodPending)
+	}
+	return
+}
