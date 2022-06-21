@@ -131,7 +131,7 @@ func (re *ReScheduler) getFaultTasks(jobs map[api.JobID]*api.JobInfo,
 }
 
 func (re *ReScheduler) isFaultTask(task *api.TaskInfo, nodes []rescheduling.FaultNPUsOnNode) bool {
-	klog.V(util.LogDebugLev).Infof("isFaultTask task :%s.   nodes %+v", task.NodeName, nodes)
+	klog.V(util.LogDebugLev).Infof("isFaultTask task :%s.   nodes %+v", task.Name, nodes)
 	for _, node := range nodes {
 		if node.NodeName == task.NodeName {
 			anno, exist := task.Pod.Annotations[re.AnnoName]

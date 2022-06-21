@@ -38,15 +38,19 @@ func (tp *ChipV310P) GetDivideKinds() []string {
 	vNPUType = append(vNPUType, npuV310PCardName1c)
 	vNPUType = append(vNPUType, npuV310PCardName2c)
 	vNPUType = append(vNPUType, npuV310PCardName4c)
+	vNPUType = append(vNPUType, npuV310PCardName4C3Cpu)
+	vNPUType = append(vNPUType, npuV310PCardName2C1Cpu)
 	return vNPUType
 }
 
 // GetCoefficients get vNPU all coefficients.
 func (tp *ChipV310P) GetCoefficients() map[string]int {
 	return map[string]int{
-		npuV310PCardName1c: npuV310PCardCoef1c,
-		npuV310PCardName2c: npuV310PCardCoef2c,
-		npuV310PCardName4c: npuV310PCardCoef4c,
+		npuV310PCardName1c:     npuV310PCardCoef1c,
+		npuV310PCardName2c:     npuV310PCardCoef2c,
+		npuV310PCardName4c:     npuV310PCardCoef4c,
+		npuV310PCardName4C3Cpu: npuV310PCardCoef4c,
+		npuV310PCardName2C1Cpu: npuV310PCardCoef2c,
 	}
 }
 
