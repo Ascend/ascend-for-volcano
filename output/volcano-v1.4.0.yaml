@@ -170,10 +170,12 @@ spec:
           volumeMounts:
             - name: scheduler-config
               mountPath: /volcano.scheduler
+              readOnly: true
             - name: scheduler-config-log
               mountPath: /var/log/mindx-dl/volcano-scheduler
             - name: localtime
               mountPath: /etc/localtime
+              readOnly: true
       volumes:
         - name: scheduler-config
           configMap:
@@ -323,6 +325,7 @@ spec:
               mountPath: /var/log/mindx-dl/volcano-controller
             - name: localtime
               mountPath: /etc/localtime
+              readOnly: true
       volumes:
         - name: device-volcanocontroller
           hostPath:
