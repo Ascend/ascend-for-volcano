@@ -179,7 +179,7 @@ spec:
       volumes:
         - name: scheduler-config
           configMap:
-            defaultMode: 0400
+            defaultMode: 0004
             name: volcano-scheduler-configmap
         - name: scheduler-config-log
           hostPath:
