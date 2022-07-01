@@ -74,4 +74,6 @@ const (
 	SegmentEnable = "presetVirtualDevice"
 	// SegmentNoEnable SegmentEnable not enable.
 	SegmentNoEnable = "SegmentEnable not enable"
+	// SegmentSetFalse presetVirtualDevice has been set as false, it must be true
+	SegmentSetFalse = "presetVirtualDevice has been set as false"
 )
