@@ -10,6 +10,7 @@ Package comvnpu is using for virtual HuaWei Ascend910 schedule.
 package comvnpu
 
 import (
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -234,7 +235,7 @@ func buildPreHandleVNPUTestCases() []preHandleVNPUTest {
 						tmpPatche1.Reset()
 					}
 				}},
-			wantErr: nil,
+			wantErr: errors.New(util.SegmentSetFalse),
 		},
 	}
 	return testCases

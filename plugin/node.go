@@ -261,7 +261,7 @@ func (hwNPU *ScheduleHandler) ClusterNodePredicate(task *api.TaskInfo, ssn *fram
 }
 
 func handlingPreCheckNodeErr(preErr error) error {
-	if strings.Contains(preErr.Error(), "segment enable not enable") {
+	if strings.Contains(preErr.Error(), util.SegmentNoEnable) {
 		klog.V(logInfoLev).Infof("%s preCheckNode %v.", PluginName, preErr)
 		return nil
 	}

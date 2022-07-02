@@ -10,6 +10,7 @@ Package vnpuutil is using for virtual HuaWei Ascend910 schedule.
 package vnpuutil
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 	"time"
@@ -174,7 +175,7 @@ type checkVNPUSegmentEnableByConfigArgs struct {
 type checkVNPUSegmentEnableByConfigTest struct {
 	name string
 	args checkVNPUSegmentEnableByConfigArgs
-	want bool
+	want error
 }
 
 func buildCheckVNPUSegmentEnableByConfigTestCases() []checkVNPUSegmentEnableByConfigTest {
@@ -185,13 +186,13 @@ func buildCheckVNPUSegmentEnableByConfigTestCases() []checkVNPUSegmentEnableByCo
 			name: "01-CheckVNPUSegmentEnableByConfig() nil conf",
 			args: checkVNPUSegmentEnableByConfigArgs{
 				configurations: nil},
-			want: false,
+			want: errors.New(util.SegmentNoEnable),
 		},
 		{
 			name: "02-CheckVNPUSegmentEnableByConfig() success test",
 			args: checkVNPUSegmentEnableByConfigArgs{
 				configurations: confs},
-			want: true,
+			want: errors.New(util.SegmentSetFalse),
 		},
 	}
 	return testCases
@@ -202,7 +203,7 @@ func TestCheckVNPUSegmentEnableByConfig(t *testing.T) {
 	tests := buildCheckVNPUSegmentEnableByConfigTestCases()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := CheckVNPUSegmentEnableByConfig(tt.args.configurations); got != tt.want {
+			if got := CheckVNPUSegmentEnableByConfig(tt.args.configurations); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("CheckVNPUSegmentEnableByConfig() = %v, want %v", got, tt.want)
 			}
 		})
