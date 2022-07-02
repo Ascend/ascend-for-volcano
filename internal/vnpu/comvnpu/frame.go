@@ -112,7 +112,7 @@ func (tp *VNPU) GetVNPUCacheFromCacheCM(ssn *framework.Session) error {
 // PreHandleVNPU Only for abstract VNPU, not v910,v310P and so on.
 func (tp *VNPU) PreHandleVNPU(ssn *framework.Session) error {
 	if err := vnpuutil.CheckVNPUSegmentEnable(ssn); err != nil {
-		klog.V(util.LogErrorLev).Infof("PreHandleVNPU :%v.", err)
+		klog.V(util.LogDebugLev).Infof("PreHandleVNPU :%v.", err)
 		return err
 	}
 	klog.V(util.LogDebugLev).Info("PreHandleVNPU segment enable.")
