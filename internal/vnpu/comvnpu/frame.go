@@ -104,82 +104,14 @@ func (tp *VNPU) PreHandleVNPU(ssn *framework.Session) error {
 	return err
 }
 
-// IsVNPUReqMeetActual Check whether the partition of node chips is consistent with the requirements in cache
-func (tp *VNPU) IsVNPUReqMeetActual(reqCard, actCard string) bool {
-	reqSlice := strings.Split(reqCard, "-")
-	req := reqSlice[len(reqSlice)-1]
-	actualTop := strings.Split(actCard, ",")
-	for _, actCardString := range actualTop {
-		actualSlice := strings.Split(actCardString, "-")
-		actual := actualSlice[len(actualSlice)-1]
-		if req == actual {
-			return true
-		}
-	}
-
-	return false
-}
-
-// DealVNPUSelectNodeAndChip check node whether has job require resource.
-func (tp *VNPU) DealVNPUSelectNodeAndChip(task *api.TaskInfo, node *api.NodeInfo) error {
-	data, getERR := tp.GetVNPUAllocInfFromCacheByJobID(task.Job)
-	if getERR != nil {
-		klog.V(util.LogErrorLev).Infof("%s %s DealVNPUSelectNodeAndChip %v.", tp.Name(), task.Name, getERR)
-		return getERR
-	}
-	// check the node is record
-	if data.NodeName != node.Name {
-		nameErr := fmt.Errorf("select %s not %s", data.NodeName, node.Name)
-		klog.V(util.LogErrorLev).Infof("%s %s DealVNPUSelectNodeAndChip %v.", tp.Name(), task.Name, nameErr)
-		return nameErr
-	}
-	// check whether has the require chip
-	value, covertErr := util.GetNPUAllocCardsFromNodeOthers(node, data.ReqNPUType)
-	if covertErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s DealVNPUSelectNodeAndChip %v %v.", tp.Name(), task.Name, covertErr)
-		return covertErr
-	}
-	// Check whether the partition of node chips is consistent with the requirements in cache
-	if !tp.IsVNPUReqMeetActual(data.ReqCardName, value) {
-		meetErr := fmt.Errorf("req %s,actual %s", data.ReqCardName, value)
-		klog.V(util.LogErrorLev).Infof("%s %s DealVNPUSelectNodeAndChip %v.", tp.Name(), task.Name, meetErr)
-		return meetErr
-	}
-
-	return nil
-}
-
 // PreCheckNodeFn check whether the node matches the tag requirements of the task.
-func (tp *VNPU) PreCheckNodeFn(task *api.TaskInfo, node *api.NodeInfo, confs []conf.Configuration) error {
+func (tp *VNPU) PreCheckNodeFn(task *api.TaskInfo, _ *api.NodeInfo, confs []conf.Configuration) error {
 	klog.V(util.LogDebugLev).Infof("%s PreCheckNodeFn %s enter.", tp.Name(), task.Name)
 	defer klog.V(util.LogDebugLev).Infof("%s PreCheckNodeFn %s leave.", tp.Name(), task.Name)
-	if err := vnpuutil.CheckVNPUSegmentEnableByConfig(confs); err != nil {
-		klog.V(util.LogErrorLev).Infof("%s PreCheckNodeFn %v.", vnpuutil.PluginName, err)
-		return err
-	}
-	// presetVirtualDevice does not need follow actions, these will be delete
-	pluginName, nameErr := tp.GetPluginNameByTaskInfo(task)
-	if nameErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTaskFn %s %v.", tp.Name(), task.Name, nameErr)
-		return nameErr
-	}
-	if pluginErr := tp.InitVNPUPluginByType(pluginName); pluginErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTaskFn :%v.", vnpuutil.PluginName, pluginErr)
-		return pluginErr
-	}
 
-	// select node by architect
-	if err := tp.IsSelectorMeetNode(task, node, tp.Attr.DefaultJobSchedulerConfig); err != nil {
-		// get scheduler selector configure failed, but need continue
-		klog.V(util.LogErrorLev).Infof("%s %s %s : %v.", tp.Name(), task.Name, node.Name, err)
-		return fmt.Errorf("task(%s) in node(%s):%v", task.Name, node.Name, err)
-	}
-
-	if vNPUErr := tp.DealVNPUSelectNodeAndChip(task, node); vNPUErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s %s %s : %v.", tp.Name(), task.Name, node.Name, vNPUErr)
-		return vNPUErr
-	}
-	return nil
+	err := vnpuutil.CheckVNPUSegmentEnableByConfig(confs)
+	klog.V(util.LogErrorLev).Infof("%s PreCheckNodeFn %v.", vnpuutil.PluginName, err)
+	return err
 }
 
 // CheckNodeNPUByTaskFn check whether the requested resource exists on the node.The cored has been split.
@@ -352,41 +284,6 @@ func (tp *VNPU) InitVNPUPluginByType(reqNpuType string) error {
 	return nil
 }
 
-// AllocCacheVJobsIntoCache Allocate the resources required by the vJobs to the cache.
-func (tp *VNPU) AllocCacheVJobsIntoCache(jobs []*api.JobInfo, res map[string]int, ssn *framework.Session) error {
-	var allocErrores error
-	for _, vJob := range jobs {
-		pluginName, nameErr := tp.GetPluginNameByJobInfo(vJob)
-		if nameErr != nil {
-			klog.V(util.LogErrorLev).Infof("%s AllocCacheVJobsIntoCache %s %v.", tp.Name(), vJob.Name, nameErr)
-			return nameErr
-		}
-		switch pluginName {
-		case vnpuutil.PluginNameBy910VNPU:
-			v910Plugin := &modulev910.ChipV910{}
-			if pluginErr := v910Plugin.InitVNPUPlugin(); pluginErr != nil {
-				return pluginErr
-			}
-			tp.Attr = v910Plugin.ComVNPU
-		case vnpuutil.PluginNameBy310PVNPU:
-			v310PPlugin := &modulev310p.ChipV310P{}
-			if pluginErr := v310PPlugin.InitVNPUPlugin(); pluginErr != nil {
-				return pluginErr
-			}
-			tp.Attr = v310PPlugin.ComVNPU
-		default:
-			klog.V(util.LogErrorLev).Infof("unknown VNPU chip type %s.", pluginName)
-			return nil
-		}
-		if allocErr := tp.AllocCacheVJobIntoCache(vJob, res, ssn); allocErr != nil {
-			if tmpErr := multierror.Append(allocErrores, allocErr); tmpErr != nil {
-				return tmpErr
-			}
-		}
-	}
-	return allocErrores
-}
-
 func (tp *VNPU) writevNPUAllocInfIntoCm(ssn *framework.Session) error {
 	var vNPUCM = &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -505,39 +402,6 @@ func (tp *VNPU) RecordVJobAllocInfoInCache(nodeInf *api.NodeInfo, chip string, v
 	if reduceErr := tp.reduceTheAllocChipFromNodeOther(chip, vJob, nodeInf); reduceErr != nil {
 		klog.V(util.LogDebugLev).Infof("%s RecordVJobAllocInfoInCache %s %+v.", tp.Name(), vJob.UID, reduceErr)
 		return reduceErr
-	}
-	return nil
-}
-
-// AllocCacheVJobIntoCache alloc vJob into cache by resources from session
-func (tp *VNPU) AllocCacheVJobIntoCache(vJob *api.JobInfo, res map[string]int, ssn *framework.Session) error {
-	if tp == nil {
-		return errors.New(vnpuutil.PluginUninitializedError)
-	}
-	// 1.Get meet node list
-	nodeList, listErr := tp.GetVJobMeetNodeList(vJob, res, ssn)
-	if listErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s GetVJobMeetNodeList %s %v.", tp.Name(), vJob.Name, listErr)
-		return listErr
-	}
-	// 2. Get meet node
-	tmpNode, nodeErr := tp.GetVJobMeetNode(nodeList)
-	if nodeErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s GetVJobMeetNode %s %v.", tp.Name(), vJob.Name, nodeErr)
-		return nodeErr
-	}
-	// 3. Get meet chip.
-	tmpChip, chipErr := tp.GetVJobMeetChip(tmpNode, vJob)
-	if chipErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s GetVJobMeetChip %s in %s %v.", tp.Name(),
-			vJob.Name, tmpNode.Name, chipErr)
-		return chipErr
-	}
-	// 5 record alloc info in cache and node.other
-	recordErr := tp.RecordVJobAllocInfoInCache(tmpNode, tmpChip, vJob)
-	if recordErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s AllocCacheVJobIntoCache %v.", tp.Name(), recordErr)
-		return nodeErr
 	}
 	return nil
 }

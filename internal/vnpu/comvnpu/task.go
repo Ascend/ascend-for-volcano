@@ -24,40 +24,6 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu/vnpuutil"
 )
 
-// IsSelectorMeetNode Check whether the selector of the node matches that of the task.
-func (tp *VNPU) IsSelectorMeetNode(task *api.TaskInfo, node *api.NodeInfo, conf map[string]string) error {
-	if task == nil || node == nil || len(conf) == 0 {
-		return errors.New("nil parameters")
-	}
-	// Get node selectors of task
-	taskSelectors := util.GetTaskSelectors(task)
-	if len(taskSelectors) == 0 {
-		for _, v := range tp.Attr.DivideKinds {
-			if err := util.IsNPUTask(task, v); err == nil {
-				// Vnpu task should have selector
-				klog.V(util.LogErrorLev).Infof("isSelectorMeetNode %s no selector by %+v.", task.Name, v)
-				return errors.New(util.NodeNoFitSelectorError)
-			}
-		}
-		klog.V(util.LogErrorLev).Infof("isSelectorMeetNode %s no selector .", task.Name)
-		return nil
-	}
-
-	// Get node selectors of node
-	nodeSelector, errNode := util.GetNodeSelector(node)
-	if errNode != nil {
-		klog.V(util.LogErrorLev).Infof("task[%s] on node(%s) %v.", task.Name, node.Name, errNode)
-		return errors.New(util.NodeNoFitSelectorError)
-	}
-
-	if err := util.CheckTaskAndNodeSelectorMeet(taskSelectors, nodeSelector, conf); err != nil {
-		klog.V(util.LogErrorLev).Infof("isSelectorMeetNode %s not meet %s err:%v.", task.Name, node.Name, err)
-		return err
-	}
-
-	return nil
-}
-
 // GetReleaseNPUTopologyFn obtain allocated device info from Pod
 func (tp *VNPU) GetReleaseNPUTopologyFn(vTask *api.TaskInfo) (interface{}, error) {
 	var vType string
