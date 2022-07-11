@@ -13,9 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"k8s.io/api/core/v1"
@@ -235,28 +233,6 @@ func (tp *VNPU) GetAllocatedNPUFromTopologyFn(vTask *api.TaskInfo, node *api.Nod
 	return allocVNPUChip[0], nil
 }
 
-// AddOrUpdateVNPUAllocInfIntoCache  add or update cache element.
-func (tp *VNPU) AddOrUpdateVNPUAllocInfIntoCache(data *vnpuutil.VNPUAllocInf) error {
-	if data == nil {
-		return errors.New("nil data")
-	}
-	flag := false
-	for k, cacheData := range vnpuutil.VNPUAllocData.Cache {
-		if data.JobUID == cacheData.JobUID {
-			vnpuutil.VNPUAllocData.Cache[k] = *data
-			flag = true
-			break
-		}
-	}
-	if !flag {
-		vnpuutil.VNPUAllocData.Cache = append(vnpuutil.VNPUAllocData.Cache, *data)
-	}
-	vnpuutil.VNPUAllocData.CheckCode = util.MakeDataHash(vnpuutil.VNPUAllocData)
-	klog.V(util.LogDebugLev).Infof("%s AddOrUpdateVNPUAllocInfIntoCache %+v.", tp.Name(),
-		vnpuutil.VNPUAllocData.Cache)
-	return nil
-}
-
 // InitVNPUPluginByType init vnpu plugin.Add new vnpu plugin must do.
 func (tp *VNPU) InitVNPUPluginByType(reqNpuType string) error {
 	switch reqNpuType {
@@ -300,109 +276,6 @@ func (tp *VNPU) writevNPUAllocInfIntoCm(ssn *framework.Session) error {
 		return err
 	}
 
-	return nil
-}
-
-// GetNodeListByReqVNPU consider node,card,chip
-func (tp *VNPU) GetNodeListByReqVNPU(jobNeedNPUType string, ssn *framework.Session) ([]*api.NodeInfo, error) {
-	if tp == nil {
-		return nil, errors.New(vnpuutil.PluginUninitializedError)
-	}
-	var nodeList []*api.NodeInfo
-	for _, nodeInf := range ssn.Nodes {
-		if !vnpuutil.IsNPUCardNodeByCardName(tp.Attr.AnnoName, nodeInf) {
-			klog.V(util.LogDebugLev).Infof("%s GetNodeListByReqVNPU no %v in %v.",
-				tp.Name(), tp.Attr.AnnoName, nodeInf.Name)
-			continue
-		}
-		if selectorErr := tp.IsNodeHasVNPUSelector(nodeInf); selectorErr != nil {
-			klog.V(util.LogDebugLev).Infof("%s GetNodeListByReqVNPU %v.", tp.Name(), selectorErr)
-			continue
-		}
-		if !tp.IsVNPUNodeMeetReqResource(jobNeedNPUType, nodeInf) {
-			klog.V(util.LogDebugLev).Infof("%s GetNodeListByReqVNPU %v no in %s.",
-				tp.Name(), jobNeedNPUType, nodeInf.Name)
-			continue
-		}
-		if !vnpuutil.IsNPUResourceStableInNode(tp.Attr.AnnoName, nodeInf) {
-			klog.V(util.LogDebugLev).Infof("%s GetNodeListByReqVNPU %v unstable in %s.",
-				tp.Name(), tp.Attr.AnnoName, nodeInf.Name)
-			continue
-		}
-		nodeList = append(nodeList, nodeInf)
-	}
-	if len(nodeList) == 0 {
-		listErr := fmt.Errorf("none node list meet %s", jobNeedNPUType)
-		return nil, listErr
-	}
-	return nodeList, nil
-}
-
-func (tp *VNPU) getChipNameByID(id int) string {
-	name := tp.Attr.AnnoPreVal + "-" + strconv.Itoa(id)
-	return name
-}
-
-// getTheFillOneFromList Obtain the chip that meets the core requirement. get the smallest one.
-func (tp *VNPU) getTheFillOneFromList(chipCores map[int]int) (string, error) {
-	var min = maxNPUChipCores
-	var selectID = 0
-	for cardID, num := range chipCores {
-		if min < num {
-			continue
-		}
-		min = num
-		selectID = cardID
-	}
-	if min == 0 {
-		return "", errors.New("get nil")
-	}
-	selectCard := strings.TrimLeft(tp.Attr.AnnoName, tp.Attr.AnnoPreVal) + "-" + strconv.Itoa(selectID)
-	return selectCard, nil
-}
-
-// GetVJobMeetChip get the chip name meet vJob require in nodeInf.
-func (tp *VNPU) GetVJobMeetChip(nodeInf *api.NodeInfo, vJob *api.JobInfo) (string, error) {
-	// 1.Get vJob need VNPU.
-	needNPU, getErr := tp.GetVJobNeedVNPU(vJob)
-	if getErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s GetVJobMeetChip %s %v.", tp.Name(), vJob.Name, getErr)
-		return "", getErr
-	}
-	selectChip, nodeErr := tp.GetVNPUUsedChipByReq(needNPU, nodeInf)
-	if nodeErr != nil {
-		return "", nodeErr
-	}
-	return selectChip, nil
-}
-
-// RecordVJobAllocInfoInCache record alloc info in cache and node.other,cache must be exist
-func (tp *VNPU) RecordVJobAllocInfoInCache(nodeInf *api.NodeInfo, chip string, vJob *api.JobInfo) error {
-	changeFlag := false
-	for k, data := range vnpuutil.VNPUAllocData.Cache {
-		if vJob.UID == data.JobUID {
-			tmp := data
-			tmp.NodeName = nodeInf.Name
-			tmp.ReqCardName = chip
-			tmp.AllocFlag = true
-			tmp.UpdateTime = time.Now().Unix()
-			vnpuutil.VNPUAllocData.Cache[k] = tmp
-			changeFlag = true
-			break
-		}
-	}
-	if !changeFlag {
-		noErr := fmt.Errorf("%s not in cache", vJob.UID)
-		klog.V(util.LogErrorLev).Infof("%s RecordVJobAllocInfoInCache %v.", tp.Name(), noErr)
-		return noErr
-	}
-	klog.V(util.LogDebugLev).Infof("%s RecordVJobAllocInfoInCache %s record %+v.", tp.Name(), vJob.UID,
-		vnpuutil.VNPUAllocData.Cache)
-	// reduce the select one from node other.
-	if reduceErr := tp.reduceTheAllocChipFromNodeOther(chip, vJob, nodeInf); reduceErr != nil {
-		klog.V(util.LogDebugLev).Infof("%s RecordVJobAllocInfoInCache %s %+v.", tp.Name(), vJob.UID, reduceErr)
-		return reduceErr
-	}
 	return nil
 }
 

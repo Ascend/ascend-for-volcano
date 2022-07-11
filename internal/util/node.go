@@ -12,7 +12,6 @@ package util
 import (
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"k8s.io/api/core/v1"
@@ -29,28 +28,6 @@ func GetNodeIdleNPUNum(node *api.NodeInfo, npuCardName string) (int, error) {
 
 	nodeNPU := int(nodeNPUIdleNumber / NPUHex)
 	return nodeNPU, nil
-}
-
-// GetNodeAvailNPUIdsFromAnno Get node npu available number
-func GetNodeAvailNPUIdsFromAnno(node *api.NodeInfo, npuCardName string) (map[int]struct{}, error) {
-	idsMap := make(map[int]struct{}, NPUIndex8)
-	chipStr, getErr := GetNPUAllocCardsFromNodeOthers(node, npuCardName)
-	if getErr != nil || chipStr == "" {
-		klog.V(LogDebugLev).Infof("GetNodeAvailNPUIdsFromAnno %s %s %v", node.Name, npuCardName, getErr)
-		return idsMap, nil
-	}
-	chipSlice := strings.Split(chipStr, ",")
-	for _, chip := range chipSlice {
-		// chip like Ascend310P-4
-		cardSlice := strings.Split(chip, "-")
-		cardStr := cardSlice[len(cardSlice)-1]
-		cardID, covErr := strconv.Atoi(cardStr)
-		if covErr != nil {
-			return nil, covErr
-		}
-		idsMap[cardID] = struct{}{}
-	}
-	return idsMap, nil
 }
 
 // GetTopFromNodeOthers Get npu card ids like（int[]） from node info.
