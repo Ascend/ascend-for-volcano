@@ -10,11 +10,9 @@ Package comvnpu is using for virtual HuaWei Ascend910 schedule.
 package comvnpu
 
 import (
-	"fmt"
 	"reflect"
 	"strconv"
 	"testing"
-	"time"
 
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/smartystreets/goconvey/convey"
@@ -717,115 +715,6 @@ func TestVJobRunHandle(t *testing.T) {
 				t.Errorf("VJobRunHandle() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			tt.args.cacheFunAfter()
-		})
-	}
-}
-
-func addTestJobIntoVNPUAllocDataCache(jobs ...*api.JobInfo) {
-	if len(jobs) == 0 {
-		vnpuutil.VNPUAllocData.Cache = nil
-		vnpuutil.VNPUAllocData.CheckCode = 0
-		return
-	}
-
-	var cache []vnpuutil.VNPUAllocInf
-	for _, vJob := range jobs {
-		reqNpuName, typeErr := util2.GetReqResourceNameFromJob(vJob)
-		if typeErr != nil {
-			println(typeErr)
-			return
-		}
-		var testTask *api.TaskInfo
-		for _, taskIn := range vJob.Tasks {
-			testTask = taskIn
-			break
-		}
-		tmp := vnpuutil.VNPUAllocInf{
-			JobUID:        vJob.UID,
-			ReqNPUType:    reqNpuName,
-			NodeName:      "",
-			ReqCardName:   "",
-			AllocCardName: "",
-			AllocFlag:     false,
-			UpdateTime:    time.Now().Unix(),
-		}
-		if testTask != nil {
-			tmp.NodeName = testTask.NodeName
-		}
-		cache = append(cache, tmp)
-	}
-
-	vnpuutil.VNPUAllocData.Cache = cache
-}
-
-func addTestJobReqCardNameAllocDataCache(jobName api.JobID, name string) {
-	for k, temp := range vnpuutil.VNPUAllocData.Cache {
-		if temp.JobUID == jobName {
-			temp.ReqCardName = name
-			vnpuutil.VNPUAllocData.Cache[k] = temp
-		}
-	}
-}
-
-type dealVNPUSelectNodeAndChipArgs struct {
-	task           *api.TaskInfo
-	node           *api.NodeInfo
-	cacheFunBefore func()
-}
-
-type dealVNPUSelectNodeAndChipTests struct {
-	name    string
-	fields  vnpuPlugin
-	args    dealVNPUSelectNodeAndChipArgs
-	wantErr error
-}
-
-func buildDealVNPUSelectNodeAndChipTestCases() []dealVNPUSelectNodeAndChipTests {
-	jobOne := test.FakeNormalTestJob("testJob-1", util2.NPUIndex1)
-	nodeOne := test.FakeNormalTestNode("node0")
-	test.SetTestNPUNodeAnnotation(nodeOne, util2.Fault310PNPU, "Ascend310P-1")
-	test.SetTestNPUNodeAnnotation(nodeOne, vnpuutil.NPU310PCardName, "huawei.com/Ascend310P-2")
-	var testTask *api.TaskInfo
-	for _, taskT := range jobOne.Tasks {
-		testTask = taskT
-		break
-	}
-	testCases := []dealVNPUSelectNodeAndChipTests{
-		{
-			name: "01-DealVNPUSelectNodeAndChip() job not in cache test.",
-			args: dealVNPUSelectNodeAndChipArgs{
-				task: testTask, node: nodeOne, cacheFunBefore: func() {}},
-			wantErr: fmt.Errorf("%v not in cache", jobOne.UID),
-		},
-		{
-			name: "02-DealVNPUSelectNodeAndChip() success test.",
-			args: dealVNPUSelectNodeAndChipArgs{
-				task: testTask, node: nodeOne, cacheFunBefore: func() {
-					test.SetFakeJobRequestSource(jobOne, vnpuutil.NPU310PCardName, 1*util2.NPUHex)
-					addTestJobIntoVNPUAllocDataCache(jobOne)
-					test.SetFakeNPUJobUseNodeNameInTask(jobOne, nodeOne.Name)
-					addTestJobReqCardNameAllocDataCache(jobOne.UID, "huawei.com/Ascend310P-2")
-				}},
-			wantErr: nil,
-		}}
-	return testCases
-}
-
-// TestDealVNPUSelectNodeAndChip test DealVNPUSelectNodeAndChip
-func TestDealVNPUSelectNodeAndChip(t *testing.T) {
-	tests := buildDealVNPUSelectNodeAndChipTestCases()
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tp := &VNPU{
-				Plugin:               tt.fields.Plugin,
-				Attr:                 tt.fields.Attr,
-				HwNPUSchedulerPlugin: tt.fields.HwNPUSchedulerPlugin,
-			}
-			tt.args.cacheFunBefore()
-			err := tp.DealVNPUSelectNodeAndChip(tt.args.task, tt.args.node)
-			if !reflect.DeepEqual(err, tt.wantErr) {
-				t.Errorf("DealVNPUSelectNodeAndChip() error = %v, wantErr %v", err, tt.wantErr)
-			}
 		})
 	}
 }
