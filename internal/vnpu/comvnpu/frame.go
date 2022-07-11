@@ -97,18 +97,6 @@ func (tp *VNPU) VJobRunHandle(ssn *framework.Session) error {
 	return multierror.Append(updateErr, cmErr, writeErr)
 }
 
-// GetVNPUCacheFromCacheCM syn cache and cache cm.
-func (tp *VNPU) GetVNPUCacheFromCacheCM(ssn *framework.Session) error {
-	cache, getErr := vnpuutil.GetVNPUAllocInfDataFromCacheCM(ssn)
-	if getErr != nil {
-		klog.V(util.LogDebugLev).Infof("GetVNPUAllocInfDataFromCacheCM :%v.", getErr)
-		return getErr
-	}
-	vnpuutil.VNPUAllocData = *cache
-	klog.V(util.LogDebugLev).Infof("GetVNPUAllocInfDataFromCacheCM get cache from cm successes.")
-	return nil
-}
-
 // PreHandleVNPU Only for abstract VNPU, not v910,v310P and so on.
 func (tp *VNPU) PreHandleVNPU(ssn *framework.Session) error {
 	if err := vnpuutil.CheckVNPUSegmentEnable(ssn); err != nil {
@@ -116,23 +104,7 @@ func (tp *VNPU) PreHandleVNPU(ssn *framework.Session) error {
 		return err
 	}
 	klog.V(util.LogDebugLev).Info("PreHandleVNPU segment enable.")
-	// presetVirtualDevice does not need follow actions, these will be delete
-	if getErr := tp.GetVNPUCacheFromCacheCM(ssn); getErr != nil {
-		klog.V(util.LogErrorLev).Infof("PreHandleVNPU :%v.", getErr)
-	}
 
-	if updateErr := tp.updateNodesOthersByVNPUCache(ssn.Nodes); updateErr != nil {
-		klog.V(util.LogErrorLev).Infof("PreHandleVNPU :%v.", updateErr)
-	}
-
-	if err := tp.DealNewVNPUJob(ssn); err != nil {
-		klog.V(util.LogInfoLev).Infof("PreHandleVNPU :%v.", err)
-	}
-
-	if npuErr := tp.DealFinishedVNPUJob(ssn); npuErr != nil {
-		klog.V(util.LogInfoLev).Infof("PreHandleVNPU :%v.", npuErr)
-	}
-	// no need deal errors.
 	return nil
 }
 
@@ -384,75 +356,6 @@ func (tp *VNPU) InitVNPUPluginByType(reqNpuType string) error {
 	return nil
 }
 
-// GetAndRecordNewVNPUJobsFromSsn record new vJob in cache.
-func (tp *VNPU) GetAndRecordNewVNPUJobsFromSsn(ssn *framework.Session) error {
-	getNum := 0
-	for _, job := range ssn.Jobs {
-		// for not ready job can pre handle
-		if !vnpuutil.IsVJobCanPreHandle(job) {
-			klog.V(util.LogDebugLev).Infof("%s GetAndRecordNewVNPUJobsFromSsn %s ready:%v.",
-				vnpuutil.PluginName, job.Name, job.PodGroup.Status.Phase)
-			continue
-		}
-		if !tp.IsVNPUJob(job) {
-			klog.V(util.LogDebugLev).Infof("%s GetAndRecordNewVNPUJobsFromSsn %s not VNPU job.", tp.Name(),
-				job.Name)
-			continue
-		}
-		if err := tp.RecordNewVNPUJobInCache(job); err != nil {
-			klog.V(util.LogErrorLev).Infof("%s RecordNewVNPUJobInCache :%v.", vnpuutil.PluginName, err)
-			continue
-		}
-		getNum++
-	}
-	if getNum == 0 {
-		return errors.New("none jobs need deal")
-	}
-	return nil
-}
-
-// GetAllNeedAllocVJobsFromCache get unAlloc vJobs from cache.
-func (tp *VNPU) GetAllNeedAllocVJobsFromCache(ssn *framework.Session) ([]*api.JobInfo, error) {
-	var vJobs []*api.JobInfo
-	for _, inf := range vnpuutil.VNPUAllocData.Cache {
-		if inf.AllocFlag {
-			continue
-		}
-		tmpJob, ok := ssn.Jobs[inf.JobUID]
-		if !ok {
-			err := fmt.Errorf("%s not in ssn", inf.JobUID)
-			klog.V(util.LogErrorLev).Infof("%s GetAllNeedAllocVJobsFromCache :%v.", vnpuutil.PluginName, err)
-			return nil, err
-		}
-		vJobs = append(vJobs, tmpJob)
-	}
-	if len(vJobs) == 0 {
-		return nil, errors.New("none vJobs need alloc")
-	}
-	return vJobs, nil
-}
-
-// GetClusterAllResourceFromSsn get cluster all core used.
-func (tp *VNPU) GetClusterAllResourceFromSsn(ssn *framework.Session) (map[string]int, error) {
-	var allocatableResource = make(map[string]int, util.NPUIndex8)
-	for _, nodInf := range ssn.Nodes {
-		nodeCoresInf, coresErr := tp.GetNodeNPUCoreInfoMap(nodInf)
-		if coresErr != nil {
-			klog.V(util.LogDebugLev).Infof("%s GetClusterAllResourceFromSsn %v.", tp.Name(), coresErr)
-			continue
-		}
-		var nodeAllUsableCores = 0
-		for _, tmp := range nodeCoresInf {
-			nodeAllUsableCores += tmp.UnCutCore
-		}
-		allocatableResource[nodInf.Name] = nodeAllUsableCores
-	}
-	if len(allocatableResource) == 0 {
-		return nil, errors.New("nil npu node")
-	}
-	return allocatableResource, nil
-}
-
 // AllocCacheVJobsIntoCache Allocate the resources required by the vJobs to the cache.
 func (tp *VNPU) AllocCacheVJobsIntoCache(jobs []*api.JobInfo, res map[string]int, ssn *framework.Session) error {
 	var allocErrores error
@@ -488,38 +391,6 @@ func (tp *VNPU) AllocCacheVJobsIntoCache(jobs []*api.JobInfo, res map[string]int
 	return allocErrores
 }
 
-// AllocNewVNPUJobsFromCache alloc vJobs after GetAndRecordNewVNPUJobsFromSsn.
-func (tp *VNPU) AllocNewVNPUJobsFromCache(ssn *framework.Session) error {
-	// 1.Get all need allocate jobs
-	vJobs, getErr := tp.GetAllNeedAllocVJobsFromCache(ssn)
-	if getErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s GetAllNeedAllocVJobsFromCache :%v.", vnpuutil.PluginName, getErr)
-		return getErr
-	}
-	// 2.Order the jobs by create time(all kinds vJobs are in one list).
-	vJobsList, orderErr := tp.OrderVJobsByCreateTime(vJobs)
-	if orderErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s OrderVjobByTimeAndKinds :%v.", vnpuutil.PluginName, orderErr)
-		return orderErr
-	}
-	klog.V(util.LogDebugLev).Infof("%s AllocCacheVJobsIntoCache get %d-%d jobs.",
-		vnpuutil.PluginName, len(vJobs), len(vJobsList))
-	// 3.Get cluster resource(node,chip).
-	clusterResource, resErr := tp.GetClusterAllResourceFromSsn(ssn)
-	if resErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s GetClusterAllResourceFromSsn :%v.", vnpuutil.PluginName, resErr)
-		return resErr
-	}
-	klog.V(util.LogDebugLev).Infof("%s AllocNewVNPUJobsFromCache:%+v.", vnpuutil.PluginName, clusterResource)
-	// 4.Alloc vJobs
-	if allocErr := tp.AllocCacheVJobsIntoCache(vJobsList, clusterResource, ssn); allocErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s AllocCacheVJobsIntoCache :%v.", vnpuutil.PluginName, allocErr)
-		return allocErr
-	}
-	klog.V(util.LogInfoLev).Infof("%s AllocCacheVJobsIntoCache success.", vnpuutil.PluginName)
-	return nil
-}
-
 func (tp *VNPU) writevNPUAllocInfIntoCm(ssn *framework.Session) error {
 	var vNPUCM = &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -537,140 +408,6 @@ func (tp *VNPU) writevNPUAllocInfIntoCm(ssn *framework.Session) error {
 	}
 
 	return nil
-}
-
-// DealNewVNPUJob Deal ssn new vJob.
-func (tp *VNPU) DealNewVNPUJob(ssn *framework.Session) error {
-	if err := tp.GetAndRecordNewVNPUJobsFromSsn(ssn); err != nil {
-		klog.V(util.LogDebugLev).Infof("%s GetAndRecordNewVNPUJobsFromSsn :%v.", vnpuutil.PluginName, err)
-		return err
-	}
-
-	if err := tp.AllocNewVNPUJobsFromCache(ssn); err != nil {
-		klog.V(util.LogErrorLev).Infof("%s AllocNewVNPUJobsFromCache :%v.", vnpuutil.PluginName, err)
-		return err
-	}
-
-	return tp.writevNPUAllocInfIntoCm(ssn)
-}
-
-// GetVJobNamesFromCache key is vJob name,value is pod name
-func (tp *VNPU) GetVJobNamesFromCache() ([]string, error) {
-	var jobNames []string
-	for _, data := range vnpuutil.VNPUAllocData.Cache {
-		name := data.JobUID
-		jobNames = append(jobNames, string(name))
-	}
-	if len(jobNames) == 0 {
-		return nil, errors.New("nil jobs in cache")
-	}
-
-	return jobNames, nil
-}
-
-// CheckVJobCanBeDeleteByName for one vJob has one task.
-func (tp *VNPU) CheckVJobCanBeDeleteByName(vJobName string, ssn *framework.Session) bool {
-	jobUID := api.JobID(vJobName)
-	jobInf, ok := ssn.Jobs[jobUID]
-	if !ok {
-		klog.V(util.LogErrorLev).Infof("CheckVJobCanBeDeleteByName %s not exist", vJobName)
-		return true
-	}
-
-	if jobInf.PodGroup == nil {
-		// no pg means failed or complete.
-		klog.V(util.LogErrorLev).Infof("CheckVJobCanBeDeleteByName %s pg not exist", vJobName)
-		return true
-	}
-
-	for _, task := range jobInf.Tasks {
-		if task.Status == api.Succeeded || task.Status == api.Failed {
-			return true
-		}
-		klog.V(util.LogDebugLev).Infof("CheckVJobCanBeDeleteByName %s task status %v", task.Job, task.Status)
-		return false
-	}
-	klog.V(util.LogErrorLev).Infof("CheckVJobCanBeDeleteByName %s no tasks", vJobName)
-	// no task maybe enqueue,can not delete.
-	return false
-}
-
-// IsDeleteVJobOverTime judge vJob whether is over the wait time.
-func (tp *VNPU) IsDeleteVJobOverTime(vJobName string) bool {
-	for _, data := range vnpuutil.VNPUAllocData.Cache {
-		if string(data.JobUID) == vJobName {
-			now := time.Now().Unix()
-			if now-data.UpdateTime > vnpuutil.DeleteOverTime {
-				klog.V(util.LogErrorLev).Infof("IsDeleteVJobOverTime %v==%v", now, data.UpdateTime)
-				return true
-			}
-			return false
-		}
-	}
-	return true
-}
-
-// IsVJobNeedDeleteBySSN judge the vJob whether need delete from cache.
-func (tp *VNPU) IsVJobNeedDeleteBySSN(vJobName string, ssn *framework.Session) bool {
-	if !tp.CheckVJobCanBeDeleteByName(vJobName, ssn) {
-		return false
-	}
-
-	// over time
-	return tp.IsDeleteVJobOverTime(vJobName)
-}
-
-func (tp *VNPU) getNeedKeepJobsInCache(vJobNames []string, ssn *framework.Session) ([]string, error) {
-	var vJobKeepNames []string
-	for _, jobName := range vJobNames {
-		if tp.IsVJobNeedDeleteBySSN(jobName, ssn) {
-			continue
-		}
-		vJobKeepNames = append(vJobKeepNames, jobName)
-	}
-	// Do not judge whether vJobKeepNames is nil.
-	return vJobKeepNames, nil
-}
-
-// excludeVJobsByJobNamesInCache only the parameters vJob can be keep in cache.
-func (tp *VNPU) excludeVJobsByJobNamesInCache(jobNames []string) error {
-	var tmp []vnpuutil.VNPUAllocInf
-	for _, data := range vnpuutil.VNPUAllocData.Cache {
-		for _, jobName := range jobNames {
-			if string(data.JobUID) == jobName {
-				tmp = append(tmp, data)
-				break
-			}
-		}
-	}
-	vnpuutil.VNPUAllocData.Cache = tmp
-	vnpuutil.VNPUAllocData.CheckCode = util.MakeDataHash(vnpuutil.VNPUAllocData.Cache)
-	klog.V(util.LogDebugLev).Infof("%s excludeVJobsByJobNamesInCache result %+v.", tp.Name(),
-		vnpuutil.VNPUAllocData.Cache)
-	return nil
-}
-
-// DealFinishedVNPUJob deal finished VNPU job from job, include completed, failed , nonexistent.
-func (tp *VNPU) DealFinishedVNPUJob(ssn *framework.Session) error {
-	// 1.get all jobNames from cache
-	vJobNames, nameErr := tp.GetVJobNamesFromCache()
-	if nameErr != nil {
-		klog.V(util.LogInfoLev).Infof("GetVJobNamesFromCache :%v.", nameErr)
-		return nameErr
-	}
-	// 2.get all need keep jobNames
-	keepJobNames, delErr := tp.getNeedKeepJobsInCache(vJobNames, ssn)
-	if delErr != nil {
-		klog.V(util.LogErrorLev).Infof("getNeedKeepJobsInCache :%v.", delErr)
-		return delErr
-	}
-	// 3.update info into cache
-	if updateErr := tp.excludeVJobsByJobNamesInCache(keepJobNames); updateErr != nil {
-		klog.V(util.LogErrorLev).Infof("excludeVJobsByJobNamesInCache :%v.", updateErr)
-		return updateErr
-	}
-	// 4.write new cache into cm
-	return tp.writevNPUAllocInfIntoCm(ssn)
 }
 
 // GetNodeListByReqVNPU consider node,card,chip

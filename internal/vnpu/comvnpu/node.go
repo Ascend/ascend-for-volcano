@@ -16,7 +16,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hashicorp/go-multierror"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
 
@@ -743,94 +742,6 @@ func (tp *VNPU) updateNodeOtherCardCoresByUseMap(nodeInf *api.NodeInfo, useMap m
 		}
 	}
 	return nil
-}
-
-// updateNPUInfInNodeOtherByUseMap for node and useMap is corresponding, must use getNodeUseInfoFromVNPUCache before.
-func (tp *VNPU) updateNPUInfInNodeOtherByUseMap(nodeInf *api.NodeInfo, useMap map[string]int) error {
-	klog.V(util.LogDebugLev).Infof("%s updateNPUInfInNodeOtherByUseMap before:%v", tp.Name(), nodeInf.Others)
-	var returnErr error
-	// deal whole card
-	if upErr := tp.updateNodeOtherWholeCardByUseMap(nodeInf, useMap); upErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s updateNPUInfInNodeOtherByUseMap :%v", tp.Name(), upErr)
-	}
-	// deal chip cores
-	if upErr := tp.updateNodeOtherCardCoresByUseMap(nodeInf, useMap); upErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s updateNPUInfInNodeOtherByUseMap :%v", tp.Name(), upErr)
-		returnErr = multierror.Append(returnErr, upErr)
-	}
-	klog.V(util.LogDebugLev).Infof("%s updateNPUInfInNodeOtherByUseMap after:%v", tp.Name(), nodeInf.Others)
-	return returnErr
-}
-
-// InitVNPUPluginByNodeInfo Init VNPU plugin by nodeInfo.
-func (tp *VNPU) InitVNPUPluginByNodeInfo(nodeInf *api.NodeInfo) error {
-	pluginName, nameErr := tp.GetPluginNameByNodeInfo(nodeInf)
-	if nameErr != nil {
-		klog.V(util.LogErrorLev).Infof("InitVNPUPluginByNodeInfo :%v.", nameErr)
-		return nameErr
-	}
-	if pluginErr := tp.InitVNPUPluginByType(pluginName); pluginErr != nil {
-		klog.V(util.LogErrorLev).Infof("InitVNPUPluginByNodeInfo :%v.", pluginErr)
-		return pluginErr
-	}
-	klog.V(util.LogDebugLev).Infof("InitVNPUPluginByNodeInfo init %v.", tp.Name())
-	return nil
-}
-
-func (tp *VNPU) getNodePreUseInfo(nodeInf *api.NodeInfo) (map[string]int, error) {
-	preUseMap := make(map[string]int, util.NPUIndex3)
-	cacheUseMap, getErr := tp.getNodeUseInfoFromVNPUCache(nodeInf)
-	if getErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s getNodePreUseInfo :%v", tp.Name(), getErr)
-		return nil, getErr
-	}
-	nodeUseMap, getErr := tp.getNodeUseInfoFromNode(nodeInf)
-	if getErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s getNodePreUseInfo :%v", tp.Name(), getErr)
-		return cacheUseMap, nil
-	}
-	for cardName, value := range cacheUseMap {
-		useValue, ok := nodeUseMap[cardName]
-		if !ok {
-			preUseMap[cardName] = value
-			continue
-		}
-		re := value - useValue
-		if re < 0 {
-			valueErr := fmt.Errorf("%s cache pre-use %v less than core cut %d", nodeInf.Name, value, useValue)
-			klog.V(util.LogErrorLev).Infof("%s getNodePreUseInfo :%v", tp.Name(), valueErr)
-			return nil, valueErr
-		}
-		preUseMap[cardName] = re
-	}
-	return preUseMap, nil
-}
-
-// updateNodesOthersByVNPUCache must do after cache update.
-func (tp *VNPU) updateNodesOthersByVNPUCache(ssnNodes map[string]*api.NodeInfo) error {
-	var returnErr error
-	if len(ssnNodes) == 0 {
-		klog.V(util.LogErrorLev).Infof("%s updateNodesOthersByVNPUCache nil nodes.", tp.Name())
-		return errors.New("nil nodes")
-	}
-	for _, nodeInf := range ssnNodes {
-		if pluginErr := tp.InitVNPUPluginByNodeInfo(nodeInf); pluginErr != nil {
-			klog.V(util.LogErrorLev).Infof("%s updateNodesOthersByVNPUCache :%v.", tp.Name(), pluginErr)
-			continue
-		}
-		useMap, getErr := tp.getNodePreUseInfo(nodeInf)
-		if getErr != nil {
-			klog.V(util.LogDebugLev).Infof("%s updateNodesOthersByVNPUCache :%v", tp.Name(), getErr)
-			continue
-		}
-		klog.V(util.LogErrorLev).Infof("%s updateNodesOthersByVNPUCache %v:%+v", tp.Name(), nodeInf.Name, useMap)
-		if upErr := tp.updateNPUInfInNodeOtherByUseMap(nodeInf, useMap); upErr != nil {
-			klog.V(util.LogErrorLev).Infof("%s updateNodesOthersByVNPUCache :%v", tp.Name(), upErr)
-			returnErr = multierror.Append(returnErr, upErr)
-			continue
-		}
-	}
-	return returnErr
 }
 
 // GetVNodeNPUType get node resource npu type.
