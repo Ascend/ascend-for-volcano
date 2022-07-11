@@ -20,7 +20,6 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/conf"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/util"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
 )
 
 const (
@@ -123,51 +122,6 @@ func TestGetVNPUCMData(t *testing.T) {
 	}
 }
 
-type isNPUResourceStableInNodeArgs struct {
-	kind    string
-	tmpNode *api.NodeInfo
-}
-
-type isNPUResourceStableInNodeTest struct {
-	name string
-	args isNPUResourceStableInNodeArgs
-	want bool
-}
-
-func buildIsNPUResourceStableInNodeTestCases() []isNPUResourceStableInNodeTest {
-	node0 := test.FakeNormalTestNode("node-0")
-	node1 := test.FakeNormalTestNode("node-1")
-	test.SetTestNPUNodeAnnotation(node1, NPU910CardName, "Ascend91-0,Ascend91-1")
-	test.SetFakeNodeIdleSource(node1, NPU910CardName, util.NPUIndex2)
-	testCases := []isNPUResourceStableInNodeTest{
-		{
-			name: "01-IsNPUResourceStableInNode() nil NPU",
-			args: isNPUResourceStableInNodeArgs{
-				kind: NPU910CardName, tmpNode: node0},
-			want: false,
-		},
-		{
-			name: "02-IsNPUResourceStableInNode() success test",
-			args: isNPUResourceStableInNodeArgs{
-				kind: NPU910CardName, tmpNode: node1},
-			want: true,
-		},
-	}
-	return testCases
-}
-
-// TestIsNPUResourceStableInNode test IsNPUResourceStableInNode
-func TestIsNPUResourceStableInNode(t *testing.T) {
-	tests := buildIsNPUResourceStableInNodeTestCases()
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := IsNPUResourceStableInNode(tt.args.kind, tt.args.tmpNode); got != tt.want {
-				t.Errorf("IsNPUResourceStableInNode() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 type checkVNPUSegmentEnableByConfigArgs struct {
 	configurations []conf.Configuration
 }
@@ -205,47 +159,6 @@ func TestCheckVNPUSegmentEnableByConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := CheckVNPUSegmentEnableByConfig(tt.args.configurations); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("CheckVNPUSegmentEnableByConfig() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-type isVJobCanPreHandleArgs struct {
-	job *api.JobInfo
-}
-
-type isVJobCanPreHandleTest struct {
-	name string
-	args isVJobCanPreHandleArgs
-	want bool
-}
-
-func buildIsVJobCanPreHandleTestCases() []isVJobCanPreHandleTest {
-	testJob0 := test.FakeNormalTestJob("test-0", util.NPUIndex2)
-	testJob1 := test.FakeNormalTestJob("test-1", 1)
-	test.SetFakeNPUJobStatusPending(testJob1)
-	testCases := []isVJobCanPreHandleTest{
-		{
-			name: "01-IsVJobCanPreHandle() distributed task test",
-			args: isVJobCanPreHandleArgs{job: testJob0},
-			want: false,
-		},
-		{
-			name: "02-IsVJobCanPreHandle() success test",
-			args: isVJobCanPreHandleArgs{job: testJob1},
-			want: true,
-		},
-	}
-	return testCases
-}
-
-// TestIsVJobCanPreHandle test IsVJobCanPreHandle
-func TestIsVJobCanPreHandle(t *testing.T) {
-	tests := buildIsVJobCanPreHandleTestCases()
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := IsVJobCanPreHandle(tt.args.job); got != tt.want {
-				t.Errorf("IsVJobCanPreHandle() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -16,8 +16,7 @@ import (
 
 const (
 	// PluginName the vnpu's plugin name.
-	PluginName      = vnpuutil.PluginName
-	maxNPUChipCores = 64
+	PluginName = vnpuutil.PluginName
 )
 
 // VNPU common type
@@ -46,20 +45,4 @@ type VNPUHandler interface {
 	GetNPUCardCoreKey() string
 	// GetUnhealthyNameInAnnotation get the chip unhealthy name ,defined in node annotation.
 	GetUnhealthyNameInAnnotation() string
-}
-
-type priorNodes struct {
-	NodeName    string
-	HealThyCard int
-	UsedCores   int
-}
-
-// for parse npu core
-type vNPUCoreInfo struct {
-	// ChipID like 1
-	ChipID,
-	// AllCore like 32
-	AllCore,
-	// UnCutCore like 24
-	UnCutCore int
 }

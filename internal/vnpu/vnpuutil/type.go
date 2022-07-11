@@ -41,8 +41,6 @@ const (
 	NodesNoMeetNPUReqError = "insufficient npus on the schedulable nodes in cluster"
 	// NodeNotStableWarning error for unstable npu node.
 	NodeNotStableWarning = "the npus on this node are unstable"
-	// PluginUninitializedError plugin not initialized Error.
-	PluginUninitializedError = "uninitialized plugin"
 
 	// VNPUCMNameSpace for uninstall volcano, also delete cm
 	VNPUCMNameSpace = "volcano-system"
@@ -56,8 +54,6 @@ const (
 	VNPUNodeLabelKey = "npu-spec"
 	// VNPUNodeLabelValue for select vnpu node label value.
 	VNPUNodeLabelValue = "vnpu"
-	// DeleteOverTime over time for job finish deal.
-	DeleteOverTime = 5
 	// JobPendingWaitTime The time wait for device-plugin create vnpu.
 	JobPendingWaitTime = 300
 	// VNPUScoreWeight for volcano select vnpu node core.
