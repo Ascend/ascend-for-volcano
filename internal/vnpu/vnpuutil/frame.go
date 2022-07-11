@@ -182,51 +182,6 @@ func GetVNPUCacheCMData(cacheData VNPUAllocInfCache) map[string]string {
 	return cacheBuffer
 }
 
-// IsNPUCardNodeByCardName judge the node has card or not.
-func IsNPUCardNodeByCardName(cardName string, tmpNode *api.NodeInfo) bool {
-	if tmpNode == nil {
-		return false
-	}
-	// only read
-	for resName := range tmpNode.Allocatable.ScalarResources {
-		tmp := string(resName)
-		if strings.Contains(tmp, cardName) {
-			// the VNPU func before has check the resource type.
-			return true
-		}
-	}
-	return false
-}
-
-// IsNPUResourceStableInNode judge the node resource whether is stable.
-func IsNPUResourceStableInNode(kind string, tmpNode *api.NodeInfo) bool {
-	if tmpNode == nil {
-		klog.V(util.LogErrorLev).Infof("IsNPUResourceStableInNode parameters nil.")
-		return false
-	}
-	k8sNum, k8sOK := tmpNode.Idle.ScalarResources[v1.ResourceName(kind)]
-	if !k8sOK {
-		klog.V(util.LogErrorLev).Infof("IsNPUResourceStableInNode %s no %v in k8s.", tmpNode.Name, kind)
-		return false
-	}
-	annoSrings, err := util.GetNPUAllocCardsFromNodeAnnotations(tmpNode, kind)
-	if err != nil {
-		klog.V(util.LogErrorLev).Infof("IsNPUResourceStableInNode :%v.", err)
-		return false
-	}
-	annoSlice := strings.Split(annoSrings, ",")
-	annoNum := len(annoSlice)
-	if annoSrings == "" {
-		annoNum = 0
-	}
-	if int(k8sNum/util.NPUHex) != annoNum {
-		klog.V(util.LogErrorLev).Infof("%s IsNPUResourceStableInNode %s not stable (%v != %v:%v).",
-			tmpNode.Name, kind, k8sNum, annoNum*util.NPUHex, annoSrings)
-		return false
-	}
-	return true
-}
-
 // IsVJobRunning check whether the job is running or not.
 func IsVJobRunning(job *api.JobInfo) bool {
 	if len(job.Tasks) > util.NPUIndex2 {

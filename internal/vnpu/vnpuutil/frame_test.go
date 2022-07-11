@@ -156,18 +156,6 @@ func buildIsNPUResourceStableInNodeTestCases() []isNPUResourceStableInNodeTest {
 	return testCases
 }
 
-// TestIsNPUResourceStableInNode test IsNPUResourceStableInNode
-func TestIsNPUResourceStableInNode(t *testing.T) {
-	tests := buildIsNPUResourceStableInNodeTestCases()
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := IsNPUResourceStableInNode(tt.args.kind, tt.args.tmpNode); got != tt.want {
-				t.Errorf("IsNPUResourceStableInNode() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 type checkVNPUSegmentEnableByConfigArgs struct {
 	configurations []conf.Configuration
 }

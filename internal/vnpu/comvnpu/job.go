@@ -17,8 +17,6 @@ import (
 
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	"volcano.sh/volcano/pkg/scheduler/framework"
-
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/util"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu/vnpuutil"
 )
@@ -82,24 +80,6 @@ func (tp *VNPU) validNPUJobSelector(job *api.JobInfo) error {
 	return nil
 }
 
-func (tp *VNPU) isJobSetPreAllocFlag(job *api.JobInfo) bool {
-	for _, v := range vnpuutil.VNPUAllocData.Cache {
-		if v.JobUID == job.UID {
-			return v.AllocFlag
-		}
-	}
-	return false
-}
-
-func (tp *VNPU) isNewVNPUJob(job *api.JobInfo) bool {
-	for _, v := range vnpuutil.VNPUAllocData.Cache {
-		if v.JobUID == job.UID {
-			return false
-		}
-	}
-	return true
-}
-
 // GetNPUTypeByResourceName get vJob vnpu source name, like huawei.com/Ascend310P-4c.
 func (tp *VNPU) GetNPUTypeByResourceName(tmp string) (string, error) {
 	split := strings.Split(tmp, "-")
@@ -123,56 +103,6 @@ func (tp *VNPU) GetVJobReqNPUType(job *api.JobInfo) (string, error) {
 	}
 
 	return tp.GetNPUTypeByResourceName(tmp)
-}
-
-func (tp *VNPU) getVJobReqInfFromJobInfo(job *api.JobInfo) (*vnpuutil.VNPUAllocInf, error) {
-	reqNpuName, typeErr := util.GetReqResourceNameFromJob(job)
-	if typeErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s getVJobReqInfFromJobInfo %s %v.", tp.Name(), job.Name, typeErr)
-		return nil, typeErr
-	}
-	var tmp = vnpuutil.VNPUAllocInf{
-		JobUID:        job.UID,
-		ReqNPUType:    reqNpuName,
-		NodeName:      "",
-		ReqCardName:   "",
-		AllocCardName: "",
-		AllocFlag:     false,
-		UpdateTime:    time.Now().Unix(),
-	}
-	klog.V(util.LogErrorLev).Infof("%s getVJobReqInfFromJobInfo %s %+v.", tp.Name(), job.Name, tmp)
-	return &tmp, nil
-}
-
-// CheckJobNeedPreAlloc Check the vJob whether need do pre-Alloc or not.
-func (tp *VNPU) CheckJobNeedPreAlloc(job *api.JobInfo) error {
-	if tp.isNewVNPUJob(job) {
-		klog.V(util.LogDebugLev).Infof("%s CheckJobNeedPreAlloc new %s need to preAlloc.", tp.Name(), job.Name)
-		return nil
-	}
-	if tp.isJobSetPreAllocFlag(job) {
-		preErr := fmt.Errorf("%s has been preAlloc", job.Name)
-		klog.V(util.LogDebugLev).Infof("%s isJobSetPreAllocFlag %v.", tp.Name(), preErr)
-		return preErr
-	}
-	klog.V(util.LogDebugLev).Infof("%s CheckJobNeedPreAlloc %s need to preAlloc.", tp.Name(), job.Name)
-	// over time is deal in valid job
-	return nil
-}
-
-// RecordNewVNPUJobInCache deal new VNPU job from session.
-func (tp *VNPU) RecordNewVNPUJobInCache(job *api.JobInfo) error {
-	if checkErr := tp.CheckJobNeedPreAlloc(job); checkErr != nil {
-		return checkErr
-	}
-	vNPUAllocInf, allocErr := tp.getVJobReqInfFromJobInfo(job)
-	if allocErr != nil {
-		return allocErr
-	}
-	if err := tp.AddOrUpdateVNPUAllocInfIntoCache(vNPUAllocInf); err != nil {
-		return err
-	}
-	return nil
 }
 
 // UpdateVJobsCacheAllocChipByJobName Update vJob allocChip in cache by job name.
@@ -348,71 +278,6 @@ func (tp *VNPU) IsVNPUJob(job *api.JobInfo) bool {
 	}
 	tp.setVPUPluginToVNPUBack()
 	return true
-}
-
-// GetVJobNeedVNPU return VNPU name for number is 1.
-func (tp *VNPU) GetVJobNeedVNPU(vJob *api.JobInfo) (string, error) {
-	if tp == nil {
-		return "", errors.New(vnpuutil.PluginUninitializedError)
-	}
-
-	reqReses := api.NewResource(*vJob.PodGroup.Spec.MinResources)
-	for value := range reqReses.ScalarResources {
-		tmp := string(value)
-		if strings.Contains(tmp, tp.Attr.AnnoName) {
-			// the VNPU func before has check the resource type.
-			return tmp, nil
-		}
-	}
-	klog.V(util.LogErrorLev).Infof("%s GetVJobNeedVNPU %s %#v has no %v.", tp.Name(),
-		vJob.Name, vJob.TotalRequest.ScalarResources, tp.Attr.AnnoName)
-	return "", fmt.Errorf("%s not has NPUS", vJob.Name)
-}
-
-// IsVJobReqNPUMeetTotalResources npu card only has one kind and one.
-func (tp *VNPU) IsVJobReqNPUMeetTotalResources(npu string, res map[string]int) bool {
-	if len(res) == 0 || npu == "" {
-		klog.V(util.LogErrorLev).Info("IsVJobReqNPUMeetTotalResources parameters error.")
-		return false
-	}
-	chipCore, coverErr := tp.coverReqNPUTypeToCoreNum(npu)
-	if coverErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s IsVNPUNodeMeetReqResource %v.", tp.Name(), coverErr)
-		return false
-	}
-	for _, value := range res {
-		if value >= chipCore {
-			return true
-		}
-	}
-	return false
-}
-
-// GetVJobMeetNodeList Get vJob meet nodeMap
-func (tp *VNPU) GetVJobMeetNodeList(vJob *api.JobInfo, res map[string]int,
-	ssn *framework.Session) ([]*api.NodeInfo, error) {
-	// 1.Get vJob need VNPU.
-	jobNeedNPUType, getErr := tp.GetVJobNeedVNPU(vJob)
-	if getErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s GetVJobNeedVNPU %v.", tp.Name(), getErr)
-		return nil, getErr
-	}
-	// 2. check the cluster total res meet VJob require.
-	if !tp.IsVJobReqNPUMeetTotalResources(jobNeedNPUType, res) {
-		err := fmt.Errorf("total resource %+v not meet req %s", res, jobNeedNPUType)
-		klog.V(util.LogErrorLev).Infof("%s GetVJobMeetNodeList %s %v.", tp.Name(), vJob.Name, err)
-		return nil, err
-	}
-	// 3.Get node list by req VNPU.
-	nodeList, listErr := tp.GetNodeListByReqVNPU(jobNeedNPUType, ssn)
-	if listErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s GetNodeListByReqVNPU %v.", tp.Name(), listErr)
-		return nil, listErr
-	}
-	if len(nodeList) == 0 {
-		return nil, errors.New("none node meet")
-	}
-	return nodeList, nil
 }
 
 // IsMyJob used for identify Vnpu job, need to be implemented by vNPU plugins
