@@ -99,13 +99,9 @@ func (tp *VNPU) VJobRunHandle(ssn *framework.Session) error {
 
 // PreHandleVNPU Only for abstract VNPU, not v910,v310P and so on.
 func (tp *VNPU) PreHandleVNPU(ssn *framework.Session) error {
-	if err := vnpuutil.CheckVNPUSegmentEnable(ssn); err != nil {
-		klog.V(util.LogDebugLev).Infof("PreHandleVNPU :%v.", err)
-		return err
-	}
-	klog.V(util.LogDebugLev).Info("PreHandleVNPU segment enable.")
-
-	return nil
+	err := vnpuutil.CheckVNPUSegmentEnable(ssn)
+	klog.V(util.LogDebugLev).Infof("PreHandleVNPU :%v.", err)
+	return err
 }
 
 // IsVNPUReqMeetActual Check whether the partition of node chips is consistent with the requirements in cache
