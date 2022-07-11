@@ -10,7 +10,6 @@ Package vnpuutil is using for virtual HuaWei Ascend910 schedule.
 package vnpuutil
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -20,39 +19,12 @@ import (
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
-	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/util"
 )
-
-// ConvertToVNPUAllocInfCacheFromCMData Convert string to VNPUAllocInfCache.
-func ConvertToVNPUAllocInfCacheFromCMData(buffer string) (*VNPUAllocInfCache, error) {
-	cache := VNPUAllocInfCache{}
-	if unmarshalErr := json.Unmarshal([]byte(buffer), &cache); unmarshalErr != nil {
-		klog.V(util.LogInfoLev).Infof("ConvertToVNPUAllocInfCacheMapFromCMData Unmarshal: %v.", unmarshalErr)
-		return nil, unmarshalErr
-	}
-	return &cache, nil
-}
-
-// GetVNPUAllocInfDataFromCacheCM Get VNPU AllocInfData from cache configmap at session start.
-func GetVNPUAllocInfDataFromCacheCM(ssn *framework.Session) (*VNPUAllocInfCache, error) {
-	cmData, err := util.GetConfigMapWithRetry(ssn.KubeClient(), VNPUCMNameSpace, VNPUCacheCMName)
-	if err != nil {
-		klog.V(util.LogErrorLev).Infof("GetVJobNamesFromCache :%v.", err)
-		return nil, err
-	}
-	tmp, ok := cmData.Data[VNPCMDataKey]
-	if !ok {
-		klog.V(util.LogErrorLev).Infof("GetVJobNamesFromCache :%v.", err)
-		return nil, err
-	}
-
-	return ConvertToVNPUAllocInfCacheFromCMData(tmp)
-}
 
 // WriteVNPUAllocInfDataIntoCacheCM Write VNPUAllocInfData into cache CM.
 func WriteVNPUAllocInfDataIntoCacheCM(ssn *framework.Session) error {
@@ -264,25 +236,6 @@ func IsVJobRunning(job *api.JobInfo) bool {
 	for _, task := range job.Tasks {
 		if task.Pod.Status.Phase != v1.PodRunning {
 			klog.V(util.LogInfoLev).Infof("%s's task not running %v", job.UID, task.Pod.Status.Phase)
-			return false
-		}
-	}
-	return true
-}
-
-// IsVJobCanPreHandle check whether the job is pending or inQueue.
-func IsVJobCanPreHandle(job *api.JobInfo) bool {
-	if len(job.Tasks) > util.NPUIndex2 {
-		klog.V(util.LogDebugLev).Infof("%s has wrong tasks %+v", job.UID, job.Tasks)
-		return false
-	}
-	if job.PodGroup.Status.Phase == scheduling.PodGroupInqueue {
-		klog.V(util.LogInfoLev).Infof("%s IsVJobCanPreHandle Inqueue.", job.UID)
-		return true
-	}
-	for _, task := range job.Tasks {
-		if task.Pod.Status.Phase != v1.PodPending {
-			klog.V(util.LogInfoLev).Infof("%s's task not pending %v", job.UID, task.Pod.Status.Phase)
 			return false
 		}
 	}

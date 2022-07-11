@@ -12,7 +12,6 @@ package comvnpu
 import (
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -349,36 +348,6 @@ func (tp *VNPU) IsVNPUJob(job *api.JobInfo) bool {
 	}
 	tp.setVPUPluginToVNPUBack()
 	return true
-}
-
-type vJobsList []*api.JobInfo
-
-// Len for order.
-func (vJob vJobsList) Len() int {
-	return len(vJob)
-}
-
-// Less for order.
-func (vJob vJobsList) Less(i, j int) bool {
-	if i > vJob.Len() || j > vJob.Len() {
-		return false
-	}
-	return vJob[i].CreationTimestamp.Unix() < vJob[j].CreationTimestamp.Unix()
-}
-
-// Swap for order.
-func (vJob vJobsList) Swap(i, j int) {
-	if i > vJob.Len() || j > vJob.Len() {
-		return
-	}
-	vJob[i], vJob[j] = vJob[j], vJob[i]
-}
-
-// OrderVJobsByCreateTime Order the jobs by create time(all kinds vJobs are in one list).
-func (tp *VNPU) OrderVJobsByCreateTime(jobs []*api.JobInfo) ([]*api.JobInfo, error) {
-	tempVJobs := vJobsList(jobs)
-	sort.Sort(tempVJobs)
-	return tempVJobs, nil
 }
 
 // GetVJobNeedVNPU return VNPU name for number is 1.
