@@ -188,22 +188,6 @@ func (tp *VNPU) UpdateNPUNodeUsedCardFn(node *api.NodeInfo, top interface{}) err
 	return nil
 }
 
-func (tp *VNPU) coverReqNPUTypeToCoreNum(jobNeedNPUType string) (int, error) {
-	tmpSlice := strings.Split(jobNeedNPUType, "-")
-	if len(tmpSlice) != util.NPUIndex2 {
-		klog.V(util.LogErrorLev).Infof("%s IsVNPUNodeMeetReqResource %s error.", tp.Name(), jobNeedNPUType)
-		return 0, fmt.Errorf("error format %v", jobNeedNPUType)
-	}
-	chipCoreStr := tmpSlice[1]
-	chipCoreStr = strings.TrimRight(chipCoreStr, "c")
-	chipCore, covAllErr := strconv.Atoi(chipCoreStr)
-	if covAllErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s IsVNPUNodeMeetReqResource convert %v.", tp.Name(), covAllErr)
-		return 0, covAllErr
-	}
-	return chipCore, nil
-}
-
 // deal 1-32c-32c
 func (tp *VNPU) parseStringToVNPUCoreInfo(coreString string) (string, vNPUCoreInfo, error) {
 	// deal 1-32c-32c
@@ -354,79 +338,6 @@ func (tp *VNPU) UpdateReleaseNPUNodeTopologyFn(node *api.NodeInfo, top interface
 		return errors.New("update npu node topology after release failed")
 	}
 
-	return nil
-}
-
-// getNodeUseInfoFromNode get from node cores(NPUCardCoreKey).
-func (tp *VNPU) getNodeUseInfoFromNode(nodeInf *api.NodeInfo) (map[string]int, error) {
-	tmp := make(map[string]int, util.NPUIndex3)
-	nodeCoresInf, coresErr := tp.GetNodeNPUCoreInfoMap(nodeInf)
-	if coresErr != nil {
-		klog.V(util.LogDebugLev).Infof("%s getNodeUseInfoFromNode :%v", tp.Name(), coresErr)
-		return nil, coresErr
-	}
-	for cardName, value := range nodeCoresInf {
-		tmp[cardName] = value.AllCore - value.UnCutCore
-	}
-	if len(tmp) == 0 {
-		return nil, fmt.Errorf("%s's other no need change", nodeInf.Name)
-	}
-	return tmp, nil
-}
-
-// getNodeUseInfoFromVNPUCache the format key like Ascend310P-0.
-func (tp *VNPU) getNodeUseInfoFromVNPUCache(nodeInf *api.NodeInfo) (map[string]int, error) {
-	tmp := make(map[string]int, util.NPUIndex3)
-	for _, value := range vnpuutil.VNPUAllocData.Cache {
-		if value.NodeName != nodeInf.Name {
-			continue
-		}
-		if !value.AllocFlag {
-			continue
-		}
-		chipCore, coverErr := tp.coverReqNPUTypeToCoreNum(value.ReqNPUType)
-		if coverErr != nil {
-			klog.V(util.LogErrorLev).Infof("%s getNodeUseInfoFromVNPUCache %v.", tp.Name(), coverErr)
-			continue
-		}
-		tmp[value.ReqCardName] += chipCore
-	}
-	if len(tmp) == 0 {
-		return nil, fmt.Errorf("%s's other no need change", nodeInf.Name)
-	}
-	return tmp, nil
-}
-
-// updateNodeOtherWholeCardByUseMap for node and useMap is corresponding, must use getNodeUseInfoFromVNPUCache before.
-func (tp *VNPU) updateNodeOtherWholeCardByUseMap(nodeInf *api.NodeInfo, useMap map[string]int) error {
-	for cardName := range useMap {
-		// cardName is Ascend310P-0
-		tmpSlice := strings.Split(cardName, "-")
-		if len(tmpSlice) < util.NPUIndex2 {
-			return fmt.Errorf("%s err card name %s", nodeInf.Name, cardName)
-		}
-		resName := vnpuutil.NPUCardNamePrefix + tmpSlice[0]
-		topStr, getErr := util.GetNPUAllocCardsFromNodeOthers(nodeInf, resName)
-		if getErr != nil {
-			klog.V(util.LogDebugLev).Infof("%s updateNodeOtherWholeCardByUseMap:%v.", tp.Name(), getErr)
-			continue
-		}
-		if !strings.Contains(topStr, cardName) {
-			continue
-		}
-		var allCards []string
-		topSlice := strings.Split(topStr, ",")
-		for _, chipStr := range topSlice {
-			if chipStr == cardName {
-				continue
-			}
-			allCards = append(allCards, chipStr)
-		}
-		writeString := strings.Join(allCards, ",")
-		if saveErr := util.SaveTopologyInMap(nodeInf.Others, writeString, resName); saveErr != nil {
-			return saveErr
-		}
-	}
 	return nil
 }
 
