@@ -18,7 +18,6 @@ import (
 	"github.com/agiledragon/gomonkey/v2"
 	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
-	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
@@ -27,60 +26,6 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
 )
-
-type getNodeNPUCoreInfoMapArgs struct {
-	vNode *api.NodeInfo
-}
-
-type getNodeNPUCoreInfoMapTest struct {
-	name    string
-	fields  VNPU
-	args    getNodeNPUCoreInfoMapArgs
-	want    map[string]vNPUCoreInfo
-	wantErr error
-}
-
-func buildGetNodeNPUCoreInfoMapTestCases() []getNodeNPUCoreInfoMapTest {
-	const maxCoreNum = 32
-	nodeInf := test.FakeNormalTestNode("vNode")
-	test.SetTestNPUNodeAnnotation(nodeInf, vnpuutil.NPU910CardCoreKey, "0-32c-32c")
-	testCases := []getNodeNPUCoreInfoMapTest{
-		{
-			name: "01-orderVJobsByCreateTimeTests jobOrder-test",
-			fields: VNPU{
-				Attr: vnpuutil.ComVNPU{NPUCardCoreKey: vnpuutil.NPU910CardCoreKey,
-					HwEntity: plugin.HwEntity{
-						AnnoName: vnpuutil.NPU910CardName, AnnoPreVal: vnpuutil.NPUCardNamePrefix}},
-			},
-			args:    getNodeNPUCoreInfoMapArgs{vNode: nodeInf},
-			want:    map[string]vNPUCoreInfo{"Ascend910-0": {ChipID: 0, AllCore: maxCoreNum, UnCutCore: maxCoreNum}},
-			wantErr: nil,
-		},
-	}
-	return testCases
-}
-
-// TestGetNodeNPUCoreInfoMap test GetNodeNPUCoreInfoMap function
-func TestGetNodeNPUCoreInfoMap(t *testing.T) {
-	tests := buildGetNodeNPUCoreInfoMapTestCases()
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tp := &VNPU{
-				Plugin:               tt.fields.Plugin,
-				Attr:                 tt.fields.Attr,
-				HwNPUSchedulerPlugin: tt.fields.HwNPUSchedulerPlugin,
-			}
-
-			got, err := tp.GetNodeNPUCoreInfoMap(tt.args.vNode)
-			if !reflect.DeepEqual(err, tt.wantErr) {
-				t.Errorf("GetNodeNPUCoreInfoMap() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetNodeNPUCoreInfoMap() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
 type preHandleVNPUArgs struct {
 	ssn            *framework.Session
