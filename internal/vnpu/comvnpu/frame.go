@@ -12,12 +12,13 @@ package comvnpu
 import (
 	"errors"
 	"fmt"
+	"reflect"
+	"strings"
+
 	"github.com/hashicorp/go-multierror"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
-	"reflect"
-	"strings"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
