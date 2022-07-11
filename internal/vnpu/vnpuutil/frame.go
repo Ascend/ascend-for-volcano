@@ -11,9 +11,6 @@ package vnpuutil
 
 import (
 	"errors"
-	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"k8s.io/api/core/v1"
@@ -42,18 +39,6 @@ func WriteVNPUAllocInfDataIntoCacheCM(ssn *framework.Session) error {
 		return err
 	}
 	return nil
-}
-
-// ChangeReqVNPUToCores covert the string to npu cores.
-// needNPU like huawei.com/Ascend910-16c
-func ChangeReqVNPUToCores(needNPU string) (int, error) {
-	split := strings.Split(needNPU, "-")
-	if len(split) != util.NPUIndex2 {
-		return 0, fmt.Errorf("err npu resource %s", needNPU)
-	}
-	tmp := split[1]
-	content := tmp[:len(tmp)-1]
-	return strconv.Atoi(content)
 }
 
 func updateCMCardData(dataSet, inDataSet []CardVNPUs) ([]CardVNPUs, error) {

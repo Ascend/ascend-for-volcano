@@ -20,7 +20,6 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/conf"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/util"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
 )
 
 const (
@@ -121,39 +120,6 @@ func TestGetVNPUCMData(t *testing.T) {
 			tt.args.cacheFunAfter()
 		})
 	}
-}
-
-type isNPUResourceStableInNodeArgs struct {
-	kind    string
-	tmpNode *api.NodeInfo
-}
-
-type isNPUResourceStableInNodeTest struct {
-	name string
-	args isNPUResourceStableInNodeArgs
-	want bool
-}
-
-func buildIsNPUResourceStableInNodeTestCases() []isNPUResourceStableInNodeTest {
-	node0 := test.FakeNormalTestNode("node-0")
-	node1 := test.FakeNormalTestNode("node-1")
-	test.SetTestNPUNodeAnnotation(node1, NPU910CardName, "Ascend91-0,Ascend91-1")
-	test.SetFakeNodeIdleSource(node1, NPU910CardName, util.NPUIndex2)
-	testCases := []isNPUResourceStableInNodeTest{
-		{
-			name: "01-IsNPUResourceStableInNode() nil NPU",
-			args: isNPUResourceStableInNodeArgs{
-				kind: NPU910CardName, tmpNode: node0},
-			want: false,
-		},
-		{
-			name: "02-IsNPUResourceStableInNode() success test",
-			args: isNPUResourceStableInNodeArgs{
-				kind: NPU910CardName, tmpNode: node1},
-			want: true,
-		},
-	}
-	return testCases
 }
 
 type checkVNPUSegmentEnableByConfigArgs struct {

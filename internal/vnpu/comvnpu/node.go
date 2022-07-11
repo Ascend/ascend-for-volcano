@@ -13,7 +13,6 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 
 	"k8s.io/klog"
@@ -188,86 +187,6 @@ func (tp *VNPU) UpdateNPUNodeUsedCardFn(node *api.NodeInfo, top interface{}) err
 	return nil
 }
 
-// deal 1-32c-32c
-func (tp *VNPU) parseStringToVNPUCoreInfo(coreString string) (string, vNPUCoreInfo, error) {
-	// deal 1-32c-32c
-	tmpSlice := strings.Split(coreString, "-")
-	if len(tmpSlice) != util.NPUIndex3 {
-		coreErr := fmt.Errorf("%s error format", coreString)
-		return "", vNPUCoreInfo{}, coreErr
-	}
-	// get chip id
-	chipIDStr := tmpSlice[0]
-	chipID, covIDErr := strconv.Atoi(chipIDStr)
-	if covIDErr != nil {
-		return "", vNPUCoreInfo{}, covIDErr
-	}
-	// get chip all core.deal 32c
-	chipAllCoreStr := tmpSlice[1]
-	chipAllCoreStr = strings.TrimRight(chipAllCoreStr, "c")
-	chipAllCore, covAllErr := strconv.Atoi(chipAllCoreStr)
-	if covAllErr != nil {
-		return "", vNPUCoreInfo{}, covAllErr
-	}
-	// get not cut core
-	chipNoCutCoreStr := tmpSlice[util.NPUIndex2]
-	chipNoCutCoreStr = strings.TrimRight(chipNoCutCoreStr, "c")
-	chipNoCutCore, covNoCutErr := strconv.Atoi(chipNoCutCoreStr)
-	if covNoCutErr != nil {
-		return "", vNPUCoreInfo{}, covNoCutErr
-	}
-	chipCoreInfo := vNPUCoreInfo{
-		ChipID:    chipID,
-		AllCore:   chipAllCore,
-		UnCutCore: chipNoCutCore,
-	}
-	tmp := strings.TrimLeft(tp.Attr.AnnoName, tp.Attr.AnnoPreVal)
-	return tmp + "-" + chipIDStr, chipCoreInfo, nil
-}
-
-// GetNodeNPUCoreInfoMap in node annotation like, huawei.com/Ascend910-spec:1-32c,2-30c;
-// the key is Ascend910-1;
-func (tp *VNPU) GetNodeNPUCoreInfoMap(vNode *api.NodeInfo) (map[string]vNPUCoreInfo, error) {
-	if tp == nil {
-		return nil, errors.New(vnpuutil.PluginUninitializedError)
-	}
-	// get the all cores.
-	coreString, getErr := util.GetNPUAllocCardsFromNodeOthers(vNode, tp.Attr.NPUCardCoreKey)
-	if getErr != nil {
-		klog.V(util.LogDebugLev).Infof("GetNodeNPUCoreInfoMap :%v", getErr)
-		return nil, getErr
-	}
-	coreMap := make(map[string]vNPUCoreInfo, util.NPUIndex3)
-	coreSlice := strings.Split(coreString, ",")
-	for _, coreShortInf := range coreSlice {
-		card, tmp, parseErr := tp.parseStringToVNPUCoreInfo(coreShortInf)
-		if parseErr != nil {
-			return nil, parseErr
-		}
-		coreMap[card] = tmp
-	}
-	if len(coreMap) == 0 {
-		return nil, fmt.Errorf("%s nil core information", vNode.Name)
-	}
-	return coreMap, nil
-}
-
-func (tp *VNPU) updateNodeOtherCardCoresInf(nodeInf *api.NodeInfo, nodeCoresInf map[string]vNPUCoreInfo) error {
-	var allCards []string
-	for _, tmp := range nodeCoresInf {
-		idStr := strconv.Itoa(tmp.ChipID)
-		allStr := strconv.Itoa(tmp.AllCore)
-		unCutStr := strconv.Itoa(tmp.UnCutCore)
-		chipStr := idStr + "-" + allStr + "c-" + unCutStr + "c"
-		allCards = append(allCards, chipStr)
-	}
-	writeString := strings.Join(allCards, ",")
-	if saveErr := util.SaveTopologyInMap(nodeInf.Others, writeString, tp.Attr.NPUCardCoreKey); saveErr != nil {
-		return saveErr
-	}
-	return nil
-}
-
 // IsNodeHasVNPUSelector judge the node vnpu label.
 func (tp *VNPU) IsNodeHasVNPUSelector(vNode *api.NodeInfo) error {
 	nodeSelectors, nodeErr := util.GetNodeSelector(vNode)
@@ -339,59 +258,4 @@ func (tp *VNPU) UpdateReleaseNPUNodeTopologyFn(node *api.NodeInfo, top interface
 	}
 
 	return nil
-}
-
-// updateNodeOtherCardCoresByUseMap for node and useMap is corresponding, must use getNodeUseInfoFromVNPUCache before.
-func (tp *VNPU) updateNodeOtherCardCoresByUseMap(nodeInf *api.NodeInfo, useMap map[string]int) error {
-	if tp == nil {
-		return fmt.Errorf("%s nil parameter", nodeInf.Name)
-	}
-	for cardName, useCores := range useMap {
-		// cardName is Ascend310P-0
-		nodeCoresInf, coresErr := tp.GetNodeNPUCoreInfoMap(nodeInf)
-		if coresErr != nil {
-			klog.V(util.LogErrorLev).Infof("%s IsVNPUNodeMeetReqResource %v.", tp.Name(), coresErr)
-			continue
-		}
-		coreInfo, ok := nodeCoresInf[cardName]
-		if !ok {
-			klog.V(util.LogErrorLev).Infof("%s updateNodeOtherCardCoresByUseMap %s no %v.", tp.Name(),
-				nodeInf.Name, cardName)
-			continue
-		}
-		if useCores > coreInfo.UnCutCore {
-			klog.V(util.LogErrorLev).Infof("%s updateNodeOtherCardCoresByUseMap %s %s %v over %v.", tp.Name(),
-				nodeInf.Name, cardName, useCores, coreInfo.UnCutCore)
-			continue
-		}
-		coreInfo.UnCutCore -= useCores
-		nodeCoresInf[cardName] = coreInfo
-		if upErr := tp.updateNodeOtherCardCoresInf(nodeInf, nodeCoresInf); upErr != nil {
-			klog.V(util.LogErrorLev).Infof("%s updateNodeOtherCardCoresByUseMap %v.", tp.Name(), upErr)
-			continue
-		}
-	}
-	return nil
-}
-
-// GetVNodeNPUType get node resource npu type.
-func (tp *VNPU) GetVNodeNPUType(nodeInf *api.NodeInfo) (string, error) {
-	tmp, getErr := util.GetReqResourceNameFromNode(nodeInf)
-	if getErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s GetVNodeNPUType %s %v.", tp.Name(), nodeInf.Name, getErr)
-		return "", getErr
-	}
-
-	return tp.GetNPUTypeByResourceName(tmp)
-}
-
-// GetPluginNameByNodeInfo Get plugin name by nodeInfo
-func (tp *VNPU) GetPluginNameByNodeInfo(nodeInf *api.NodeInfo) (string, error) {
-	reqNpuType, typeErr := tp.GetVNodeNPUType(nodeInf)
-	if typeErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s GetPluginNameByNodeInfo %s %v.", tp.Name(), nodeInf.Name, typeErr)
-		return "", typeErr
-	}
-
-	return tp.getVNPUPluginNameByReqType(reqNpuType), nil
 }
