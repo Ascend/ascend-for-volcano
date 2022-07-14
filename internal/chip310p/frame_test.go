@@ -4,7 +4,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 
 /*
 
-Package chip310p is using for HuaWei 710 Ascend pin affinity schedule.
+Package chip310p is using for HuaWei 310P Ascend pin affinity schedule.
 
 */
 package chip310p
