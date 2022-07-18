@@ -61,7 +61,7 @@ func buildGetPluginNameByTaskInfoTestCases() []getPluginNameByTaskInfoTests {
 			wantErr: nil,
 		},
 		{
-			name: "03-GetPluginNameByTaskInfoTests 710-VNPU",
+			name: "03-GetPluginNameByTaskInfoTests 310P-VNPU",
 			args: getPluginNameByTaskInfoArgs{
 				vTask: tasks[util.NPUIndex2]},
 			want:    "310P-VNPU",

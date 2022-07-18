@@ -62,26 +62,26 @@ func (tp *VNPU) PreCheckNodeFn(task *api.TaskInfo, _ *api.NodeInfo, confs []conf
 // CheckNodeNPUByTaskFn check whether the requested resource exists on the node.The cored has been split.
 func (tp *VNPU) CheckNodeNPUByTaskFn(vTask *api.TaskInfo, node *api.NodeInfo, _ bool) error {
 	// has been done in pre-check.
-	klog.V(util.LogDebugLev).Infof("%s CheckNodeNPUByTaskFn %s for %v,no need.", tp.Name(), vTask.Name, node.Name)
+	klog.V(util.LogDebugLev).Infof("%s CheckNodeNPUByTaskFn %s for %s, no need.", tp.Name(), vTask.Name, node.Name)
 	return nil
 }
 
 // GetNPUAffinityBestNodesFn initialize a mapping between nodes and priorities
-func (tp *VNPU) GetNPUAffinityBestNodesFn(task *api.TaskInfo, nodes []*api.NodeInfo, _ bool) (map[string]int, error) {
-	klog.V(util.LogDebugLev).Infof("%s GetNPUAffinityBestNodesFn %s for %v,no need.", tp.Name(), nodes, task.Name)
+func (tp *VNPU) GetNPUAffinityBestNodesFn(task *api.TaskInfo, _ []*api.NodeInfo, _ bool) (map[string]int, error) {
+	klog.V(util.LogDebugLev).Infof("%s GetNPUAffinityBestNodesFn %s, no need.", tp.Name(), task.Name)
 	return nil, nil
 }
 
 // ScoreBestNPUNodesFn used for score candidate nodes
 func (tp *VNPU) ScoreBestNPUNodesFn(_ map[string]float64, _ map[string]int, vTask *api.TaskInfo,
-	nodes []*api.NodeInfo) (map[string]float64, error) {
-	klog.V(util.LogDebugLev).Infof("%s ScoreBestNPUNodesFn %v for %s,no need.", tp.Name(), nodes, vTask.Name)
+	_ []*api.NodeInfo) (map[string]float64, error) {
+	klog.V(util.LogDebugLev).Infof("%s ScoreBestNPUNodesFn %s, no need.", tp.Name(), vTask.Name)
 	return nil, nil
 }
 
 // GetAllocatedNPUFromTopologyFn obtain the name of the allocated devices, VNPU only has one chip.
 func (tp *VNPU) GetAllocatedNPUFromTopologyFn(vTask *api.TaskInfo, node *api.NodeInfo, _ bool) (interface{}, error) {
-	klog.V(util.LogDebugLev).Infof("%s GetAllocatedNPUFromTopologyFn %s for %s,no need.",
+	klog.V(util.LogDebugLev).Infof("%s GetAllocatedNPUFromTopologyFn %s for %s, no need.",
 		tp.Name(), node.Name, vTask.Name)
 	return nil, nil
 }
