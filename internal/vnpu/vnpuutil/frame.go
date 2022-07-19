@@ -13,33 +13,12 @@ import (
 	"errors"
 	"time"
 
-	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
-	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/util"
 )
-
-// WriteVNPUAllocInfDataIntoCacheCM Write VNPUAllocInfData into cache CM.
-func WriteVNPUAllocInfDataIntoCacheCM(ssn *framework.Session) error {
-	var vNPUCM = &v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      VNPUCacheCMName,
-			Namespace: VNPUCMNameSpace,
-		},
-		Data: GetVNPUCacheCMData(VNPUAllocData),
-	}
-
-	klog.V(util.LogDebugLev).Infof("Write vNPU cache into cm: %+v/%v.", vNPUCM.Namespace, vNPUCM.Name)
-	if err := util.CreateOrUpdateConfigMap(ssn.KubeClient(), vNPUCM, VNPUCacheCMName, VNPUCMNameSpace); err != nil {
-		klog.V(util.LogErrorLev).Infof("writevNPUAllocInfIntoCm : %v.", err)
-		return err
-	}
-	return nil
-}
 
 func updateCMCardData(dataSet, inDataSet []CardVNPUs) ([]CardVNPUs, error) {
 	if len(dataSet) == 0 || len(inDataSet) == 0 {
@@ -153,33 +132,6 @@ func GetVNPUCMData(cacheData VNPUAllocInfCache) map[string]string {
 	dataBuffer := make(map[string]string, util.NPUIndex3)
 	dataBuffer[VNPCMDataKey] = tmp
 	return dataBuffer
-}
-
-// GetVNPUCacheCMData get the cache configmap data.
-func GetVNPUCacheCMData(cacheData VNPUAllocInfCache) map[string]string {
-	tmp, err := util.MarshalCacheDataToString(cacheData)
-	if err != nil {
-		klog.V(util.LogErrorLev).Infof("marshalCacheDataToString err: %v.", err)
-		return nil
-	}
-	cacheBuffer := make(map[string]string, util.NPUIndex3)
-	cacheBuffer[VNPCMDataKey] = tmp
-	return cacheBuffer
-}
-
-// IsVJobRunning check whether the job is running or not.
-func IsVJobRunning(job *api.JobInfo) bool {
-	if len(job.Tasks) > util.NPUIndex2 {
-		klog.V(util.LogInfoLev).Infof("%s has wrong tasks %#v", job.UID, job.Tasks)
-		return false
-	}
-	for _, task := range job.Tasks {
-		if task.Pod.Status.Phase != v1.PodRunning {
-			klog.V(util.LogInfoLev).Infof("%s's task not running %v", job.UID, task.Pod.Status.Phase)
-			return false
-		}
-	}
-	return true
 }
 
 // CheckVNPUSegmentEnableByConfig Check VNPU segmentEnable by init plugin parameters.

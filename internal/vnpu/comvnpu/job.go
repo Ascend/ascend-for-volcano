@@ -192,26 +192,6 @@ func (tp *VNPU) DeleteCacheVJobByInfo(vJob *api.JobInfo) error {
 	return nil
 }
 
-// DealVJobLegality IsJobInitial has been called before.
-func (tp *VNPU) DealVJobLegality(vJob *api.JobInfo) error {
-	// 1.Only unallocated VJob can do these.
-	// 2.whether the job has predistribution flag
-	if tp.IsVJobHasPredistribution(vJob) {
-		klog.V(util.LogDebugLev).Infof("%s DealVJobLegality %s not pre-distribution.", tp.Name(), vJob.UID)
-		return nil
-	}
-	if util.IsJobRunningByInfo(vJob) {
-		klog.V(util.LogDebugLev).Infof("%s DealVJobLegality %s has running.", tp.Name(), vJob.UID)
-		return nil
-	}
-	// 3.check the job whether over the max wait time.
-	if !tp.IsVJobOverWaitTime(vJob) {
-		return nil
-	}
-	// 4.delete vJob if over time.
-	return tp.DeleteCacheVJobByInfo(vJob)
-}
-
 // GetPluginNameByJobInfo get vPlugin name by jobInfo.
 func (tp *VNPU) GetPluginNameByJobInfo(job *api.JobInfo) (string, error) {
 	reqNpuType, typeErr := tp.GetVJobReqNPUType(job)
@@ -235,97 +215,14 @@ func (tp *VNPU) GetPluginNameByJobInfo(job *api.JobInfo) (string, error) {
 	return pluginName, pluginErr
 }
 
-// IsVNPUJob judge the job is vJob or not.
-func (tp *VNPU) IsVNPUJob(job *api.JobInfo) bool {
-	// 1.init vnp
-	pluginName, nameErr := tp.GetPluginNameByJobInfo(job)
-	if nameErr != nil {
-		klog.V(util.LogDebugLev).Infof("%s IsVNPUJob %s %v.", tp.Name(), job.Name, nameErr)
-		return false
-	}
-	if pluginErr := tp.InitVNPUPluginByType(pluginName); pluginErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s IsVNPUJob :%v.", vnpuutil.PluginName, pluginErr)
-		return false
-	}
-
-	reqNpuType, getErr := util.GetReqResourceNameFromJob(job)
-	if getErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s IsVNPUJob %s %v.", tp.Name(), job.Name, getErr)
-		return false
-	}
-	// 2.vnp job.
-	flag := false
-	for _, kind := range tp.Attr.DivideKinds {
-		if kind == reqNpuType {
-			flag = true
-			break
-		}
-	}
-	if !flag {
-		klog.V(util.LogErrorLev).Infof("%s IsVNPUJob %s %s not in %+v.", tp.Name(), job.Name, reqNpuType,
-			tp.Attr.DivideKinds)
-		return false
-	}
-	// 3.valid vJob require vNPU Number.
-	num, numErr := util.GetJobReqResourceNumFromJobPG(job, reqNpuType)
-	if numErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s IsVNPUJob %s %+v.", tp.Name(), job.Name, numErr)
-		return false
-	}
-	if num != 1 {
-		klog.V(util.LogErrorLev).Infof("%s IsVNPUJob %s req %+v==%d.", tp.Name(), job.Name, reqNpuType, num)
-		return false
-	}
-	tp.setVPUPluginToVNPUBack()
-	return true
-}
-
 // IsMyJob used for identify Vnpu job, need to be implemented by vNPU plugins
 func (tp *VNPU) IsMyJob(vJob *api.JobInfo) error {
-	if tp.IsVNPUJob(vJob) {
-		return nil
-	}
-	return fmt.Errorf("%s not VNPU job", vJob.Name)
+	klog.V(util.LogDebugLev).Infof("%s IsMyJob %s, no need", tp.Name(), vJob.Name)
+	return nil
 }
 
 // ValidNPUJobFn check the compliance of the selector and resource request numbers
 func (tp *VNPU) ValidNPUJobFn(job *api.JobInfo) *api.ValidateResult {
-	// 1.valid npu job selector
-	if err := tp.validNPUJobSelector(job); err != nil {
-		klog.V(util.LogErrorLev).Infof("%s err: %v.", tp.Name(), err)
-		return &api.ValidateResult{
-			Pass:    false,
-			Reason:  err.Error(),
-			Message: fmt.Sprintf("validNPUJob err: %v", err),
-		}
-	}
-	// 2.valid the resource type and the number of resources the job request
-	if errRs := tp.ValidJobResource(job); errRs != nil {
-		klog.V(util.LogErrorLev).Infof("%s err: %v.", tp.Name(), errRs)
-		return &api.ValidateResult{
-			Pass:    false,
-			Reason:  "job resource requested error",
-			Message: fmt.Sprintf("%s, err: %v", job.Name, errRs),
-		}
-	}
-	// 3.Valid the vJob's legality
-	if checkErr := tp.DealVJobLegality(job); checkErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s DealVJobLegality: %v.", tp.Name(), checkErr)
-		return &api.ValidateResult{
-			Pass:    false,
-			Reason:  "vJob legality error",
-			Message: fmt.Sprintf("%s, err: %v", job.Name, checkErr),
-		}
-	}
+	klog.V(util.LogDebugLev).Infof("%s ValidNPUJobFn %s, no need", tp.Name(), job.Name)
 	return nil
-}
-
-// GetVNPUAllocInfFromCacheByJobID Get VNPU allocInf from cache by using JobID.
-func (tp *VNPU) GetVNPUAllocInfFromCacheByJobID(jobUID api.JobID) (*vnpuutil.VNPUAllocInf, error) {
-	for _, data := range vnpuutil.VNPUAllocData.Cache {
-		if data.JobUID == jobUID {
-			return &data, nil
-		}
-	}
-	return nil, fmt.Errorf("%s not in cache", jobUID)
 }

@@ -12,7 +12,6 @@ package comvnpu
 import (
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 
 	"k8s.io/klog"
@@ -42,33 +41,6 @@ func (tp *VNPU) InitVNodesFn(nodes map[string]*api.NodeInfo) error {
 	}
 
 	return nil
-}
-
-// GetNPUsFromNodeAnnotation get the node annotation.
-func (tp *VNPU) GetNPUsFromNodeAnnotation(annotations map[string]string, resourceName string) ([]string, error) {
-	topStr, err := util.GetResourceFromAnnotationFn(annotations, resourceName)
-	if err != nil {
-		klog.V(util.LogErrorLev).Infof("getNPUsFromNodeAnnotation failed to get annotation value")
-		return nil, err
-	}
-
-	prefix := strings.TrimPrefix(resourceName, tp.Attr.AnnoPreVal)
-	tops := strings.Split(topStr, ",")
-	sort.Strings(tops)
-	for i, top := range tops {
-		if !strings.HasPrefix(top, prefix) {
-			klog.V(util.LogErrorLev).Infof("getNPUsFromNodeAnnotation: vnpu name(%s) did not match its type(%s)",
-				top, prefix)
-			return nil, fmt.Errorf("vnpu name(%s) did not match its type(%s)", top, prefix)
-		}
-
-		if i > 0 && top == tops[i-1] {
-			klog.V(util.LogErrorLev).Infof("getNPUsFromNodeAnnotation: got duplicated npu(%s)", top)
-			return nil, fmt.Errorf("got duplicated npu(%s)", top)
-		}
-	}
-
-	return tops, nil
 }
 
 // JudgeResourceTypeByTopInfo Judge resource type.
