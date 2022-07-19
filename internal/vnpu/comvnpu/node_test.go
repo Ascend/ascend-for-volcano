@@ -59,13 +59,8 @@ func buildPreHandleVNPUTestCases() []preHandleVNPUTest {
 		{
 			name: "01-getVNPUUsedChipByReqTest jobOrder-test",
 			fields: VNPU{
-				Attr: vnpuutil.ComVNPU{
-					NPUCardCoreKey: vnpuutil.NPU910CardCoreKey,
-					HwEntity: plugin.HwEntity{
-						AnnoName:   vnpuutil.NPU910CardName,
-						AnnoPreVal: vnpuutil.NPUCardNamePrefix,
-					},
-				},
+				Attr: vnpuutil.ComVNPU{NPUCardCoreKey: vnpuutil.NPU910CardCoreKey, HwEntity: plugin.HwEntity{
+					AnnoName: vnpuutil.NPU910CardName, AnnoPreVal: vnpuutil.NPUCardNamePrefix}},
 			},
 			args: preHandleVNPUArgs{ssn: ssn1,
 				cacheFunBefore: func() {
