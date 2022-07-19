@@ -10,8 +10,6 @@ Package vnpuutil is using for virtual HuaWei Ascend910 schedule.
 package vnpuutil
 
 import (
-	"volcano.sh/volcano/pkg/scheduler/api"
-
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/util"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 )
@@ -31,33 +29,17 @@ const (
 	NPU910CardName = "huawei.com/Ascend910"
 	// NPU310PCardName for judge 310P npu resource.
 	NPU310PCardName = "huawei.com/Ascend310P"
-	// UNKnownPluginName unknown vnpu plugin
-	UNKnownPluginName = "unknown"
 	// NPU910CardCoreKey for npu card core. like chipId-allCores-freeCores example:4-32c-4c
 	NPU910CardCoreKey = "huawei.com/Ascend910-spec"
 	// NPU310PCardCoreKey for npu card core. like chipId-allCores-notCutCores example:4-8c-4c
 	NPU310PCardCoreKey = "huawei.com/Ascend310P-spec"
-	// NodesNoMeetNPUReqError error for insufficient npus on the schedulable nodes.
-	NodesNoMeetNPUReqError = "insufficient npus on the schedulable nodes in cluster"
-	// NodeNotStableWarning error for unstable npu node.
-	NodeNotStableWarning = "the npus on this node are unstable"
 
-	// VNPUCMNameSpace for uninstall volcano, also delete cm
-	VNPUCMNameSpace = "volcano-system"
-	// VNPUCMName the cm intercommunicate to device-plugin.
-	VNPUCMName = "mindx-dl-vnpu-manager"
 	// VNPCMDataKey cm date key
 	VNPCMDataKey = "VNPUCfg"
-	// VNPUCacheCMName solidified the vnpu pre-alloc cache.
-	VNPUCacheCMName = "mindx-dl-vnpu-cache"
 	// VNPUNodeLabelKey for select vnpu node label key.
 	VNPUNodeLabelKey = "npu-spec"
 	// VNPUNodeLabelValue for select vnpu node label value.
 	VNPUNodeLabelValue = "vnpu"
-	// JobPendingWaitTime The time wait for device-plugin create vnpu.
-	JobPendingWaitTime = 300
-	// VNPUScoreWeight for volcano select vnpu node core.
-	VNPUScoreWeight = 64
 )
 
 // ComVNPU common type
@@ -71,34 +53,6 @@ type ComVNPU struct {
 	// the source of NPU cores in node annotation. like huawei.com/Ascend910-spec.
 	NPUCardCoreKey string
 }
-
-// VNPUAllocInf record virtual NPU Chip allocation information. Will be solidified into cm.
-type VNPUAllocInf struct {
-	// JobUID preallocate task name.
-	JobUID api.JobID
-	// ReqNPUType for job req huawei.com/Ascend910-2c change to Ascend910-2c
-	ReqNPUType string
-	// NodeName preallocate node name.
-	NodeName string
-	// ReqCardName preallocate NPU chip name(Ascend910-0,Ascend310P-0), for one job one pod one card.
-	ReqCardName string
-	// AllocCardName preallocate NPU chip name(Ascend310P-2c-100-1), for one job one pod one card.
-	AllocCardName string
-	// AllocFlag preallocate deal flag :after preprocess success.
-	AllocFlag bool
-	// UpdateTime data update time for every job.
-	UpdateTime int64
-}
-
-// VNPUAllocInfCache record virtual NPU Chip allocation information. Will be solidified into cm.
-type VNPUAllocInfCache struct {
-	Cache []VNPUAllocInf
-	// CheckCode
-	CheckCode uint32
-}
-
-// VNPUAllocData is the automatic cache cutting and destruction for VNPU.
-var VNPUAllocData = VNPUAllocInfCache{}
 
 // CardVNPUs record virtual NPU Chip allocation information in one card.
 type CardVNPUs struct {

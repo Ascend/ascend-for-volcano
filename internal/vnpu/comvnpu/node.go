@@ -199,27 +199,7 @@ func (tp *VNPU) IsMyNode(vNode *api.NodeInfo) error {
 
 // CheckNPUResourceStableFn check whether the resources on the node are stable
 func (tp *VNPU) CheckNPUResourceStableFn(node *api.NodeInfo) error {
-	for _, vType := range tp.Attr.DivideKinds {
-		nodeNPUIdleNumFromTop, getErr := getTopStrFromNodeOther(node.Others, vType)
-		if getErr != nil {
-			klog.V(util.LogDebugLev).Infof("getNodeNPUNumFromOthers %s %v.", node.Name, getErr)
-			continue
-		}
-
-		nodeNPUIdleNumFromIdle, err := util.GetNodeNPUNumFromIdle(node, vType)
-		if err != nil {
-			idleErr := fmt.Errorf("getNodeNPUNumFromIdle %s : %s", vnpuutil.NodesNoMeetNPUReqError, err)
-			klog.V(util.LogErrorLev).Infof("%s CheckNPUResourceStableFn %v.", tp.Name(), idleErr)
-			return idleErr
-		}
-
-		if err = util.CheckNodeNPUStabilize(len(nodeNPUIdleNumFromTop), nodeNPUIdleNumFromIdle); err != nil {
-			checkErr := fmt.Errorf("%s %s %s : %v", node.Name, vType, vnpuutil.NodeNotStableWarning, err)
-			klog.V(util.LogErrorLev).Infof("%s CheckNPUResourceStableFn %v.", tp.Name(), checkErr)
-			return checkErr
-		}
-	}
-
+	klog.V(util.LogDebugLev).Infof("%s CheckNPUResourceStableFn %s, no need.", tp.Name(), node.Name)
 	return nil
 }
 

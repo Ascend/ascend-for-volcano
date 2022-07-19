@@ -23,7 +23,6 @@ import (
 
 	util2 "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/util"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu/modulev310p"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu/modulev910"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu/vnpuutil"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
@@ -176,39 +175,6 @@ func TestVnpuPreCheckNodeFnSuccess(t *testing.T) {
 				Arguments: map[string]string{util2.SegmentEnable: "false"}}}
 			result := vnpu.PreCheckNodeFn(task, node, confs)
 			convey.So(result, convey.ShouldNotBeNil)
-		})
-	})
-}
-
-// TestVnpuCheckNPUResourceStableFn
-func TestVnpuCheckNPUResourceStableFn(t *testing.T) {
-	convey.Convey("Test job CheckNPUResourceStableFn", t, func() {
-		vnpu := &VNPU{}
-		vnpu910 := &modulev910.ChipV910{}
-		if getErr := vnpu910.InitVNPUPlugin(); getErr != nil {
-			return
-		}
-		vnpu.Attr = vnpu910.ComVNPU
-		convey.Convey("CheckNPUResourceStableFn() should return error when there's missing resource type in idle", func() {
-			// build a node with 2 Ascend-910-16c in annotation and no idle Ascend-910-16c
-			node := buildNPUNode(VNodeInfo{nodeName: nodeName, nodeArch: util2.HuaweiArchX86, cpu: "192", mem: "755Gi",
-				npuAllocateNum: "3", npuTop: "Ascend910-16c-142-1,Ascend910-16c-143-1"})
-			result := vnpu.CheckNPUResourceStableFn(node)
-			convey.So(result, convey.ShouldBeError)
-		})
-		convey.Convey("CheckNPUResourceStableFn() should return error when node resources are unstable", func() {
-			// build a node with 2 Ascend-910-16c in annotation and 1 idle Ascend-910-16c
-			node := buildNPUNode(VNodeInfo{nodeName: nodeName, nodeArch: util2.HuaweiArchX86, cpu: "192", mem: "755Gi",
-				npuAllocateNum: "1", npuTop: "Ascend910-16c-144-1,Ascend910-16c-145-1"})
-			result := vnpu.CheckNPUResourceStableFn(node)
-			convey.So(result, convey.ShouldBeError)
-		})
-		convey.Convey("CheckNPUResourceStableFn() should return nil when node resources are stable", func() {
-			// build a node with 2 Ascend-910-16c in annotation and 1 idle Ascend-910-16c
-			node := buildNPUNode(VNodeInfo{nodeName: nodeName, nodeArch: util2.HuaweiArchX86, cpu: "192", mem: "755Gi",
-				npuAllocateNum: "2", npuTop: "Ascend910-16c-146-1,Ascend910-16c-147-1"})
-			result := vnpu.CheckNPUResourceStableFn(node)
-			convey.So(result, convey.ShouldBeNil)
 		})
 	})
 }
