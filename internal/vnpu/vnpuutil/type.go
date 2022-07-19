@@ -17,10 +17,6 @@ import (
 const (
 	// PluginName the vNPU's plugin name.
 	PluginName = "Vnpu"
-	// PluginNameBy910VNPU 910 vnpu plugin.
-	PluginNameBy910VNPU = "910-VNPU"
-	// PluginNameBy310PVNPU 310P vnpu plugin.
-	PluginNameBy310PVNPU = "310P-VNPU"
 	// NPUCardNamePrefix huawei.com/ for judge npu resource.
 	NPUCardNamePrefix = "huawei.com/"
 	// NPUIdentifyName to identify the NPU
@@ -31,15 +27,9 @@ const (
 	NPU310PCardName = "huawei.com/Ascend310P"
 	// NPU910CardCoreKey for npu card core. like chipId-allCores-freeCores example:4-32c-4c
 	NPU910CardCoreKey = "huawei.com/Ascend910-spec"
-	// NPU310PCardCoreKey for npu card core. like chipId-allCores-notCutCores example:4-8c-4c
-	NPU310PCardCoreKey = "huawei.com/Ascend310P-spec"
 
 	// VNPCMDataKey cm date key
 	VNPCMDataKey = "VNPUCfg"
-	// VNPUNodeLabelKey for select vnpu node label key.
-	VNPUNodeLabelKey = "npu-spec"
-	// VNPUNodeLabelValue for select vnpu node label value.
-	VNPUNodeLabelValue = "vnpu"
 )
 
 // ComVNPU common type

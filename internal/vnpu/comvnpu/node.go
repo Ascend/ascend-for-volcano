@@ -41,22 +41,8 @@ func (tp *VNPU) InitVNodesFn(nodes map[string]*api.NodeInfo) error {
 	return nil
 }
 
-// JudgeResourceTypeByTopInfo Judge resource type.
-func (tp *VNPU) JudgeResourceTypeByTopInfo(instance string) string {
-	var vType string
-	for _, vt := range tp.Attr.DivideKinds {
-		v := strings.TrimPrefix(vt, tp.Attr.AnnoPreVal)
-		if strings.HasPrefix(instance, v) {
-			vType = vt
-			break
-		}
-	}
-
-	return vType
-}
-
 // UpdateNPUNodeUsedCardFn update node others after allocate
-func (tp *VNPU) UpdateNPUNodeUsedCardFn(node *api.NodeInfo, top interface{}) error {
+func (tp *VNPU) UpdateNPUNodeUsedCardFn(node *api.NodeInfo, _ interface{}) error {
 	klog.V(util.LogDebugLev).Infof("%s UpdateNPUNodeUsedCardFn %s, no need.", tp.Name(), node.Name)
 	return nil
 }
@@ -74,7 +60,7 @@ func (tp *VNPU) CheckNPUResourceStableFn(node *api.NodeInfo) error {
 }
 
 // UpdateReleaseNPUNodeTopologyFn update node others after release
-func (tp *VNPU) UpdateReleaseNPUNodeTopologyFn(node *api.NodeInfo, top interface{}) error {
+func (tp *VNPU) UpdateReleaseNPUNodeTopologyFn(node *api.NodeInfo, _ interface{}) error {
 	klog.V(util.LogDebugLev).Infof("%s UpdateReleaseNPUNodeTopologyFn %s, no need.", tp.Name(), node.Name)
 	return nil
 }

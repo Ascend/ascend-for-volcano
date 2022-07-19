@@ -22,7 +22,6 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/util"
 
 	util2 "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/util"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu/modulev310p"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu/vnpuutil"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
@@ -90,11 +89,6 @@ func TestVnpuPreCheckNodeFnTaskError(t *testing.T) {
 		})
 		convey.Convey("PreCheckNodeFn() should return nil when task don't have selector and no resource requested", func() {
 			vnpu := &VNPU{}
-			vnpu310P := &modulev310p.ChipV310P{}
-			if getErr := vnpu310P.InitVNPUPlugin(); getErr != nil {
-				return
-			}
-			vnpu.Attr = vnpu310P.ComVNPU
 			pod := buildNPUPod(VPodInfo{namespace: "default", groupName: "npu-group-9",
 				podName: "npu-test-11'", nodeName: nodeName, reqCPUNum: "20", reqMem: "5Gi",
 				reqNPUType: "", reqNpuNum: ""})
