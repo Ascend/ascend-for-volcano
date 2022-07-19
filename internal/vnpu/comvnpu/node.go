@@ -11,7 +11,6 @@ package comvnpu
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 
 	"k8s.io/klog"
@@ -94,28 +93,6 @@ func updateTopStrOfNodeOtherAlloc(nodeTopStrArr []string, top string) string {
 	return newNodeTopStr
 }
 
-// Update occupied resource info after release
-func updateTopStrOfNodeOtherRelease(nodeTopStrArr []string, top string) string {
-	var tmpTopStrArr []string
-
-	tmpTopMap := make(map[string]struct{}, util.NPUIndex3)
-	// add tops that already exist in node.Others to tmp map
-	for _, nTop := range nodeTopStrArr {
-		tmpTopMap[nTop] = struct{}{}
-	}
-	// add tops that been released to tmp map
-	tmpTopMap[top] = struct{}{}
-
-	for k := range tmpTopMap {
-		tmpTopStrArr = append(tmpTopStrArr, k)
-	}
-
-	klog.V(util.LogDebugLev).Infof("updateTopStrOfNodeOtherRelease : %v.", tmpTopStrArr)
-	newNodeTopStr := strings.Join(tmpTopStrArr, ",")
-
-	return newNodeTopStr
-}
-
 // UpdateNPUNodeTopology Update node info to node.Others
 func (tp *VNPU) UpdateNPUNodeTopology(node *api.NodeInfo, top interface{}, updateFn func([]string,
 	string) string) error {
@@ -152,48 +129,13 @@ func (tp *VNPU) UpdateNPUNodeTopology(node *api.NodeInfo, top interface{}, updat
 
 // UpdateNPUNodeUsedCardFn update node others after allocate
 func (tp *VNPU) UpdateNPUNodeUsedCardFn(node *api.NodeInfo, top interface{}) error {
-	if ok := tp.UpdateNPUNodeTopology(node, top, updateTopStrOfNodeOtherAlloc); ok != nil {
-		return errors.New("update npu node topology failed")
-	}
-
-	return nil
-}
-
-// IsNodeHasVNPUSelector judge the node vnpu label.
-func (tp *VNPU) IsNodeHasVNPUSelector(vNode *api.NodeInfo) error {
-	nodeSelectors, nodeErr := util.GetNodeSelector(vNode)
-	if nodeErr != nil {
-		klog.V(util.LogDebugLev).Infof("node(%s) %v.", vNode.Name, nodeErr)
-		return nodeErr
-	}
-
-	acceleratorValue, ok := nodeSelectors[vnpuutil.VNPUNodeLabelKey]
-	if !ok {
-		selectErr := fmt.Errorf("%s has no %s", vNode.Name, vnpuutil.VNPUNodeLabelKey)
-		klog.V(util.LogDebugLev).Infof("%s IsNodeHasVNPUSelector %v.", tp.Name(), selectErr)
-		return selectErr
-	}
-
-	if acceleratorValue != vnpuutil.VNPUNodeLabelValue {
-		valueErr := fmt.Errorf("%s has %s::%s", vNode.Name, acceleratorValue, vnpuutil.VNPUNodeLabelKey)
-		klog.V(util.LogDebugLev).Infof("%s IsNodeHasVNPUSelector %v.", tp.Name(), valueErr)
-		return valueErr
-	}
-
-	klog.V(util.LogInfoLev).Infof("%s is vnpu node.", vNode.Name)
+	klog.V(util.LogDebugLev).Infof("%s UpdateNPUNodeUsedCardFn %s, no need.", tp.Name(), node.Name)
 	return nil
 }
 
 // IsMyNode used for identify Vnpu node, need to be implemented by vNPU plugins
 func (tp *VNPU) IsMyNode(vNode *api.NodeInfo) error {
-	// 1、has npu card
-	if nodeErr := util.IsNPUNNode(vNode); nodeErr != nil {
-		return nodeErr
-	}
-	// 2、has npu selector
-	if selectorErr := tp.IsNodeHasVNPUSelector(vNode); selectorErr != nil {
-		return selectorErr
-	}
+	klog.V(util.LogDebugLev).Infof("%s IsMyNode %s, no need.", tp.Name(), vNode.Name)
 	return nil
 }
 
@@ -205,9 +147,6 @@ func (tp *VNPU) CheckNPUResourceStableFn(node *api.NodeInfo) error {
 
 // UpdateReleaseNPUNodeTopologyFn update node others after release
 func (tp *VNPU) UpdateReleaseNPUNodeTopologyFn(node *api.NodeInfo, top interface{}) error {
-	if ok := tp.UpdateNPUNodeTopology(node, top, updateTopStrOfNodeOtherRelease); ok != nil {
-		return errors.New("update npu node topology after release failed")
-	}
-
+	klog.V(util.LogDebugLev).Infof("%s UpdateReleaseNPUNodeTopologyFn %s, no need.", tp.Name(), node.Name)
 	return nil
 }

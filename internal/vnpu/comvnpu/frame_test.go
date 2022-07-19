@@ -33,8 +33,6 @@ const (
 	labelSize          = 8
 	annSize            = 8
 	npuV910CardName16c = "huawei.com/Ascend910-16c"
-	npuV910CardName2c  = "huawei.com/Ascend910-2c"
-	npuV310PCardName2c = "huawei.com/Ascend310P-2c"
 )
 
 type VNodeInfo struct {
@@ -199,42 +197,6 @@ func TestVnpuCheckNodeNPUByTaskFn(t *testing.T) {
 				npuAllocateNum: "1", npuTop: "Ascend910-16c-199-1"})
 			result := vnpu.CheckNodeNPUByTaskFn(task, node, true)
 			convey.So(result, convey.ShouldBeNil)
-		})
-	})
-}
-
-// TestVnpuUpdateNPUNodeUsedCardFn
-func TestVnpuUpdateNPUNodeUsedCardFn(t *testing.T) {
-	convey.Convey("Test UpdateNPUNodeUsedCardFn", t, func() {
-		vnpu := &VNPU{}
-		node := buildNPUNode(VNodeInfo{nodeName: nodeName, nodeArch: util2.HuaweiArchX86, cpu: "192", mem: "755Gi",
-			npuAllocateNum: "3", npuTop: "Ascend910-16c-109-1,Ascend910-16c-110-1,Ascend910-16c-111-1"})
-
-		convey.Convey("UpdateNPUNodeUsedCardFn() should return error when top isn't of slice of string", func() {
-			var top []int
-			result := vnpu.UpdateNPUNodeUsedCardFn(node, top)
-			convey.So(result, convey.ShouldBeError)
-		})
-		convey.Convey("UpdateNPUNodeUsedCardFn() should return error when no certain vnpu type in node.Others", func() {
-			top := []string{"Ascend910-2c-113-0"}
-			result := vnpu.UpdateNPUNodeUsedCardFn(node, top)
-			convey.So(result, convey.ShouldBeError)
-		})
-		convey.Convey("UpdateNPUNodeUsedCardFn() should return error when node.Others has invalid content", func() {
-			node.Others = map[string]interface{}{npuV910CardName16c: 0}
-			top := []string{"Ascend910-16c-112-0"}
-			result := vnpu.UpdateNPUNodeUsedCardFn(node, top)
-			convey.So(result, convey.ShouldBeError)
-		})
-		convey.Convey("UpdateNPUNodeUsedCardFn() should successfully update node.Others", func() {
-			node.Others = map[string]interface{}{
-				npuV910CardName16c: "Ascend910-16c-111-0,Ascend910-16c-112-0",
-			}
-			top := []string{"Ascend910-16c-111-0"}
-			result := vnpu.UpdateNPUNodeUsedCardFn(node, top)
-			convey.So(result, convey.ShouldNotBeNil)
-			expectResult := "Ascend910-16c-111-0,Ascend910-16c-112-0"
-			convey.So(node.Others[npuV910CardName16c], convey.ShouldResemble, expectResult)
 		})
 	})
 }
