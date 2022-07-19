@@ -85,8 +85,3 @@ func (tp *VNPU) GetAllocatedNPUFromTopologyFn(vTask *api.TaskInfo, node *api.Nod
 		tp.Name(), node.Name, vTask.Name)
 	return nil, nil
 }
-
-func (tp *VNPU) setVPUPluginToVNPUBack() {
-	// set vnpu plugin to vnp back.
-	tp.Attr.PluginName = PluginName
-}

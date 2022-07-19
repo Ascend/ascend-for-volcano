@@ -10,7 +10,6 @@ Package comvnpu is using for virtual HuaWei vnpu schedule.
 package comvnpu
 
 import (
-	"errors"
 	"strings"
 
 	"k8s.io/klog"
@@ -54,77 +53,6 @@ func (tp *VNPU) JudgeResourceTypeByTopInfo(instance string) string {
 	}
 
 	return vType
-}
-
-func getTopStrFromNodeOther(othersMap map[string]interface{}, npuCardName string) ([]string, error) {
-	var topArr []string
-
-	valueTmp, ok := othersMap[npuCardName]
-	if !ok {
-		klog.V(util.LogDebugLev).Infof("getNodeNPUStrFromOther %s not in node other.", npuCardName)
-		return nil, errors.New("nodeTopStrArr nil")
-	}
-
-	mapStr, ok := valueTmp.(string)
-	if !ok {
-		klog.V(util.LogErrorLev).Infof("%s getNodeNPUStrFromOther not string type.", npuCardName)
-		return nil, errors.New("nodeTopStrArr nil")
-	}
-	if mapStr == "" {
-		return nil, nil
-	}
-	topArr = strings.Split(mapStr, ",")
-	return topArr, nil
-}
-
-// Update occupied resource info after allocate, for only one chip.
-func updateTopStrOfNodeOtherAlloc(nodeTopStrArr []string, top string) string {
-	var tmpTopStrArr []string
-
-	for _, nTop := range nodeTopStrArr {
-		if nTop == top {
-			continue
-		}
-		tmpTopStrArr = append(tmpTopStrArr, nTop)
-	}
-	klog.V(util.LogDebugLev).Infof("updateTopStrOfNodeOtherAlloc : %v.", tmpTopStrArr)
-	newNodeTopStr := strings.Join(tmpTopStrArr, ",")
-
-	return newNodeTopStr
-}
-
-// UpdateNPUNodeTopology Update node info to node.Others
-func (tp *VNPU) UpdateNPUNodeTopology(node *api.NodeInfo, top interface{}, updateFn func([]string,
-	string) string) error {
-	var vType string
-
-	topInstance, ok := top.(string)
-	if !ok {
-		return errors.New("invalid argument")
-	}
-
-	vType = tp.JudgeResourceTypeByTopInfo(topInstance)
-	if vType == "" {
-		return errors.New("invalid top content")
-	}
-
-	// get node available top from node.Others
-	nodeTopStrArr, err := getTopStrFromNodeOther(node.Others, vType)
-	if err != nil {
-		klog.V(util.LogErrorLev).Infof("updateNPUNodeTopology node(%s) top nil.", node.Name)
-		return err
-	}
-	// update to node.Others
-	newNodeTopStr := updateFn(nodeTopStrArr, topInstance)
-	err = util.ReloadNewTopToNodeOther(node, newNodeTopStr, vType)
-	if err != nil {
-		klog.V(util.LogErrorLev).Infof("reloadNewTopToNode failed.")
-		return err
-	}
-
-	klog.V(util.LogInfoLev).Infof("ReloadNewTopToNode %s to %s successes.", newNodeTopStr, node.Name)
-
-	return nil
 }
 
 // UpdateNPUNodeUsedCardFn update node others after allocate

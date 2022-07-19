@@ -54,19 +54,6 @@ type VPodInfo struct {
 	reqNpuNum  string
 }
 
-// TestVnpuIsMyNode
-func TestVnpuIsMyNode(t *testing.T) {
-	convey.Convey("Test IsMyNode in commonv910", t, func() {
-		vnpu := &VNPU{}
-		convey.Convey("IsMyNode() should return error since it's not implemented", func() {
-			node := buildNPUNode(VNodeInfo{nodeName: nodeName, nodeArch: util2.HuaweiArchArm, cpu: "192", mem: "755Gi",
-				npuAllocateNum: "1", npuTop: "Ascend910-16c-118-0"})
-			result := vnpu.IsMyNode(node)
-			convey.So(result, convey.ShouldBeError)
-		})
-	})
-}
-
 // TestVnpuName
 func TestVnpuName(t *testing.T) {
 	convey.Convey("Test Vnpu Name", t, func() {
@@ -197,28 +184,6 @@ func TestVnpuCheckNodeNPUByTaskFn(t *testing.T) {
 				npuAllocateNum: "1", npuTop: "Ascend910-16c-199-1"})
 			result := vnpu.CheckNodeNPUByTaskFn(task, node, true)
 			convey.So(result, convey.ShouldBeNil)
-		})
-	})
-}
-
-// TestVnpuUpdateReleaseNPUNodeTopologyFn
-func TestVnpuUpdateReleaseNPUNodeTopologyFn(t *testing.T) {
-	convey.Convey("Test UpdateReleaseNPUNodeTopologyFn", t, func() {
-		vnpu := &VNPU{}
-		node := buildNPUNode(VNodeInfo{nodeName: nodeName, nodeArch: util2.HuaweiArchX86, cpu: "192", mem: "755Gi",
-			npuAllocateNum: "3", npuTop: "Ascend910-16c-112-1,Ascend910-16c-113-1,Ascend910-16c-114-1"})
-		convey.Convey("UpdateReleaseNPUNodeTopologyFn() should return error when content of top is invalid", func() {
-			top := []string{"Ascend910-5c-111-0"}
-			result := vnpu.UpdateReleaseNPUNodeTopologyFn(node, top)
-			convey.So(result, convey.ShouldBeError)
-		})
-		convey.Convey("UpdateReleaseNPUNodeTopologyFn() should successfully update node.Others", func() {
-			node.Others = map[string]interface{}{
-				npuV910CardName16c: "Ascend910-16c-111-0,Ascend910-16c-112-0,Ascend910-16c-113-0",
-			}
-			top := []string{"Ascend910-16c-114-0"}
-			result := vnpu.UpdateReleaseNPUNodeTopologyFn(node, top)
-			convey.So(result, convey.ShouldNotBeNil)
 		})
 	})
 }
