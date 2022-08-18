@@ -19,7 +19,7 @@ import (
 func getBestNodesMap(priNodeGroups []map[string]*npuPriNodeInf) (map[string]int, error) {
 	var bestNodesMap = make(map[string]int, util.NPUIndex2)
 
-	for i := 0; i < util.NPUIndex2; i++ {
+	for i := 0; i < len(priNodeGroups); i++ {
 		for nodeName := range priNodeGroups[i] {
 			tmpName := nodeName
 			bestNodesMap[tmpName] = i

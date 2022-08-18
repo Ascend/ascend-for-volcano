@@ -19,7 +19,11 @@ func (tp *chip310x4) getCardNumGroupsFromTop(nodeNPUTopology []int) [][]int {
 	}
 	cardNumGroups := make([][]int, maxCardNum/util.NPUIndex4+1, maxCardNum/util.NPUIndex4+1)
 	for _, v := range nodeNPUTopology {
-		cardNumGroups[v/util.NPUIndex4] = append(cardNumGroups[v/util.NPUIndex4], v)
+		index := v / util.NPUIndex4
+		if index > len(cardNumGroups)-1 {
+			continue
+		}
+		cardNumGroups[index] = append(cardNumGroups[index], v)
 	}
 	return cardNumGroups
 }

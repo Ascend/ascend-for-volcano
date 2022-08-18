@@ -66,7 +66,7 @@ func initPriNodeGroups(task *api.TaskInfo, nodes []*api.NodeInfo) ([]map[string]
 		return nil, errors.New("nodes is empty")
 	}
 
-	for i := 0; i <= util.NPUIndex2; i++ {
+	for i := 0; i < util.NPUIndex2; i++ {
 		priNodeGroups = append(priNodeGroups, make(map[string]*npuPriNodeInf, 1))
 	}
 

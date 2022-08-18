@@ -46,36 +46,7 @@ const (
 	nodeName     = "centos"
 	constInt2000 = 2000
 	constInt5000 = 5000
-	NPUID0       = 0
-	NPUID1       = 1
-	NPUID2       = 2
-	NPUID3       = 3
 	NPUID4       = 4
-	NPUID5       = 5
-	NPUID6       = 6
-	NPUID7       = 7
-	NPUID8       = 8
-	NPUID9       = 9
-	NPUID10      = 10
-	NPUID11      = 11
-	NPUID12      = 12
-	NPUID13      = 13
-	NPUID15      = 15
-	NPUID16      = 16
-	NPUID18      = 18
-	NPUID20      = 20
-	NPUID21      = 21
-	NPUID22      = 22
-	NPUID25      = 25
-	NPUID29      = 29
-	NPUID32      = 32
-	NPUID33      = 33
-	NPUID34      = 34
-	NPUID35      = 35
-	NPUID36      = 36
-	NPUID37      = 37
-	NPUID38      = 38
-	NPUID39      = 39
 	NPUID61      = 61
 	NPUID62      = 62
 )
@@ -941,7 +912,7 @@ func TestCnpuGetAllocatedNPUFromTopologyFnError(t *testing.T) {
 			task.Resreq.ScalarResources[a310NPUCardName] = constInt2000
 			node.Others[a310NPUCardName] = "Ascend310-0Ascend310-4"
 			result, err := npu.GetAllocatedNPUFromTopologyFn(task, node, false)
-			convey.So(err, convey.ShouldBeNil)
+			convey.So(err, convey.ShouldBeError)
 			convey.So(result, convey.ShouldBeNil)
 		})
 
@@ -958,62 +929,6 @@ func TestCnpuGetAllocatedNPUFromTopologyFnError(t *testing.T) {
 			node.Node.Annotations[a310NPUCardName] = "Ascend310-0"
 			_, err := npu.GetAllocatedNPUFromTopologyFn(task, node, false)
 			convey.So(err, convey.ShouldBeError)
-		})
-	})
-}
-
-// nodeTop: [0, 2, 4, 5, 7, 8, 9, 10, 11, 12, 13, 15, 16, 18, 20, 21, 22, 25, 29, 32, 33, 34, 35, 36, 37, 38, 39]
-// cardNumGroups: [2, 3, 4, 3, 2, 3, 1, 1, 4, 4] Each group of four NPU
-func TestCnpuGetFitCardFromNodeByPriorityFn(t *testing.T) {
-	convey.Convey("Test card310x4 GetFitCardFromNodeByPriorityFn", t, func() {
-		nodeTop := []int{NPUID0, NPUID2, NPUID4, NPUID5, NPUID7, NPUID8, NPUID9, NPUID10, NPUID11, NPUID12,
-			NPUID13, NPUID15, NPUID16, NPUID18, NPUID20, NPUID21, NPUID22, NPUID25, NPUID29, NPUID32, NPUID33,
-			NPUID34, NPUID35, NPUID36, NPUID37, NPUID38, NPUID39}
-
-		convey.Convey("getFitCardFromNodeByPriorityFn() should return correct result "+
-			"when priorityArray is [1, 3, 2, 4]", func() {
-			priorityArray := [cardNPUNumber]int{1, NPUID3, NPUID2, NPUID4}
-			result, err := getFitCardFromNodeByPriority(nodeTop, priorityArray)
-			convey.So(err, convey.ShouldBeNil)
-			convey.So(result, convey.ShouldNotBeNil)
-		})
-
-		convey.Convey("getFitCardFromNodeByPriorityFn() should return correct result "+
-			"when priorityArray is [2, 3, 4]", func() {
-			priorityArray := [cardNPUNumber]int{NPUID2, NPUID3, NPUID4}
-			result, err := getFitCardFromNodeByPriority(nodeTop, priorityArray)
-			convey.So(err, convey.ShouldBeNil)
-			convey.So(result, convey.ShouldNotBeNil)
-		})
-
-		convey.Convey("getFitCardFromNodeByPriorityFn() should return correct result "+
-			"when priorityArray is [3, 4]", func() {
-			priorityArray := [cardNPUNumber]int{NPUID3, NPUID4}
-			result, err := getFitCardFromNodeByPriority(nodeTop, priorityArray)
-			convey.So(err, convey.ShouldBeNil)
-			convey.So(result, convey.ShouldNotBeNil)
-		})
-
-		convey.Convey("getFitCardFromNodeByPriorityFn() should return correct result "+
-			"when priorityArray is [4]", func() {
-			priorityArray := [cardNPUNumber]int{NPUID4}
-			result, err := getFitCardFromNodeByPriority(nodeTop, priorityArray)
-			convey.So(err, convey.ShouldBeNil)
-			convey.So(result, convey.ShouldNotBeNil)
-		})
-	})
-}
-
-func TestCnpuGetFitCardFromNodeByPriorityFnNotMatch(t *testing.T) {
-	convey.Convey("Test card310x4 GetFitCardFromNodeByPriorityFn", t, func() {
-		nodeTop := []int{NPUID0, NPUID1, NPUID2, NPUID3, NPUID6, NPUID7, NPUID8, NPUID9, NPUID11}
-
-		convey.Convey("getFitCardFromNodeByPriorityFn() should return correct result "+
-			"when priorityArray is [1, 3, 2, 4]", func() {
-			priorityArray := [cardNPUNumber]int{1, NPUID3, NPUID2, NPUID4}
-			result, err := getFitCardFromNodeByPriority(nodeTop, priorityArray)
-			convey.So(err, convey.ShouldBeNil)
-			convey.So(result, convey.ShouldNotBeNil)
 		})
 	})
 }
