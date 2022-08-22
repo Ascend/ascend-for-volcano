@@ -102,9 +102,6 @@ func (tp *chip310x4) UpdateReleaseNPUNodeTopologyFn(node *api.NodeInfo, top inte
 // GetAllocatedNPUFromTopologyFn Get the pod's npu card to record in node others.
 func (tp *chip310x4) GetAllocatedNPUFromTopologyFn(task *api.TaskInfo, node *api.NodeInfo, _ bool) (interface{},
 	error) {
-	var allocTopologyHccl []int
-	var allocTopologyNPUs []int
-
 	taskNPUNumber, taskError := util.GetTaskNPUNum(task, a310NPUChipName)
 	if taskError != nil {
 		return nil, errors.New("no npu task")
@@ -112,31 +109,36 @@ func (tp *chip310x4) GetAllocatedNPUFromTopologyFn(task *api.TaskInfo, node *api
 
 	priorityArray, err := tp.getNPUAllocPriorityArray()
 	if err != nil {
-		return allocTopologyHccl, err
+		return nil, err
 	}
 
 	nodeTop := util.GetTopFromNodeOthers(node, a310NPUChipName, a310NPUCardPreName)
 	if nodeTop == nil {
 		klog.V(logErrorLev).Infof("not npu node[%s], no need to continue.", node.Name)
-		return allocTopologyHccl, err
+		return nil, err
 	}
 	klog.V(logInfoLev).Infof("%s %s[%d] priority:%v in %v.", PluginName,
 		task.Name, taskNPUNumber, priorityArray, nodeTop)
 
-	allocTopologyHccl, err = tp.GetFitCardFromNodeByPriority(taskNPUNumber, nodeTop, priorityArray)
-	if err != nil {
-		err = fmt.Errorf("node %v not meet req: %d", nodeTop, taskNPUNumber)
-		klog.V(logErrorLev).Infof("%s %s.", PluginName, err.Error())
-		return allocTopologyHccl, err
+	cardNumGroups := tp.getCardNumGroupsFromTop(nodeTop)
+	npuNumberIndex := tp.getNPUIndex(cardNumGroups)
+	var selectedNPU []int
+	reqNPUNum := taskNPUNumber
+	for _, priority := range priorityArray {
+		curGroups, ok := npuNumberIndex[priority]
+		if !ok {
+			continue
+		}
+		if len(curGroups) >= reqNPUNum {
+			selectedNPU = append(selectedNPU, curGroups[:reqNPUNum]...)
+			return selectedNPU, nil
+		}
+		selectedNPU = append(selectedNPU, curGroups...)
+		reqNPUNum -= len(curGroups)
 	}
-	klog.V(logDebugLev).Infof("%s %s get top %v.", PluginName, task.Name, allocTopologyHccl)
-
-	allocTopologyNPUs, err = util.GetNPUTopFromHccs(taskNPUNumber, allocTopologyHccl)
-	if err != nil {
-		return allocTopologyNPUs, err
-	}
-	klog.V(logInfoLev).Infof("%s %s req:%d alloc %v.", PluginName, task.Name, taskNPUNumber, allocTopologyNPUs)
-	return allocTopologyNPUs, nil
+	err = fmt.Errorf("node %v not meet req: %d", nodeTop, taskNPUNumber)
+	klog.V(logErrorLev).Infof("%s %s.", PluginName, err.Error())
+	return nil, err
 }
 
 // SetNPUTopologyToPodFn Set the npu card ids into pod.

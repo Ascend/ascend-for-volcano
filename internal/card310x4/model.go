@@ -12,9 +12,7 @@ package card310x4
 import (
 	"errors"
 	"fmt"
-	"math/rand"
 	"strconv"
-	"time"
 
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -250,59 +248,4 @@ func getNPUAllocPriorityArray(taskNPUNumber int) ([cardNPUNumber]int, error) {
 		return priorityArray, err
 	}
 	return priorityArray, nil
-}
-
-// getFitCardFromNodeByPriority get the appropriate card randomly from the Node via Priority
-// For example:
-// nodeTop: [0, 2, 4, 5, 7, 8, 9, 10, 11, 12, 13, 15, 16, 18, 20, 21, 22, 25, 29, 32, 33, 34, 35, 36, 37, 38, 39]
-// cardNumGroups: [2, 3, 4, 3, 2, 3, 1, 1, 4, 4] Each group of four NPU
-// priorityArray： [1, 3, 2, 4] -> [25, 29] (Group 6, 7)
-func getFitCardFromNodeByPriority(nodeTop []int, priorityArray [cardNPUNumber]int) ([]int, error) {
-	rand.Seed(time.Now().UnixNano())
-	existNPU, npuNumberIndex := getExistIDAndIndexGroupOfNPU(nodeTop)
-	selectedCardTop, err := getSelectedCardTop(priorityArray, existNPU, npuNumberIndex)
-	if err != nil {
-		klog.V(util.LogDebugLev).Infof("%s getHccsFromNodeByPriority: %v %s.", PluginName, nodeTop, err.Error())
-		return nil, err
-	}
-	return selectedCardTop, nil
-}
-
-// getSelectedCardTop get selected card top
-func getSelectedCardTop(priorityArray [cardNPUNumber]int, existNPU map[int]bool, index [][]int) ([]int, error) {
-	err := errors.New("nodeTop not meet")
-	for _, arrLen := range priorityArray {
-		selectedGroup := index[arrLen]
-		if len(selectedGroup) == 0 {
-			klog.V(util.LogDebugLev).Infof("%s getSelectedCardTop %d group %+v.", PluginName, arrLen, priorityArray)
-			continue
-		}
-		randNum := rand.Intn(len(selectedGroup))
-		selectedIndex := selectedGroup[randNum]
-		var selectedNodeTop []int
-		for i := selectedIndex * cardNPUNumber; i < (selectedIndex+1)*cardNPUNumber; i++ {
-			if existNPU[i] {
-				selectedNodeTop = append(selectedNodeTop, i)
-			}
-		}
-		if len(selectedNodeTop) != arrLen {
-			return nil, err
-		}
-		return selectedNodeTop, nil
-	}
-	return nil, err
-}
-
-// getExistIDAndIndexGroupOfNPU get existID and indexGroup Of NPU
-func getExistIDAndIndexGroupOfNPU(nodeTop []int) (map[int]bool, [][]int) {
-	cardNumGroups := getCardNumGroupsFromTop(nodeTop)
-	npuNumberIndex := make([][]int, constIntNum5)
-	existNPU := make(map[int]bool, len(nodeTop))
-	for _, nodeID := range nodeTop {
-		existNPU[nodeID] = true
-	}
-	for index, cardNumGroup := range cardNumGroups {
-		npuNumberIndex[len(cardNumGroup)] = append(npuNumberIndex[len(cardNumGroup)], index)
-	}
-	return existNPU, npuNumberIndex
 }
