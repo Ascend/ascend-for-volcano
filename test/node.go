@@ -10,6 +10,8 @@ Package test is using for HuaWei Ascend pin scheduling test.
 package test
 
 import (
+	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -130,4 +132,57 @@ func BuildUnstableNode(nodeName, resourceName, otherNpuNum string, idleNpuNum in
 		SetFakeNodeIdleSource(nodeInfo, resourceName, idleNpuNum)
 	}
 	return nodeInfo
+}
+
+func fakeDeviceInfoCMDataByNode(testNode *api.NodeInfo, cmName string) *v1.ConfigMap {
+	const testTime = 1657527526
+	cmData := util.NodeDeviceInfoWithDevPlugin{
+		DeviceInfo: util.NodeDeviceInfo{
+			DeviceList: testNode.Node.Annotations,
+			UpdateTime: testTime,
+		},
+		CheckCode: "964c4c25b14a59cccf88df7ea62797acba0c8ff608f31c8989ac01f5d2e75c6c",
+	}
+	var data = make(map[string]string, 1)
+	cmDataStr, err := json.Marshal(cmData)
+	if err != nil {
+		return nil
+	}
+	data["DeviceInfoCfg"] = string(cmDataStr)
+	var faultNPUConfigMap = &v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cmName,
+			Namespace: "kube-system",
+		},
+		Data: data,
+	}
+	return faultNPUConfigMap
+}
+
+func fakeDeviceInfoCMDataByMap(testNodeMap map[string]*api.NodeInfo, cmName string) *v1.ConfigMap {
+	nodeName := strings.TrimPrefix(cmName, util.DevInfoPreName)
+	testNode, ok := testNodeMap[nodeName]
+	if !ok {
+		fmt.Printf("%v no %v in nodeMap\n", cmName, nodeName)
+		return nil
+	}
+	return fakeDeviceInfoCMDataByNode(testNode, cmName)
+}
+
+// FakeDeviceInfoCM fake the DeviceInfo from device-plugin configMap.
+func FakeDeviceInfoCM(testNode interface{}, cmName string) (*v1.ConfigMap, error) {
+	var deviceInfoConfigMap *v1.ConfigMap
+	switch value := testNode.(type) {
+	case *api.NodeInfo:
+		deviceInfoConfigMap = fakeDeviceInfoCMDataByNode(value, cmName)
+	case map[string]*api.NodeInfo:
+		deviceInfoConfigMap = fakeDeviceInfoCMDataByMap(value, cmName)
+	default:
+		fmt.Printf("not support: %v", value)
+	}
+
+	if deviceInfoConfigMap == nil {
+		return nil, fmt.Errorf("no deviceInfoConfigMap")
+	}
+	return deviceInfoConfigMap, nil
 }

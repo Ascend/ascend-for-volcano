@@ -315,7 +315,12 @@ func synReSchedulerCardCache(ssn *framework.Session, tmpValue interface{}) error
 }
 
 func getNodeFaultNPUs(node *api.NodeInfo, nodeNPUNumber int) ([]string, error) {
-	npuStrings, ok := node.Node.Annotations[faultNPU]
+	nodeAnno, getErr := util.GetNodeDeviceInfoMapData(node)
+	if getErr != nil {
+		klog.V(util.LogDebugLev).Infof("getNodeFaultNPUs :%v.", getErr)
+		return nil, getErr
+	}
+	npuStrings, ok := nodeAnno[faultNPU]
 	if !ok || len(npuStrings) == 0 {
 		return nil, fmt.Errorf("%s get nil npus", node.Name)
 	}
@@ -329,7 +334,12 @@ func getNodeFaultNPUs(node *api.NodeInfo, nodeNPUNumber int) ([]string, error) {
 }
 
 func getNodeNetworkUnhealthyNPUs(node *api.NodeInfo, nodeNPUNumber int) ([]string, error) {
-	npuStrings, ok := node.Node.Annotations[networkUnhealthyNPU]
+	nodeAnno, getErr := util.GetNodeDeviceInfoMapData(node)
+	if getErr != nil {
+		klog.V(util.LogDebugLev).Infof("getNodeNetworkUnhealthyNPUs :%v.", getErr)
+		return nil, getErr
+	}
+	npuStrings, ok := nodeAnno[networkUnhealthyNPU]
 	if !ok || len(npuStrings) == 0 {
 		return nil, fmt.Errorf("%s get nil npus", node.Name)
 	}
@@ -344,8 +354,13 @@ func getNodeNetworkUnhealthyNPUs(node *api.NodeInfo, nodeNPUNumber int) ([]strin
 
 // True:has fault NPUs/ network unhealthy card, otherwise return false.
 func isNodeHasFaultNPUs(node *api.NodeInfo) bool {
-	faultNPUStrings, npuOK := node.Node.Annotations[faultNPU]
-	faultNetNPUStrings, netOK := node.Node.Annotations[networkUnhealthyNPU]
+	nodeAnno, getErr := util.GetNodeDeviceInfoMapData(node)
+	if getErr != nil {
+		klog.V(util.LogDebugLev).Infof("isNodeHasFaultNPUs :%v.", getErr)
+		return false
+	}
+	faultNPUStrings, npuOK := nodeAnno[faultNPU]
+	faultNetNPUStrings, netOK := nodeAnno[networkUnhealthyNPU]
 	if (!npuOK || len(faultNPUStrings) == 0) && (!netOK || len(faultNetNPUStrings) == 0) {
 		return false
 	}
@@ -355,7 +370,6 @@ func isNodeHasFaultNPUs(node *api.NodeInfo) bool {
 
 func getNodeHeartbeatInterval(node *api.NodeInfo) (int, error) {
 	var heartbeatInterval = nodeUpdateTime
-	var err error
 	value, ok := node.Node.Annotations[nodeHeartbeatInterval]
 	if !ok || len(value) == 0 {
 		klog.V(util.LogErrorLev).Infof("isNodeHealth %s no [%s].", node.Name, nodeHeartbeat)
@@ -363,6 +377,7 @@ func getNodeHeartbeatInterval(node *api.NodeInfo) (int, error) {
 	}
 
 	// If the Time exceeds, the fault occurs.
+	var err error
 	heartbeatInterval, err = strconv.Atoi(value)
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("%s cover %s to int64 failed [%v].", node.Name, value, err)
@@ -377,14 +392,14 @@ func getNodeHeartbeatInterval(node *api.NodeInfo) (int, error) {
 }
 
 func getNodeHeartbeat(node *api.NodeInfo) (int64, error) {
-	const constNumber10 = 10
-	const constNumber64 = 64
 	value, ok := node.Node.Annotations[nodeHeartbeat]
 	if !ok || len(value) == 0 {
 		klog.V(util.LogErrorLev).Infof("isNodeHealth %s no [%s].", node.Name, nodeHeartbeat)
 		return 0, fmt.Errorf("getFaultNodeState %s nil", node.Name)
 	}
 
+	const constNumber10 = 10
+	const constNumber64 = 64
 	heartbeatTime, err := strconv.ParseInt(value, constNumber10, constNumber64)
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("%s cover %s to int64 failed [%v].", node.Name, value, err)

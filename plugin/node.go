@@ -24,15 +24,14 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/util"
 )
 
-// Init hw npu nodes, used in npu plugins.
-func (hwNPU *ScheduleHandler) initNodesNPUAllocTopology(nodes map[string]*api.NodeInfo) error {
-	for _, tmpNode := range nodes {
-		if tmpNode.Others == nil {
-			tmpNode.Others = make(map[string]interface{}, 1)
-		}
+func (hwNPU *ScheduleHandler) initNodesNPUAllocTopology(ssn *framework.Session) error {
+	if initErr := util.InitPluginNodeCache(ssn); initErr != nil {
+		klog.V(logErrorLev).Infof("InitNodesNPUAllocTopology :%v.", initErr)
+		return initErr
 	}
+
 	for cardName, initNodes := range hwNPU.InitNodesNPUAllocTopologyFns {
-		if err := initNodes(nodes); err != nil {
+		if err := initNodes(ssn.Nodes); err != nil {
 			klog.V(logErrorLev).Infof("%s InitNodesNPUAllocTopology :%v.", cardName, err)
 			return err
 		}

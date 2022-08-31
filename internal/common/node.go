@@ -27,7 +27,7 @@ func (cn *Scheduler) initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) erro
 			if !strings.Contains(typeKey, vnpuutil.NPUIdentifyName) {
 				continue
 			}
-			nTopStr, err := util.GetResourceFromAnnotationFn(anno, typeKey)
+			nTopStr, err := util.GetNPUAllocCardsFromNodeDeviceInfoCache(tmpNode, typeKey)
 			if err != nil {
 				nTopStr = ""
 			}

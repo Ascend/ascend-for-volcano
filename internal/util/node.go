@@ -10,14 +10,57 @@ Package util is using for HuaWei Ascend9 pin affinity schedule utilities.
 package util
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
-
 	"k8s.io/api/core/v1"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
+	"volcano.sh/volcano/pkg/scheduler/framework"
 )
+
+func changeMapStringToMapInterface(inMap map[string]string) map[string]interface{} {
+	outMap := make(map[string]interface{}, 1)
+	for name, value := range inMap {
+		outMap[name] = value
+	}
+	return outMap
+}
+
+func recordOrUpdateNodeDevicePluginInfo(data *NodeDeviceInfo, tmpNode *api.NodeInfo) {
+	if nodeDeviceInfoCache == nil {
+		nodeDeviceInfoCache = make(map[string]*NodeDeviceInfo, NPUIndex3)
+	}
+	nodeDeviceInfoCache[tmpNode.Name] = data
+}
+
+// GetNPUAllocCardsFromNodeDeviceInf Get node distributable npu card ids.Should call at begin.
+func GetNPUAllocCardsFromNodeDeviceInf(ssn *framework.Session, node *api.NodeInfo) (map[string]string, error) {
+	data, err := getNodeDeviceInfoFromCM(ssn, node)
+	if err != nil {
+		recordOrUpdateNodeDevicePluginInfo(nil, node)
+		return nil, err
+	}
+	recordOrUpdateNodeDevicePluginInfo(data, node)
+	return data.DeviceList, nil
+}
+
+// InitPluginNodeCache init scheduler cache.
+func InitPluginNodeCache(ssn *framework.Session) error {
+	// 1.init cache
+	for _, tmpNode := range ssn.Nodes {
+		if tmpNode.Others == nil {
+			tmpNode.Others = make(map[string]interface{}, 1)
+		}
+		data, getErr := GetNPUAllocCardsFromNodeDeviceInf(ssn, tmpNode)
+		if getErr != nil {
+			klog.V(LogDebugLev).Infof("GetNPUAllocCardsFromNodeDeviceInf %s %v", tmpNode.Name, getErr)
+			continue
+		}
+		tmpNode.Others = changeMapStringToMapInterface(data)
+	}
+	return nil
+}
 
 // GetNodeIdleNPUNum Get node npu idle number
 func GetNodeIdleNPUNum(node *api.NodeInfo, npuCardName string) (int, error) {
@@ -144,18 +187,6 @@ func GetNPUAllocCardsFromNodeOthers(node *api.NodeInfo, npuCardName string) (str
 	return mapStr, nil
 }
 
-// GetNPUAllocCardsFromNodeAnnotations Get node distributable npu card ids.
-func GetNPUAllocCardsFromNodeAnnotations(node *api.NodeInfo, npuCardName string) (string, error) {
-	valueTmp, ok := node.Node.Annotations[npuCardName]
-	if !ok {
-		msg := fmt.Errorf("%s npu card nil", node.Name)
-		klog.V(LogDebugLev).Infof("%s :%v.", npuCardName, msg.Error())
-		return "", msg
-	}
-
-	return valueTmp, nil
-}
-
 // IsCardModeNode Judge the node mode:card or not
 func IsCardModeNode(node *api.NodeInfo) bool {
 	nodeSelectors, errNode := GetNodeSelector(node)
@@ -219,16 +250,72 @@ func GetNPUTopFromHccs(taskNPUNumber int, allocTopologyHccl []int) ([]int, error
 	return allocTopologyNPUs, nil
 }
 
-// IsNPUNNode to judge the node wither has NPU card or not.
-func IsNPUNNode(tmpNode *api.NodeInfo) error {
-	for key, value := range tmpNode.Node.Annotations {
-		if strings.Contains(key, CommCardPreName) {
-			tmp := strings.Split(value, ",")
-			if len(tmp) != 0 {
-				return nil
-			}
-			continue
-		}
+// GetNodeDeviceInfoMapData like node annotation.
+func GetNodeDeviceInfoMapData(node *api.NodeInfo) (map[string]string, error) {
+	if len(nodeDeviceInfoCache) == 0 {
+		return nil, fmt.Errorf("nil NodeDeviceInfo cache")
 	}
-	return fmt.Errorf("%s has no %s", tmpNode.Name, CommCardPreName)
+	nodeData, ok := nodeDeviceInfoCache[node.Name]
+	if !ok {
+		msg := fmt.Errorf("no %s device info", node.Name)
+		klog.V(LogErrorLev).Infof("GetNodeDeviceInfoMapData :%v.", msg)
+		return nil, msg
+	}
+	if nodeData == nil {
+		return nil, fmt.Errorf("nil NodeDeviceInfo cache data")
+	}
+	return nodeData.DeviceList, nil
+}
+
+// checkNodeDeviceInfoAvailable will be implemented later
+func checkNodeDeviceInfo(nodeData *NodeDeviceInfoWithDevPlugin) error {
+	if nodeData == nil {
+		return fmt.Errorf("nil parameters")
+	}
+	if nodeData.CheckCode == "" {
+		return fmt.Errorf("no checkCode in NodeDeviceInfo cm")
+	}
+	return nil
+}
+
+func getNodeDeviceInfoFromCM(ssn *framework.Session, node *api.NodeInfo) (*NodeDeviceInfo, error) {
+	cmData, getErr := GetConfigMapWithRetry(ssn.KubeClient(), DevInfoNameSpace, DevInfoPreName+node.Name)
+	if getErr != nil {
+		klog.V(LogErrorLev).Infof("getNodeDeviceInfoFromCM :%v.", getErr)
+		return nil, getErr
+	}
+
+	devInf := &NodeDeviceInfoWithDevPlugin{}
+	data, ok := cmData.Data[DevInfoCMKey]
+	if !ok {
+		return nil, fmt.Errorf("%s device-info no %s", node.Name, DevInfoCMKey)
+	}
+	if unmarshalErr := json.Unmarshal([]byte(data), &devInf); unmarshalErr != nil {
+		klog.V(LogInfoLev).Infof("convertToReSchedulerJobsMapFromCM Unmarshal: %v.", unmarshalErr)
+		return nil, unmarshalErr
+	}
+
+	if checkErr := checkNodeDeviceInfo(devInf); checkErr != nil {
+		klog.V(LogInfoLev).Infof("checkNodeDeviceInfo failed :%v.", checkErr)
+		return nil, checkErr
+	}
+	return &devInf.DeviceInfo, nil
+}
+
+// GetNPUAllocCardsFromNodeDeviceInfoCache Get node distributable npu card ids.
+func GetNPUAllocCardsFromNodeDeviceInfoCache(node *api.NodeInfo, npuCardName string) (string, error) {
+	nodeAnno, getErr := GetNodeDeviceInfoMapData(node)
+	if getErr != nil {
+		klog.V(LogDebugLev).Infof("GetNPUAllocCardsFromNodeDeviceInfoCache :%v.", getErr)
+		return "", getErr
+	}
+
+	valueTmp, ok := nodeAnno[npuCardName]
+	if !ok {
+		msg := fmt.Errorf("%s npu card nil", node.Name)
+		klog.V(LogDebugLev).Infof("%s :%v.", npuCardName, msg.Error())
+		return "", msg
+	}
+
+	return valueTmp, nil
 }

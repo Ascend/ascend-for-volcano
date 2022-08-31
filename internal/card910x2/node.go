@@ -21,18 +21,18 @@ import (
 )
 
 func initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) error {
-	for key := range nodes {
-		if !util.IsCardModeNode(nodes[key]) {
+	for _, tmpNode := range nodes {
+		if !util.IsCardModeNode(tmpNode) {
 			continue
 		}
 
-		topStr, err := util.GetNPUAllocCardsFromNodeAnnotations(nodes[key], a300TNPUCardName)
+		topStr, err := util.GetNPUAllocCardsFromNodeDeviceInfoCache(tmpNode, a300TNPUCardName)
 		if err != nil {
 			klog.V(logDebugLev).Infof("%s initNodesFn :%v", PluginName, err)
 			return nil
 		}
 
-		err = util.SaveTopologyInMap(nodes[key].Others, topStr, a300TNPUCardName)
+		err = util.SaveTopologyInMap(tmpNode.Others, topStr, a300TNPUCardName)
 		if err != nil {
 			return err
 		}

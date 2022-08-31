@@ -67,7 +67,12 @@ func (re *ReScheduler) updatePodReason(task *api.TaskInfo, reasonTmp string) {
 }
 
 func (re *ReScheduler) getNodeFaultNPUs(node *api.NodeInfo) ([]string, error) {
-	npuStrings, ok := node.Node.Annotations[re.AnnoUnHealthy]
+	nodeAnno, getErr := util.GetNodeDeviceInfoMapData(node)
+	if getErr != nil {
+		klog.V(util.LogDebugLev).Infof("getNodeFaultNPUs :%v.", getErr)
+		return nil, getErr
+	}
+	npuStrings, ok := nodeAnno[re.AnnoUnHealthy]
 	if !ok || len(npuStrings) == 0 {
 		return nil, fmt.Errorf("%s get nil %s ", node.Name, re.AnnoUnHealthy)
 	}
