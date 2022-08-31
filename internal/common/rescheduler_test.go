@@ -9,9 +9,11 @@ import (
 	"errors"
 	"reflect"
 	"testing"
-	"volcano.sh/apis/pkg/apis/scheduling"
 
 	"github.com/agiledragon/gomonkey/v2"
+	"k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
+	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
@@ -51,6 +53,7 @@ func buildPreHandleFaultNPUFnTestCases() []preHandleFaultNPUFnTests {
 		DefaultJobSchedulerConfig: nil,
 	}
 	var tmpPatch *gomonkey.Patches
+	var cmPatch *gomonkey.Patches
 	testCases := []preHandleFaultNPUFnTests{
 		{
 			name: "01-VJobRunHandle() success test.",
@@ -58,9 +61,17 @@ func buildPreHandleFaultNPUFnTestCases() []preHandleFaultNPUFnTests {
 				ssn: ssnTest, cacheFunBefore: func() {
 					tmpPatch = gomonkey.ApplyMethod(reflect.TypeOf(new(framework.Session)), "Evict",
 						func(_ *framework.Session, _ *api.TaskInfo, _ string) error { return errors.New("haha") })
+					cmPatch = gomonkey.ApplyFunc(util.GetConfigMapWithRetry,
+						func(_ kubernetes.Interface, _, cmName string) (*v1.ConfigMap, error) {
+							return test.FakeDeviceInfoCM(nodeOne, cmName)
+						})
+					_ = util.InitPluginNodeCache(ssnTest)
 				}, cacheFunAfter: func() {
 					if tmpPatch != nil {
 						tmpPatch.Reset()
+					}
+					if cmPatch != nil {
+						cmPatch.Reset()
 					}
 				}},
 			fields: ReScheduler{AnnoUnHealthy: util.Fault310PNPU, AnnoName: scheduler.AnnoName,

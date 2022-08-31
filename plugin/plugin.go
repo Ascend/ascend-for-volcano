@@ -163,7 +163,7 @@ func (hwNPU *ScheduleHandler) GetNPUScheduler(name string) (HwNPUSchedulerPlugin
 
 // InitNPUSession init npu plugin and nodes
 func (hwNPU *ScheduleHandler) InitNPUSession(ssn *framework.Session) {
-	if err := hwNPU.initNodesNPUAllocTopology(ssn.Nodes); err != nil {
+	if err := hwNPU.initNodesNPUAllocTopology(ssn); err != nil {
 		klog.V(logErrorLev).Infof("%s InitNPUSession failed :%v.", PluginName, err)
 	}
 	// Handle NPU fault chip/node/job.

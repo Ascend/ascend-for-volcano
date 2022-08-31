@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/agiledragon/gomonkey/v2"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -621,9 +622,10 @@ func TestIsNodeInFaultNodeList(t *testing.T) {
 }
 
 type recordFaultInfInCacheArgs struct {
-	ssn       *framework.Session
-	npuNumber int
-	cacheFun  func()
+	ssn            *framework.Session
+	npuNumber      int
+	cacheFunBefore func()
+	cacheFunAfter  func()
 }
 
 type recordFaultInfInCacheTest struct {
@@ -671,14 +673,25 @@ func buildRecordFaultInfInCacheTestCases() []recordFaultInfInCacheTest {
 		NetworkUnhealthyNPUs: []string{}, UpdateTime: constNumber64}
 	fNode := FaultNodeState{NodeName: "node1", HealthCode: 0, UpdateTime: constNumber64, Heartbeat: constNumber64,
 		HeartbeatInterval: nodeUpdateTime}
+	var cmPatch *gomonkey.Patches
 	testCases := []recordFaultInfInCacheTest{
 		{
 			name: "01-record fault success-test",
 			args: recordFaultInfInCacheArgs{
-				ssn: ssnTest, npuNumber: node910X8NPUNum, cacheFun: func() {
+				ssn: ssnTest, npuNumber: node910X8NPUNum,
+				cacheFunBefore: func() {
 					initTestReSchedulerCache()
 					setTestSsnNode(ssnTest, fNPUs)
 					setTestSsnNode(ssnTest, fNode)
+					cmPatch = gomonkey.ApplyFunc(util.GetConfigMapWithRetry,
+						func(_ kubernetes.Interface, _, cmName string) (*v1.ConfigMap, error) {
+							return test.FakeDeviceInfoCM(ssnTest.Nodes, cmName)
+						})
+					_ = util.InitPluginNodeCache(ssnTest)
+				}, cacheFunAfter: func() {
+					if cmPatch != nil {
+						cmPatch.Reset()
+					}
 				},
 			},
 			wantErr: nil,
@@ -691,12 +704,13 @@ func buildRecordFaultInfInCacheTestCases() []recordFaultInfInCacheTest {
 func TestRecordFaultInfInCache(t *testing.T) {
 	tests := buildRecordFaultInfInCacheTestCases()
 	for _, tt := range tests {
-		tt.args.cacheFun()
 		t.Run(tt.name, func(t *testing.T) {
+			tt.args.cacheFunBefore()
 			err := RecordFaultInfInCache(tt.args.ssn, tt.args.npuNumber)
 			if !reflect.DeepEqual(err, tt.wantErr) {
 				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
 			}
+			tt.args.cacheFunAfter()
 		})
 	}
 }

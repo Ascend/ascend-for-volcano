@@ -22,12 +22,16 @@ import (
 // InitVNodesFn init node.
 func (tp *VNPU) InitVNodesFn(nodes map[string]*api.NodeInfo) error {
 	for _, tmpNode := range nodes {
-		anno := tmpNode.Node.Annotations
-		for typeKey := range anno {
+		nodeAnno, getErr := util.GetNodeDeviceInfoMapData(tmpNode)
+		if getErr != nil {
+			klog.V(util.LogDebugLev).Infof("InitVNodesFn :%v.", getErr)
+			return getErr
+		}
+		for typeKey := range nodeAnno {
 			if !strings.Contains(typeKey, vnpuutil.NPUIdentifyName) {
 				continue
 			}
-			nTopStr, err := util.GetResourceFromAnnotationFn(anno, typeKey)
+			nTopStr, err := util.GetResourceFromAnnotationFn(nodeAnno, typeKey)
 			if err != nil {
 				nTopStr = ""
 			}

@@ -76,4 +76,25 @@ const (
 	SegmentNoEnable = "SegmentEnable not enable"
 	// SegmentSetFalse presetVirtualDevice has been set as false, it must be true
 	SegmentSetFalse = "presetVirtualDevice has been set as false"
+	// DevInfoNameSpace device-plugin install namespace
+	DevInfoNameSpace = "kube-system"
+	// DevInfoPreName like "mindx-dl-deviceinfo-ubuntu"
+	DevInfoPreName = "mindx-dl-deviceinfo-"
+	// DevInfoCMKey mindx-dl-deviceinfo configmap key
+	DevInfoCMKey = "DeviceInfoCfg"
 )
+
+// NodeDeviceInfo like node annotation.
+type NodeDeviceInfo struct {
+	DeviceList map[string]string
+	UpdateTime int64
+}
+
+// NodeDeviceInfoWithDevPlugin a node has one by cm.
+type NodeDeviceInfoWithDevPlugin struct {
+	DeviceInfo NodeDeviceInfo
+	CheckCode  string
+}
+
+// nodeDeviceInfoCache for record nodeDeviceInfo from device-plugin. It will be optimized later in the refactoring.
+var nodeDeviceInfoCache map[string]*NodeDeviceInfo

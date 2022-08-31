@@ -13,10 +13,12 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/agiledragon/gomonkey/v2"
 	"github.com/smartystreets/goconvey/convey"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/util"
@@ -195,12 +197,22 @@ func TestVnpuinitVNodesFn(t *testing.T) {
 				npuAllocateNum: "1", npuTop: "Ascend910-16c-119-0"})
 			test.SetTestNPUNodeAnnotation(node3, npuV910CardName16c, "")
 			nodes := map[string]*api.NodeInfo{
-				"1": node1,
-				"2": node2,
-				"3": node3,
+				node1.Name: node1,
+				node2.Name: node2,
+				node3.Name: node3,
 			}
+			ssnTest := test.FakeNormalSSN()
+			test.AddNodeIntoFakeSSN(ssnTest, node1)
+			test.AddNodeIntoFakeSSN(ssnTest, node2)
+			test.AddNodeIntoFakeSSN(ssnTest, node3)
+			cmPatch := gomonkey.ApplyFunc(util2.GetConfigMapWithRetry,
+				func(_ kubernetes.Interface, _, cmName string) (*v1.ConfigMap, error) {
+					return test.FakeDeviceInfoCM(nodes, cmName)
+				})
+			_ = util2.InitPluginNodeCache(ssnTest)
 			result := vnpu.InitVNodesFn(nodes)
 			convey.So(result, convey.ShouldBeNil)
+			cmPatch.Reset()
 		})
 	})
 }

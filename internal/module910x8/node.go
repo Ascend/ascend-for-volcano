@@ -123,18 +123,18 @@ func getNodeNPUNumFromOthers(nodeInfo *api.NodeInfo) (int, error) {
 }
 
 func initNodesNPUTopologyFn(nodes map[string]*api.NodeInfo) error {
-	for key := range nodes {
-		if util.IsCardModeNode(nodes[key]) {
+	for _, tmpNode := range nodes {
+		if util.IsCardModeNode(tmpNode) {
 			continue
 		}
 
-		topStr, err := util.GetNPUAllocCardsFromNodeAnnotations(nodes[key], npu800And9000CardName)
+		topStr, err := util.GetNPUAllocCardsFromNodeDeviceInfoCache(tmpNode, npu800And9000CardName)
 		if err != nil {
 			klog.V(logDebugLev).Infof("%s initNodesFn :%v.", PluginName, err)
 			return nil
 		}
 
-		err = util.SaveTopologyInMap(nodes[key].Others, topStr, npu800And9000CardName)
+		err = util.SaveTopologyInMap(tmpNode.Others, topStr, npu800And9000CardName)
 		if err != nil {
 			return err
 		}
