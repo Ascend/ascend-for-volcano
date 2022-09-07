@@ -10,16 +10,85 @@ Package plugin is using for HuaWei Ascend pin affinity schedule frame.
 package plugin
 
 import (
-	"errors"
-	"fmt"
 	"reflect"
+	"strings"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/klog"
-	schedulerApi "k8s.io/kube-scheduler/extender/v1"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	"volcano.sh/volcano/pkg/scheduler/framework"
+
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
+
+// NPUAllocateFunc Allocate npu and called by volcano frame.
+func (sHandle ScheduleHandler) NPUAllocateFunc(task *api.TaskInfo) {
+	if task == nil {
+		klog.V(util.LogErrorLev).Infof("NPUAllocateFunc %s.", util.ArgumentError)
+		return
+	}
+	vcJob, ok := sHandle.Jobs[task.Job]
+	if !ok {
+		klog.V(util.LogDebugLev).Infof("NPUAllocateFunc %s not req npu.", task.Name)
+		return
+	}
+	nodeName := task.NodeName
+	node, found := sHandle.Nodes[nodeName]
+	if !found {
+		klog.V(util.LogWarningLev).Infof("%s npuAllocateFunc %s not exist.", PluginName, nodeName)
+		return
+	}
+	vcNode := vcJob.handler.UseAnnotation(task, node)
+	if vcNode != nil {
+		// update node.
+		sHandle.Nodes[nodeName] = *vcNode
+	}
+	klog.V(util.LogDebugLev).Infof("%s %#v useAnnotation node [%s]'s top.", PluginName, task.Name, nodeName)
+}
+
+func (sHandle *ScheduleHandler) releaseAnnotation(task *api.TaskInfo, vcJob SchedulerJob, vcNode NPUNode) {
+	vcTask, ok := vcJob.Tasks[task.Name]
+	if !ok {
+		return
+	}
+	reqStr, ok := task.Pod.Annotations[vcTask.ReqNPUName]
+	if !ok {
+		return
+	}
+	reqSlice := strings.Split(reqStr, ",")
+	if len(reqSlice) != vcTask.ReqNPUNum {
+		return
+	}
+	value, ok := vcNode.Annotation[vcTask.ReqNPUName]
+	if !ok {
+		return
+	}
+	vcNode.Annotation[vcTask.ReqNPUName] = value
+	if value != "" {
+		vcNode.Annotation[vcTask.ReqNPUName] = reqStr + "," + value
+	}
+	sHandle.Nodes[vcNode.Name] = vcNode
+}
+
+// NPUDeallocateFunc Free assigned npu, if allocate failed by volcano frame.
+func (sHandle *ScheduleHandler) NPUDeallocateFunc(task *api.TaskInfo) {
+	if sHandle == nil {
+		klog.V(util.LogInfoLev).Infof("NPUDeallocateFunc failed: %s.", util.ArgumentError)
+		return
+	}
+	vcJob, ok := sHandle.Jobs[task.Job]
+	if !ok {
+		klog.V(util.LogDebugLev).Infof("NPUDeallocateFunc %s not req npu.", task.Name)
+		return
+	}
+	nodeName := task.NodeName
+	node, found := sHandle.Nodes[nodeName]
+	if !found {
+		klog.V(util.LogWarningLev).Infof("%s npuAllocateFunc NOT EXIST node [%s].", PluginName, nodeName)
+		return
+	}
+	sHandle.releaseAnnotation(task, vcJob, node)
+	klog.V(util.LogDebugLev).Infof("%s %#v useAnnotation node [%s]'s top.", PluginName, task.Name, nodeName)
+}
 
 func updatePodPendingReason(task *api.TaskInfo, reasonTmp string) {
 	condition := v1.PodCondition{
@@ -34,110 +103,4 @@ func updatePodPendingReason(task *api.TaskInfo, reasonTmp string) {
 		}
 	}
 	task.Pod.Status.Conditions = append(task.Pod.Status.Conditions, condition)
-}
-
-func initScoreMap(nodes []*api.NodeInfo, interPodAffinityScore schedulerApi.HostPriorityList) map[string]float64 {
-	for _, node := range nodes {
-		if reflect.ValueOf(node).IsNil() {
-			continue
-		}
-
-		interPodAffinityScore = append(interPodAffinityScore, schedulerApi.HostPriority{
-			Host:  node.Name,
-			Score: 0,
-		})
-	}
-	scoreMap := make(map[string]float64, len(interPodAffinityScore))
-	for _, host := range interPodAffinityScore {
-		scoreMap[host.Host] = float64(host.Score)
-	}
-	return scoreMap
-}
-
-func (hwNPU *ScheduleHandler) getReleaseNPUTopology(task *api.TaskInfo) (interface{}, error) {
-	nowNPUPlugin := hwNPU.getNPUPlugin(task)
-	if nowNPUPlugin == nil {
-		return nil, errors.New("get nil NPUPlugin")
-	}
-
-	return nowNPUPlugin.GetReleaseNPUTopologyFn(task)
-}
-
-// BatchNodeOrderFn Score nodes, which used by volcano frame.
-func (hwNPU *ScheduleHandler) BatchNodeOrderFn(
-	task *api.TaskInfo,
-	nodes []*api.NodeInfo,
-	disFlag bool) (map[string]float64, error) {
-	var interPodAffinityScore schedulerApi.HostPriorityList
-
-	klog.V(logInfoLev).Infof("Enter batchNodeOrderFn")
-	defer klog.V(logInfoLev).Infof("leaving batchNodeOrderFn")
-
-	if task == nil || len(nodes) == 0 {
-		klog.V(logErrorLev).Infof("%s batchNodeOrderFn got null parameter(s), which is invalid.", PluginName)
-		return nil, errors.New("got null parameter(s)")
-	}
-
-	// init score-map
-	scoreMap := initScoreMap(nodes, interPodAffinityScore)
-
-	// 1.If not npu task no need continue.
-	if err := hwNPU.isHwNPUTask(task); err != nil {
-		klog.V(logDebugLev).Infof("%s %s : %v.", PluginName, task.Name, err)
-		return scoreMap, nil
-	}
-
-	// 2.Get the best node and top by A,B,C,D rules and require numbers.
-	bestNodes, errGet := hwNPU.getNPUAffinityBestNodes(task, nodes, disFlag)
-	if errGet != nil || len(bestNodes) == 0 {
-		// get suitable node failed
-		klog.V(logErrorLev).Infof("%s batchNodeOrderFn task[%s] failed[%v].",
-			PluginName, task.Name, errGet)
-		return scoreMap, nil
-	}
-	klog.V(logInfoLev).Infof("%s batchNodeOrderFn Get %s for NPU %+v.",
-		PluginName, task.Name, bestNodes)
-
-	// 3.Scored the nodes and set topology.
-	scoreMap, errGet = hwNPU.scoreBestNPUNodes(task, scoreMap, bestNodes, nodes)
-	if errGet != nil {
-		// get suitable node failed
-		klog.V(logErrorLev).Infof("%s scoreBestNPUNodes get err:%v.", PluginName, errGet)
-		return scoreMap, errGet
-	}
-
-	klog.V(logInfoLev).Infof("%s Total Score for task %s/%s is: %v.", PluginName,
-		task.Namespace, task.Name, scoreMap)
-
-	return scoreMap, nil
-}
-
-// IsDistributeTask To judge whether the distributed task.
-func IsDistributeTask(task *api.TaskInfo, ssn *framework.Session) bool {
-	job, ok := ssn.Jobs[task.Job]
-	if !ok {
-		klog.V(logErrorLev).Infof("IsDistributeTask get %s not in ssn.", task.Job)
-		return false
-	}
-
-	if len(job.Tasks) > 1 {
-		klog.V(logDebugLev).Infof("IsDistributeTask %s get %d tasks.", task.Job, len(job.Tasks))
-		return true
-	}
-
-	klog.V(logDebugLev).Infof("IsDistributeTask %s get %d task.", task.Job, len(job.Tasks))
-	return false
-}
-
-func (hwNPU *ScheduleHandler) isHwNPUTask(task *api.TaskInfo) error {
-	curNPUPlugin := hwNPU.getNPUPlugin(task)
-	if curNPUPlugin == nil {
-		return errors.New(noneNPUPlugin)
-	}
-	if !hwNPU.IsPluginRegistered(curNPUPlugin.Name()) {
-		plugErr := fmt.Errorf("%s not registered", curNPUPlugin.Name())
-		klog.V(logErrorLev).Infof("isHwNPUTask :%v.", plugErr)
-		return plugErr
-	}
-	return curNPUPlugin.IsMyTask(task)
 }

@@ -20,6 +20,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
+
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
 // SetTestJobPodGroupStatus set test job's PodGroupStatus
@@ -67,6 +69,9 @@ func AddTestJobLabel(job *api.JobInfo, labelKey, labelValue string) {
 		job.PodGroup.Labels = make(map[string]string, npuIndex3)
 	}
 	job.PodGroup.Labels = map[string]string{labelKey: labelValue}
+	for _, task := range job.Tasks {
+		AddTestTaskLabel(task, labelKey, labelValue)
+	}
 }
 
 // FakeNormalTestJob make normal test job.
@@ -77,6 +82,10 @@ func FakeNormalTestJob(jobName string, taskNum int) *api.JobInfo {
 // FakeNormalTestJobByCreatTime make normal test job by create time.
 func FakeNormalTestJobByCreatTime(jobName string, taskNum int, creatTime int64) *api.JobInfo {
 	tasks := FakeNormalTestTasks(taskNum)
+	for _, vTask := range tasks {
+		AddFakeTaskResReq(vTask, util.NPU910CardName, util.NPUIndex8)
+	}
+
 	job := api.NewJobInfo(api.JobID("vcjob/"+jobName), tasks...)
 	job.Name = jobName
 	for _, task := range tasks {
@@ -103,10 +112,8 @@ func SetFakeJobRequestSource(fJob *api.JobInfo, name string, value int) {
 	var minRes = make(v1.ResourceList, npuIndex3)
 	minRes[v1.ResourceName(name)] = resource.MustParse(fmt.Sprintf("%f", float64(value)))
 	fJob.PodGroup.Spec.MinResources = &minRes
-	if fJob.TotalRequest == nil {
-		reqResource := api.NewResource(*fJob.PodGroup.Spec.MinResources)
-		fJob.TotalRequest = reqResource
-	}
+	reqResource := api.NewResource(*fJob.PodGroup.Spec.MinResources)
+	fJob.TotalRequest = reqResource
 	return
 }
 
@@ -132,7 +139,8 @@ func setFakeJobSelector(fJob *api.JobInfo, selectorKey, selectorValue string) {
 	}
 }
 
-func setFakeJobResRequest(fJob *api.JobInfo, name v1.ResourceName, need string) {
+// SetFakeJobResRequest set fake
+func SetFakeJobResRequest(fJob *api.JobInfo, name v1.ResourceName, need string) {
 	resources := v1.ResourceList{}
 	AddResource(resources, name, need)
 	if fJob.Tasks == nil || len(fJob.Tasks) == 0 {
@@ -140,6 +148,7 @@ func setFakeJobResRequest(fJob *api.JobInfo, name v1.ResourceName, need string) 
 	}
 	for _, task := range fJob.Tasks {
 		task.Resreq = api.NewResource(resources)
+		fJob.TotalRequest.Add(api.NewResource(resources))
 	}
 }
 
@@ -149,7 +158,7 @@ func BuildFakeJobWithSelectorAndSource(jobName, selectorKey, selectorValue, npuN
 	setFakeJobSelector(job, selectorKey, selectorValue)
 	UpdateFakeJobRequestSource(job, npuName, npuNum)
 	valueString := strconv.Itoa(npuNum)
-	setFakeJobResRequest(job, v1.ResourceName(npuName), valueString)
+	SetFakeJobResRequest(job, v1.ResourceName(npuName), valueString)
 	return job
 }
 
@@ -209,4 +218,33 @@ func SetFakeNPUJobStatusPending(fJob *api.JobInfo) {
 		SetFakeNPUPodStatus(task.Pod, v1.PodPending)
 	}
 	return
+}
+
+// SetFakeNPUJobErrors set job and it's tasks to pending status.
+func SetFakeNPUJobErrors(fJob *api.JobInfo, msg string) {
+	if fJob == nil {
+		return
+	}
+	fJob.JobFitErrors = msg
+	if len(fJob.NodesFitErrors) == 0 {
+		fJob.NodesFitErrors = make(map[api.TaskID]*api.FitErrors, util.MapInitNum)
+	}
+	for tID := range fJob.Tasks {
+		fitError := api.NewFitErrors()
+		fitError.SetError(msg)
+		fJob.NodesFitErrors[tID] = fitError
+	}
+
+	return
+}
+
+// FakeTaskWithResReq fake task with resource require
+func FakeTaskWithResReq(name, resName string, resNum int) *api.TaskInfo {
+	pod := NPUPod{
+		Namespace: "vcjob", Name: name, Phase: v1.PodRunning,
+		ReqSource: buildNPUResourceList("1", "1000", v1.ResourceName(resName), strconv.Itoa(resNum)),
+	}
+	task := api.NewTaskInfo(BuildNPUPod(pod))
+	task.Job = "vcjob/job"
+	return task
 }

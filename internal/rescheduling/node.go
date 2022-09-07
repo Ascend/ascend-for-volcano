@@ -10,427 +10,236 @@ Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
 package rescheduling
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
 
-	"k8s.io/api/core/v1"
 	"k8s.io/klog"
-	"volcano.sh/volcano/pkg/scheduler/api"
-	"volcano.sh/volcano/pkg/scheduler/framework"
 
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/util"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
-func convertToReSchedulerNodesMapFromCM(buffer string) (map[string]FaultNodeState, error) {
-	faultNode := map[string]FaultNodeState{}
+// createFaultCardHandlers initialise FaultCard struct == getInoperableNPUCards
+func (fNode *FaultNode) createFaultCardHandlers(node *plugin.NPUNode) ([]FaultCard, error) {
+	klog.V(util.LogInfoLev).Infof("create new fault card handlers for node %s", node.Name)
+	var faultCards []FaultCard
+	for _, card := range fNode.AllCards {
+		faultCard := FaultCard{
+			IsFaultCard: false,
+			NPUName:     card,
+			NodeName:    node.Name,
+			FaultType:   CardHealthy,
+		}
 
-	if unmarshalErr := json.Unmarshal([]byte(buffer), &faultNode); unmarshalErr != nil {
-		return nil, unmarshalErr
-	}
-
-	return faultNode, nil
-}
-
-func convertToReSchedulerCardsMapFromCM(buffer string) (map[string]FaultNPUsOnNode, error) {
-	faultNodeNPUs := map[string]FaultNPUsOnNode{}
-	if unmarshalErr := json.Unmarshal([]byte(buffer), &faultNodeNPUs); unmarshalErr != nil {
-		return nil, unmarshalErr
-	}
-	return faultNodeNPUs, nil
-}
-
-func convertToNodeHeartbeatMapFromCM(buffer string) (map[string]NormalNodeHeartbeat, error) {
-	heartbeat := map[string]NormalNodeHeartbeat{}
-
-	if unmarshalErr := json.Unmarshal([]byte(buffer), &heartbeat); unmarshalErr != nil {
-		return nil, unmarshalErr
-	}
-
-	return heartbeat, nil
-}
-
-func convertToJobRankIdsMapFromCM(buffer string) (map[string]FaultRankIDRecordJobCMData, error) {
-	jobRankIds := map[string]FaultRankIDRecordJobCMData{}
-	if unmarshalErr := json.Unmarshal([]byte(buffer), &jobRankIds); unmarshalErr != nil {
-		return nil, unmarshalErr
-	}
-
-	return jobRankIds, nil
-}
-
-func getCMCardWriteData(nodeData interface{}) (string, error) {
-	return util.MarshalCacheDataToString(nodeData)
-}
-
-func getCMHeartbeatWriteData(nodeData interface{}) (string, error) {
-	return util.MarshalCacheDataToString(nodeData)
-}
-
-func getCMNodeWriteData(nodeData interface{}) (string, error) {
-	return util.MarshalCacheDataToString(nodeData)
-}
-
-func getNodeHeartbeatInfoFromCache(node *api.NodeInfo) (NormalNodeHeartbeat, error) {
-	tmp, mapOK := ReSchedulerCache[CmNodeHeartbeatKind]
-	if !mapOK {
-		return NormalNodeHeartbeat{}, fmt.Errorf("no reschedule cache kind of %v", CmNodeHeartbeatKind)
-	}
-	nodesHeartBeat, ok := tmp.(map[string]NormalNodeHeartbeat)
-	if !ok {
-		return NormalNodeHeartbeat{}, fmt.Errorf("get node heartbeat from cache assert %v failed", tmp)
-	}
-	nodeHeartBeat, getOk := nodesHeartBeat[node.Name]
-	if !getOk {
-		return NormalNodeHeartbeat{}, fmt.Errorf("get node heartbeat from cache %s nonexistent", node.Name)
-	}
-
-	return nodeHeartBeat, nil
-}
-
-func getNodeHeartbeatIntervalAndUpdateTimeFromCache(node *api.NodeInfo) (int64, int64, error) {
-	heartbeatInfo, err := getNodeHeartbeatInfoFromCache(node)
-	if err != nil {
-		klog.V(util.LogErrorLev).Infof("isNodeHealth %v.", err)
-		return 0, 0, err
-	}
-
-	heartbeatInterval := heartbeatInfo.HeartbeatInterval
-	maxInterval := int64(heartbeatInterval) * util.NPUIndex3
-
-	updateHeartbeatTime := heartbeatInfo.UpdateHeartbeatTime
-	return maxInterval, updateHeartbeatTime, nil
-}
-
-func isNodeHealth(node *api.NodeInfo) bool {
-	if !isEnableFaultNode(node) {
-		klog.V(util.LogErrorLev).Infof("isNodeHealth %s fault feature[%+v] not enable", node.Name, node.Node.Labels)
-		return true
-	}
-
-	maxInterval, updateHeartbeatTime, err := getNodeHeartbeatIntervalAndUpdateTimeFromCache(node)
-	if err != nil {
-		return false
-	}
-
-	nowTime := time.Now().Unix()
-	margin := nowTime - updateHeartbeatTime
-	if margin < 0 {
-		klog.V(util.LogErrorLev).Infof(" isNodeHealth %s cache Time is newer[%d-%d], confused, skip.",
-			node.Name, nowTime, updateHeartbeatTime)
-	}
-	if margin > maxInterval {
-		klog.V(util.LogErrorLev).Infof(" %s Time over %d [%d-%d],not health.",
-			node.Name, maxInterval, nowTime, updateHeartbeatTime)
-		return false
-	}
-
-	return true
-}
-
-// Delete expired node data.
-func synReSchedulerNodeCache(ssn *framework.Session, tmpValue interface{}) error {
-	nodeMap, assertOk := tmpValue.(map[string]FaultNodeState)
-	if !assertOk {
-		msg := fmt.Errorf("convert %v to map[string]FaultNodeState failed", tmpValue)
-		klog.V(util.LogErrorLev).Infof("synReSchedulerNodeCache %v.", msg)
-		return msg
-	}
-
-	newNodeMap := make(map[string]FaultNodeState, util.NPUIndex3)
-	for nodeName, faultNode := range nodeMap {
-		// 	No node
-		nodeInf, ok := ssn.Nodes[nodeName]
-		if !ok {
-			klog.V(util.LogErrorLev).Infof("delete %s from configMap due to not existence.", nodeName)
+		if faultCard.isCardUnhealthy(fNode.UnhealthyNPU) {
+			klog.V(util.LogDebugLev).Infof("card %s is unhealthy", faultCard.NPUName)
+			faultCard.setIsFaultCard(true)
+			faultCard.setFaultType(CardUnhealthy)
+			faultCards = append(faultCards, faultCard)
 			continue
 		}
-		// For node changed health (Automatic recovery).
-		if isNodeHealth(nodeInf) {
-			klog.V(util.LogErrorLev).Infof("delete %s from configMap due to node change health.", nodeName)
+		if faultCard.isCardNetworkUnhealthy(fNode.NetworkUnhealthyNPU) {
+			klog.V(util.LogDebugLev).Infof("card %s is network unhealthy", faultCard.NPUName)
+			faultCard.setIsFaultCard(true)
+			faultCard.setFaultType(CardNetworkUnhealthy)
+			faultCards = append(faultCards, faultCard)
 			continue
 		}
-		// For Node doesn't last too long
-		preTime := faultNode.UpdateTime
-		nowTime := time.Now().Unix()
-		if nowTime-preTime > maxIntervalTime {
-			klog.V(util.LogErrorLev).Infof("delete %s from CM for overTime %v => %v.", nodeName, nowTime, preTime)
-			continue
-		}
-		newNodeMap[nodeName] = faultNode
+		faultCards = append(faultCards, faultCard)
 	}
-	ReSchedulerCache[CmNodeKind] = newNodeMap
 
-	return nil
+	return faultCards, nil
 }
 
-func updateNodeIntoNodesHeartbeatTmp(ssn *framework.Session) error {
-	nodesHeartbeat := make(map[string]NormalNodeHeartbeat, util.NPUIndex3)
-	temp, ok := ReSchedulerCache[CmNodeHeartbeatKind]
-	if ok {
-		nodesHeartbeat, ok = temp.(map[string]NormalNodeHeartbeat)
-		if !ok {
-			klog.V(util.LogErrorLev).Infof("updateNodeIntoNodesHeartbeatTmp assert failed %v", temp)
-			return fmt.Errorf("assert map[string]NormalNodeHeartbeat failed")
-		}
-	}
-
-	for _, nodeInfo := range ssn.Nodes {
-		if !isEnableFaultNode(nodeInfo) {
-			klog.V(util.LogErrorLev).Infof("%s fault feature not enable, not add in cache", nodeInfo.Name)
-			continue
-		}
-		// 2.get node heartbeat
-		updateTime := time.Now().Unix()
-		oldHeartBeat := int64(-1)
-		updateHeartbeatTime := updateTime
-		nodeHeartBeat, ok := nodesHeartbeat[nodeInfo.Name]
-		if ok {
-			oldHeartBeat = nodeHeartBeat.NodeDHeartbeat
-		}
-
-		newHeartBeat, heartBeatErr := getNodeHeartbeat(nodeInfo)
-		if heartBeatErr != nil {
-			newHeartBeat = oldHeartBeat
-			klog.V(util.LogErrorLev).Infof("getNodeHeartbeat %v.", heartBeatErr)
-		}
-		if oldHeartBeat == newHeartBeat {
-			updateHeartbeatTime = nodeHeartBeat.UpdateHeartbeatTime
-		}
-		// 3.get node HeartbeatInterval
-		heartbeatInterval, intervalErr := getNodeHeartbeatInterval(nodeInfo)
-		if intervalErr != nil {
-			klog.V(util.LogErrorLev).Infof("getNodeHeartbeatInterval %v, will use %d.", intervalErr, nodeUpdateTime)
-		}
-		// 4.add or update NodeHeartbeat
-		newNodeHeartbeat := NormalNodeHeartbeat{
-			NodeDHeartbeat:      newHeartBeat,
-			UpdateHeartbeatTime: updateHeartbeatTime,
-			HeartbeatInterval:   heartbeatInterval,
-			UpdateTime:          updateTime,
-		}
-		nodesHeartbeat[nodeInfo.Name] = newNodeHeartbeat
-	}
-	ReSchedulerCache[CmNodeHeartbeatKind] = nodesHeartbeat
-	return nil
-}
-
-// Delete expired dode heartbeat data.
-func synNodeHeartbeatCache(ssn *framework.Session, tmpValue interface{}) error {
-	nodesHeartbeat, assertOk := tmpValue.(map[string]NormalNodeHeartbeat)
-	if !assertOk {
-		msg := fmt.Errorf("assert %v to map[string]NormalNodeHeartbeat failed", tmpValue)
-		klog.V(util.LogErrorLev).Infof("synNodeHeartbeatCache %v.", msg)
-		return msg
-	}
-	newNodesHeartbeat := make(map[string]NormalNodeHeartbeat, util.NPUIndex3)
-	// delete nonexistent node
-	for nodeName, value := range nodesHeartbeat {
-		// 	No info
-		_, ok := ssn.Nodes[nodeName]
-		if !ok {
-			klog.V(util.LogErrorLev).Infof("delete %s from heartbeat due to not existence.", nodeName)
-			continue
-		}
-		newNodesHeartbeat[nodeName] = value
-	}
-
-	ReSchedulerCache[CmNodeHeartbeatKind] = newNodesHeartbeat
-
-	return nil
-}
-
-func getJobFaultNPURankIdsByData(tmpValue interface{}) (map[api.JobID]FaultRankIDRecordJobCMData, error) {
-	jobRankIds, assertOk := tmpValue.(map[api.JobID]FaultRankIDRecordJobCMData)
-	if !assertOk {
-		msg := fmt.Errorf("assert %v to map[string]FaultRankIDRecordJobCMData failed", tmpValue)
-		klog.V(util.LogErrorLev).Infof("synJobRankIdsCache %v.", msg)
-		return nil, msg
-	}
-	return jobRankIds, nil
-}
-
-// Delete expired rankIds data.
-func synJobRankIdsCache(ssn *framework.Session, tmpValue interface{}) error {
-	jobRankIds, getErr := getJobFaultNPURankIdsByData(tmpValue)
-	if getErr != nil {
-		msg := fmt.Errorf("assert %v to map[string]FaultRankIDRecordJobCMData failed", tmpValue)
-		klog.V(util.LogErrorLev).Infof("synJobRankIdsCache %v.", msg)
-		return msg
-	}
-	// delete nonexistent rankIds
-	newJobRankIds := make(map[api.JobID]FaultRankIDRecordJobCMData, util.NPUIndex3)
-	for jobID, value := range jobRankIds {
-		// 	No info
-		_, ok := ssn.Jobs[jobID]
-		if !ok {
-			klog.V(util.LogInfoLev).Infof("delete %s from jobRankIds %+v due to not existence.", jobID, jobRankIds)
-			continue
-		}
-		newJobRankIds[jobID] = value
-	}
-
-	ReSchedulerCache[CmJobRankIds] = newJobRankIds
-
-	return nil
-}
-
-// Delete expired card data.
-func synReSchedulerCardCache(ssn *framework.Session, tmpValue interface{}) error {
-	cardMap, assertOk := tmpValue.(map[string]FaultNPUsOnNode)
-	if !assertOk {
-		msg := fmt.Errorf("convert %v to map[string]FaultNPUsOnNode failed", tmpValue)
-		klog.V(util.LogErrorLev).Infof("synReSchedulerCardCache %v.", msg)
-		return msg
-	}
-	newCardMap := make(map[string]FaultNPUsOnNode, util.NPUIndex3)
-	for nodeName, cards := range cardMap {
-		// 	No info
-		nodeInf, ok := ssn.Nodes[nodeName]
-		if !ok {
-			klog.V(util.LogErrorLev).Infof("delete %s from configMap due to not existence.", nodeName)
-			continue
-		}
-		// No fault NPUs.
-		if !isNodeHasFaultNPUs(nodeInf) {
-			klog.V(util.LogErrorLev).Infof("delete %s from configMap due to card change health.", nodeName)
-			continue
-		}
-		// Timeout to delete
-		preTime := cards.UpdateTime
-		nowTime := time.Now().Unix()
-		if nowTime-preTime > maxIntervalTime {
-			klog.V(util.LogErrorLev).Infof("delete %s from CM for overTime %v => %v.", nodeName, nowTime, preTime)
-			continue
-		}
-		newCardMap[nodeName] = cards
-	}
-	ReSchedulerCache[CmCardKind] = newCardMap
-
-	return nil
-}
-
-func getNodeFaultNPUs(node *api.NodeInfo, nodeNPUNumber int) ([]string, error) {
-	nodeAnno, getErr := util.GetNodeDeviceInfoMapData(node)
-	if getErr != nil {
-		klog.V(util.LogDebugLev).Infof("getNodeFaultNPUs :%v.", getErr)
-		return nil, getErr
-	}
-	npuStrings, ok := nodeAnno[faultNPU]
-	if !ok || len(npuStrings) == 0 {
+// getNodeNPUsByKey get the npu list from node.DeviceInfo
+func (fNode *FaultNode) getNodeNPUsByKey(node *plugin.NPUNode, deviceKey string) ([]string, error) {
+	NPUStr, ok := node.Annotation[deviceKey]
+	if !ok || len(NPUStr) == 0 {
 		return nil, fmt.Errorf("%s get nil npus", node.Name)
 	}
+	NPUs := strings.Split(NPUStr, ",")
 
-	faultNPUs := strings.Split(npuStrings, ",")
-	if len(faultNPUs) > nodeNPUNumber {
-		return nil, fmt.Errorf("%s get fault npus(%d)", node.Name, len(faultNPUs))
-	}
-
-	return faultNPUs, nil
+	return NPUs, nil
 }
 
-func getNodeNetworkUnhealthyNPUs(node *api.NodeInfo, nodeNPUNumber int) ([]string, error) {
-	nodeAnno, getErr := util.GetNodeDeviceInfoMapData(node)
-	if getErr != nil {
-		klog.V(util.LogDebugLev).Infof("getNodeNetworkUnhealthyNPUs :%v.", getErr)
-		return nil, getErr
-	}
-	npuStrings, ok := nodeAnno[networkUnhealthyNPU]
-	if !ok || len(npuStrings) == 0 {
-		return nil, fmt.Errorf("%s get nil npus", node.Name)
-	}
-
-	faultNPUs := strings.Split(npuStrings, ",")
-	if len(faultNPUs) > nodeNPUNumber {
-		return nil, fmt.Errorf("%s get fault npus(%d)", node.Name, len(faultNPUs))
-	}
-
-	return faultNPUs, nil
-}
-
-// True:has fault NPUs/ network unhealthy card, otherwise return false.
-func isNodeHasFaultNPUs(node *api.NodeInfo) bool {
-	nodeAnno, getErr := util.GetNodeDeviceInfoMapData(node)
-	if getErr != nil {
-		klog.V(util.LogDebugLev).Infof("isNodeHasFaultNPUs :%v.", getErr)
-		return false
-	}
-	faultNPUStrings, npuOK := nodeAnno[faultNPU]
-	faultNetNPUStrings, netOK := nodeAnno[networkUnhealthyNPU]
-	if (!npuOK || len(faultNPUStrings) == 0) && (!netOK || len(faultNetNPUStrings) == 0) {
-		return false
-	}
-
-	return true
-}
-
-func getNodeHeartbeatInterval(node *api.NodeInfo) (int, error) {
-	var heartbeatInterval = nodeUpdateTime
-	value, ok := node.Node.Annotations[nodeHeartbeatInterval]
-	if !ok || len(value) == 0 {
+func (fNode *FaultNode) getNodeHeartbeatByKey(node *plugin.NPUNode, hbKey string) (string, error) {
+	IntervalStr, ok := node.Annotation[hbKey]
+	if !ok || len(IntervalStr) == 0 {
 		klog.V(util.LogErrorLev).Infof("isNodeHealth %s no [%s].", node.Name, nodeHeartbeat)
-		return heartbeatInterval, fmt.Errorf("getFaultNodeState %s nil", node.Name)
+		return "", fmt.Errorf("getFaultNodeState %s nil", node.Name)
 	}
+	return IntervalStr, nil
+}
 
-	// If the Time exceeds, the fault occurs.
-	var err error
-	heartbeatInterval, err = strconv.Atoi(value)
+// getAllNPUCardsFromDeviceInfo get un-allocated healthy card from device info
+func (fNode *FaultNode) getAllNPUCardsFromDeviceInfo(node *plugin.NPUNode, cardName string) ([]string, error) {
+	var allCard []string
+	healthyCard, err := fNode.getNodeNPUsByKey(node, cardName) // ["Ascend910-0", ...]
+	allCard = append(allCard, healthyCard...)
+	allCard = append(allCard, fNode.UnhealthyNPU...)
+	allCard = append(allCard, fNode.NetworkUnhealthyNPU...)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s cover %s to int64 failed [%v].", node.Name, value, err)
-		return heartbeatInterval, err
+		return allCard, err
+	}
+	return allCard, nil
+}
+
+// getUnhealthyCardsFromDeviceInfo get unhealthyCard from device info
+func (fNode *FaultNode) getUnhealthyCardsFromDeviceInfo(node *plugin.NPUNode, cardName string) ([]string, error) {
+	unhealthyCardName := fmt.Sprintf("%s-%s", cardName, CardUnhealthy) // ["Ascend910-1"]
+	return fNode.getNodeNPUsByKey(node, unhealthyCardName)
+}
+
+// getNetworkUnhealthyCardsFromDeviceInfo get networkUnhealthyCard from device info
+func (fNode *FaultNode) getNetworkUnhealthyCardsFromDeviceInfo(
+	node *plugin.NPUNode, cardName string) ([]string, error) {
+	networkUnhealthyCardName := fmt.Sprintf("%s-%s", cardName, CardNetworkUnhealthy) // ["Ascend910-1"]
+	return fNode.getNodeNPUsByKey(node, networkUnhealthyCardName)
+}
+
+// getNodeHeartbeatIntervalFromDeviceInfo get nodeHeartbeatInterval from device info
+func (fNode *FaultNode) getNodeHeartbeatIntervalFromDeviceInfo(node *plugin.NPUNode) (int, error) {
+	var heartbeatInterval = nodeUpdateTime
+	heartbeatIntervalStr, getErr := fNode.getNodeHeartbeatByKey(node, nodeHeartbeatInterval)
+	if getErr != nil {
+		return heartbeatInterval, getErr
+	}
+	var err error
+	heartbeatInterval, err = strconv.Atoi(heartbeatIntervalStr)
+	if err != nil {
+		klog.V(util.LogErrorLev).Infof("%s cover %s to int64 failed [%#v].",
+			node.Name, heartbeatIntervalStr, err)
+		return nodeUpdateTime, err
 	}
 
 	if heartbeatInterval > maxIntervalTime || heartbeatInterval < 1 {
-		klog.V(util.LogErrorLev).Infof("%s's heartbeatInterval %d over limit, will use %d.",
+		klog.V(util.LogErrorLev).Infof("%s's HeartbeatInterval %d over limit, will use %d.",
 			node.Name, heartbeatInterval, nodeUpdateTime)
+		return nodeUpdateTime, nil
 	}
+	klog.V(util.LogDebugLev).Infof("%s heartbeatTimeInterval: %d", node.Name, heartbeatInterval)
 	return heartbeatInterval, nil
 }
 
-func getNodeHeartbeat(node *api.NodeInfo) (int64, error) {
-	value, ok := node.Node.Annotations[nodeHeartbeat]
-	if !ok || len(value) == 0 {
-		klog.V(util.LogErrorLev).Infof("isNodeHealth %s no [%s].", node.Name, nodeHeartbeat)
-		return 0, fmt.Errorf("getFaultNodeState %s nil", node.Name)
+// getNodeHeartbeatFromDeviceInfo get nodeHeartbeat from device info
+func (fNode *FaultNode) getNodeHeartbeatFromDeviceInfo(node *plugin.NPUNode) (int64, error) {
+	heartbeatTimeStr, getErr := fNode.getNodeHeartbeatByKey(node, nodeHeartbeat)
+	if getErr != nil {
+		return 0, getErr
 	}
-
-	const constNumber10 = 10
-	const constNumber64 = 64
-	heartbeatTime, err := strconv.ParseInt(value, constNumber10, constNumber64)
+	heartbeatTime, err := strconv.ParseInt(heartbeatTimeStr, util.Base10, util.BitSize64)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s cover %s to int64 failed [%v].", node.Name, value, err)
+		klog.V(util.LogErrorLev).Infof("%s cover %s to int64 failed [%#v].", node.Name, heartbeatTimeStr, err)
 		return 0, err
 	}
+	klog.V(util.LogDebugLev).Infof("%s heartbeatTime: %d", node.Name, heartbeatTime)
 	return heartbeatTime, nil
 }
 
-// In parameter 'node' is fault node.
-func getFaultNodeState(node *api.NodeInfo) (FaultNodeState, error) {
-	heartbeatTime, err := getNodeHeartbeat(node)
-	if err != nil {
-		return FaultNodeState{}, err
-	}
-
-	heartbeatInterval, intervalErr := getNodeHeartbeatInterval(node)
-	if intervalErr != nil {
-		klog.V(util.LogErrorLev).Infof("getNodeHeartbeatInterval %v, will use %d.", err, nodeUpdateTime)
-	}
-
-	return FaultNodeState{
-		NodeName:          node.Name,
-		HealthCode:        0,
-		UpdateTime:        time.Now().Unix(),
-		Heartbeat:         heartbeatTime,
-		HeartbeatInterval: heartbeatInterval,
-	}, nil
+func (fCard *FaultCard) isCardUnhealthy(unHealthyList []string) bool {
+	return util.IsSliceContain(fCard.NPUName, unHealthyList)
 }
 
-func isEnableFaultNode(node *api.NodeInfo) bool {
-	value, ok := node.Node.Labels[nodeDEnableKey]
+func (fCard *FaultCard) isCardNetworkUnhealthy(networkUnhealthyList []string) bool {
+	return util.IsSliceContain(fCard.NPUName, networkUnhealthyList)
+}
+
+func (fNode *FaultNode) updateFaultNodesFromDeviceInfo(node *plugin.NPUNode, cardName string) {
+	klog.V(util.LogInfoLev).Infof("update information from device info for node %s", node.Name)
+
+	tmpHBTime, err := fNode.getNodeHeartbeatFromDeviceInfo(node)
+	if err != nil {
+		klog.V(util.LogErrorLev).Infof("getNodeHeartbeatFromDeviceInfo: %#v", err)
+	}
+
+	klog.V(util.LogDebugLev).Infof(
+		"getNodeHeartbeatFromDeviceInfo: former heartbeat time %d, new heartbeat time %d",
+		fNode.OldHeartbeatTime, tmpHBTime)
+	if fNode.OldHeartbeatTime != tmpHBTime {
+		fNode.UpdateHeartbeatTime = time.Now().Unix()
+	}
+	fNode.setNewNodeHeartbeatTime(tmpHBTime)
+
+	tmpHBIntervalTime, err := fNode.getNodeHeartbeatIntervalFromDeviceInfo(node)
+	if err != nil {
+		klog.V(util.LogDebugLev).Infof("getNodeHeartbeatIntervalFromDeviceInfo: %#v", err)
+	}
+	fNode.setNodeHeartbeatInterval(tmpHBIntervalTime)
+
+	tmpUnhealthyNPUs, err := fNode.getUnhealthyCardsFromDeviceInfo(node, cardName)
+	if err != nil {
+		klog.V(util.LogErrorLev).Infof("getUnhealthyCardsFromDeviceInfo: %#v", err)
+	}
+	fNode.setUnhealthyNPUList(tmpUnhealthyNPUs)
+
+	tmpNetworkUnhealthyNPUs, err := fNode.getNetworkUnhealthyCardsFromDeviceInfo(node, cardName)
+	if err != nil {
+		klog.V(util.LogErrorLev).Infof("getNetworkUnhealthyCardsFromDeviceInfo: %#v", err)
+	}
+	fNode.setNetworkUnhealthyNPUList(tmpNetworkUnhealthyNPUs)
+
+	tmpAllCardsList, err := fNode.getAllNPUCardsFromDeviceInfo(node, cardName)
+	if err != nil {
+		klog.V(util.LogErrorLev).Infof("getAllNPUCardsFromDeviceInfo: %#v", err)
+	}
+	fNode.setAllCardList(tmpAllCardsList)
+}
+
+// updateFaultNodesAttr update Information from device Info
+func (fNode *FaultNode) updateFaultNodesAttr(node *plugin.NPUNode) error {
+	klog.V(util.LogInfoLev).Infof("Update node %s attributes", node.Name)
+	// 1. create fault Card Object
+	tmpFaultCards, err := fNode.createFaultCardHandlers(node)
+	if err != nil {
+		klog.V(util.LogErrorLev).Infof("Getting node card failed: %#v", err)
+	}
+	fNode.setFaultCards(tmpFaultCards)
+
+	// 2. judge if node is unhealthy because of card unhealthy
+	for _, card := range tmpFaultCards {
+		if !card.IsFaultCard {
+			continue
+		}
+		klog.V(util.LogInfoLev).Infof("node %s is fault node for having fault cards", node.Name)
+		fNode.setIsFaultNodeValue(true)
+		switch card.FaultType {
+		case CardUnhealthy:
+			fNode.setNodeHealthStateValue(NodeCardUnhealthy)
+		case CardNetworkUnhealthy:
+			fNode.setNodeHealthStateValue(NodeCardNetworkUnhealthy)
+		default:
+			klog.V(util.LogErrorLev).Infof("card health state not legal")
+		}
+		return nil
+	}
+	fNode.setNodeHealthStateValue(NodeHealthy)
+	fNode.setIsFaultNodeValue(false)
+	klog.V(util.LogDebugLev).Infof("Node %s health state set to %s", node.Name, NodeHealthy)
+
+	// 3. Ensure nodeD enabled to get node heartbeat
+	if !fNode.isNodeDEnabled(node) {
+		klog.V(util.LogInfoLev).Infof("node %s nodeD not enabled", node.Name)
+		fNode.setNodeDValue(false)
+		return nil
+	}
+	fNode.setNodeDValue(true)
+
+	// 4. last node heartbeat update time until now being greater than maxInterval indicates unhealthy
+	if fNode.isNodeHealthyByHeartbeat() {
+		fNode.setIsFaultNodeValue(false)
+		fNode.setNodeHealthStateValue(NodeHealthy)
+		return nil
+	}
+	klog.V(util.LogInfoLev).Infof("node %s is fault node for having wrong heartbeat", node.Name)
+	fNode.setIsFaultNodeValue(true)
+	fNode.setNodeHealthStateValue(NodeUnhealthy)
+	return nil
+}
+
+func (fNode *FaultNode) isNodeDEnabled(node *plugin.NPUNode) bool {
+	value, ok := node.Label[nodeDEnableKey]
 	if !ok {
 		return false
 	}
@@ -446,248 +255,106 @@ func isEnableFaultNode(node *api.NodeInfo) bool {
 	}
 }
 
-func getInoperableNodes(nodes map[string]*api.NodeInfo) ([]FaultNodeState, error) {
-	var faultNPUNodes []FaultNodeState
+func (fNode *FaultNode) isNodeHealthyByHeartbeat() bool {
+	maxInterval := int64(fNode.HeartbeatInterval) * util.MapInitNum
+	nowTime := time.Now().Unix()
+	latestInterval := nowTime - fNode.UpdateHeartbeatTime
 
-	for _, nodeInfo := range nodes {
-
-		if isNodeHealth(nodeInfo) {
-			continue
-		}
-
-		nodeState, stateErr := getFaultNodeState(nodeInfo)
-		if stateErr != nil {
-			klog.V(util.LogErrorLev).Infof("getInoperableNodes %+v.", faultNPUNodes)
-			continue
-		}
-		faultNPUNodes = append(faultNPUNodes, nodeState)
+	klog.V(util.LogDebugLev).Infof(
+		"node %s latestInterval: %d, nowTime: %d", fNode.NodeName, latestInterval, nowTime)
+	if latestInterval < 0 {
+		klog.V(util.LogErrorLev).Infof(" isNodeHealth %s cache Time is newer[%d-%d], confused, skip.",
+			fNode.NodeName, nowTime, fNode.UpdateHeartbeatTime)
 	}
-
-	if len(faultNPUNodes) == 0 {
-		return nil, errors.New("nil inoperable nodes")
-	}
-	klog.V(util.LogErrorLev).Infof("getInoperableNodes %+v.", faultNPUNodes)
-
-	return faultNPUNodes, nil
-}
-
-func getInoperableNPUCards(nodes map[string]*api.NodeInfo, npuNumber int) ([]FaultNPUsOnNode, error) {
-	var faultNPUs []FaultNPUsOnNode
-
-	for _, nodeInfo := range nodes {
-		npus, err := getNodeFaultNPUs(nodeInfo, npuNumber)
-		if err != nil {
-			klog.V(util.LogErrorLev).Infof("getNodeFaultNPUs err:%v.", err)
-		}
-		networkNPUs, netErr := getNodeNetworkUnhealthyNPUs(nodeInfo, npuNumber)
-		if netErr != nil {
-			klog.V(util.LogErrorLev).Infof("getNodeNetworkUnhealthyNPUs err:%v.", netErr)
-		}
-
-		if err != nil && netErr != nil {
-			continue
-		}
-		faultNPUs = append(faultNPUs, FaultNPUsOnNode{NodeName: nodeInfo.Name, FaultNPUs: npus,
-			NetworkUnhealthyNPUs: networkNPUs, UpdateTime: time.Now().Unix()})
-	}
-
-	if len(faultNPUs) == 0 {
-		return nil, fmt.Errorf("%v nil inoperable NPU", reflect.ValueOf(nodes).MapKeys())
-	}
-	klog.V(util.LogErrorLev).Infof("getInoperableNPUCards %+v.", faultNPUs)
-
-	return faultNPUs, nil
-}
-
-func getFaultNodePODAndRankIndex(job *api.JobInfo, nodes map[string]*v1.Pod) (FaultNPUJob, error) {
-	var faultJob = FaultNPUJob{
-		faultNPUJobBase: faultNPUJobBase{
-			jobName:          job.Name,
-			namespace:        job.Namespace,
-			taskUseRankIndex: make(map[string]string, util.NPUIndex3),
-			taskUseNode:      make(map[string]string, util.NPUIndex3),
-		},
-		taskUseNPUs: make(map[string]string, util.NPUIndex3),
-	}
-
-	for _, task := range job.Tasks {
-		if pod, ok := nodes[task.NodeName]; ok {
-			rankIndex, err := getPodRankIndex(pod)
-			if err != nil {
-				klog.V(util.LogErrorLev).Infof("getPodRankIndex %s %v.", pod.Name, err)
-				return faultJob, err
-			}
-			npuNumber, getOK := pod.Annotations[npu800And9000CardName]
-			if !getOK {
-				klog.V(util.LogErrorLev).Infof("%s has no %s.", pod.Name, npu800And9000CardName)
-				return faultJob, err
-			}
-			faultJob.taskUseNPUs[task.Name] = npuNumber
-			faultJob.taskUseRankIndex[task.Name] = rankIndex
-			faultJob.taskUseNode[task.Name] = task.NodeName
-		}
-	}
-
-	if len(faultJob.taskUseRankIndex) == 0 {
-		return faultJob, errors.New("get nil rankIndex")
-	}
-
-	return faultJob, nil
-}
-
-func getReSchedulerJobsMapFromCache() (map[api.JobID]ReSchedulerTasks, error) {
-	jobValue, ok := ReSchedulerCache[CmJobKind]
-	if !ok {
-		klog.V(util.LogErrorLev).Infof("getReSchedulerTasksFromCache no fault task in ReSchedulerCache.")
-		return nil, nil
-	}
-
-	jobMap, ok := jobValue.(map[api.JobID]ReSchedulerTasks)
-	if !ok {
-		mgs := fmt.Errorf("not type(map[api.JobID]ReSchedulerTasks) %v ", jobMap)
-		klog.V(util.LogErrorLev).Infof("%v.", mgs)
-		return nil, mgs
-	}
-	return jobMap, nil
-}
-
-// For get ReSchedulerTasks from ReSchedulerData
-func getReSchedulerTasksFromCache(task *api.TaskInfo) (ReSchedulerTasks, error) {
-	jobMap, getErr := getReSchedulerJobsMapFromCache()
-	if getErr != nil {
-		klog.V(util.LogErrorLev).Infof("getReSchedulerJobsMapFromCache %v.", getErr)
-		return ReSchedulerTasks{}, getErr
-	}
-
-	value, ok := jobMap[task.Job]
-	if !ok {
-		mgs := fmt.Errorf("no %v in jobMap", task.Job)
-		klog.V(util.LogErrorLev).Infof("getReSchedulerTasksFromCache %v.", mgs)
-		return ReSchedulerTasks{}, mgs
-	}
-
-	return value, nil
-}
-
-// GetFaultTaskUseNodeInfo Get task used node.
-func GetFaultTaskUseNodeInfo(task *api.TaskInfo, ssn *framework.Session) (*api.NodeInfo, error) {
-	faultTasks, err := getReSchedulerTasksFromCache(task)
-	if err != nil {
-		return nil, err
-	}
-
-	nodeName := ""
-	for key, value := range faultTasks.TaskName {
-		if value == task.Name {
-			nodeName = faultTasks.NodeNames[key]
-			break
-		}
-	}
-	if len(nodeName) == 0 {
-		return nil, fmt.Errorf("get %s use node name failed", task.Name)
-	}
-
-	node, ok := ssn.Nodes[nodeName]
-	if !ok {
-		return nil, fmt.Errorf("get node name %s failed", nodeName)
-	}
-
-	if IsNodeInFaultNodeList(node) {
-		return nil, fmt.Errorf("get fault task used node info %s in fault node list", nodeName)
-	}
-	return node, nil
-}
-
-// IsNodeInFaultNodeList Check whether the node is in the faulty node list, used for noded.
-func IsNodeInFaultNodeList(node *api.NodeInfo) bool {
-	nodeMap, ok := ReSchedulerCache[CmNodeKind]
-	if !ok {
+	if latestInterval > maxInterval {
+		klog.V(util.LogErrorLev).Infof(" %s Time over %d [%d-%d],not health.",
+			fNode.NodeName, maxInterval, nowTime, fNode.UpdateHeartbeatTime)
 		return false
 	}
-
-	faultNodes, nodeErr := nodeMap.(map[string]FaultNodeState)
-	if !nodeErr {
-		return false
-	}
-
-	for _, value := range faultNodes {
-		if value.NodeName == node.Name {
-			return true
-		}
-	}
-	return false
+	return true
 }
 
-func isNodeInFaultJobUseList(node *api.NodeInfo) bool {
-	faultJobMap, ok := ReSchedulerCache[CmJobKind]
-	if !ok {
-		return false
+func (fNode *FaultNode) getFaultCardIds(cardName string) ([]int, error) {
+	if fNode.UnhealthyNPU == nil && fNode.NetworkUnhealthyNPU == nil {
+		return nil, fmt.Errorf("no fault card on node")
 	}
-	faultJob, jobErr := faultJobMap.(map[api.JobID]ReSchedulerTasks)
-	if !jobErr {
-		return false
-	}
-
-	for _, value := range faultJob {
-		for _, nodeName := range value.NodeNames {
-			if nodeName == node.Name {
-				return true
-			}
-		}
-	}
-
-	return false
+	allFaultCards := append(fNode.UnhealthyNPU, fNode.NetworkUnhealthyNPU...)
+	faultCardIds := util.ChangeTopToIntArray(strings.Join(allFaultCards, ","), cardName)
+	return faultCardIds, nil
 }
 
-// GetNetworkUnhealthyCards Get the network Unhealthy npu Cards in a node.
-func GetNetworkUnhealthyCards(nodeName string) []int {
-	tmpData, ok := ReSchedulerCache[CmCardKind]
-	if !ok {
-		klog.V(util.LogErrorLev).Infof("GetNetworkUnhealthyCards %s not in cache.", nodeName)
-		return nil
-	}
-	faultNPUMap, cardErr := tmpData.(map[string]FaultNPUsOnNode)
-	if !cardErr {
-		klog.V(util.LogErrorLev).Infof("GetNetworkUnhealthyCards %v convert to FaultNPUsOnNode map failed.", tmpData)
-		return nil
-	}
-	faultNPUs, getErr := faultNPUMap[nodeName]
-	if !getErr {
-		klog.V(util.LogErrorLev).Infof("GetNetworkUnhealthyCards FaultNPUsOnNode no %s.", nodeName)
-		return nil
-	}
-
-	var topInt []int
-	for _, cardStr := range faultNPUs.NetworkUnhealthyNPUs {
-		v := strings.TrimPrefix(cardStr, npu800And9000CardPreName)
-		klog.V(util.LogErrorLev).Infof("GetNetworkUnhealthyCards after TrimPrefix %s.", v)
-		cardInt, err := strconv.Atoi(v)
-		if err != nil {
-			klog.V(util.LogErrorLev).Infof("GetNetworkUnhealthyCards conv failed %v.", err)
-			return nil
-		}
-
-		topInt = append(topInt, cardInt)
-	}
-
-	return topInt
+// isNodeInSessionByNpuNodes judge if node is sent in session
+func (fNode *FaultNode) isNodeInSessionByNpuNodes(nodes map[string]plugin.NPUNode) bool {
+	_, ok := nodes[fNode.NodeName]
+	return ok
 }
 
-// GetDistributeUsableNPUTop Slice forehead difference set.
-func GetDistributeUsableNPUTop(nodeNPUTopology, netUnhealthyCards []int) []int {
-	var usableCards []int
-	temp := map[int]struct{}{}
+func (fNode *FaultNode) setNodeDValue(value bool) {
+	fNode.NodeDEnable = value
+}
 
-	for _, val := range netUnhealthyCards {
-		temp[val] = struct{}{}
+func (fNode *FaultNode) setIsFaultNodeValue(value bool) {
+	fNode.IsFaultNode = value
+}
+
+func (fNode *FaultNode) setNodeHealthStateValue(nodeHealthState string) {
+	fNode.NodeHealthState = nodeHealthState
+}
+
+func (fNode *FaultNode) setAllCardList(value []string) {
+	fNode.AllCards = value
+}
+
+func (fNode *FaultNode) setUnhealthyNPUList(value []string) {
+	fNode.UnhealthyNPU = value
+}
+
+func (fNode *FaultNode) setNetworkUnhealthyNPUList(value []string) {
+	fNode.NetworkUnhealthyNPU = value
+}
+
+func (fNode *FaultNode) setUpdateTime(value int64) {
+	fNode.UpdateTime = value
+}
+
+func (fNode *FaultNode) setFaultCards(value []FaultCard) {
+	fNode.FaultCards = value
+}
+
+func (fNode *FaultNode) setOldNodeHeartbeatTime(value int64) {
+	fNode.OldHeartbeatTime = value
+}
+
+func (fNode *FaultNode) setNewNodeHeartbeatTime(value int64) {
+	fNode.NewHeartbeatTime = value
+}
+
+func (fCard *FaultCard) setFaultType(value string) {
+	fCard.FaultType = value
+}
+
+func (fCard *FaultCard) setIsFaultCard(value bool) {
+	fCard.IsFaultCard = value
+}
+
+func (fNode *FaultNode) setNodeHeartbeatInterval(value int) {
+	fNode.HeartbeatInterval = value
+}
+
+func newFaultNodeDefault(nodeName string, updateTime int64) FaultNode {
+	faultNode := FaultNode{
+		NodeName:            nodeName,
+		UpdateTime:          updateTime,
+		UnhealthyNPU:        nil,
+		NetworkUnhealthyNPU: nil,
+		IsFaultNode:         false,
+		NodeDEnable:         false,
+		NodeHealthState:     NodeHealthy,
+		AllCards:            nil,
+		FaultCards:          nil,
+		HeartbeatInterval:   0,
+		OldHeartbeatTime:    0,
+		UpdateHeartbeatTime: 0,
 	}
-
-	for _, nodeCard := range nodeNPUTopology {
-		if _, ok := temp[nodeCard]; ok {
-			continue
-		}
-		usableCards = append(usableCards, nodeCard)
-	}
-
-	return usableCards
+	return faultNode
 }

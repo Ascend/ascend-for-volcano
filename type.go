@@ -15,17 +15,12 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 )
 
-// PluginName use in frame
+// PluginName use in frame build.
 var PluginName = "volcano-npu-v3.0.0"
 
-const (
-	logErrorLev = 1
-	logInfoLev  = 3
-	logDebugLev = 4
-)
-
 type huaweiNPUPlugin struct {
-	*plugin.ScheduleHandler
+	// Scheduler for plugin args and its handler.
+	Scheduler *plugin.ScheduleHandler
 	// Arguments given for the plugin
-	pluginArguments framework.Arguments
+	Arguments framework.Arguments
 }

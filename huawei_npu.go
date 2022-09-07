@@ -10,24 +10,23 @@ Package main is using for HuaWei Ascend pin affinity schedule.
 package main
 
 import (
-	"errors"
-
 	"k8s.io/klog"
 	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
-	npuapi "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/api"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/card310x4"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/card910x2"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/chip310p"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/chip310x4"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/module910x8"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu/comvnpu"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend310"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend310p"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
 var sHandler *plugin.ScheduleHandler
+
+func init() {
+	sHandler = HandlerStart()
+}
 
 // Name This need by volcano frame init plugin.
 func (tp *huaweiNPUPlugin) Name() string {
@@ -36,59 +35,35 @@ func (tp *huaweiNPUPlugin) Name() string {
 
 // New return npu plugin.
 func New(arguments framework.Arguments) framework.Plugin {
-	return &huaweiNPUPlugin{pluginArguments: arguments}
+	return &huaweiNPUPlugin{Scheduler: sHandler, Arguments: arguments}
 }
 
-func init() {
-	sHandler = HandlerStart()
-}
-
-// checkSession check the ssn's parameters
-func checkSession(ssn *framework.Session) error {
-	if ssn == nil {
-		klog.V(logErrorLev).Infof("%s OnSessionOpen got a null session hence doing nothing.", PluginName)
-		return errors.New("nil ssn")
-	}
-	return nil
-}
-
-// OnSessionOpen HuaWei NPU Plugin's init session for frame.
+// OnSessionOpen HuaWei NPU Action's init session for frame.
 func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
-	klog.V(logInfoLev).Infof("enter %s OnSessionOpen.", PluginName)
-	defer klog.V(logInfoLev).Infof("leave %s OnSessionOpen.", PluginName)
-
-	if err := checkSession(ssn); err != nil {
-		klog.V(logErrorLev).Infof("%s checkSession : %#v.", PluginName, err)
+	klog.V(util.LogInfoLev).Infof("enter %s OnSessionOpen %#v.", PluginName, tp.Scheduler.NPUPlugins)
+	defer klog.V(util.LogInfoLev).Infof("leave %s OnSessionOpen.", PluginName)
+	if tp == nil || ssn == nil {
+		klog.V(util.LogInfoLev).Infof("OnSessionOpen failed: %s.", util.ArgumentError)
 		return
 	}
-
 	// Init npu plugin and nodes.
-	sHandler.InitNPUSession(ssn)
+	if err := tp.Scheduler.InitNPUSession(ssn); err != nil {
+		return
+	}
 	// check job npu resource, if illegal return failed
 	ssn.AddJobValidFn(tp.Name(), func(obj interface{}) *api.ValidateResult {
-		result := sHandler.ValidJobFn(obj, ssn.Configurations)
-		if result != nil {
-			if setErr := plugin.SetJobPendingReason(ssn, obj, result.Message); setErr != nil {
-				klog.V(logErrorLev).Infof("%s setJobFailed err: %v.", PluginName, setErr)
-			}
-		}
-		return result
+		return tp.Scheduler.JobValid(obj)
 	})
 	// if npu no meet the task require,the task will failed.so need to intercept in advance
 	ssn.AddPredicateFn(tp.Name(), func(taskInfo *api.TaskInfo, nodeInfo *api.NodeInfo) error {
-		if err := sHandler.ClusterNodePredicate(taskInfo, ssn); err != nil {
-			klog.V(logDebugLev).Infof("%s clusterNodePredicate : %v.", PluginName, err)
-			return err
-		}
-
-		return sHandler.NodePredicate(taskInfo, nodeInfo, ssn)
+		return tp.Scheduler.NodePredicate(taskInfo, nodeInfo)
 	})
-	// The job who has below or equal 8 NPU,only has one pod. If over, every pod has 8s NPU.
+
 	ssn.AddBatchNodeOrderFn(tp.Name(), func(task *api.TaskInfo, nodes []*api.NodeInfo) (map[string]float64, error) {
-		score, err := sHandler.BatchNodeOrderFn(task, nodes, plugin.IsDistributeTask(task, ssn))
+		score, err := tp.Scheduler.BatchNodeOrderFn(task, nodes)
 		if err != nil {
-			if setErr := plugin.SetJobPendingReason(ssn, ssn.Jobs[task.Job], err.Error()); setErr != nil {
-				klog.V(logErrorLev).Infof("%s setJobFailed err:%v.", PluginName, setErr)
+			if setErr := tp.Scheduler.SetJobPendingReason(ssn.Jobs[task.Job], err.Error()); setErr != nil {
+				klog.V(util.LogErrorLev).Infof("%s setJobFailed err:%#v.", PluginName, setErr)
 			}
 		}
 		return score, nil
@@ -97,16 +72,30 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 	// for support Concurrency
 	ssn.AddEventHandler(&framework.EventHandler{
 		AllocateFunc: func(event *framework.Event) {
-			sHandler.NPUAllocateFunc(event, ssn)
+			if event == nil {
+				klog.V(util.LogErrorLev).Infof("AllocateFunc event nil.")
+				return
+			}
+			tp.Scheduler.NPUAllocateFunc(event.Task)
 		},
 		DeallocateFunc: func(event *framework.Event) {
-			sHandler.NPUDeallocateFunc(event, ssn.Nodes)
+			if event == nil {
+				klog.V(util.LogErrorLev).Infof("DeallocateFunc event nil.")
+				return
+			}
+			tp.Scheduler.NPUDeallocateFunc(event.Task)
 		},
 	})
 }
 
 // OnSessionClose Close session by volcano frame.
 func (tp *huaweiNPUPlugin) OnSessionClose(ssn *framework.Session) {
+	klog.V(util.LogInfoLev).Infof("enter %s OnSessionClose.", PluginName)
+	defer klog.V(util.LogInfoLev).Infof("leave %s OnSessionClose.", PluginName)
+	if tp == nil || ssn == nil {
+		klog.V(util.LogInfoLev).Infof("OnSessionClose failed: %s.", util.ArgumentError)
+		return
+	}
 	// 1、Record job's unscheduled reason;
 	// 2、Update job statue;
 	// 3、Handle other post-dispatch issues.
@@ -115,34 +104,27 @@ func (tp *huaweiNPUPlugin) OnSessionClose(ssn *framework.Session) {
 		if job.PodGroup.Status.Phase == scheduling.PodGroupInqueue ||
 			job.PodGroup.Status.Phase == scheduling.PodGroupPending {
 			// if all nodes not meet job require failed
-			plugin.SetJobPendReasonByNodesCase(ssn, ssn.Nodes, job)
+			tp.Scheduler.SetJobPendReasonByNodesCase(job)
 		}
 	}
-
-	sHandler.BeforeCloseHandler(ssn)
+	tp.Scheduler.BeforeCloseHandler()
 }
 
 // HandlerStart HuaWei NPU plugin start by frame.
 func HandlerStart() *plugin.ScheduleHandler {
 	scheduleHandler := &plugin.ScheduleHandler{
-		HuaweiNPUs:       map[string]plugin.HwNPUSchedulerPlugin{},
-		PreHandleVNPUFns: map[string]npuapi.PreHandleVNPUFn{},
-		VJobRunHandleFns: map[string]npuapi.VNPUJobRunningHandleFn{},
-		// for object funcs
-		InitNodesNPUAllocTopologyFns: map[string]npuapi.InitNodesNPUTopologyFn{},
-		// Handle NPU fault chip functions.
-		PreHandleFaultNPUFns: map[string]npuapi.PreHandleFaultNPUFn{},
-		// Nodes pre-select cluster processing
-		ClusterNodePredicateFns: map[string]npuapi.ClusterNodePredicateFn{},
+		NPUPlugins: map[string]plugin.ISchedulerPlugin{},
+		ScheduleEnv: plugin.ScheduleEnv{
+			Jobs:      map[api.JobID]plugin.SchedulerJob{},
+			Nodes:     map[string]plugin.NPUNode{},
+			FrameAttr: plugin.VolcanoFrame{},
+		},
 	}
 
 	// Register new npu scheduler strategy.
-	scheduleHandler.RegisterNPUScheduler(card910x2.PluginName, card910x2.New)
-	scheduleHandler.RegisterNPUScheduler(module910x8.PluginName, module910x8.New)
-	scheduleHandler.RegisterNPUScheduler(card310x4.PluginName, card310x4.New)
-	scheduleHandler.RegisterNPUScheduler(chip310x4.PluginName, chip310x4.New)
-	scheduleHandler.RegisterNPUScheduler(chip310p.PluginName, chip310p.New)
-	scheduleHandler.RegisterNPUScheduler(comvnpu.PluginName, comvnpu.New)
-
+	scheduleHandler.RegisterNPUScheduler(ascend310.PluginName, ascend310.New)
+	scheduleHandler.RegisterNPUScheduler(ascend310p.PluginName, ascend310p.New)
+	scheduleHandler.RegisterNPUScheduler(ascend910.PluginName, ascend910.New)
+	klog.V(util.LogInfoLev).Infof("HandlerStart %#v.", scheduleHandler.NPUPlugins)
 	return scheduleHandler
 }

@@ -76,16 +76,14 @@ func FakeNormalSSN() *framework.Session {
 		schedulerCache.AddPod(task.Pod)
 	}
 	AddTestJobPodGroup(jobInf)
-
 	snapshot := schedulerCache.Snapshot()
 	ssn := &framework.Session{
 		UID:            uuid.NewUUID(),
-		Jobs:           snapshot.Jobs,
+		Jobs:           map[api.JobID]*api.JobInfo{jobInf.UID: jobInf},
 		Nodes:          snapshot.Nodes,
 		RevocableNodes: snapshot.RevocableNodes,
 		Queues:         snapshot.Queues,
 		NamespaceInfo:  snapshot.NamespaceInfo,
 	}
-
 	return ssn
 }
