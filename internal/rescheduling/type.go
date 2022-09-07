@@ -61,7 +61,7 @@ const (
 	CmFaultJob310PKind = "fault-job-310P"
 	// CmNodeHeartbeatKind judging node fault needs heartbeat info from former session, so should be recorded
 	CmNodeHeartbeatKind = "node-heartbeat"
-	// CmNodeRankTimeMapKind record map[jobUID]{nodeName, nodeRankIndex, Occurrence}
+	// CmNodeRankTimeMapKind record map jobUID rankIndex node and times of occurrence
 	CmNodeRankTimeMapKind = "node-rankIndex-Occurrence"
 
 	nodeUpdateTime       = 5
