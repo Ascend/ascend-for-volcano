@@ -19,7 +19,7 @@ const (
 	// PluginName the module910's plugin name.
 	PluginName = util.NPU310CardName
 	// Accelerator310Key accelerator key of 310
-	Accelerator310Key       = "npu-310-strategy"
+	Accelerator310Key = "npu-310-strategy"
 	// Card310AcceleratorValue card value
 	Card310AcceleratorValue = "card"
 	// Chip310AcceleratorValue chip value

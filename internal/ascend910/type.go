@@ -29,9 +29,9 @@ const (
 	// PluginName name of plugin
 	PluginName = util.NPU910CardName
 	// Accelerator910Key 910 accelerator key
-	Accelerator910Key         = "accelerator-type"
+	Accelerator910Key = "accelerator-type"
 	// Module910AcceleratorValue module value
 	Module910AcceleratorValue = "module"
 	// Card910AcceleratorValue card value
-	Card910AcceleratorValue   = "card"
+	Card910AcceleratorValue = "card"
 )
