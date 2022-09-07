@@ -102,7 +102,6 @@ func (n *NPUNode) InitNPUNodeByNodeInf(npuNode *api.NodeInfo, kubeClient kuberne
 	for k, v := range data.DeviceList {
 		n.Annotation[k] = v
 	}
-	//n.Cards = parseNPUCardFromNodeDeviceInfo(Data)
 	return nil
 }
 

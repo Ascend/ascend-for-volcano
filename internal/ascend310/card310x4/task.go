@@ -1,3 +1,12 @@
+/*
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+*/
+
+/*
+
+Package card310x4 is using for HuaWei A300T Ascend pin affinity schedule.
+
+*/
 package card310x4
 
 import (

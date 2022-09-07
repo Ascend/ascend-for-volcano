@@ -731,7 +731,7 @@ func (reScheduler *ReScheduler) RestartFaultJobs(ssn *framework.Session) error {
 		}
 	}
 	if err != nil {
-		return fmt.Errorf("RestartFaultJobs: %#v", err)
+		return fmt.Errorf("restartFaultJobs: %#v", err)
 	}
 	klog.V(util.LogDebugLev).Infof("Jobs to be restarted: %#v", restartFaultJobs)
 	// 2. Restart fault jobs

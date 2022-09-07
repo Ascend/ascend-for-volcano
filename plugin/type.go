@@ -11,11 +11,12 @@ Package plugin is using for HuaWei Ascend pin affinity schedule.
 package plugin
 
 import (
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
+
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
@@ -28,6 +29,7 @@ const (
 	objectNilError         = "object or argument is nil"
 )
 
+// SchedulerJob the plugin define job info
 type SchedulerJob struct {
 	util.SchedulerJobAttr
 	handler ISchedulerPlugin
@@ -50,6 +52,7 @@ type VolcanoFrame struct {
 	KubeClient kubernetes.Interface
 }
 
+// ScheduleCache the plugin defined caches saving cm data
 type ScheduleCache struct {
 	// special name, value
 	Names, Namespaces map[string]string

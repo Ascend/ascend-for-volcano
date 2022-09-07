@@ -16,7 +16,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend310"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend310P"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend310p"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
@@ -123,7 +123,7 @@ func HandlerStart() *plugin.ScheduleHandler {
 
 	// Register new npu scheduler strategy.
 	scheduleHandler.RegisterNPUScheduler(ascend310.PluginName, ascend310.New)
-	scheduleHandler.RegisterNPUScheduler(ascend310P.PluginName, ascend310P.New)
+	scheduleHandler.RegisterNPUScheduler(ascend310p.PluginName, ascend310p.New)
 	scheduleHandler.RegisterNPUScheduler(ascend910.PluginName, ascend910.New)
 	klog.V(util.LogInfoLev).Infof("HandlerStart %#v.", scheduleHandler.NPUPlugins)
 	return scheduleHandler

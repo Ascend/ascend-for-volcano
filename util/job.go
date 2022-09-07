@@ -77,7 +77,8 @@ func (asJob *SchedulerJobAttr) CheckJobExistsInKubernetes(kubeClient kubernetes.
 			}
 		}
 	}
-	klog.V(LogInfoLev).Infof("%v CheckJobExistsInKubernetes, all pods not exist in kubernetes, job can be deleted", asJob.JobName)
+	klog.V(LogInfoLev).Infof("%v CheckJobExistsInKubernetes, all pods not exist in kubernetes, "+
+		"job can be deleted", asJob.JobName)
 	return false
 }
 

@@ -472,7 +472,7 @@ func buildSetJobPendingReasonTest() []setJobPendingReasonTest {
 	return tests
 }
 
-func TestScheduleHandler_SetJobPendingReason(t *testing.T) {
+func TestScheduleHandlerSetJobPendingReason(t *testing.T) {
 	tests := buildSetJobPendingReasonTest()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -551,7 +551,7 @@ func buildCheckNodeNumTest() []CheckNodeNumTest {
 	return tests
 }
 
-func TestSchedulerJob_CheckNodeNum(t *testing.T) {
+func TestSchedulerJobCheckNodeNum(t *testing.T) {
 	tests := buildCheckNodeNumTest()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -604,7 +604,7 @@ func buildInitTest() []initTest {
 	return tests
 }
 
-func TestSchedulerJob_Init(t *testing.T) {
+func TestSchedulerJobInit(t *testing.T) {
 	tests := buildInitTest()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

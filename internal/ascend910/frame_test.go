@@ -7,7 +7,6 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 Package ascend910 is using for HuaWei Ascend pin affinity schedule.
 
 */
-
 package ascend910
 
 import (
@@ -100,7 +99,7 @@ func buildCheckNodeNPUByTaskTestCases() []itest.CheckNodeNPUByTaskTestCase {
 		},
 		{
 			Name: "02-CheckNodeNPUByTask return err when node annotation is nil",
-			Task: test.FakeTaskWithResReq("pod1", util.NPU310PCardName, 2),
+			Task: test.FakeTaskWithResReq("pod1", util.NPU310PCardName, util.NPUIndex2),
 			Node: plugin.NPUNode{
 				Name:       "node1",
 				Annotation: nil,

@@ -4,11 +4,10 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 
 /*
 
-Package chip310p is using for HuaWei 310P Ascend pin affinity schedule.
+Package ascend310p is using for HuaWei 310P Ascend pin affinity schedule.
 
 */
-
-package ascend310P
+package ascend310p
 
 import (
 	"fmt"

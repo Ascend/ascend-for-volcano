@@ -7,7 +7,6 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 Package module910x8 is using for HuaWei A800/9000 Ascend910 pin affinity schedule.
 
 */
-
 package module910x8
 
 import (
@@ -181,7 +180,7 @@ func (tp *module910x8) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNod
 
 	if err = tp.judgeNodeAndTaskNPU(taskNPUNum, nodeTop); err != nil {
 		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
-		return fmt.Errorf("CheckNodeNPUByTask %s err: %s", util.NodeNotMeetTopologyWarning, err.Error())
+		return fmt.Errorf("checkNodeNPUByTask %s err: %s", util.NodeNotMeetTopologyWarning, err.Error())
 	}
 
 	if tp.reHandle != nil {

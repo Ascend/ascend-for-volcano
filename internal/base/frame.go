@@ -7,7 +7,6 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 Package base is using for HuaWei Ascend pin affinity schedule.
 
 */
-
 package base
 
 import (
@@ -133,7 +132,7 @@ func (tp *NPUHandler) PreStartAction(ssn *framework.Session) error {
 	return nil
 }
 
-//PreStopAction do something after schedule
+// PreStopAction do something after schedule
 func (tp *NPUHandler) PreStopAction(env *plugin.ScheduleEnv) error {
 	if tp == nil || env == nil {
 		err := errors.New(util.ArgumentError)
@@ -190,11 +189,11 @@ func (tp *NPUHandler) JudgeNodeAndTaskNPU(taskNPU int, nodeNPUTopology []int) er
 		return errors.New(util.ArgumentError)
 	}
 	if taskNPU < 1 || taskNPU > tp.MaxNodeNPUNum {
-		return fmt.Errorf("JudgeNodeAndTaskNPU task req num<%d> is invalid", taskNPU)
+		return fmt.Errorf("judgeNodeAndTaskNPU task req num<%d> is invalid", taskNPU)
 	}
 
 	if len(nodeNPUTopology) < taskNPU {
-		return fmt.Errorf("JudgeNodeAndTaskNPU node don't have enough resource, req<%d>, idle<%d>",
+		return fmt.Errorf("judgeNodeAndTaskNPU node don't have enough resource, req<%d>, idle<%d>",
 			taskNPU, len(nodeNPUTopology))
 	}
 

@@ -7,7 +7,6 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 Package ascend910 is using for HuaWei Ascend pin affinity schedule.
 
 */
-
 package ascend910
 
 import (
@@ -27,6 +26,7 @@ type ascend910 struct {
 }
 
 const (
+	// PluginName name of plugin
 	PluginName = util.NPU910CardName
 
 	Accelerator910Key         = "accelerator-type"

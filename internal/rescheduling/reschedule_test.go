@@ -349,7 +349,7 @@ func buildFaultReSchedulerGetGraceDeleteTestCases() []FaultReSchedulerGetGraceDe
 	return testCases
 }
 
-func TestFaultReScheduler_GetGraceDeleteTime(t *testing.T) {
+func TestFaultReSchedulerGetGraceDeleteTime(t *testing.T) {
 	tests := buildFaultReSchedulerGetGraceDeleteTestCases()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -419,7 +419,7 @@ func fakeCacheNoneFJobReSchedulerAddFaultJobWithSession() *DealReSchedulerCache 
 func fakeFaultTask2P(ns string, name string, node string, job string, index string) FaultTask {
 	fTask := FaultTask{
 		IsFaultTask:   true,
-		TaskUID:       api.TaskID("\"" + ns + "\"" + "\"" + name + "\""),
+		TaskUID:       api.TaskID(`"` + ns + `"` + `"` + name + `"`),
 		TaskName:      name,
 		TaskNamespace: ns,
 		NodeName:      node,
@@ -427,7 +427,7 @@ func fakeFaultTask2P(ns string, name string, node string, job string, index stri
 		NodeRankIndex: index,
 		UseCardName:   []string{"Ascend910-0", "Ascend910-1"},
 		PodCreateTime: 123455,
-		PodUID:        types.UID("\"" + ns + "\"" + "\"" + name + "\""),
+		PodUID:        types.UID(`"` + ns + `"` + `"` + name + `"`),
 	}
 	return fTask
 }
@@ -486,16 +486,16 @@ func fakeCacheWithFJobReSchedulerAddFaultJobWithSession() *DealReSchedulerCache 
 func ReAddFaultJobWithSessionModifyJobInfo(jobInfos map[api.JobID]*api.JobInfo) map[api.JobID]*api.JobInfo {
 	jobInfos["vcjob/job0"].PodGroup.Labels = map[string]string{JobRescheduleLabelKey: "grace"}
 	jobInfos["vcjob/job1"].PodGroup.Labels = map[string]string{JobRescheduleLabelKey: "grace"}
-	jobInfos["vcjob/job0"].Tasks["\"vcjob\"-\"pod0\""].Pod.Annotations =
+	jobInfos["vcjob/job0"].Tasks[`"vcjob"-"pod1"`].Pod.Annotations =
 		map[string]string{podRankIndex: "0", util.NPU910CardName: "Ascend910-0,Ascend910-1"}
-	jobInfos["vcjob/job0"].Tasks["\"vcjob\"-\"pod1\""].Pod.Annotations =
+	jobInfos["vcjob/job0"].Tasks[`"vcjob"-"pod1"`].Pod.Annotations =
 		map[string]string{podRankIndex: "1", util.NPU910CardName: "Ascend910-0,Ascend910-1"}
-	jobInfos["vcjob/job1"].Tasks["\"vcjob\"-\"pod0\""].Pod.Annotations =
+	jobInfos["vcjob/job1"].Tasks[`"vcjob"-"pod1"`].Pod.Annotations =
 		map[string]string{podRankIndex: "2", util.NPU910CardName: "Ascend910-0,Ascend910-1"}
-	jobInfos["vcjob/job1"].Tasks["\"vcjob\"-\"pod1\""].Pod.Annotations =
+	jobInfos["vcjob/job1"].Tasks[`"vcjob"-"pod1"`].Pod.Annotations =
 		map[string]string{podRankIndex: "3", util.NPU910CardName: "Ascend910-0,Ascend910-1"}
-	jobInfos["vcjob/job1"].Tasks["\"vcjob\"-\"pod0\""].NodeName = "node3"
-	jobInfos["vcjob/job1"].Tasks["\"vcjob\"-\"pod1\""].NodeName = "node4"
+	jobInfos["vcjob/job1"].Tasks[`"vcjob"-"pod0"`].NodeName = "node3"
+	jobInfos["vcjob/job1"].Tasks[`"vcjob"-"pod1"`].NodeName = "node4"
 	return jobInfos
 }
 
@@ -556,16 +556,16 @@ func AddSchedulerJobToReScheduler(reScheduler *ReScheduler, sJob map[api.JobID]p
 
 func buildReSchedulerAddFaultJobWithSession() []ReSchedulerAddFaultJobWithSessionTests {
 	jobInfos1 := map[api.JobID]*api.JobInfo{
-		"vcjob/job0": test.FakeNormalTestJob("job0", 2),
-		"vcjob/job1": test.FakeNormalTestJob("job1", 2),
+		"vcjob/job0": test.FakeNormalTestJob("job0", util.NPUIndex2),
+		"vcjob/job1": test.FakeNormalTestJob("job1", util.NPUIndex2),
 	}
 	jobInfos1 = ReAddFaultJobWithSessionModifyJobInfo(jobInfos1)
 	jobs11 := ReCreateSchedulerJob910("vcjob", "job0")
-	jobs11 = AddNPUTaskToNPUJob(jobs11, "task0", "vcjob", 4)
-	jobs11 = AddNPUTaskToNPUJob(jobs11, "task1", "vcjob", 4)
+	jobs11 = AddNPUTaskToNPUJob(jobs11, "task0", "vcjob", util.NPUIndex4)
+	jobs11 = AddNPUTaskToNPUJob(jobs11, "task1", "vcjob", util.NPUIndex4)
 	jobs12 := ReCreateSchedulerJob910("vcjob", "job1")
-	jobs12 = AddNPUTaskToNPUJob(jobs12, "task3", "vcjob", 4)
-	jobs12 = AddNPUTaskToNPUJob(jobs12, "task4", "vcjob", 4)
+	jobs12 = AddNPUTaskToNPUJob(jobs12, "task3", "vcjob", util.NPUIndex4)
+	jobs12 = AddNPUTaskToNPUJob(jobs12, "task4", "vcjob", util.NPUIndex4)
 	jobs1 := map[api.JobID]plugin.SchedulerJob{
 		"vcjob/job0": jobs11,
 		"vcjob/job1": jobs12,
@@ -577,7 +577,7 @@ func buildReSchedulerAddFaultJobWithSession() []ReSchedulerAddFaultJobWithSessio
 	AddReCacheToReScheduler(reScheduler1, reCache1)
 
 	reCache2 := fakeCacheWithFJobReSchedulerAddFaultJobWithSession()
-	reScheduler2 := ReNewRescheduler(900)
+	reScheduler2 := ReNewRescheduler(defaultGraceOverTime)
 	AddSchedulerJobToReScheduler(reScheduler2, jobs1)
 	AddReCacheToReScheduler(reScheduler2, reCache2)
 	test1 := ReSchedulerAddFaultJobWithSessionTests{
@@ -607,13 +607,12 @@ func buildReSchedulerAddFaultJobWithSession() []ReSchedulerAddFaultJobWithSessio
 	return tests
 }
 
-func TestReScheduler_AddFaultJobWithSession(t *testing.T) {
+func TestReSchedulerAddFaultJobWithSession(t *testing.T) {
 	tests := buildReSchedulerAddFaultJobWithSession()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			reScheduler := tt.fields
-			if err := reScheduler.AddFaultJobWithSession(tt.args.jobs, tt.args.cardName, tt.args.cardPreName);
-			(err != nil) != tt.wantErr {
+			if err := reScheduler.AddFaultJobWithSession(tt.args.jobs, tt.args.cardName, tt.args.cardPreName); (err != nil) != tt.wantErr {
 				t.Errorf("AddFaultJobWithSession() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

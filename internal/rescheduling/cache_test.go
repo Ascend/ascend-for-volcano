@@ -22,6 +22,14 @@ func fakeInvalidReSchedulerCMData() *DealReSchedulerConfigmap {
 	}
 }
 
+func dealMarshal(data interface{}) string {
+	dataString, err := json.Marshal(data)
+	if err != nil {
+		return ""
+	}
+	return string(dataString)
+}
+
 func fakeNormalReSchedulerCMData() *DealReSchedulerConfigmap {
 	FaultNodes := []FaultNode{
 		*FakeTestFaultNodeNodeHealthy("node0"),
@@ -32,8 +40,8 @@ func fakeNormalReSchedulerCMData() *DealReSchedulerConfigmap {
 			nil, "job1", "test"),
 	}
 
-	fNodeBuffer, _ := json.Marshal(FaultNodes)
-	fJobBuffer, _ := json.Marshal(FaultJobs)
+	fNodeBuffer := dealMarshal(FaultNodes)
+	fJobBuffer := dealMarshal(FaultJobs)
 
 	return &DealReSchedulerConfigmap{
 		CMName:      CmName,
@@ -74,7 +82,7 @@ func buildDealReSchedulerCacheSetFaultNodesFromCMTests() []DealReSchedulerCacheS
 	return testCases
 }
 
-func TestDealReSchedulerCache_SetFaultNodesFromCM(t *testing.T) {
+func TestDealReSchedulerCacheSetFaultNodesFromCM(t *testing.T) {
 	tests := buildDealReSchedulerCacheSetFaultNodesFromCMTests()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

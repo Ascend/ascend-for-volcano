@@ -55,7 +55,7 @@ func buildFaultGetNodeHeartbeatFromDeviceInfoTests() []FaultNodeGetNodeHeartbeat
 	return tests
 }
 
-func TestFaultNode_GetNodeHeartbeatFromDeviceInfo(t *testing.T) {
+func TestFaultNodeGetNodeHeartbeatFromDeviceInfo(t *testing.T) {
 	tests := buildFaultGetNodeHeartbeatFromDeviceInfoTests()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -84,7 +84,7 @@ type FaultNodeGetNodeHeartbeatIntervalFromDeviceInfoTests struct {
 	wantErr bool
 }
 
-func buildFaultNodeGetNodeHeartbeatIntervalFromDeviceInfoTests() []FaultNodeGetNodeHeartbeatIntervalFromDeviceInfoTests {
+func buildFaultNodeGetNodeHeartbeatIntFromDeviceInfoTests() []FaultNodeGetNodeHeartbeatIntervalFromDeviceInfoTests {
 	test1 := FaultNodeGetNodeHeartbeatIntervalFromDeviceInfoTests{
 		name:   "01-FaultNodeGetNodeHeartbeatIntervalFromDeviceInfoTests() nil device info",
 		fields: FakeTestFaultNodeNodeHealthy("node0"),
@@ -110,8 +110,8 @@ func buildFaultNodeGetNodeHeartbeatIntervalFromDeviceInfoTests() []FaultNodeGetN
 	return tests
 }
 
-func TestFaultNode_GetNodeHeartbeatIntervalFromDeviceInfo(t *testing.T) {
-	tests := buildFaultNodeGetNodeHeartbeatIntervalFromDeviceInfoTests()
+func TestFaultNodeGetNodeHeartbeatIntervalFromDeviceInfo(t *testing.T) {
+	tests := buildFaultNodeGetNodeHeartbeatIntFromDeviceInfoTests()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fNode := tt.fields

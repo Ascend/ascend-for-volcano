@@ -18,6 +18,7 @@ import (
 )
 
 const (
+	// RePropertyName name specifying re-scheduler cm
 	RePropertyName = "re-scheduling"
 	// CmName Name of ReSchedulerConfigmap
 	CmName = "vcjob-fault-npu-cm"
@@ -37,8 +38,6 @@ const (
 
 	nodeHeartbeat         = "noded/heartbeat"
 	nodeHeartbeatInterval = "noded/heartbeat-interval"
-	faultNPU              = "huawei.com/Ascend910-Unhealthy"
-	networkUnhealthyNPU   = "huawei.com/Ascend910-NetworkUnhealthy"
 
 	nodeDEnableKey      = "nodeDEnable"
 	nodeDEnableOnValue  = "on"
@@ -110,6 +109,7 @@ type ReScheduler struct {
 	kubeClient      kubernetes.Interface
 }
 
+// DealReSchedulerCache object with method for re-scheduler cache
 type DealReSchedulerCache struct {
 	*DealReSchedulerConfigmap
 	FaultNodes                 []FaultNode
@@ -118,18 +118,21 @@ type DealReSchedulerCache struct {
 	AllocNodeRankOccurrenceMap map[api.JobID][]AllocNodeRankOccurrence
 }
 
+// DealReSchedulerConfigmap object with method for re-scheduler configmap
 type DealReSchedulerConfigmap struct {
 	CMName      string
 	CMNameSpace string
 	CMData      map[string]string
 }
 
+// AllocNodeRankOccurrence object recording node rankIndex and whether index re-allocated to new node
 type AllocNodeRankOccurrence struct {
 	NodeName   string
 	RankIndex  string
 	Occurrence int
 }
 
+// FaultCard card object for re-scheduling
 type FaultCard struct {
 	IsFaultCard bool
 	NPUName     string
@@ -137,6 +140,7 @@ type FaultCard struct {
 	FaultType   string
 }
 
+// FaultNode node object for re-scheduling
 type FaultNode struct {
 	NodeName            string
 	UpdateTime          int64
@@ -153,6 +157,7 @@ type FaultNode struct {
 	UpdateHeartbeatTime int64
 }
 
+// FaultTask object dealing with node for rescheduling
 type FaultTask struct {
 	IsFaultTask   bool
 	TaskUID       api.TaskID
@@ -167,6 +172,7 @@ type FaultTask struct {
 	faultType     string
 }
 
+// FaultJob job object for re-scheduling
 type FaultJob struct {
 	ReScheduleKey       string // values taken off/grace/force
 	IsFaultJob          bool
@@ -183,13 +189,11 @@ type FaultJob struct {
 	DeleteExecutedFlag  bool
 }
 
+// NodeHeartbeat object recording nodes and their heartbeats
 type NodeHeartbeat struct {
 	NodeName      string
 	HeartbeatTime int64
 	UpdateTime    int64
-}
-
-type NodeIndexTaskMap struct {
 }
 
 // FaultRankIdsJobCMData used by RestoreManager for every job.

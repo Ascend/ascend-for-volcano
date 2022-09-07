@@ -118,10 +118,12 @@ func buildOnSessionOpenTestCases() []onSessionOpenTest {
 						return
 					})
 			}, cacheFunAfter: func() {
-				tmpPatche.Reset()
-				tmpPatche2.Reset()
-				tmpPatche3.Reset()
-				tmpPatche4.Reset()
+				if tmpPatche != nil && tmpPatche2 != nil && tmpPatche3 != nil && tmpPatche4 != nil {
+					tmpPatche.Reset()
+					tmpPatche2.Reset()
+					tmpPatche3.Reset()
+					tmpPatche4.Reset()
+				}
 			}},
 		},
 	}

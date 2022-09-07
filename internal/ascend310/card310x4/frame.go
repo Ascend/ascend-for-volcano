@@ -7,7 +7,6 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 Package card310x4 is using for HuaWei A300T Ascend pin affinity schedule.
 
 */
-
 package card310x4
 
 import (
@@ -92,7 +91,7 @@ func (tp *card310x4) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode)
 
 	if err = tp.JudgeNodeAndTaskNPU(taskNPUNum, nodeTop); err != nil {
 		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
-		return fmt.Errorf("CheckNodeNPUByTask %s : %v", util.NodeNotMeetTopologyWarning, err)
+		return fmt.Errorf("checkNodeNPUByTask %s : %v", util.NodeNotMeetTopologyWarning, err)
 	}
 
 	return nil
@@ -111,7 +110,6 @@ func (tp *card310x4) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo
 		return err
 	}
 
-	//var priorityMap = make(map[string]int, len(nodes))
 	for _, node := range nodes {
 		if reflect.ValueOf(node).IsNil() {
 			klog.V(util.LogWarningLev).Infof("%s ScoreBestNPUNodes get node nil.", tp.GetPluginName())

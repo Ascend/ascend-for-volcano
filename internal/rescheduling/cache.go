@@ -43,7 +43,7 @@ func (reCache DealReSchedulerCache) getFaultNodesFromCM(buffer string) ([]FaultN
 	var faultNodes []FaultNode
 	if unmarshalErr := json.Unmarshal([]byte(buffer), &faultNodes); unmarshalErr != nil {
 		klog.V(util.LogErrorLev).Infof("Unmarshal FaultNodes from cache failed")
-		return nil, fmt.Errorf("FaultNodes convert from CM error: %#v", unmarshalErr)
+		return nil, fmt.Errorf("faultNodes convert from CM error: %#v", unmarshalErr)
 	}
 	return faultNodes, nil
 }
@@ -52,7 +52,7 @@ func (reCache DealReSchedulerCache) getFaultJobsFromCM(buffer string) ([]FaultJo
 	var faultJobs []FaultJob
 	if unmarshalErr := json.Unmarshal([]byte(buffer), &faultJobs); unmarshalErr != nil {
 		klog.V(util.LogErrorLev).Infof("Unmarshal FaultNodes from cache failed")
-		return nil, fmt.Errorf("FaultNodes convert from CM failed")
+		return nil, fmt.Errorf("faultNodes convert from CM failed")
 	}
 	return faultJobs, nil
 }
@@ -61,7 +61,7 @@ func (reCache DealReSchedulerCache) getNodeHeartbeatFromCM(buffer string) ([]Nod
 	var nodeHBs []NodeHeartbeat
 	if unmarshalErr := json.Unmarshal([]byte(buffer), &nodeHBs); unmarshalErr != nil {
 		klog.V(util.LogErrorLev).Infof("Unmarshal NodeHeartbeat from cache failed")
-		return nil, fmt.Errorf("FaultNodes convert from CM error: %#v", unmarshalErr)
+		return nil, fmt.Errorf("faultNodes convert from CM error: %#v", unmarshalErr)
 	}
 	return nodeHBs, nil
 }
@@ -71,7 +71,7 @@ func (reCache DealReSchedulerCache) getNodeRankOccurrenceMapFromCM(
 	var nodeRankOccMap map[api.JobID][]AllocNodeRankOccurrence
 	if unmarshalErr := json.Unmarshal([]byte(buffer), &nodeRankOccMap); unmarshalErr != nil {
 		klog.V(util.LogErrorLev).Infof("Unmarshal AllocNodeRankOccurrence from cache failed")
-		return nil, fmt.Errorf("FaultNodes convert from CM error: %#v", unmarshalErr)
+		return nil, fmt.Errorf("faultNodes convert from CM error: %#v", unmarshalErr)
 	}
 	return nodeRankOccMap, nil
 }
@@ -199,7 +199,7 @@ func (reCache *DealReSchedulerCache) writeFaultNodesToCMString() (string, error)
 	realFaultNode := reCache.getRealFaultNodes()
 	nodeData, err := reCache.marshalCacheDataToString(realFaultNode)
 	if err != nil {
-		return "", fmt.Errorf("WriteFaultNodesToCM: %#v", err)
+		return "", fmt.Errorf("writeFaultNodesToCM: %#v", err)
 	}
 	return nodeData, nil
 }
@@ -207,12 +207,12 @@ func (reCache *DealReSchedulerCache) writeFaultNodesToCMString() (string, error)
 func (reCache *DealReSchedulerCache) writeFaultJobsToCMString() (string, error) {
 	realFaultJob, err := reCache.getRealFaultJobs()
 	if err != nil {
-		return "", fmt.Errorf("WriteFaultJobsToCM: %#v", err)
+		return "", fmt.Errorf("writeFaultJobsToCM: %#v", err)
 	}
 	jobData, err := reCache.marshalCacheDataToString(realFaultJob)
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("WriteFaultJobsToCM: %#v.", err)
-		return "", fmt.Errorf("WriteFaultJobsToCM: %#v", err)
+		return "", fmt.Errorf("writeFaultJobsToCM: %#v", err)
 	}
 	return jobData, nil
 }

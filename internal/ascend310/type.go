@@ -7,7 +7,6 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 Package ascend310 is using for HuaWei A800/9000 Ascend310 pin affinity schedule.
 
 */
-
 package ascend310
 
 import (
@@ -18,7 +17,8 @@ import (
 
 const (
 	// PluginName the module910's plugin name.
-	PluginName              = util.NPU310CardName
+	PluginName = util.NPU310CardName
+	// Accelerator310Key accelerator key of 310
 	Accelerator310Key       = "npu-310-strategy"
 	Card310AcceleratorValue = "card"
 	Chip310AcceleratorValue = "chip"

@@ -7,7 +7,6 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 Package ascend310 is using for HuaWei A800/9000 Ascend910 pin affinity schedule.
 
 */
-
 package ascend310
 
 import (
@@ -111,7 +110,7 @@ func buildCheckNodeNPUByTaskTestCases() []itest.CheckNodeNPUByTaskTestCase {
 		},
 		{
 			Name: "02-CheckNodeNPUByTask return err when node annotation is nil",
-			Task: test.FakeTaskWithResReq("pod1", util.NPU310CardName, 2),
+			Task: test.FakeTaskWithResReq("pod1", util.NPU310CardName, util.NPUIndex2),
 			Node: plugin.NPUNode{
 				Name:       "node1",
 				Annotation: nil,

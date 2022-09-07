@@ -7,7 +7,6 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 Package base is using for HuaWei Ascend pin affinity schedule.
 
 */
-
 package base
 
 import (
@@ -118,7 +117,7 @@ func buildCheckNodeNPUByTaskTestCases() []itest.CheckNodeNPUByTaskTestCase {
 	return []itest.CheckNodeNPUByTaskTestCase{
 		{
 			Name: "01-CheckNodeNPUByTask when return nil node npu meet task req",
-			Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, 2),
+			Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex2),
 			Node: plugin.NPUNode{
 				Name:       "node1",
 				Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0,Ascend310P-1"},
@@ -127,7 +126,7 @@ func buildCheckNodeNPUByTaskTestCases() []itest.CheckNodeNPUByTaskTestCase {
 		},
 		{
 			Name: "02-CheckNodeNPUByTask return err when task is not npu task",
-			Task: test.FakeTaskWithResReq("pod1", util.NPU310PCardName, 2),
+			Task: test.FakeTaskWithResReq("pod1", util.NPU310PCardName, util.NPUIndex2),
 			Node: plugin.NPUNode{
 				Name:       "node1",
 				Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0,Ascend310P-1"},
@@ -136,7 +135,7 @@ func buildCheckNodeNPUByTaskTestCases() []itest.CheckNodeNPUByTaskTestCase {
 		},
 		{
 			Name: "03-CheckNodeNPUByTask return err when node has no req npu",
-			Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, 2),
+			Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex2),
 			Node: plugin.NPUNode{
 				Name:       "node1",
 				Annotation: map[string]string{util.NPU910CardName: "Ascend310P-0,Ascend310P-1"},
@@ -145,7 +144,7 @@ func buildCheckNodeNPUByTaskTestCases() []itest.CheckNodeNPUByTaskTestCase {
 		},
 		{
 			Name: "04-CheckNodeNPUByTask return err when node has no req npu",
-			Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, 2),
+			Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex2),
 			Node: plugin.NPUNode{
 				Name:       "node1",
 				Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0, Ascend310P-1"},
@@ -155,12 +154,12 @@ func buildCheckNodeNPUByTaskTestCases() []itest.CheckNodeNPUByTaskTestCase {
 		},
 		{
 			Name: "05-CheckNodeNPUByTask return err when node has no enough npu",
-			Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, 2),
+			Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex2),
 			Node: plugin.NPUNode{
 				Name:       "node1",
 				Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0"},
 			},
-			WantErr: errors.New("JudgeNodeAndTaskNPU node don't have enough resource, req<2>, idle<1>"),
+			WantErr: errors.New("judgeNodeAndTaskNPU node don't have enough resource, req<2>, idle<1>"),
 		},
 	}
 }
@@ -204,14 +203,14 @@ func buildUseAnnotationTestCases01() []itest.UseAnnotationTestCase {
 	return []itest.UseAnnotationTestCase{
 		{
 			Name: "01-UseAnnotation success when node resource meet task req",
-			Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, 2),
+			Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex2),
 			Node: plugin.NPUNode{
 				Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0,Ascend310P-1"},
-				Allocate:   map[v1.ResourceName]float64{util.NPU310PCardName: 2 * util.NPUHexKilo},
+				Allocate:   map[v1.ResourceName]float64{util.NPU310PCardName: util.NPUIndex2 * util.NPUHexKilo},
 			},
 			PodAnno: "Ascend310P-0,Ascend310P-1",
 			WantNode: &plugin.NPUNode{
-				Allocate:   map[v1.ResourceName]float64{util.NPU310PCardName: 2 * util.NPUHexKilo},
+				Allocate:   map[v1.ResourceName]float64{util.NPU310PCardName: util.NPUIndex2 * util.NPUHexKilo},
 				Annotation: map[string]string{util.NPU310PCardName: ""},
 			},
 		},
@@ -242,7 +241,7 @@ func buildUseAnnotationTestCases02() []itest.UseAnnotationTestCase {
 	return []itest.UseAnnotationTestCase{
 		{
 			Name: "04-UseAnnotation return err when node annotation resource less than task req npu",
-			Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, 2),
+			Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex2),
 			Node: plugin.NPUNode{
 				Annotation: map[string]string{util.NPU310PCardName: ""},
 				Allocate:   map[v1.ResourceName]float64{util.NPU310PCardName: 0},
@@ -271,10 +270,9 @@ func TestUseAnnotation(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.Name, func(t *testing.T) {
 			node := npu.UseAnnotation(tt.Task, tt.Node)
-			if tt.Task != nil && tt.Node.Annotation != nil {
-				if !reflect.DeepEqual(tt.Task.Pod.Annotations[util.NPU310PCardName], tt.PodAnno) {
-					t.Errorf("UseAnnotation() anno %v, wantAnno %v", tt.Task.Pod.Annotations, tt.PodAnno)
-				}
+			if tt.Task != nil && tt.Node.Annotation != nil && !reflect.DeepEqual(
+				tt.Task.Pod.Annotations[util.NPU310PCardName], tt.PodAnno) {
+				t.Errorf("UseAnnotation() anno %v, wantAnno %v", tt.Task.Pod.Annotations, tt.PodAnno)
 			}
 			if !reflect.DeepEqual(node, tt.WantNode) {
 				t.Errorf("UseAnnotation() node: %v, wantNode: %v", node, tt.WantNode)
@@ -290,19 +288,19 @@ func buildJudgeNodeAndTaskNPUTestCases() []itest.JudgeNodeAndTaskNPUTestCase {
 			Name:    "01-JudgeNodeAndTaskNPU return err when task npu nun is 0",
 			TaskNPU: 0,
 			NodeTop: []int{0, 1},
-			WantErr: errors.New("JudgeNodeAndTaskNPU task req num<0> is invalid"),
+			WantErr: errors.New("judgeNodeAndTaskNPU task req num<0> is invalid"),
 		},
 		{
 			Name:    "02-JudgeNodeAndTaskNPU return err when task npu num is 65",
 			TaskNPU: npuNum65,
 			NodeTop: []int{0, 1},
-			WantErr: errors.New("JudgeNodeAndTaskNPU task req num<65> is invalid"),
+			WantErr: errors.New("judgeNodeAndTaskNPU task req num<65> is invalid"),
 		},
 		{
 			Name:    "03-JudgeNodeAndTaskNPU return err when node not meet task npu num",
 			TaskNPU: util.NPUIndex2,
 			NodeTop: []int{0},
-			WantErr: errors.New("JudgeNodeAndTaskNPU node don't have enough resource, req<2>, idle<1>"),
+			WantErr: errors.New("judgeNodeAndTaskNPU node don't have enough resource, req<2>, idle<1>"),
 		},
 	}
 }
@@ -348,5 +346,4 @@ func TestSetMaxNodeNPUNum(t *testing.T) {
 			}
 		})
 	}
-
 }

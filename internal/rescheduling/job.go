@@ -80,7 +80,7 @@ func (fJob *FaultJob) ForceDeleteJob(ssn *framework.Session, schedulerJob *plugi
 	klog.V(util.LogDebugLev).Infof("enter ForceDeleteJob")
 	if fJob == nil {
 		return fmt.Errorf(
-			"GetJobFaultRescheduleLabel fJob object does not exist")
+			"getJobFaultRescheduleLabel fJob object does not exist")
 	}
 	if ssn == nil {
 		return fmt.Errorf("session does not exist")
@@ -106,7 +106,7 @@ func (fJob *FaultJob) ForceDeleteJob(ssn *framework.Session, schedulerJob *plugi
 func (fJob *FaultJob) GraceDeleteJob(ssn *framework.Session, npuJob *plugin.SchedulerJob, reason string) error {
 	if fJob == nil {
 		return fmt.Errorf(
-			"GetJobFaultRescheduleLabel fJob object does not exist")
+			"getJobFaultRescheduleLabel fJob object does not exist")
 	}
 	if ssn == nil {
 		return fmt.Errorf("session does not exist")

@@ -7,7 +7,6 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 Package module910x8 is using for HuaWei Ascend pin affinity schedule.
 
 */
-
 package module910x8
 
 import (
@@ -81,15 +80,15 @@ func buildValidNPUJobTestCase01() []itest.ValidNPUJobTestCase {
 }
 
 func buildValidNPUJobTestCase02() []itest.ValidNPUJobTestCase {
-	job04 := test.FakeNormalTestJob("job04", 2)
+	job04 := test.FakeNormalTestJob("job04", util.NPUIndex2)
 	test.SetFakeJobResRequest(job04, util.NPU910CardName, "1")
 	attr4 := itest.FakeSchedulerJobAttrByJob(job04)
-	job05 := test.FakeNormalTestJob("job05", 2)
+	job05 := test.FakeNormalTestJob("job05", util.NPUIndex2)
 	test.SetFakeJobResRequest(job05, util.NPU910CardName, "8")
 	attr5 := itest.FakeSchedulerJobAttrByJob(job05)
 	task2 := util.NPUTask{ReqNPUNum: 1}
 	attr5.Tasks["vcjob-pod1"] = task2
-	job06 := test.FakeNormalTestJob("job06", 2)
+	job06 := test.FakeNormalTestJob("job06", util.NPUIndex2)
 	test.SetFakeJobResRequest(job06, util.NPU910CardName, "8")
 	attr6 := itest.FakeSchedulerJobAttrByJob(job06)
 	return []itest.ValidNPUJobTestCase{
@@ -139,7 +138,7 @@ func buildCheckNodeNPUByTaskTestCases01() []itest.CheckNodeNPUByTaskTestCase {
 	return []itest.CheckNodeNPUByTaskTestCase{
 		{
 			Name: "01-CheckNodeNPUByTask return nil when node npu meet task req",
-			Task: test.FakeTaskWithResReq("pod0", util.NPU910CardName, 4),
+			Task: test.FakeTaskWithResReq("pod0", util.NPU910CardName, util.NPUIndex4),
 			Node: plugin.NPUNode{
 				Name: "node1",
 				Annotation: map[string]string{
@@ -150,7 +149,7 @@ func buildCheckNodeNPUByTaskTestCases01() []itest.CheckNodeNPUByTaskTestCase {
 		},
 		{
 			Name: "02-CheckNodeNPUByTask return err when task is not npu task",
-			Task: test.FakeTaskWithResReq("pod1", util.NPU910CardName, 4),
+			Task: test.FakeTaskWithResReq("pod1", util.NPU910CardName, util.NPUIndex4),
 			Node: plugin.NPUNode{
 				Name:       "node1",
 				Annotation: map[string]string{util.NPU910CardName: "Ascend910-0,Ascend910-1,Ascend910-2,Ascend910-3"},
@@ -159,7 +158,7 @@ func buildCheckNodeNPUByTaskTestCases01() []itest.CheckNodeNPUByTaskTestCase {
 		},
 		{
 			Name: "03-CheckNodeNPUByTask return err when node has no req npu",
-			Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, 4),
+			Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex4),
 			Node: plugin.NPUNode{
 				Name:       "node1",
 				Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1,Ascend310-2"},
@@ -174,7 +173,7 @@ func buildCheckNodeNPUByTaskTestCases02() []itest.CheckNodeNPUByTaskTestCase {
 	return []itest.CheckNodeNPUByTaskTestCase{
 		{
 			Name: "04-CheckNodeNPUByTask return err when node has no req npu",
-			Task: test.FakeTaskWithResReq("pod0", util.NPU910CardName, 4),
+			Task: test.FakeTaskWithResReq("pod0", util.NPU910CardName, util.NPUIndex4),
 			Node: plugin.NPUNode{
 				Name:       "node1",
 				Annotation: map[string]string{util.NPU910CardName: "Ascend910-0, Ascend910-1"},
@@ -183,7 +182,7 @@ func buildCheckNodeNPUByTaskTestCases02() []itest.CheckNodeNPUByTaskTestCase {
 		},
 		{
 			Name: "05-CheckNodeNPUByTask return err when node has no req npu",
-			Task: test.FakeTaskWithResReq("pod0", util.NPU910CardName, 4),
+			Task: test.FakeTaskWithResReq("pod0", util.NPU910CardName, util.NPUIndex4),
 			Node: plugin.NPUNode{
 				Name: "node1",
 				Annotation: map[string]string{
@@ -195,7 +194,7 @@ func buildCheckNodeNPUByTaskTestCases02() []itest.CheckNodeNPUByTaskTestCase {
 		},
 		{
 			Name: "06-CheckNodeNPUByTask return err when node has no req npu",
-			Task: test.FakeTaskWithResReq("pod0", util.NPU910CardName, 4),
+			Task: test.FakeTaskWithResReq("pod0", util.NPU910CardName, util.NPUIndex4),
 			Node: plugin.NPUNode{
 				Name: "node1",
 				Annotation: map[string]string{
@@ -222,7 +221,7 @@ func buildCheckNodeNPUByTaskTestCases03() []itest.CheckNodeNPUByTaskTestCase {
 		},
 		{
 			Name: "02-CheckNodeNPUByTask return err when node annotation is nil",
-			Task: test.FakeTaskWithResReq("pod1", util.NPU310PCardName, 2),
+			Task: test.FakeTaskWithResReq("pod1", util.NPU310PCardName, util.NPUIndex2),
 			Node: plugin.NPUNode{
 				Name:       "node1",
 				Annotation: nil,

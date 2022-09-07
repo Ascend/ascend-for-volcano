@@ -45,7 +45,7 @@ type batchNodeOrderFnTest struct {
 
 func buildBatchNodeOrderFn() []batchNodeOrderFnTest {
 	tTask := test.FakeNormalTestTasks(1)[0]
-	tNodes := test.FakeNormalTestNodes(2)
+	tNodes := test.FakeNormalTestNodes(util.NPUIndex2)
 	tests := []batchNodeOrderFnTest{
 		{
 			name:    "01-BatchNodeOrderFn nil Test",
@@ -311,7 +311,7 @@ func buildPreStartPluginTest() []preStartPluginTest {
 	return tests
 }
 
-func TestScheduleHandler_PreStartPlugin(t *testing.T) {
+func TestScheduleHandlerPreStartPlugin(t *testing.T) {
 	tests := buildPreStartPluginTest()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -431,7 +431,7 @@ func buildAddDefaultSchedulerSelectorConfigTest() []AddDefaultSchedulerSelectorC
 	return tests
 }
 
-func TestVolcanoFrame_AddDefaultSchedulerSelectorConfig(t *testing.T) {
+func TestVolcanoFrameAddDefaultSchedulerSelectorConfig(t *testing.T) {
 
 	tests := buildAddDefaultSchedulerSelectorConfigTest()
 	for _, tt := range tests {

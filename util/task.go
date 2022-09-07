@@ -16,7 +16,7 @@ import (
 	"reflect"
 
 	"k8s.io/api/core/v1"
-	k8sError "k8s.io/apimachinery/pkg/api/errors"
+	k8serror "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -38,7 +38,7 @@ func (asTask *NPUTask) GetRealPodByTask(ssn *framework.Session) (*v1.Pod, error)
 	pod, err := ssn.KubeClient().CoreV1().Pods(taskInfo.Namespace).Get(
 		context.TODO(), asTask.TaskName, metav1.GetOptions{})
 	if err != nil {
-		if !k8sError.IsNotFound(err) {
+		if !k8serror.IsNotFound(err) {
 			klog.V(LogErrorLev).Infof("Failed to get pod %s in %s: %#v",
 				taskInfo.Namespace, asTask.TaskName, err)
 			return nil, err
@@ -134,7 +134,7 @@ func GetTaskInfoByNameFromSSN(ssn *framework.Session, taskName string) (*api.Tas
 	}
 	if len(taskName) == 0 {
 		klog.V(LogErrorLev).Infof("GetTaskInfoByNameFromSSN failed: taskName is empty")
-		return nil, fmt.Errorf("GetTaskInfoByNameFromSSN: taskName is empty")
+		return nil, fmt.Errorf("getTaskInfoByNameFromSSN: taskName is empty")
 	}
 	for _, jobInfo := range ssn.Jobs {
 		for _, taskInfo := range jobInfo.Tasks {
