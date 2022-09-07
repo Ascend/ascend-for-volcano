@@ -16,7 +16,7 @@ import (
 	"reflect"
 
 	"k8s.io/api/core/v1"
-	k8serror "k8s.io/apimachinery/pkg/api/errors"
+	apierror "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -38,7 +38,7 @@ func (asTask *NPUTask) GetRealPodByTask(ssn *framework.Session) (*v1.Pod, error)
 	pod, err := ssn.KubeClient().CoreV1().Pods(taskInfo.Namespace).Get(
 		context.TODO(), asTask.TaskName, metav1.GetOptions{})
 	if err != nil {
-		if !k8serror.IsNotFound(err) {
+		if !apierror.IsNotFound(err) {
 			klog.V(LogErrorLev).Infof("Failed to get pod %s in %s: %#v",
 				taskInfo.Namespace, asTask.TaskName, err)
 			return nil, err

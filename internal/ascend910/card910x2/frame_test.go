@@ -248,7 +248,7 @@ func buildScoreBestNPUNodesTestCases01() []scoreBestNPUNodesTestCase {
 }
 
 func buildScoreBestNPUNodesTestCases02() []scoreBestNPUNodesTestCase {
-	job2 := test.FakeNormalTestJob("job01", 2)
+	job2 := test.FakeNormalTestJob("job01", util.NPUIndex2)
 	test.SetFakeJobResRequest(job2, util.NPU910CardName, "2")
 	attr2 := itest.FakeSchedulerJobAttrByJob(job2)
 	task2 := test.FakeTaskWithResReq("pod1", util.NPU910CardName, util.NPUIndex2)

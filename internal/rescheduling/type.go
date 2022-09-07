@@ -61,7 +61,7 @@ const (
 	CmFaultJob310PKind = "fault-job-310P"
 	// CmNodeHeartbeatKind judging node fault needs heartbeat info from former session, so should be recorded
 	CmNodeHeartbeatKind = "node-heartbeat"
-	// CmNodeRankTimeMapKind record map[jobUID]{nodeName, nodeRankIndex, Occurrence}, if occurrence=1 the rankIndex of faultNode has been assigned to other node already
+	// CmNodeRankTimeMapKind record map[jobUID]{nodeName, nodeRankIndex, Occurrence}
 	CmNodeRankTimeMapKind = "node-rankIndex-Occurrence"
 
 	nodeUpdateTime       = 5
@@ -95,11 +95,7 @@ const (
 	JobRecovery = "job-recovery"
 )
 
-type IReschedule interface {
-	IsFaultJob(*api.JobInfo) error
-	GetFaultRescheduleLevel() string
-}
-
+// ReScheduler object for re-scheduling
 type ReScheduler struct {
 	*DealReSchedulerCache
 	GraceDeleteTime int64
