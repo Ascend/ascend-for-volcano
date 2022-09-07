@@ -11,13 +11,16 @@ package test
 
 import (
 	"fmt"
+	"k8s.io/api/core/v1"
 	"strconv"
 
-	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 	"volcano.sh/volcano/pkg/scheduler/api"
+
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
 func makePodSpec(pod NPUPod) v1.PodSpec {
@@ -32,7 +35,7 @@ func makePodSpec(pod NPUPod) v1.PodSpec {
 func BuildNPUPod(pod NPUPod) *v1.Pod {
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			UID:       types.UID(fmt.Sprintf("%v-%v", pod.Namespace, pod.Name)),
+			UID:       types.UID(fmt.Sprintf("%#v-%#v", pod.Namespace, pod.Name)),
 			Name:      pod.Name,
 			Namespace: pod.Namespace,
 			Labels:    pod.Labels,
@@ -65,10 +68,31 @@ func SetTestNPUPodSelector(pod *v1.Pod, selectorKey, selectorValue string) {
 	pod.Spec.NodeSelector[selectorKey] = selectorValue
 }
 
+func buildNPUResourceList(CCpu string, CMemory string, npuResourceType v1.ResourceName, npu string) v1.ResourceList {
+	npuNum, err := strconv.Atoi(npu)
+	if err != nil {
+		return nil
+	}
+
+	if npuNum == 0 {
+		return v1.ResourceList{
+			v1.ResourceCPU:    resource.MustParse(CCpu),
+			v1.ResourceMemory: resource.MustParse(CMemory),
+		}
+	}
+
+	return v1.ResourceList{
+		v1.ResourceCPU:    resource.MustParse(CCpu),
+		v1.ResourceMemory: resource.MustParse(CMemory),
+		npuResourceType:   resource.MustParse(npu),
+	}
+}
+
 // FakeNormalTestTask fake normal test task.
 func FakeNormalTestTask(name string, nodename string, groupname string) *api.TaskInfo {
 	pod := NPUPod{
 		Namespace: "vcjob", Name: name, NodeName: nodename, GroupName: groupname, Phase: v1.PodRunning,
+		ReqSource: buildNPUResourceList("1", "1000", util.NPU910CardName, strconv.Itoa(util.NPUIndex8)),
 	}
 	task := api.NewTaskInfo(BuildNPUPod(pod))
 	return task
@@ -140,4 +164,12 @@ func SetFakeNPUPodStatus(fPod *v1.Pod, status v1.PodPhase) {
 	}
 	fPod.Status.Phase = status
 	return
+}
+
+// AddTestTaskLabel add test job's label.
+func AddTestTaskLabel(task *api.TaskInfo, labelKey, labelValue string) {
+	if len(task.Pod.Spec.NodeSelector) == 0 {
+		task.Pod.Spec.NodeSelector = make(map[string]string, util.MapInitNum)
+	}
+	task.Pod.Spec.NodeSelector[labelKey] = labelValue
 }

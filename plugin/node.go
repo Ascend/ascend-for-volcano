@@ -10,347 +10,254 @@ Package plugin is using for HuaWei Ascend pin affinity schedule frame.
 package plugin
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
+	"strconv"
 	"strings"
-	"time"
 
+	"k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
+	v12 "k8s.io/kube-scheduler/extender/v1"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/rescheduling"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/util"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
-func (hwNPU *ScheduleHandler) initNodesNPUAllocTopology(ssn *framework.Session) error {
-	if initErr := util.InitPluginNodeCache(ssn); initErr != nil {
-		klog.V(logErrorLev).Infof("InitNodesNPUAllocTopology :%v.", initErr)
-		return initErr
-	}
+// NodeDeviceInfo like node annotation.
+type NodeDeviceInfo struct {
+	DeviceList map[string]string
+	UpdateTime int64
+}
 
-	for cardName, initNodes := range hwNPU.InitNodesNPUAllocTopologyFns {
-		if err := initNodes(ssn.Nodes); err != nil {
-			klog.V(logErrorLev).Infof("%s InitNodesNPUAllocTopology :%v.", cardName, err)
-			return err
-		}
+// NodeDeviceInfoWithDevPlugin a node has one by cm.
+type NodeDeviceInfoWithDevPlugin struct {
+	DeviceInfo NodeDeviceInfo
+	CheckCode  string
+}
+
+// checkNodeDeviceInfo will be add more later
+func checkNodeDeviceInfo(nodeData *NodeDeviceInfoWithDevPlugin) error {
+	if nodeData == nil {
+		return fmt.Errorf("nil parameters")
+	}
+	if nodeData.CheckCode == "" {
+		return fmt.Errorf("no checkCode in NodeDeviceInfo cm")
 	}
 	return nil
 }
 
-// preHandleFaultNPUFn Pretreatment of NPU faults.
-func (hwNPU *ScheduleHandler) preHandleFaultNPUFn(ssn *framework.Session) error {
-	for pluginName, preHandleFaultNPU := range hwNPU.PreHandleFaultNPUFns {
-		if err := preHandleFaultNPU(ssn); err != nil {
-			klog.V(logDebugLev).Infof("%s preHandleFaultNPU :%v.", pluginName, err)
-			return err
-		}
+func getNodeDeviceInfoFromCM(kubeClient kubernetes.Interface, node *api.NodeInfo) (*NodeDeviceInfo, error) {
+	cmData, getErr := util.GetConfigMapWithRetry(kubeClient, util.DevInfoNameSpace, util.DevInfoPreName+node.Name)
+	if getErr != nil {
+		klog.V(util.LogErrorLev).Infof("getNodeDeviceInfoFromCM :%#v.", getErr)
+		return nil, getErr
 	}
 
+	devInf := &NodeDeviceInfoWithDevPlugin{}
+	data, ok := cmData.Data[util.DevInfoCMKey]
+	if !ok {
+		return nil, fmt.Errorf("%s device-info no %s", node.Name, util.DevInfoCMKey)
+	}
+	if unmarshalErr := json.Unmarshal([]byte(data), &devInf); unmarshalErr != nil {
+		klog.V(util.LogInfoLev).Infof("convertToReSchedulerJobsMapFromCM Unmarshal: %#v.", unmarshalErr)
+		return nil, unmarshalErr
+	}
+
+	if checkErr := checkNodeDeviceInfo(devInf); checkErr != nil {
+		klog.V(util.LogInfoLev).Infof("checkNodeDeviceInfo failed :%#v.", checkErr)
+		return nil, checkErr
+	}
+	return &devInf.DeviceInfo, nil
+}
+
+// InitNPUNodeByNodeInf init NPU node from node info and cm.
+func (n *NPUNode) InitNPUNodeByNodeInf(npuNode *api.NodeInfo, kubeClient kubernetes.Interface) error {
+	if n == nil {
+		klog.V(util.LogInfoLev).Infof("InitNPUNodeByNodeInf failed: %s.", util.ArgumentError)
+		return errors.New(util.ArgumentError)
+	}
+	data, getErr := getNodeDeviceInfoFromCM(kubeClient, npuNode)
+	if getErr != nil {
+		klog.V(util.LogDebugLev).Infof("getNodeDeviceInfoFromCM %s %#v", npuNode.Name, getErr)
+		return getErr
+	}
+	capability := npuNode.Capability.ScalarResources
+	if !util.IsMapHasNPUResource(capability, util.NPUCardPreName) {
+		return fmt.Errorf("%s not NPU node", npuNode.Name)
+	}
+	n.Name = npuNode.Name
+	n.Capability = capability
+
+	n.Allocate = npuNode.Allocatable.ScalarResources
+	n.Idle = npuNode.Idle.ScalarResources
+	n.Label = npuNode.Node.Labels
+	n.Annotation = make(map[string]string, util.MapInitNum)
+	for k, v := range npuNode.Node.Annotations {
+		n.Annotation[k] = v
+	}
+	for k, v := range data.DeviceList {
+		n.Annotation[k] = v
+	}
+	//n.Cards = parseNPUCardFromNodeDeviceInfo(Data)
 	return nil
 }
 
-func (hwNPU *ScheduleHandler) preCheckNode(task *api.TaskInfo, node *api.NodeInfo, confs []conf.Configuration) error {
-	curNPUPlugin := hwNPU.getNPUPlugin(task)
-	if curNPUPlugin == nil {
-		return nil
+// GetNewNPUNodeAnnotation get new annotation after allocate
+func (n *NPUNode) GetNewNPUNodeAnnotation(usedTop []int, resourceName, resourceNamePre string) (string, error) {
+	if n == nil || len(usedTop) == 0 || resourceName == "" || resourceNamePre == "" {
+		klog.V(util.LogInfoLev).Infof("GetNewNPUNodeAnnotation failed: %s.", util.ArgumentError)
+		return "", errors.New(util.ArgumentError)
 	}
-
-	return curNPUPlugin.PreCheckNodeFn(task, node, confs)
+	annotation, ok := n.Annotation[resourceName]
+	if !ok {
+		err := fmt.Errorf("node<%s> not have resource<%s>", n.Name, resourceName)
+		klog.V(util.LogErrorLev).Infof("GetNewNPUNodeAnnotation err: %s.", err.Error())
+		return "", err
+	}
+	if annotation == "" {
+		return "", nil
+	}
+	topStrArray := strings.Split(annotation, ",")
+	var newTopStrArray []string
+	for _, cardStr := range topStrArray {
+		v := strings.TrimPrefix(cardStr, resourceNamePre)
+		existFlag := false
+		cardInt, err := strconv.Atoi(v)
+		if err != nil {
+			klog.V(util.LogErrorLev).Infof("ChangeTopToIntArray conv failed %v.", err)
+			return "", err
+		}
+		for _, useId := range usedTop {
+			if cardInt == useId {
+				existFlag = true
+				break
+			}
+		}
+		if !existFlag {
+			newTopStrArray = append(newTopStrArray, cardStr)
+		}
+	}
+	newTopStr := strings.Join(newTopStrArray, ",")
+	return newTopStr, nil
 }
 
-func (hwNPU *ScheduleHandler) isHwNPUNode(task *api.TaskInfo, node *api.NodeInfo) error {
-	curNPUPlugin := hwNPU.getNPUPlugin(task)
-	if curNPUPlugin == nil {
-		return nil
+// CheckNPUResourceStable check resource stabilize.
+func (n NPUNode) CheckNPUResourceStable(vcJob SchedulerJob) error {
+	k := vcJob.handler.GetAnnoName()
+	iNum, iOK := n.Idle[v1.ResourceName(k)]
+	nodeA, aOK := n.Annotation[k]
+	if iOK != true || aOK != true {
+		return fmt.Errorf("%s not has(or not same) %s", n.Name, k)
 	}
-	if !hwNPU.IsPluginRegistered(curNPUPlugin.Name()) {
-		plugErr := fmt.Errorf("%s not registered", curNPUPlugin.Name())
-		klog.V(logErrorLev).Infof("isHwNPUNode :%v.", plugErr)
-		return plugErr
+
+	sSlice := strings.Split(nodeA, ",")
+	length := len(sSlice)
+	if length == 1 && sSlice[0] == "" {
+		length = 0
 	}
-	return curNPUPlugin.IsMyNode(node)
+	if length != int(iNum/util.NPUHexKilo) {
+		return fmt.Errorf("%s's %s not statble:%d=>%d", n.Name, k, length, int(iNum/util.NPUHexKilo))
+	}
+	return nil
 }
 
-func (hwNPU *ScheduleHandler) checkNodeNPUByTask(task *api.TaskInfo, node *api.NodeInfo, distributeFlag bool) error {
-	curNPUPlugin := hwNPU.getNPUPlugin(task)
-	if curNPUPlugin == nil {
-		return nil
+// CheckNPUResourceStableReScheduling check resource stabilize.
+func (n NPUNode) CheckNPUResourceStableReScheduling(vcJob SchedulerJob) error {
+	k := vcJob.handler.GetAnnoName()
+	iNum, iOK := n.Idle[v1.ResourceName(k)]
+	nodeA, aOK := n.Annotation[k]
+	if iOK != true || aOK != true {
+		return fmt.Errorf("%s not has(or not same) %s", n.Name, k)
 	}
 
-	return curNPUPlugin.CheckNodeNPUByTaskFn(task, node, distributeFlag)
-}
-
-func (hwNPU *ScheduleHandler) getNPUAffinityBestNodes(
-	task *api.TaskInfo, nodes []*api.NodeInfo, disFlag bool) (map[string]int, error) {
-	curNPUPlugin := hwNPU.getNPUPlugin(task)
-	if curNPUPlugin == nil {
-		return nil, errors.New("get npu plugin nil")
+	sSlice := strings.Split(nodeA, ",")
+	length := len(sSlice)
+	if length == 1 && sSlice[0] == "" {
+		length = 0
 	}
-
-	return curNPUPlugin.GetNPUAffinityBestNodesFn(task, nodes, disFlag)
-}
-
-func (hwNPU *ScheduleHandler) scoreBestNPUNodes(
-	task *api.TaskInfo,
-	scoreMap map[string]float64,
-	bestNodes map[string]int,
-	nodes []*api.NodeInfo) (map[string]float64, error) {
-
-	curNPUPlugin := hwNPU.getNPUPlugin(task)
-	if curNPUPlugin == nil {
-		return nil, errors.New("get npu plugin nil")
+	iNumInt := int(iNum / util.NPUHexKilo)
+	if length != iNumInt && iNumInt >= 0 {
+		return fmt.Errorf("%s's %s not stable:%d=>%d", n.Name, k, length, iNumInt)
 	}
-
-	return curNPUPlugin.ScoreBestNPUNodesFn(scoreMap, bestNodes, task, nodes)
+	return nil
 }
 
-func (hwNPU *ScheduleHandler) getAllocNPUsFromNode(
-	task *api.TaskInfo, node *api.NodeInfo, disFlag bool) (interface{}, error) {
-	curNPUPlugin := hwNPU.getNPUPlugin(task)
-	if curNPUPlugin == nil {
-		return nil, errors.New(noneNPUPlugin)
-	}
-
-	return curNPUPlugin.GetAllocatedNPUFromTopologyFn(task, node, disFlag)
-}
-
-func (hwNPU *ScheduleHandler) setNPUTopologyToPod(task *api.TaskInfo, top interface{}) error {
-	curNPUPlugin := hwNPU.getNPUPlugin(task)
-	if curNPUPlugin == nil {
-		return errors.New(noneNPUPlugin)
-	}
-	// sleep for pod not be same time create.
-	time.Sleep(time.Millisecond)
-	return curNPUPlugin.SetNPUTopologyToPodFn(task, top)
-}
-
-// For node has  mixed mode, decide which plugin need by task.
-func (hwNPU *ScheduleHandler) updateNPUNodeUsedCard(task *api.TaskInfo,
-	node *api.NodeInfo, useDeviceIDs interface{}) error {
-	curNPUPlugin := hwNPU.getNPUPlugin(task)
-	if curNPUPlugin == nil {
-		return errors.New(noneNPUPlugin)
-	}
-
-	return curNPUPlugin.UpdateNPUNodeUsedCardFn(node, useDeviceIDs)
-}
-
-// For node has  mixed mode, decide which plugin need by task.
-func (hwNPU *ScheduleHandler) updateReleaseNPUNodeTopology(task *api.TaskInfo,
-	node *api.NodeInfo, useDeviceIDs interface{}) error {
-	curNPUPlugin := hwNPU.getNPUPlugin(task)
-	if curNPUPlugin == nil {
-		return errors.New(noneNPUPlugin)
-	}
-
-	return curNPUPlugin.UpdateReleaseNPUNodeTopologyFn(node, useDeviceIDs)
-}
-
-func (hwNPU *ScheduleHandler) useAnnotation(node *api.NodeInfo, task *api.TaskInfo, distributeFlag bool) {
-	// if not npu task no need continue; only check selector before
-	if err := hwNPU.isHwNPUTask(task); err != nil {
-		klog.V(logDebugLev).Infof("%s useAnnotation %s : %v.", PluginName, task.Name, err)
+// InitNodesFromSsn init all nodes in ssn.
+func (sHandle *ScheduleHandler) InitNodesFromSsn(ssn *framework.Session) {
+	if sHandle == nil || sHandle.FrameAttr.KubeClient == nil {
 		return
 	}
-
-	useTop, err := hwNPU.getAllocNPUsFromNode(task, node, distributeFlag)
-	if err != nil {
-		klog.V(logErrorLev).Infof("alloc  %s failed:%v.", node.Name, err)
-		return
-	}
-
-	err = hwNPU.setNPUTopologyToPod(task, useTop)
-	if err != nil {
-		klog.V(logErrorLev).Infof("%s %v.", node.Name, err)
-		return
-	}
-	// get node available top
-	err = hwNPU.updateNPUNodeUsedCard(task, node, useTop)
-	if err != nil {
-		klog.V(logErrorLev).Infof("%s useAnnotation node(%s) top nil.", PluginName, node.Name)
-		return
-	}
-	// set pod rankIndex
-	if err = rescheduling.SetFaultJobPodIndex(task, node); err != nil {
-		klog.V(logInfoLev).Infof("%s useAnnotation setFaultJobPodIndex %v.", task.Name, err)
+	sHandle.Nodes = make(map[string]NPUNode, util.MapInitNum)
+	for nodeName, nodeInf := range ssn.Nodes {
+		npuNode := NPUNode{}
+		if err := npuNode.InitNPUNodeByNodeInf(nodeInf, sHandle.FrameAttr.KubeClient); err != nil {
+			continue
+		}
+		sHandle.Nodes[nodeName] = npuNode
 	}
 	return
 }
 
-// NPUAllocateFunc Allocate npu and called by volcano frame.
-func (hwNPU *ScheduleHandler) NPUAllocateFunc(event *framework.Event, ssn *framework.Session) {
-	klog.V(logInfoLev).Infof("enter npu allocate")
-	defer klog.V(logInfoLev).Infof("leave npu allocate")
-
-	nodeName := event.Task.NodeName
-	node, found := ssn.Nodes[nodeName]
-	if !found {
-		klog.V(logWarningLev).Infof("%s npuAllocateFunc NOT EXIST node [%s].", PluginName, nodeName)
-		return
-	}
-
-	hwNPU.useAnnotation(node, event.Task, IsDistributeTask(event.Task, ssn))
-	klog.V(logDebugLev).Infof("%s %v useAnnotation node [%s]'s top.", PluginName, event.Task.Name, nodeName)
-}
-
-func (hwNPU *ScheduleHandler) releaseAnnotation(node *api.NodeInfo, task *api.TaskInfo) {
-	// If not npu task, no need to continue;
-	if err := hwNPU.isHwNPUTask(task); err != nil {
-		klog.V(logDebugLev).Infof("%s releaseAnnotation %s : %v.", PluginName, task.Name, err)
-		return
-	}
-
-	nowTop, err := hwNPU.getReleaseNPUTopology(task)
-	if err != nil {
-		klog.V(logErrorLev).Infof("alloc  %s failed:%v.", node.Name, err)
-		return
-	}
-
-	// Get node available topology.
-	err = hwNPU.updateReleaseNPUNodeTopology(task, node, nowTop)
-	if err != nil {
-		klog.V(logErrorLev).Infof("%s useAnnotation node(%s) top nil.", PluginName, node.Name)
-		return
-	}
-
-	return
-}
-
-// NPUDeallocateFunc Free assigned npu, if allocate failed by volcano frame.
-func (hwNPU *ScheduleHandler) NPUDeallocateFunc(event *framework.Event, nodeMap map[string]*api.NodeInfo) {
-	klog.V(logInfoLev).Infof("enter npu deallocate")
-	defer klog.V(logInfoLev).Infof("leave npu deallocate")
-
-	nodeName := event.Task.NodeName
-	node, found := nodeMap[nodeName]
-	if !found {
-		klog.V(logWarningLev).Infof("%s npuDeallocateFunc from NOT EXIST node [%s].", PluginName, nodeName)
-		return
-	}
-
-	hwNPU.releaseAnnotation(node, event.Task)
-	klog.V(logDebugLev).Infof("%s releaseAnnotation node [%s]'s top.", PluginName, nodeName)
-}
-
-func (hwNPU *ScheduleHandler) checkNPUResourceStable(task *api.TaskInfo, node *api.NodeInfo) error {
-	curNPUPlugin := hwNPU.getNPUPlugin(task)
-	if curNPUPlugin == nil {
-		return errors.New(noneNPUPlugin)
-	}
-	if !hwNPU.IsPluginRegistered(curNPUPlugin.Name()) {
-		plugErr := fmt.Errorf("%s not registered", curNPUPlugin.Name())
-		klog.V(logErrorLev).Infof("checkNPUResourceStable :%v.", plugErr)
-		return plugErr
-	}
-	return curNPUPlugin.CheckNPUResourceStableFn(node)
-}
-
-// ClusterNodePredicate Predicate node by volcano frame.
-func (hwNPU *ScheduleHandler) ClusterNodePredicate(task *api.TaskInfo, ssn *framework.Session) error {
-	for pluginName, clusterNodePredicate := range hwNPU.ClusterNodePredicateFns {
-		if err := clusterNodePredicate(task, ssn); err != nil {
-			klog.V(logErrorLev).Infof("%s clusterNodePredicate :%v.", pluginName, err)
-			return err
-		}
-	}
-
-	return nil
-}
-
-func handlingPreCheckNodeErr(preErr error) error {
-	if strings.Contains(preErr.Error(), util.SegmentNoEnable) {
-		klog.V(logInfoLev).Infof("%s preCheckNode %v.", PluginName, preErr)
-		return nil
-	}
-	klog.V(logErrorLev).Infof("%s preCheckNode %v.", PluginName, preErr)
-	return preErr
-}
-
-// NodePredicate Predicate node by volcano frame.
-func (hwNPU *ScheduleHandler) NodePredicate(task *api.TaskInfo, node *api.NodeInfo, ssn *framework.Session) error {
-	klog.V(logInfoLev).Infof("enter node(%s) predicate", node.Name)
-	defer klog.V(logInfoLev).Infof("leave node(%s) predicate", node.Name)
-
-	if task == nil || node == nil || ssn == nil {
-		klog.V(logErrorLev).Infof("%s got null parameter(s), which is invalid", PluginName)
+// NodePredicate Predicate nodes.
+func (sHandle *ScheduleHandler) NodePredicate(taskInfo *api.TaskInfo, nodeInfo *api.NodeInfo) error {
+	if sHandle == nil || taskInfo == nil || nodeInfo == nil {
+		klog.V(util.LogErrorLev).Infof("NodePredicate got null parameter(s), which is invalid.")
 		return fmt.Errorf("got null parameter(s)")
 	}
+	klog.V(util.LogInfoLev).Infof("enter node(%s) predicate", nodeInfo.Name)
+	defer klog.V(util.LogInfoLev).Infof("leave node(%s) predicate", nodeInfo.Name)
 
-	// select node by architect
-	if err := hwNPU.preCheckNode(task, node, ssn.Configurations); err != nil {
-		// get scheduler selector configure failed, but need continue
-		preErr := fmt.Errorf("%s in %s:%v", task.Name, node.Name, err)
-		return handlingPreCheckNodeErr(preErr)
-	}
-
-	// if not npu task no need continue; only check selector before
-	if err := hwNPU.isHwNPUTask(task); err != nil {
-		klog.V(logDebugLev).Infof("%s isHwNPUTask %s : %v.", PluginName, task.Name, err)
+	vcJob, ok := sHandle.Jobs[taskInfo.Job]
+	if !ok {
+		klog.V(util.LogInfoLev).Infof("NodePredicate not support job:%#v.", taskInfo.Job)
 		return nil
 	}
-	// if not npu node, node should exclude
-	if err := hwNPU.isHwNPUNode(task, node); err != nil {
-		klog.V(logDebugLev).Infof("%s %s : %v.", PluginName, node.Name, err)
-		return fmt.Errorf("isNPUNode %s :%s", nodesNoMeetNPUReqError, err)
+	vcNode, ok := sHandle.Nodes[nodeInfo.Name]
+	if !ok {
+		klog.V(util.LogInfoLev).Infof("NodePredicate %s not in.", nodeInfo.Name)
+		return nil
 	}
-	// check resource stabilize
-	if err := hwNPU.checkNPUResourceStable(task, node); err != nil {
-		// npu on node are not stable, node cannot be selected.
-		klog.V(logInfoLev).Infof("%s checkNPUResourceStable %v ,cannot be selected.", PluginName, err)
-		return fmt.Errorf("checkNPUResourceStable %v", err)
+	// task and frame conf has check before in job valid.
+	if !util.IsSelectorMeetJob(vcJob.Selector, vcNode.Label) {
+		meetErr := fmt.Errorf("job(%s) selector:%#v not meet node<%s> label or selector:%#v", vcJob.JobName,
+			vcJob.Selector, vcNode.Name, vcNode.Label)
+		klog.V(util.LogErrorLev).Infof(meetErr.Error())
+		return meetErr
 	}
-
-	if err := hwNPU.checkNodeNPUByTask(task, node, IsDistributeTask(task, ssn)); err != nil {
+	if err := vcNode.CheckNPUResourceStable(vcJob); err != nil {
+		return err
+	}
+	if err := vcJob.CheckNodeNum(taskInfo, vcNode); err != nil {
+		return err
+	}
+	if err := vcJob.handler.CheckNodeNPUByTask(taskInfo, vcNode); err != nil {
 		// node doesn't have enough npu for the task
-		klog.V(logInfoLev).Infof("%s checkNodeNPUByTask %s:%v ,cannot be selected.", PluginName, node.Name, err)
-		return fmt.Errorf("checkNodeNPUByTask  %s : %s %v", node.Name, nodesNoMeetNPUReqError, err)
+		klog.V(util.LogInfoLev).Infof("checkNodeNPUByTask %s:%#v ,cannot be selected.", vcNode.Name, err)
+		return fmt.Errorf("checkNodeNPUByTask  %s : %s %#v", vcNode.Name, nodesNoMeetNPUReqError, err)
 	}
-	klog.V(logInfoLev).Infof("%s NodePredicate %s select successes.", PluginName, node.Name)
+	klog.V(util.LogInfoLev).Infof("%s NodePredicate %s select successes.", PluginName, vcNode.Name)
 	return nil
 }
 
-// initHandleFaultNPUInf handle NPU fault chip.(Find fault npu,node,pod,RankIndex)
-func (hwNPU *ScheduleHandler) initHandleFaultNPUInf(ssn *framework.Session) error {
-	if err := rescheduling.ReadFaultNPUJobsFromCM(ssn); err != nil {
-		klog.V(logErrorLev).Infof("readFaultNPUJobsFromCM :%v.", err)
-	}
-
-	npuErr := hwNPU.preHandleFaultNPUFn(ssn)
-	if npuErr != nil {
-		klog.V(logErrorLev).Infof("initHandleFaultNPUInf :%v.", npuErr)
-	}
-
-	return nil
-}
-
-// preHandleVNPUFn handle NPU fault chip.(Find fault npu,node,pod,RankIndex)
-func (hwNPU *ScheduleHandler) preHandleVNPUFn(ssn *framework.Session) error {
-	for pluginName, preHandleVNPUFn := range hwNPU.PreHandleVNPUFns {
-		if err := preHandleVNPUFn(ssn); err != nil {
-			if err.Error() != util.SegmentNoEnable {
-				klog.V(logDebugLev).Infof("%s preHandleFaultNPU :%v.", pluginName, err)
-				return err
-			}
-			klog.V(logErrorLev).Infof("%s preHandleFaultNPU :%v.", pluginName, err)
-			if unRegErr := hwNPU.UnRegisterNPUScheduler(pluginName); unRegErr != nil {
-				klog.V(logErrorLev).Infof("preHandleVNPUFn :%v.", unRegErr)
-				return unRegErr
-			}
-			return err
+func initScoreMap(nodes []*api.NodeInfo, interPodAffinityScore v12.HostPriorityList) map[string]float64 {
+	for _, node := range nodes {
+		if reflect.ValueOf(node).IsNil() {
+			continue
 		}
-	}
-	return nil
-}
 
-// vJobRunHandleFn handle NPU fault chip.(Find fault npu,node,pod,RankIndex)
-func (hwNPU *ScheduleHandler) vJobRunHandleFn(ssn *framework.Session) error {
-	for pluginName, vJobRunHandle := range hwNPU.VJobRunHandleFns {
-		if err := vJobRunHandle(ssn); err != nil {
-			klog.V(logDebugLev).Infof("%s vJobRunHandleFn :%v.", pluginName, err)
-			return err
-		}
+		interPodAffinityScore = append(interPodAffinityScore, v12.HostPriority{
+			Host:  node.Name,
+			Score: 0,
+		})
 	}
-	return nil
+	scoreMap := make(map[string]float64, len(interPodAffinityScore))
+	for _, host := range interPodAffinityScore {
+		scoreMap[host.Host] = float64(host.Score)
+	}
+
+	return scoreMap
 }

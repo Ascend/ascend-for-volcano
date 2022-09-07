@@ -20,7 +20,7 @@ mkdir -p "${GOPATH}"/src/volcano.sh/volcano/_output/test/
 cd "${GOPATH}"/src/volcano.sh/volcano/_output/test/
 rm -f $file_detail_output $file_input
 
-if  ! go test -v -race -coverprofile cov.out "${GOPATH}"/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/... \
+if  ! go test -v -race -gcflags=all=-l -coverprofile cov.out "${GOPATH}"/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/... \
     > ./$file_input;
 then
   echo '****** go test cases error! ******'

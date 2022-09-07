@@ -9,7 +9,9 @@ Package test is using for HuaWei Ascend pin scheduling test.
 */
 package test
 
-import "k8s.io/api/core/v1"
+import (
+	"k8s.io/api/core/v1"
+)
 
 const (
 	npuIndex3 = 3
