@@ -43,7 +43,7 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 	klog.V(util.LogInfoLev).Infof("enter %s OnSessionOpen %#v.", PluginName, tp.Scheduler.NPUPlugins)
 	defer klog.V(util.LogInfoLev).Infof("leave %s OnSessionOpen.", PluginName)
 	if tp == nil || ssn == nil {
-		klog.V(util.LogInfoLev).Infof("OnSessionOpen failed: %s.", util.ArgumentError)
+		klog.V(util.LogInfoLev).Infof("OnSessionOpen : %s.", util.ArgumentError)
 		return
 	}
 	// Init npu plugin and nodes.
