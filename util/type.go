@@ -107,6 +107,7 @@ type NPUTask struct {
 	ReqNPUNum  int
 	// Selector the same as job.
 	Selector map[string]string
+	Label    map[string]string
 }
 
 // ComJob all vcJob has.
