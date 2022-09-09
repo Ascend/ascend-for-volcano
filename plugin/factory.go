@@ -65,6 +65,7 @@ func (sHandle *ScheduleHandler) IsPluginRegistered(name string) bool {
 		return false
 	}
 	if len(pNames) > 1 {
+		// vnpu support
 		pNames[0] = pNames[0] + "-"
 	}
 	for k := range sHandle.NPUPlugins {

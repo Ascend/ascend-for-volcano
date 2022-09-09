@@ -82,17 +82,17 @@ func GetJobLabelFromVcJob(job *api.JobInfo) map[string]string {
 		klog.V(util.LogErrorLev).Infof("GetJobLabelFromVcJob job nil.")
 		return nil
 	}
-	jobLabel := job.PodGroup.Labels
-	if jobLabel == nil {
-		jobLabel = make(map[string]string, util.MapInitNum)
+	resLabel := make(map[string]string, util.MapInitNum)
+	for labelKey, labelValue := range job.PodGroup.Labels {
+		resLabel[labelKey] = labelValue
 	}
 	for _, task := range job.Tasks {
 		taskSelector := GetTaskLabels(task)
 		for k, v := range taskSelector {
-			label, ok := jobLabel[k]
+			label, ok := resLabel[k]
 			if !ok {
 				// no task selector
-				jobLabel[k] = v
+				resLabel[k] = v
 				continue
 			}
 			if isSelectorContains(label, v) {
@@ -100,10 +100,10 @@ func GetJobLabelFromVcJob(job *api.JobInfo) map[string]string {
 				continue
 			}
 			// use '|' to join tasks
-			jobLabel[k] = label + "|" + v
+			resLabel[k] = label + "|" + v
 		}
 	}
-	return jobLabel
+	return resLabel
 }
 
 // GetVCJobReqNPUTypeFromJobInfo get job request resource, only NPU.
