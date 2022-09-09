@@ -54,6 +54,7 @@ func (tp *asend310) InitMyJobPlugin(attr util.SchedulerJobAttr, env plugin.Sched
 	}
 	tp.SetSchedulerAttr(attr)
 	tp.SetSchedulerEnv(env)
+	klog.V(util.LogDebugLev).Infof("InitMyJobPlugin attr label %#v.", attr.Label)
 	v, ok := attr.Label[Accelerator310Key]
 	if !ok {
 		v = Chip310AcceleratorValue

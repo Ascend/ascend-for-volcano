@@ -78,7 +78,32 @@ func GetJobSelectorFromVcJob(job *api.JobInfo) map[string]string {
 
 // GetJobLabelFromVcJob get job's label, not task's.
 func GetJobLabelFromVcJob(job *api.JobInfo) map[string]string {
-	return job.PodGroup.Labels
+	if job == nil {
+		klog.V(util.LogErrorLev).Infof("GetJobLabelFromVcJob job nil.")
+		return nil
+	}
+	resLabel := make(map[string]string, util.MapInitNum)
+	for labelKey, labelValue := range job.PodGroup.Labels {
+		resLabel[labelKey] = labelValue
+	}
+	for _, task := range job.Tasks {
+		taskSelector := GetTaskLabels(task)
+		for k, v := range taskSelector {
+			label, ok := resLabel[k]
+			if !ok {
+				// no task selector
+				resLabel[k] = v
+				continue
+			}
+			if isSelectorContains(label, v) {
+				// has task selector
+				continue
+			}
+			// use '|' to join tasks
+			resLabel[k] = label + "|" + v
+		}
+	}
+	return resLabel
 }
 
 // GetVCJobReqNPUTypeFromJobInfo get job request resource, only NPU.
@@ -185,6 +210,11 @@ func (sJob *SchedulerJob) Init(vcJob *api.JobInfo, sHandle *ScheduleHandler) err
 	sJob.NPUJob = &util.NPUJob{ReqNPUName: name, ReqNPUNum: num, Tasks: GetJobNPUTasks(vcJob)}
 	sJob.InitSelfPluginByJobInfo(sHandle)
 	return nil
+}
+
+// IsNPUJob check SchedulerJob is npu job
+func (sJob SchedulerJob) IsNPUJob() bool {
+	return sJob.handler != nil
 }
 
 // ValidJobSelector validate the job selector.
