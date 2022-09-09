@@ -21,6 +21,11 @@ type FaultNodeGetNodeHeartbeatFromDeviceInfoArgs struct {
 	node *plugin.NPUNode
 }
 
+const (
+	eight = 8
+	ten   = 10
+)
+
 type FaultNodeGetNodeHeartbeatFromDeviceInfoTests struct {
 	name    string
 	fields  *FaultNode
@@ -36,7 +41,7 @@ func buildFaultGetNodeHeartbeatFromDeviceInfoTests() []FaultNodeGetNodeHeartbeat
 		args: FaultNodeGetNodeHeartbeatFromDeviceInfoArgs{
 			node: FakeNPUNodeNilDeviceInfo("node0"),
 		},
-		want:    0,
+		want:    zero,
 		wantErr: true,
 	}
 	test2 := FaultNodeGetNodeHeartbeatFromDeviceInfoTests{
@@ -45,7 +50,7 @@ func buildFaultGetNodeHeartbeatFromDeviceInfoTests() []FaultNodeGetNodeHeartbeat
 		args: FaultNodeGetNodeHeartbeatFromDeviceInfoArgs{
 			node: FakeNPUNodeWithDeviceInfo("node0"),
 		},
-		want:    8,
+		want:    eight,
 		wantErr: false,
 	}
 	tests := []FaultNodeGetNodeHeartbeatFromDeviceInfoTests{
@@ -100,7 +105,7 @@ func buildFaultNodeGetNodeHeartbeatIntFromDeviceInfoTests() []FaultNodeGetNodeHe
 		args: FaultNodeGetNodeHeartbeatIntervalFromDeviceInfoArgs{
 			node: FakeNPUNodeWithDeviceInfo("node0"),
 		},
-		want:    10,
+		want:    ten,
 		wantErr: false,
 	}
 	tests := []FaultNodeGetNodeHeartbeatIntervalFromDeviceInfoTests{

@@ -11,12 +11,11 @@ package util
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"reflect"
 
 	"k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -27,7 +26,7 @@ import (
 func (asTask *NPUTask) GetRealPodByTask(ssn *framework.Session) (*v1.Pod, error) {
 	if asTask == nil {
 		klog.V(LogErrorLev).Infof("GetRealPodByTask failed: %s.", ArgumentError)
-		return nil, errors.New(ArgumentError)
+		return nil, fmt.Errorf(ArgumentError)
 	}
 	taskInfo, getErr := GetTaskInfoByNameFromSSN(ssn, asTask.TaskName)
 	if getErr != nil {
@@ -38,7 +37,7 @@ func (asTask *NPUTask) GetRealPodByTask(ssn *framework.Session) (*v1.Pod, error)
 	pod, err := ssn.KubeClient().CoreV1().Pods(taskInfo.Namespace).Get(
 		context.TODO(), asTask.TaskName, metav1.GetOptions{})
 	if err != nil {
-		if !apierrors.IsNotFound(err) {
+		if !errors.IsNotFound(err) {
 			klog.V(LogErrorLev).Infof("Failed to get pod %s in %s: %#v",
 				taskInfo.Namespace, asTask.TaskName, err)
 			return nil, err
@@ -54,7 +53,7 @@ func (asTask *NPUTask) GetRealPodByTask(ssn *framework.Session) (*v1.Pod, error)
 func (asTask *NPUTask) DeleteRealPodByTask(ssn *framework.Session) error {
 	if asTask == nil {
 		klog.V(LogErrorLev).Infof("DeleteRealPodByTask failed: %s.", ArgumentError)
-		return errors.New(ArgumentError)
+		return fmt.Errorf(ArgumentError)
 	}
 	taskInfo, getErr := GetTaskInfoByNameFromSSN(ssn, asTask.TaskName)
 	if getErr != nil {
@@ -81,11 +80,11 @@ func (asTask *NPUTask) DeleteRealPodByTask(ssn *framework.Session) error {
 func (asTask *NPUTask) EvictJobByTask(ssn *framework.Session, reason string, taskName string) error {
 	if asTask == nil {
 		klog.V(LogErrorLev).Infof("EvictJobByTask failed: %s.", ArgumentError)
-		return errors.New(ArgumentError)
+		return fmt.Errorf(ArgumentError)
 	}
 	if ssn == nil {
 		klog.V(LogErrorLev).Infof("EvictJobByTask failed: %s.", ArgumentError)
-		return errors.New(ArgumentError)
+		return fmt.Errorf(ArgumentError)
 	}
 	taskInfo, getErr := GetTaskInfoByNameFromSSN(ssn, taskName)
 	if getErr != nil {
@@ -106,7 +105,7 @@ func (asTask *NPUTask) EvictJobByTask(ssn *framework.Session, reason string, tas
 func (asTask *NPUTask) UpdatePodPendingReason(taskInfo *api.TaskInfo, reasonTmp string) error {
 	if asTask == nil {
 		klog.V(LogErrorLev).Infof("UpdatePodPendingReason failed: %s.", ArgumentError)
-		return errors.New(ArgumentError)
+		return fmt.Errorf(ArgumentError)
 	}
 	if asTask.TaskName != taskInfo.Name {
 		return fmt.Errorf("NPUTask %s and TaskInfo %s does not match", asTask.TaskName, taskInfo.Name)
@@ -130,7 +129,7 @@ func (asTask *NPUTask) UpdatePodPendingReason(taskInfo *api.TaskInfo, reasonTmp 
 func GetTaskInfoByNameFromSSN(ssn *framework.Session, taskName string) (*api.TaskInfo, error) {
 	if ssn == nil {
 		klog.V(LogErrorLev).Infof("UpdatePodPendingReason failed: %s.", ArgumentError)
-		return nil, errors.New(ArgumentError)
+		return nil, fmt.Errorf(ArgumentError)
 	}
 	if len(taskName) == 0 {
 		klog.V(LogErrorLev).Infof("GetTaskInfoByNameFromSSN failed: taskName is empty")
