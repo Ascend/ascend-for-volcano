@@ -587,7 +587,7 @@ func (reScheduler *ReScheduler) SynCacheFaultJobWithSession(
 			updatedFaultJobs = append(updatedFaultJobs, faultJob) // 1.2 keep jobs not in session but in k8s
 			continue
 		}
-		// 2. cache Jobs turned normal in session should be deleted (meaning it has been restarted)
+		// 2. cache Jobs turned normal in session should be deleted ,meaning it has been restarted
 		jobInfo, _ := ssn.Jobs[faultJob.JobUID]
 		if faultJob.isJobGraceDeleteSuccess(jobInfo) {
 			klog.V(util.LogErrorLev).Infof("%v grace deleted successful.", faultJob.JobName)
@@ -700,7 +700,7 @@ func (reScheduler *ReScheduler) RestartNeedForceDeleteJobs(ssn *framework.Sessio
 	return nil
 }
 
-// RestartFaultJobs Restart fault jobs by its corresponding strategy (grace/force/off)
+// RestartFaultJobs Restart fault jobs by its corresponding strategy  grace,force,off
 func (reScheduler *ReScheduler) RestartFaultJobs(ssn *framework.Session) error {
 	klog.V(util.LogInfoLev).Infof("enter RestartFaultJobs...")
 	defer klog.V(util.LogInfoLev).Infof("leave RestartFaultJobs...")
@@ -831,7 +831,7 @@ func (reScheduler *ReScheduler) UseAnnotation(task *api.TaskInfo, node *plugin.N
 	}
 	fJob := reScheduler.getFaultJobOfGivenTaskInfoFromCache(task)
 	nodeRankTimes := reScheduler.AllocNodeRankOccurrenceMap[fJob.JobUID]
-	// 1. if given node is in the nodeRankTime, keep it (node is used by the fault job before)
+	// 1. if given node is in the nodeRankTime, keep it ,node is used by the fault job before
 	for _, nodeRankTime := range nodeRankTimes {
 		if node.Name == nodeRankTime.NodeName {
 			task.Pod.Annotations[podRankIndex] = nodeRankTime.RankIndex

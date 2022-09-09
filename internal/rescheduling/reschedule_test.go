@@ -22,6 +22,19 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
+const (
+	heartbeatInterval = 5
+	fakeTime          = 123455
+	fakeTime2         = 11111
+	createTime        = 10000
+	heartbeatTime     = 11110
+	graceDeleteTime   = 900
+	zero              = 0
+	one               = 1
+	two               = 2
+	three             = 3
+)
+
 func FakeTestFaultCardUnhealthy(name string, nodeName string, faultType string) *FaultCard {
 	return &FaultCard{
 		IsFaultCard: true,
@@ -69,7 +82,7 @@ func FakeTestFaultCardsHealthy(nodeName string) []FaultCard {
 }
 
 func FakeTestFaultNodeCardUnhealthy(nodeName string) *FaultNode {
-	updateTime := int64(11111)
+	updateTime := int64(fakeTime2)
 	faultCards := FakeTestFaultCardsUnhealthy(nodeName)
 	return &FaultNode{
 		NodeName:            nodeName,
@@ -82,14 +95,14 @@ func FakeTestFaultNodeCardUnhealthy(nodeName string) *FaultNode {
 		AllCards: []string{"Ascend910-0", "Ascend910-1", "Ascend910-2", "Ascend910-3", "Ascend910-4",
 			"Ascend910-5", "Ascend910-6", "Ascend910-7"},
 		FaultCards:          faultCards,
-		HeartbeatInterval:   5,
-		OldHeartbeatTime:    int64(11110),
-		UpdateHeartbeatTime: int64(11110),
+		HeartbeatInterval:   heartbeatInterval,
+		OldHeartbeatTime:    int64(heartbeatTime),
+		UpdateHeartbeatTime: int64(heartbeatTime),
 	}
 }
 
 func FakeTestFaultNodeNodeUnhealthy(nodeName string) *FaultNode {
-	updateTime := int64(11111)
+	updateTime := int64(fakeTime2)
 	faultCards := FakeTestFaultCardsHealthy(nodeName)
 	return &FaultNode{
 		NodeName:            nodeName,
@@ -102,14 +115,14 @@ func FakeTestFaultNodeNodeUnhealthy(nodeName string) *FaultNode {
 		AllCards: []string{"Ascend910-0", "Ascend910-1", "Ascend910-2", "Ascend910-3", "Ascend910-4",
 			"Ascend910-5", "Ascend910-6", "Ascend910-7"},
 		FaultCards:          faultCards,
-		HeartbeatInterval:   5,
-		OldHeartbeatTime:    int64(10000),
-		UpdateHeartbeatTime: int64(10000),
+		HeartbeatInterval:   heartbeatInterval,
+		OldHeartbeatTime:    int64(createTime),
+		UpdateHeartbeatTime: int64(createTime),
 	}
 }
 
 func FakeTestFaultNodeNodeHealthy(nodeName string) *FaultNode {
-	updateTime := int64(11111)
+	updateTime := int64(fakeTime2)
 	faultCards := FakeTestFaultCardsHealthy(nodeName)
 	return &FaultNode{
 		NodeName:            nodeName,
@@ -122,14 +135,14 @@ func FakeTestFaultNodeNodeHealthy(nodeName string) *FaultNode {
 		AllCards: []string{"Ascend910-0", "Ascend910-1", "Ascend910-2", "Ascend910-3", "Ascend910-4",
 			"Ascend910-5", "Ascend910-6", "Ascend910-7"},
 		FaultCards:          faultCards,
-		HeartbeatInterval:   5,
-		OldHeartbeatTime:    int64(11110),
-		UpdateHeartbeatTime: int64(11110),
+		HeartbeatInterval:   heartbeatInterval,
+		OldHeartbeatTime:    int64(heartbeatTime),
+		UpdateHeartbeatTime: int64(heartbeatTime),
 	}
 }
 
 func FakeTestFaultNodeNodeHealthyOneCard(nodeName string) *FaultNode {
-	updateTime := int64(11111)
+	updateTime := int64(fakeTime2)
 	faultCards := []FaultCard{*FakeTestFaultCardHealthy("Ascend910-0", nodeName)}
 	return &FaultNode{
 		NodeName:            nodeName,
@@ -141,9 +154,9 @@ func FakeTestFaultNodeNodeHealthyOneCard(nodeName string) *FaultNode {
 		NodeHealthState:     NodeHealthy,
 		AllCards:            []string{"Ascend910-0"},
 		FaultCards:          faultCards,
-		HeartbeatInterval:   5,
-		OldHeartbeatTime:    int64(11110),
-		UpdateHeartbeatTime: int64(11110),
+		HeartbeatInterval:   heartbeatInterval,
+		OldHeartbeatTime:    int64(heartbeatTime),
+		UpdateHeartbeatTime: int64(heartbeatTime),
 	}
 }
 
@@ -156,7 +169,7 @@ func FakeTestFaultTaskFault(name string, namespace string,
 		NodeName:      nodeName,
 		NodeRankIndex: nodeRankIndex,
 		UseCardName:   []string{"Ascend910-0", "Ascend910-1", "Ascend910-2", "Ascend910-3"},
-		PodCreateTime: int64(10000),
+		PodCreateTime: int64(createTime),
 		PodUID:        podUID,
 	}
 }
@@ -170,14 +183,14 @@ func FakeTestFaultTaskHealth(name string, namespace string, nodeName string,
 		NodeName:      nodeName,
 		NodeRankIndex: nodeRankIndex,
 		UseCardName:   []string{"Ascend910-0", "Ascend910-1", "Ascend910-2", "Ascend910-3"},
-		PodCreateTime: int64(10000),
+		PodCreateTime: int64(createTime),
 		PodUID:        podUID,
 	}
 }
 
 func FakeTestFaultJob(
 	nodeNames []string, jobRankIds []string, faultTasks []FaultTask, jobName string, nameSpace string) *FaultJob {
-	updateTime := int64(11111)
+	updateTime := int64(fakeTime2)
 	return &FaultJob{
 		ReScheduleKey:       JobGraceRescheduleLabelValue,
 		IsFaultJob:          true,
@@ -187,7 +200,7 @@ func FakeTestFaultJob(
 		NodeNames:           nodeNames,  //[]string{"ubuntu", "ubuntu1", "ubuntu3"},
 		FaultTasks:          faultTasks,
 		UpdateTime:          updateTime,
-		JobRankIdCreateTime: int64(10000),
+		JobRankIdCreateTime: int64(createTime),
 	}
 }
 
@@ -199,17 +212,17 @@ func FakeReSchedulerCache() *DealReSchedulerCache {
 	nameSpace := "vcjob"
 	jobName := "job1"
 	faultTasks := []FaultTask{
-		*FakeTestFaultTaskHealth(taskNames[0], nameSpace, nodeNames[0], nodeRankIds[0], "pod1"),
-		*FakeTestFaultTaskFault(taskNames[1], nameSpace, nodeNames[1], nodeRankIds[1], "pod2"),
-		*FakeTestFaultTaskHealth(taskNames[2], nameSpace, nodeNames[2], nodeRankIds[2], "pod3"),
-		*FakeTestFaultTaskFault(taskNames[3], nameSpace, nodeNames[3], nodeRankIds[3], "pod4"),
+		*FakeTestFaultTaskHealth(taskNames[zero], nameSpace, nodeNames[zero], nodeRankIds[zero], "pod1"),
+		*FakeTestFaultTaskFault(taskNames[one], nameSpace, nodeNames[one], nodeRankIds[one], "pod2"),
+		*FakeTestFaultTaskHealth(taskNames[two], nameSpace, nodeNames[two], nodeRankIds[two], "pod3"),
+		*FakeTestFaultTaskFault(taskNames[three], nameSpace, nodeNames[three], nodeRankIds[three], "pod4"),
 	}
 	return &DealReSchedulerCache{
 		FaultNodes: []FaultNode{
-			*FakeTestFaultNodeNodeHealthy(nodeNames[0]),
-			*FakeTestFaultNodeCardUnhealthy(nodeNames[1]),
-			*FakeTestFaultNodeNodeHealthy(nodeNames[2]),
-			*FakeTestFaultNodeNodeUnhealthy(nodeNames[3]),
+			*FakeTestFaultNodeNodeHealthy(nodeNames[zero]),
+			*FakeTestFaultNodeCardUnhealthy(nodeNames[one]),
+			*FakeTestFaultNodeNodeHealthy(nodeNames[two]),
+			*FakeTestFaultNodeNodeUnhealthy(nodeNames[three]),
 		},
 		FaultJobs: []FaultJob{
 			*FakeTestFaultJob(nodeNames, jobRankIds, faultTasks, jobName, nameSpace),
@@ -308,7 +321,7 @@ func buildFaultReSchedulerGetGraceDeleteTestCases() []FaultReSchedulerGetGraceDe
 		{
 			name: "01-test FaultReSchedulerGetGraceDelete-no config",
 			fields: FaultReSchedulerGetGraceDeleteTimeFields{
-				GraceDeleteTime:      900,
+				GraceDeleteTime:      graceDeleteTime,
 				DealReSchedulerCache: FakeReSchedulerCache(),
 			},
 			args: FaultReSchedulerGetGraceDeleteTimeArgs{
@@ -322,13 +335,13 @@ func buildFaultReSchedulerGetGraceDeleteTestCases() []FaultReSchedulerGetGraceDe
 					}
 				},
 			},
-			want:    900,
+			want:    graceDeleteTime,
 			wantErr: true,
 		},
 		{
 			name: "02-test FaultReSchedulerGetGraceDelete-succeed",
 			fields: FaultReSchedulerGetGraceDeleteTimeFields{
-				GraceDeleteTime:      900,
+				GraceDeleteTime:      graceDeleteTime,
 				DealReSchedulerCache: FakeReSchedulerCache(),
 			},
 			args: FaultReSchedulerGetGraceDeleteTimeArgs{
@@ -342,7 +355,7 @@ func buildFaultReSchedulerGetGraceDeleteTestCases() []FaultReSchedulerGetGraceDe
 					}
 				},
 			},
-			want:    900,
+			want:    graceDeleteTime,
 			wantErr: false,
 		},
 	}
@@ -387,7 +400,7 @@ func fakeCacheNoneFJobReSchedulerAddFaultJobWithSession() *DealReSchedulerCache 
 		FaultNodes: []FaultNode{
 			{
 				NodeName:            "node0",
-				UpdateTime:          123456,
+				UpdateTime:          fakeTime,
 				UnhealthyNPU:        []string{"Ascend910-0"},
 				NetworkUnhealthyNPU: nil,
 				IsFaultNode:         true,
@@ -405,9 +418,9 @@ func fakeCacheNoneFJobReSchedulerAddFaultJobWithSession() *DealReSchedulerCache 
 					*FakeTestFaultCardHealthy("Ascend910-6", "node0"),
 					*FakeTestFaultCardHealthy("Ascend910-7", "node0"),
 				},
-				HeartbeatInterval:   5,
-				OldHeartbeatTime:    0,
-				UpdateHeartbeatTime: 0,
+				HeartbeatInterval:   heartbeatInterval,
+				OldHeartbeatTime:    zero,
+				UpdateHeartbeatTime: zero,
 			},
 		},
 		FaultJobs:                nil,
@@ -426,7 +439,7 @@ func fakeFaultTask2P(ns string, name string, node string, job string, index stri
 		JobName:       job,
 		NodeRankIndex: index,
 		UseCardName:   []string{"Ascend910-0", "Ascend910-1"},
-		PodCreateTime: 123455,
+		PodCreateTime: fakeTime,
 		PodUID:        types.UID(`"` + ns + `"` + `"` + name + `"`),
 	}
 	return fTask
@@ -437,7 +450,7 @@ func fakeCacheWithFJobReSchedulerAddFaultJobWithSession() *DealReSchedulerCache 
 		FaultNodes: []FaultNode{
 			{
 				NodeName:            "node0",
-				UpdateTime:          123456,
+				UpdateTime:          fakeTime,
 				UnhealthyNPU:        []string{"Ascend910-0"},
 				NetworkUnhealthyNPU: nil,
 				IsFaultNode:         true,
@@ -455,9 +468,9 @@ func fakeCacheWithFJobReSchedulerAddFaultJobWithSession() *DealReSchedulerCache 
 					*FakeTestFaultCardHealthy("Ascend910-6", "node0"),
 					*FakeTestFaultCardHealthy("Ascend910-7", "node0"),
 				},
-				HeartbeatInterval:   5,
-				OldHeartbeatTime:    0,
-				UpdateHeartbeatTime: 0,
+				HeartbeatInterval:   heartbeatInterval,
+				OldHeartbeatTime:    zero,
+				UpdateHeartbeatTime: zero,
 			},
 		},
 		FaultJobs: []FaultJob{
@@ -474,8 +487,8 @@ func fakeCacheWithFJobReSchedulerAddFaultJobWithSession() *DealReSchedulerCache 
 					fakeFaultTask2P("vcjob", "pod0", "node0", "job0", "0"),
 					fakeFaultTask2P("vcjob", "pod1", "node1", "job0", "1"),
 				},
-				UpdateTime:          123455,
-				JobRankIdCreateTime: 123454,
+				UpdateTime:          fakeTime,
+				JobRankIdCreateTime: fakeTime,
 			},
 		},
 		DealReSchedulerConfigmap: nil,
@@ -526,7 +539,7 @@ func ReCreateSchedulerJob910(namespace string, UID api.JobID) plugin.SchedulerJo
 			},
 			NPUJob: &util.NPUJob{
 				ReqNPUName: "huawei.com/Ascend910",
-				ReqNPUNum:  0,
+				ReqNPUNum:  zero,
 				Tasks:      make(map[string]util.NPUTask, util.MapInitNum),
 			},
 		},
@@ -572,7 +585,7 @@ func buildReSchedulerAddFaultJobWithSession() []ReSchedulerAddFaultJobWithSessio
 	}
 
 	reCache1 := fakeCacheNoneFJobReSchedulerAddFaultJobWithSession()
-	reScheduler1 := ReNewRescheduler(0)
+	reScheduler1 := ReNewRescheduler(zero)
 	AddSchedulerJobToReScheduler(reScheduler1, jobs1)
 	AddReCacheToReScheduler(reScheduler1, reCache1)
 

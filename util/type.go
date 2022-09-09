@@ -1,13 +1,6 @@
-/*
-Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
-*/
+// Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 
-/*
-
-Package util is using for the total variable.
-
-*/
-
+// Package util is using for the total variable.
 package util
 
 import "volcano.sh/volcano/pkg/scheduler/api"
