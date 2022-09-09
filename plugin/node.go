@@ -215,6 +215,11 @@ func (sHandle *ScheduleHandler) NodePredicate(taskInfo *api.TaskInfo, nodeInfo *
 		klog.V(util.LogInfoLev).Infof("NodePredicate not support job:%#v.", taskInfo.Job)
 		return nil
 	}
+	// check vcjob is npu job
+	if !vcJob.IsNPUJob() {
+		klog.V(util.LogInfoLev).Infof("NodePredicate vc-job:%#v is not npu job.", vcJob)
+		return nil
+	}
 	vcNode, ok := sHandle.Nodes[nodeInfo.Name]
 	if !ok {
 		klog.V(util.LogInfoLev).Infof("NodePredicate %s not in.", nodeInfo.Name)

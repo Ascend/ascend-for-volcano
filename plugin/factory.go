@@ -64,6 +64,9 @@ func (sHandle *ScheduleHandler) IsPluginRegistered(name string) bool {
 		klog.V(util.LogErrorLev).Infof("IsPluginRegistered %s %#v", name, pNames)
 		return false
 	}
+	if len(pNames) > 1 {
+		pNames[0] = pNames[0] + "-"
+	}
 	for k := range sHandle.NPUPlugins {
 		if k == pNames[0] {
 			return true

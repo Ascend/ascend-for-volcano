@@ -21,32 +21,44 @@ import (
 func (tp *module910x8) getUsableTopFromNode(node plugin.NPUNode, disFlag bool) ([]int, error) {
 	var resTop []int
 	topStr, ok := node.Annotation[tp.GetAnnoName()]
-	if !ok || len(topStr) == 0 {
-		klog.V(util.LogWarningLev).Infof("getUsableTopFromNode node<%s> don't have npu<%s>", node.Name,
-			tp.GetAnnoName())
-	} else {
-		nodeTop := util.ChangeTopToIntArray(topStr, tp.GetAnnoPreVal())
-		if nodeTop != nil {
-			resTop = append(resTop, nodeTop...)
-		}
+	if !ok {
+		err := fmt.Errorf("node<%s> don't have npu<%s>", node.Name, tp.GetAnnoName())
+		klog.V(util.LogWarningLev).Infof("%s getUsableTopFromNode err: %s", tp.GetPluginName(), err.Error())
+		return nil, err
+	}
+	nodeTop := util.ChangeTopToIntArray(topStr, tp.GetAnnoPreVal())
+	if len(nodeTop) != 0 {
+		resTop = append(resTop, nodeTop...)
+	}
+	if !disFlag {
+		return resTop, nil
 	}
 
-	if !disFlag {
-		networkUnhealthyTopStr, ok := node.Annotation[tp.netUnhealthyKey]
-		if !ok || len(networkUnhealthyTopStr) == 0 {
-			klog.V(util.LogWarningLev).Infof("getUsableTopFromNode node<%s> don't have resource<%s>", node.Name,
-				tp.netUnhealthyKey)
-		} else {
-			networkUnhealthyTop := util.ChangeTopToIntArray(networkUnhealthyTopStr, tp.GetAnnoPreVal())
-			if networkUnhealthyTop != nil {
-				resTop = append(resTop, networkUnhealthyTop...)
+	networkUnhealthyTopStr, ok := node.Annotation[tp.netUnhealthyKey]
+	if !ok {
+		err := fmt.Errorf("node<%s> don't have resource<%s>", node.Name, tp.netUnhealthyKey)
+		klog.V(util.LogWarningLev).Infof("%s getUsableTopFromNode err: %s", tp.GetPluginName(), err.Error())
+		return nil, err
+	}
+	networkUnhealthyTop := util.ChangeTopToIntArray(networkUnhealthyTopStr, tp.GetAnnoPreVal())
+
+	if len(networkUnhealthyTop) == 0 {
+		return resTop, nil
+	}
+	var newTop []int
+	for _, rId := range resTop {
+		existFlag := false
+		for _, nId := range networkUnhealthyTop {
+			if rId == nId {
+				existFlag = true
+				break
 			}
 		}
+		if !existFlag {
+			newTop = append(newTop, rId)
+		}
 	}
-	if resTop == nil || len(resTop) == 0 {
-		return nil, fmt.Errorf("getUsableTopFromNode node<%s> don't have npu<%s>", node.Name, tp.GetAnnoName())
-	}
-	return resTop, nil
+	return newTop, nil
 }
 
 func initSelectNodeInf(npuTop []int) selectNodeInf {
@@ -93,16 +105,17 @@ func (tp *module910x8) getNodeBestScore(taskNPUNum int, npuTop []int) (int, erro
 		}
 		return bestScore, err
 	}
-
-	if sNodeInf.rightNPUNum == 0 {
+	switch {
+	case sNodeInf.allNPUNum == 0:
+		return bestScore, err
+	case sNodeInf.rightNPUNum == 0:
 		bestScore = tp.affScoreList[taskNPUNum-1][sNodeInf.leftNPUNum-1]
-	} else if sNodeInf.leftNPUNum == 0 {
+	case sNodeInf.leftNPUNum == 0:
 		bestScore = tp.affScoreList[taskNPUNum-1][sNodeInf.rightNPUNum-1]
-	} else {
+	default:
 		bestScore = util.Min(tp.affScoreList[taskNPUNum-1][sNodeInf.rightNPUNum-1],
 			tp.affScoreList[taskNPUNum-1][sNodeInf.leftNPUNum-1])
 	}
-
 	if bestScore == affScore4 {
 		return bestScore, err
 	}
