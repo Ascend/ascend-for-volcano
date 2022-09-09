@@ -159,7 +159,6 @@ func IsJobInitial(job *api.JobInfo) bool {
 		klog.V(util.LogInfoLev).Infof("%s not running %#v", job.UID, job.PodGroup.Status.Phase)
 		return false
 	}
-
 	return true
 }
 
