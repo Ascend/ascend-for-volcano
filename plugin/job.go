@@ -37,7 +37,20 @@ func isSelectorContains(defValue, jobValue string) bool {
 
 // GetTaskSelectors get task's selector.
 func GetTaskSelectors(task *api.TaskInfo) map[string]string {
+	if task == nil {
+		klog.V(util.LogErrorLev).Infof("GetTaskSelectors task nil.")
+		return nil
+	}
 	return task.Pod.Spec.NodeSelector
+}
+
+// GetTaskLabels get task's Labels.
+func GetTaskLabels(task *api.TaskInfo) map[string]string {
+	if task == nil {
+		klog.V(util.LogErrorLev).Infof("GetTaskLabels task nil.")
+		return nil
+	}
+	return task.Pod.Labels
 }
 
 // GetJobSelectorFromVcJob get job selector.
@@ -114,8 +127,8 @@ func GetJobNPUTasks(vcJob *api.JobInfo) map[string]util.NPUTask {
 			resultMap[string(taskID)] = util.NPUTask{}
 			continue
 		}
-		resultMap[string(taskID)] = util.NPUTask{TaskName: taskInf.Name,
-			ReqNPUName: name, ReqNPUNum: num, Selector: GetTaskSelectors(taskInf)}
+		resultMap[string(taskID)] = util.NPUTask{TaskName: taskInf.Name, ReqNPUName: name, ReqNPUNum: num,
+			Selector: GetTaskSelectors(taskInf), Label: GetTaskLabels(taskInf)}
 	}
 	return resultMap
 }
