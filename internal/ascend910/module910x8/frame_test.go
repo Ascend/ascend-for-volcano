@@ -420,8 +420,7 @@ func buildUseAnnotationTestCases02() []itest.UseAnnotationTestCase {
 			PodAnno: "Ascend910-0",
 			WantNode: &plugin.NPUNode{
 				Annotation: map[string]string{util.NPU910CardName: "Ascend910-1,Ascend910-4,Ascend910-5,Ascend910-6," +
-					"Ascend910-7", networkUnhealthyNPU: ""},
-			},
+					"Ascend910-7", networkUnhealthyNPU: ""}},
 		},
 	}
 }

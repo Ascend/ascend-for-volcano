@@ -27,6 +27,11 @@ func (tp *module910x8) getUsableTopFromNode(node plugin.NPUNode, disFlag bool) (
 		return nil, err
 	}
 	nodeTop := util.ChangeTopToIntArray(topStr, tp.GetAnnoPreVal())
+	if len(nodeTop) > tp.MaxNodeNPUNum {
+		err := fmt.Errorf("node<%s> npu top<%v> is invalid", node.Name, nodeTop)
+		klog.V(util.LogWarningLev).Infof("%s getUsableTopFromNode err: %s", tp.GetPluginName(), err.Error())
+		return nil, err
+	}
 	if len(nodeTop) != 0 {
 		resTop = append(resTop, nodeTop...)
 	}
@@ -41,7 +46,11 @@ func (tp *module910x8) getUsableTopFromNode(node plugin.NPUNode, disFlag bool) (
 		return nil, err
 	}
 	networkUnhealthyTop := util.ChangeTopToIntArray(networkUnhealthyTopStr, tp.GetAnnoPreVal())
-
+	if len(nodeTop) > tp.MaxNodeNPUNum {
+		err := fmt.Errorf("node<%s> npu networkUnhealthy top<%v> is invalid", node.Name, networkUnhealthyTop)
+		klog.V(util.LogWarningLev).Infof("%s getUsableTopFromNode err: %s", tp.GetPluginName(), err.Error())
+		return nil, err
+	}
 	if len(networkUnhealthyTop) == 0 {
 		return resTop, nil
 	}
