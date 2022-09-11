@@ -182,7 +182,7 @@ func (sHandle *ScheduleHandler) InitCache() {
 
 // PreStartPlugin preStart plugin action.
 func (sHandle *ScheduleHandler) PreStartPlugin(ssn *framework.Session) {
-	if sHandle == nil {
+	if sHandle == nil || ssn == nil {
 		klog.V(util.LogInfoLev).Infof("PreStartPlugin failed: %s.", util.ArgumentError)
 		return
 	}
@@ -235,6 +235,7 @@ func (sHandle *ScheduleHandler) InitNPUSession(ssn *framework.Session) error {
 	klog.V(util.LogInfoLev).Infof("enter %s InitNPUSession.", PluginName)
 	defer klog.V(util.LogInfoLev).Infof("leave %s InitNPUSession.", PluginName)
 
+	sHandle.PreStartPlugin(ssn)
 	if err := sHandle.checkSession(ssn); err != nil {
 		klog.V(util.LogErrorLev).Infof("%s checkSession : %s.", PluginName, err)
 		return err
@@ -245,7 +246,6 @@ func (sHandle *ScheduleHandler) InitNPUSession(ssn *framework.Session) error {
 
 	sHandle.InitJobsPlugin()
 	sHandle.InitCache()
-	sHandle.PreStartPlugin(ssn)
 	return nil
 }
 
