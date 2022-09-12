@@ -10,8 +10,10 @@ Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
 package rescheduling
 
 import (
+	"context"
 	"fmt"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -75,6 +77,26 @@ func (fJob *FaultJob) isJobGraceDeleteSuccess(jobInfo *api.JobInfo) bool {
 	return false
 }
 
+// CheckJobExistsInKubernetes check whether job recorded in cache can be traced in kubernetes
+func (fJob *FaultJob) CheckJobExistsInKubernetes(ssn *framework.Session) bool {
+	var existTaskNum int
+	for _, fTask := range fJob.FaultTasks {
+		klog.V(util.LogDebugLev).Infof("check task %s via client-go", fTask.TaskName)
+		realPod, err := ssn.KubeClient().CoreV1().Pods(fTask.TaskNamespace).Get(
+			context.TODO(), fTask.TaskName, metav1.GetOptions{})
+		if err != nil || realPod == nil{
+			klog.V(util.LogInfoLev).Infof("pod %s not in kubernetes", fTask.TaskName)
+			continue
+		}
+		existTaskNum += 1
+		klog.V(util.LogDebugLev).Infof("task %s is in kubernetes", fTask.TaskName)
+	}
+	if existTaskNum > 0 {
+		return true
+	}
+	return false
+}
+
 // ForceDeleteJob force delete jobs includes labelled force delete ones and grace delete failed ones
 func (fJob *FaultJob) ForceDeleteJob(ssn *framework.Session, schedulerJob *plugin.SchedulerJob) error {
 	klog.V(util.LogDebugLev).Infof("enter ForceDeleteJob")
@@ -94,7 +116,7 @@ func (fJob *FaultJob) ForceDeleteJob(ssn *framework.Session, schedulerJob *plugi
 			klog.V(util.LogDebugLev).Infof(
 				"ForceDeleteJob: npuTask %s has been deleted in session.", fTask.TaskName)
 		}
-		err := npuTask.DeleteRealPodByTask(ssn)
+		err := npuTask.DeleteRealPodByTask(ssn, 0)
 		if err != nil {
 			klog.V(util.LogDebugLev).Infof("ForceDeleteFaultPod %s: %#v.", npuTask.TaskName, err)
 		}
@@ -105,8 +127,7 @@ func (fJob *FaultJob) ForceDeleteJob(ssn *framework.Session, schedulerJob *plugi
 // GraceDeleteJob grace delete jobs labelled to be deleted gracefully
 func (fJob *FaultJob) GraceDeleteJob(ssn *framework.Session, npuJob *plugin.SchedulerJob, reason string) error {
 	if fJob == nil {
-		return fmt.Errorf(
-			"getJobFaultRescheduleLabel fJob object does not exist")
+		return fmt.Errorf("getJobFaultRescheduleLabel fJob object does not exist")
 	}
 	if ssn == nil {
 		return fmt.Errorf("session does not exist")
@@ -114,12 +135,28 @@ func (fJob *FaultJob) GraceDeleteJob(ssn *framework.Session, npuJob *plugin.Sche
 	if npuJob == nil {
 		return fmt.Errorf("schedulerJob does not exist")
 	}
+	ssnJob, ok := ssn.Jobs[fJob.JobUID]
+	if !ok {
+		return fmt.Errorf("fault job %s not in session", fJob.JobName)
+	}
 	for _, fTask := range fJob.FaultTasks {
 		npuTask, ok := npuJob.Tasks[string(fTask.TaskUID)]
 		if !ok {
 			klog.V(util.LogDebugLev).Infof(
 				"GraceDeleteJob: npuTask %s has been deleted in session.", fTask.TaskName)
 			return fmt.Errorf("npuTask %s not in session", fTask.TaskName)
+		}
+		ssnTask, ok := ssnJob.Tasks[fTask.TaskUID]
+		if !ok {
+			return fmt.Errorf("task %s not in session", fTask.TaskName)
+		}
+		if !npuTask.IsTaskInItsNode(ssn, ssnTask) {
+			klog.V(util.LogErrorLev).Infof("%s not in %s, need force delete.", npuTask.TaskName, ssnTask.NodeName)
+			deleteErr := npuTask.DeleteRealPodByTask(ssn, 0)
+			if deleteErr != nil {
+				klog.V(util.LogErrorLev).Infof("GraceDeleteFaultJob %s: %#v.", npuTask.TaskName, deleteErr)
+			}
+			continue
 		}
 		if err := npuTask.EvictJobByTask(ssn, reason, fTask.TaskName); err != nil {
 			return err

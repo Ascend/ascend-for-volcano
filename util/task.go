@@ -50,7 +50,7 @@ func (asTask *NPUTask) GetRealPodByTask(ssn *framework.Session) (*v1.Pod, error)
 }
 
 // DeleteRealPodByTask generally used by force deletion
-func (asTask *NPUTask) DeleteRealPodByTask(ssn *framework.Session) error {
+func (asTask *NPUTask) DeleteRealPodByTask(ssn *framework.Session, waitTime int64) error {
 	if asTask == nil {
 		klog.V(LogErrorLev).Infof("DeleteRealPodByTask failed: %s.", ArgumentError)
 		return fmt.Errorf(ArgumentError)
@@ -59,9 +59,13 @@ func (asTask *NPUTask) DeleteRealPodByTask(ssn *framework.Session) error {
 	if getErr != nil {
 		klog.V(LogErrorLev).Infof("%s GetTaskInfoByNameFromSSN: %#v", asTask.TaskName, getErr)
 	}
+	if taskInfo == nil || taskInfo.Pod == nil {
+		klog.V(LogInfoLev).Infof("DeleteRealPodByTask pod does not exist")
+		return fmt.Errorf("%s: taskInfo does not exist", ArgumentError)
+	}
 
 	deleteOptions := metav1.DeleteOptions{
-		GracePeriodSeconds: new(int64),
+		GracePeriodSeconds: &waitTime,
 		Preconditions:      metav1.NewUIDPreconditions(string(taskInfo.Pod.UID)),
 	}
 
@@ -143,4 +147,24 @@ func GetTaskInfoByNameFromSSN(ssn *framework.Session, taskName string) (*api.Tas
 		}
 	}
 	return nil, fmt.Errorf("did not find task %s in session", taskName)
+}
+
+// IsTaskInItsNode check if task is on the node
+func (asTask *NPUTask) IsTaskInItsNode(ssn *framework.Session, taskInf *api.TaskInfo) bool {
+	if ssn == nil || taskInf == nil || taskInf.NodeName == "" {
+		klog.V(LogErrorLev).Infof("isTaskInItsNode has no node.")
+		return false
+	}
+	nodeInf, ok := ssn.Nodes[taskInf.NodeName]
+	if !ok {
+		klog.V(LogErrorLev).Infof("session has no node %v.", taskInf.NodeName)
+		return false
+	}
+	_, taskOK := nodeInf.Tasks[api.TaskID(taskInf.Namespace+"/"+taskInf.Name)]
+	//klog.V(LogDebugLev).Infof("nodeInfo: %#v, taskUID: %s", nodeInf.Tasks, taskInf.UID)
+	if !taskOK {
+		klog.V(LogErrorLev).Infof("node %s has no task %s.", nodeInf.Name, taskInf.Name)
+		return false
+	}
+	return true
 }

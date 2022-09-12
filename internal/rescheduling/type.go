@@ -43,10 +43,6 @@ const (
 	nodeDEnableOnValue  = "on"
 	nodeDEnableOffValue = "off"
 
-	cardMode = "card"
-	modeMode = "module"
-	chipMode = "chip"
-
 	podRankIndex = "hccl/rankIndex"
 
 	// CmFaultNodeKind key in configmap which saves the FaultNode cache
@@ -181,7 +177,7 @@ type FaultJob struct {
 	NodeNames           []string
 	FaultTasks          []FaultTask
 	UpdateTime          int64
-	JobRankIdCreateTime int64
+	JobRankIdCreateTime int64  // stop updating when job becomes a real fault one
 	FaultTypes          []string
 	DeleteExecutedFlag  bool
 }

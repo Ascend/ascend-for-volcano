@@ -201,6 +201,10 @@ func (sHandle *ScheduleHandler) saveCacheToCm() {
 			klog.V(util.LogErrorLev).Infof("SaveCacheToCm %s no namespace or Data in cache.", spName)
 			continue
 		}
+		data, err := util.UpdateConfigmapIncrementally(sHandle.FrameAttr.KubeClient, nameSpace, cmName, data)
+		if err != nil {
+			klog.V(util.LogInfoLev).Infof("get old %s configmap failed: %v, write new data into cm", spName, err)
+		}
 		var tmpCM = &v12.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      cmName,
@@ -235,7 +239,6 @@ func (sHandle *ScheduleHandler) InitNPUSession(ssn *framework.Session) error {
 	klog.V(util.LogInfoLev).Infof("enter %s InitNPUSession.", PluginName)
 	defer klog.V(util.LogInfoLev).Infof("leave %s InitNPUSession.", PluginName)
 
-	sHandle.PreStartPlugin(ssn)
 	if err := sHandle.checkSession(ssn); err != nil {
 		klog.V(util.LogErrorLev).Infof("%s checkSession : %s.", PluginName, err)
 		return err
@@ -246,6 +249,7 @@ func (sHandle *ScheduleHandler) InitNPUSession(ssn *framework.Session) error {
 
 	sHandle.InitJobsPlugin()
 	sHandle.InitCache()
+	sHandle.PreStartPlugin(ssn)
 	return nil
 }
 

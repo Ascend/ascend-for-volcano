@@ -83,3 +83,26 @@ func DeleteSchedulerConfigMap(ssn *framework.Session, nameSpace, cmName string) 
 	}
 	return nil
 }
+
+// UpdateConfigmapIncrementally update configmap Map data but keep the key value pair that new data does not have
+func UpdateConfigmapIncrementally(kubeClient kubernetes.Interface, ns, name string,
+	newData map[string]string) (map[string]string, error){
+	if len(newData) == 0 {
+		return newData, fmt.Errorf("newData is empty")
+	}
+	oldCM, err := GetConfigMapWithRetry(kubeClient, ns, name)
+	if err != nil || oldCM == nil {
+		return newData, fmt.Errorf("get old configmap from kubernetes failed")
+	}
+	oldCMData := oldCM.Data
+	if oldCMData != nil {
+		for key, value := range oldCMData {
+			_, ok := newData[key]
+			if !ok {
+				newData[key] = value  // place the key-value pairs from kubernetes back
+				continue
+			}
+		}
+	}
+	return newData, nil
+}

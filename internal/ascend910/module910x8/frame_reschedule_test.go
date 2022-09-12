@@ -48,6 +48,8 @@ type module910x8PreStartActionArgs struct {
 	cacheFuncAfter2  func()
 	cacheFuncBefore3 func()
 	cacheFuncAfter3  func()
+	cacheFuncBefore4 func()
+	cacheFuncAfter4  func()
 }
 
 type module910x8PreStartActionTests struct {
@@ -66,6 +68,9 @@ func buildModule910x8PreStartActionTest1() module910x8PreStartActionTests {
 	var tmpPatche1 *gomonkey.Patches
 	var tmpPatche2 *gomonkey.Patches
 	var tmpPatche3 *gomonkey.Patches
+	var tmpPatche4 *gomonkey.Patches
+	myArgs := buildModule910x8PreStartActionTestCacheArgs(tmpPatche1, tmpPatche2, tmpPatche3, tmpPatche4, nil)
+	myArgs.ssn = ssn1
 	test1 := module910x8PreStartActionTests{
 		name: "01-PreStartAction()-no fault initially, add card fault and corresponding job fault in session",
 		fields: module910x8Fields{
@@ -84,7 +89,7 @@ func buildModule910x8PreStartActionTest1() module910x8PreStartActionTests {
 				DealReSchedulerCache: nil,
 			},
 		},
-		args:    buildModule910x8PreStartActionTestCacheArgs(ssn1, tmpPatche1, tmpPatche2, tmpPatche3, nil),
+		args: myArgs,
 		wantErr: false,
 	}
 	test1.args.cacheFuncBefore2 = func() {
@@ -96,10 +101,10 @@ func buildModule910x8PreStartActionTest1() module910x8PreStartActionTests {
 	return test1
 }
 
-func buildModule910x8PreStartActionTestCacheArgs(ssn1 *framework.Session, tmpPatche1 *gomonkey.Patches,
-	tmpPatche2 *gomonkey.Patches, tmpPatche3 *gomonkey.Patches, faultCM *v1.ConfigMap) module910x8PreStartActionArgs {
+func buildModule910x8PreStartActionTestCacheArgs(tmpPatche1 *gomonkey.Patches,
+	tmpPatche2 *gomonkey.Patches, tmpPatche3 *gomonkey.Patches, tmpPatche4 *gomonkey.Patches,
+	faultCM *v1.ConfigMap) module910x8PreStartActionArgs {
 	args := module910x8PreStartActionArgs{
-		ssn: ssn1,
 		cacheFuncBefore1: func() {
 			tmpPatche1 = gomonkey.ApplyMethod(reflect.TypeOf(&framework.Session{}), "Evict",
 				func(_ *framework.Session, _ *api.TaskInfo, _ string) error { return nil })
@@ -111,11 +116,15 @@ func buildModule910x8PreStartActionTestCacheArgs(ssn1 *framework.Session, tmpPat
 			})
 		},
 		cacheFuncBefore3: func() {
-			tmpPatche3 = gomonkey.ApplyMethod(reflect.TypeOf(&util.SchedulerJobAttr{}),
-				"CheckJobExistsInKubernetes", func(_ *util.SchedulerJobAttr,
+			tmpPatche3 = gomonkey.ApplyMethod(reflect.TypeOf(&rescheduling.FaultJob{}),
+				"CheckJobExistsInKubernetes", func(_ *rescheduling.FaultJob,
 					_ *framework.Session) bool {
 					return true
 				})
+		},
+		cacheFuncBefore4: func() {
+			tmpPatche4 = gomonkey.ApplyMethod(reflect.TypeOf(&util.NPUTask{}), "DeleteRealPodByTask",
+				func(_ *util.NPUTask, _ *framework.Session, _ int64) error { return nil })
 		},
 		cacheFuncAfter1: func() {
 			if tmpPatche1 != nil {
@@ -132,6 +141,11 @@ func buildModule910x8PreStartActionTestCacheArgs(ssn1 *framework.Session, tmpPat
 				tmpPatche3.Reset()
 			}
 		},
+		cacheFuncAfter4: func() {
+			if tmpPatche4 != nil {
+				tmpPatche4.Reset()
+			}
+		},
 	}
 	return args
 }
@@ -146,8 +160,11 @@ func buildModule910x8PreStartActionTest2() module910x8PreStartActionTests {
 	var tmpPatche1 *gomonkey.Patches
 	var tmpPatche2 *gomonkey.Patches
 	var tmpPatche3 *gomonkey.Patches
+	var tmpPatche4 *gomonkey.Patches
 	reHandle := fakeReSchedulerNew(env)
 	faultCM := fakeFaultCM(env)
+	myArgs := buildModule910x8PreStartActionTestCacheArgs(tmpPatche1, tmpPatche2, tmpPatche3, tmpPatche4, faultCM)
+	myArgs.ssn = ssn1
 	test6 := module910x8PreStartActionTests{
 		name: "02-PreStartAction()-with fault node and job in cm",
 		fields: module910x8Fields{
@@ -160,7 +177,7 @@ func buildModule910x8PreStartActionTest2() module910x8PreStartActionTests {
 			},
 			reHandle: &reHandle,
 		},
-		args:    buildModule910x8PreStartActionTestCacheArgs(ssn1, tmpPatche1, tmpPatche2, tmpPatche3, faultCM),
+		args:    myArgs,
 		wantErr: false,
 	}
 	return test6
@@ -175,6 +192,7 @@ func buildModule910x8PreStartActionTest4() module910x8PreStartActionTests {
 	var tmpPatche1 *gomonkey.Patches
 	var tmpPatche2 *gomonkey.Patches
 	var tmpPatche3 *gomonkey.Patches
+	var tmpPatche4 *gomonkey.Patches
 	reHandle := rescheduling.ReScheduler{
 		GraceDeleteTime: rescheduling.DefaultGraceOverTime,
 		Level:           "",
@@ -188,18 +206,21 @@ func buildModule910x8PreStartActionTest4() module910x8PreStartActionTests {
 				CMNameSpace: rescheduling.CmNameSpace,
 				CMData: map[string]string{rescheduling.CmFaultNodeKind: env.Cache.Data[rescheduling.
 					RePropertyName][rescheduling.CmFaultNodeKind],
-					rescheduling.CmFaultJob910x8Kind: env.Cache.Data[rescheduling.RePropertyName][rescheduling.CmFaultJob910x8Kind]},
+					rescheduling.CmFaultJob910x8Kind: env.Cache.Data[rescheduling.
+						RePropertyName][rescheduling.CmFaultJob910x8Kind]},
 			},
 		},
 	}
 	faultCM := fakeFaultCM(env)
+	myArgs := buildModule910x8PreStartActionTestCacheArgs(tmpPatche1, tmpPatche2, tmpPatche3, tmpPatche4, faultCM)
+	myArgs.ssn = ssn1
 	test7 := module910x8PreStartActionTests{
 		name: "04-PreStartAction()-with fault node and job in cm and faultJob not in session",
 		fields: module910x8Fields{
 			baseHandler: fakeBaseHandlerEmpty(env),
 			reHandle:    &reHandle,
 		},
-		args:    buildModule910x8PreStartActionTestCacheArgs(ssn1, tmpPatche1, tmpPatche2, tmpPatche3, faultCM),
+		args:    myArgs,
 		wantErr: false,
 	}
 	return test7
@@ -215,16 +236,18 @@ func buildModule910x8PreStartActionTest3() module910x8PreStartActionTests {
 	var tmpPatche1 *gomonkey.Patches
 	var tmpPatche2 *gomonkey.Patches
 	var tmpPatche3 *gomonkey.Patches
+	var tmpPatche4 *gomonkey.Patches
 	reHandle := fakeReSchedulerNew(env)
 	faultCM := fakeFaultCM(env)
-
+	myArgs := buildModule910x8PreStartActionTestCacheArgs(tmpPatche1, tmpPatche2, tmpPatche3, tmpPatche4, faultCM)
+	myArgs.ssn = ssn1
 	test2 := module910x8PreStartActionTests{
 		name: "03-PreStartAction()-with fault node and job in cm job not in session",
 		fields: module910x8Fields{
 			baseHandler: fakeBaseHandlerEmpty(env),
 			reHandle:    &reHandle,
 		},
-		args:    buildModule910x8PreStartActionTestCacheArgs(ssn1, tmpPatche1, tmpPatche2, tmpPatche3, faultCM),
+		args:    myArgs,
 		wantErr: false,
 	}
 	return test2
@@ -249,6 +272,7 @@ func TestModule910x8PreStartAction(t *testing.T) {
 			if tt.args.cacheFuncBefore3 != nil {
 				tt.args.cacheFuncBefore3()
 			}
+			tt.args.cacheFuncBefore4()
 			tp := &module910x8{
 				NPUHandler:      tt.fields.baseHandler,
 				netUnhealthyKey: tt.fields.netUnhealthyKey,
@@ -263,6 +287,7 @@ func TestModule910x8PreStartAction(t *testing.T) {
 			if tt.args.cacheFuncAfter3 != nil {
 				tt.args.cacheFuncAfter3()
 			}
+			tt.args.cacheFuncBefore4()
 		})
 	}
 }
