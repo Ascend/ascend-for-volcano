@@ -51,8 +51,8 @@ func (reCache DealReSchedulerCache) getFaultNodesFromCM(buffer string) ([]FaultN
 func (reCache DealReSchedulerCache) getFaultJobsFromCM(buffer string) ([]FaultJob, error) {
 	var faultJobs []FaultJob
 	if unmarshalErr := json.Unmarshal([]byte(buffer), &faultJobs); unmarshalErr != nil {
-		klog.V(util.LogErrorLev).Infof("Unmarshal FaultNodes from cache failed")
-		return nil, fmt.Errorf("faultNodes convert from CM failed")
+		klog.V(util.LogErrorLev).Infof("Unmarshal FaultJobs from cache failed")
+		return nil, fmt.Errorf("faultJobs convert from CM failed")
 	}
 	return faultJobs, nil
 }
@@ -236,11 +236,11 @@ func (reCache *DealReSchedulerCache) writeNodeHeartbeatToCMString() (string, err
 }
 
 func (reCache *DealReSchedulerCache) writeNodeRankOccurrenceMapToCMString() (string, error) {
-	NodeRankOccMapData, err := reCache.marshalCacheDataToString(reCache.AllocNodeRankOccurrenceMap)
+	nodeRankOccMapData, err := reCache.marshalCacheDataToString(reCache.AllocNodeRankOccurrenceMap)
 	if err != nil {
 		return "", fmt.Errorf("writeNodeRankOccurrenceMapToCM: %#v", err)
 	}
-	return NodeRankOccMapData, nil
+	return nodeRankOccMapData, nil
 }
 
 func (reCache *DealReSchedulerCache) writeJobRankIndexToCMString(fJob *FaultJob) (string, error) {
@@ -273,11 +273,11 @@ func (reCache *DealReSchedulerCache) WriteReSchedulerCacheToEnvCache(env *plugin
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("WriteReSchedulerCacheToEnvCache: %#v", err)
 	}
-	NodeHBString, err := reCache.writeNodeHeartbeatToCMString()
+	nodeHBString, err := reCache.writeNodeHeartbeatToCMString()
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("WriteReSchedulerCacheToEnvCache: %#v", err)
 	}
-	NodeRankOccurrenceMapString, err := reCache.writeNodeRankOccurrenceMapToCMString()
+	nodeRankOccurrenceMapString, err := reCache.writeNodeRankOccurrenceMapToCMString()
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("WriteReSchedulerCacheToEnvCache: %#v", err)
 	}
@@ -288,8 +288,8 @@ func (reCache *DealReSchedulerCache) WriteReSchedulerCacheToEnvCache(env *plugin
 	}
 	cmData[CmFaultNodeKind] = fNodeString
 	cmData[jobType] = fJobString
-	cmData[CmNodeHeartbeatKind] = NodeHBString
-	cmData[CmNodeRankTimeMapKind] = NodeRankOccurrenceMapString
+	cmData[CmNodeHeartbeatKind] = nodeHBString
+	cmData[CmNodeRankTimeMapKind] = nodeRankOccurrenceMapString
 	if jobType != CmFaultJob910x8Kind {
 		return nil
 	}
@@ -297,11 +297,11 @@ func (reCache *DealReSchedulerCache) WriteReSchedulerCacheToEnvCache(env *plugin
 		if fJob.IsFaultJob {
 			env.Cache.Names[JobRecovery] = JobFaultRankIDCMPre + fJob.JobName
 			env.Cache.Namespaces[JobRecovery] = fJob.JobNamespace
-			JobRankIndexString, err := reCache.writeJobRankIndexToCMString(&fJob)
+			jobRankIndexString, err := reCache.writeJobRankIndexToCMString(&fJob)
 			if err != nil {
 				klog.V(util.LogErrorLev).Infof("WriteReSchedulerCacheToEnvCache: %#v", err)
 			}
-			env.Cache.Data[JobRecovery][JobFaultRankIDCMDataKey] = JobRankIndexString
+			env.Cache.Data[JobRecovery][JobFaultRankIDCMDataKey] = jobRankIndexString
 		}
 	}
 	return nil
