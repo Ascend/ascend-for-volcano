@@ -21,9 +21,14 @@ type FaultNodeGetNodeHeartbeatFromDeviceInfoArgs struct {
 	node *plugin.NPUNode
 }
 
+const (
+	eight = 8
+	ten   = 10
+)
+
 type FaultNodeGetNodeHeartbeatFromDeviceInfoTests struct {
-	name    string
 	fields  *FaultNode
+	name    string
 	args    FaultNodeGetNodeHeartbeatFromDeviceInfoArgs
 	want    int64
 	wantErr bool
@@ -32,20 +37,20 @@ type FaultNodeGetNodeHeartbeatFromDeviceInfoTests struct {
 func buildFaultGetNodeHeartbeatFromDeviceInfoTests() []FaultNodeGetNodeHeartbeatFromDeviceInfoTests {
 	test1 := FaultNodeGetNodeHeartbeatFromDeviceInfoTests{
 		name:   "01-FaultNodeUpdateFaultNodesFromDeviceInfoTests() nil device info",
-		fields: FakeTestFaultNodeNodeHealthy("node0"),
+		fields: fakeTestFaultNodeNodeHealthy("node0"),
 		args: FaultNodeGetNodeHeartbeatFromDeviceInfoArgs{
-			node: FakeNPUNodeNilDeviceInfo("node0"),
+			node: fakeNPUNodeNilDeviceInfo("node0"),
 		},
-		want:    0,
+		want:    zero,
 		wantErr: true,
 	}
 	test2 := FaultNodeGetNodeHeartbeatFromDeviceInfoTests{
 		name:   "01-FaultNodeUpdateFaultNodesFromDeviceInfoTests() succeed",
-		fields: FakeTestFaultNodeNodeHealthy("node0"),
+		fields: fakeTestFaultNodeNodeHealthy("node0"),
 		args: FaultNodeGetNodeHeartbeatFromDeviceInfoArgs{
-			node: FakeNPUNodeWithDeviceInfo("node0"),
+			node: fakeNPUNodeWithDeviceInfo("node0"),
 		},
-		want:    8,
+		want:    eight,
 		wantErr: false,
 	}
 	tests := []FaultNodeGetNodeHeartbeatFromDeviceInfoTests{
@@ -55,6 +60,7 @@ func buildFaultGetNodeHeartbeatFromDeviceInfoTests() []FaultNodeGetNodeHeartbeat
 	return tests
 }
 
+// TestFaultNodeGetNodeHeartbeatFromDeviceInfo get node heartbeat
 func TestFaultNodeGetNodeHeartbeatFromDeviceInfo(t *testing.T) {
 	tests := buildFaultGetNodeHeartbeatFromDeviceInfoTests()
 	for _, tt := range tests {
@@ -77,8 +83,8 @@ type FaultNodeGetNodeHeartbeatIntervalFromDeviceInfoArgs struct {
 }
 
 type FaultNodeGetNodeHeartbeatIntervalFromDeviceInfoTests struct {
-	name    string
 	fields  *FaultNode
+	name    string
 	args    FaultNodeGetNodeHeartbeatIntervalFromDeviceInfoArgs
 	want    int
 	wantErr bool
@@ -87,20 +93,20 @@ type FaultNodeGetNodeHeartbeatIntervalFromDeviceInfoTests struct {
 func buildFaultNodeGetNodeHeartbeatIntFromDeviceInfoTests() []FaultNodeGetNodeHeartbeatIntervalFromDeviceInfoTests {
 	test1 := FaultNodeGetNodeHeartbeatIntervalFromDeviceInfoTests{
 		name:   "01-FaultNodeGetNodeHeartbeatIntervalFromDeviceInfoTests() nil device info",
-		fields: FakeTestFaultNodeNodeHealthy("node0"),
+		fields: fakeTestFaultNodeNodeHealthy("node0"),
 		args: FaultNodeGetNodeHeartbeatIntervalFromDeviceInfoArgs{
-			node: FakeNPUNodeNilDeviceInfo("node0"),
+			node: fakeNPUNodeNilDeviceInfo("node0"),
 		},
 		want:    nodeUpdateTime,
 		wantErr: true,
 	}
 	test2 := FaultNodeGetNodeHeartbeatIntervalFromDeviceInfoTests{
 		name:   "02-FaultNodeGetNodeHeartbeatIntervalFromDeviceInfoTests() succeed",
-		fields: FakeTestFaultNodeNodeHealthy("node0"),
+		fields: fakeTestFaultNodeNodeHealthy("node0"),
 		args: FaultNodeGetNodeHeartbeatIntervalFromDeviceInfoArgs{
-			node: FakeNPUNodeWithDeviceInfo("node0"),
+			node: fakeNPUNodeWithDeviceInfo("node0"),
 		},
-		want:    10,
+		want:    ten,
 		wantErr: false,
 	}
 	tests := []FaultNodeGetNodeHeartbeatIntervalFromDeviceInfoTests{
@@ -110,6 +116,7 @@ func buildFaultNodeGetNodeHeartbeatIntFromDeviceInfoTests() []FaultNodeGetNodeHe
 	return tests
 }
 
+// TestFaultNodeGetNodeHeartbeatIntervalFromDeviceInfo test for get node heartbeat
 func TestFaultNodeGetNodeHeartbeatIntervalFromDeviceInfo(t *testing.T) {
 	tests := buildFaultNodeGetNodeHeartbeatIntFromDeviceInfoTests()
 	for _, tt := range tests {
@@ -133,20 +140,20 @@ type FaultNodeGetAllNPUCardsFromDeviceInfoArgs struct {
 }
 
 type FaultNodeGetAllNPUCardsFromDeviceInfoTests struct {
-	name    string
 	fields  *FaultNode
+	name    string
 	args    FaultNodeGetAllNPUCardsFromDeviceInfoArgs
 	want    []string
 	wantErr bool
 }
 
 func buildFaultNodeGetAllNPUCardsFromDeviceInfoTests() []FaultNodeGetAllNPUCardsFromDeviceInfoTests {
-	node2 := FakeNPUNodeWithDeviceInfo("node0")
+	node2 := fakeNPUNodeWithDeviceInfo("node0")
 	test1 := FaultNodeGetAllNPUCardsFromDeviceInfoTests{
 		name:   "01-FaultNodeGetNodeHeartbeatIntervalFromDeviceInfoTests() nil device info",
-		fields: FakeTestFaultNodeNodeHealthy("node0"),
+		fields: fakeTestFaultNodeNodeHealthy("node0"),
 		args: FaultNodeGetAllNPUCardsFromDeviceInfoArgs{
-			node:     FakeNPUNodeNilDeviceInfo("node0"),
+			node:     fakeNPUNodeNilDeviceInfo("node0"),
 			cardName: util.NPU910CardName,
 		},
 		want:    nil,
@@ -154,7 +161,7 @@ func buildFaultNodeGetAllNPUCardsFromDeviceInfoTests() []FaultNodeGetAllNPUCards
 	}
 	test2 := FaultNodeGetAllNPUCardsFromDeviceInfoTests{
 		name:   "02-FaultNodeGetNodeHeartbeatIntervalFromDeviceInfoTests() succeed",
-		fields: FakeTestFaultNodeNodeHealthy("node0"),
+		fields: fakeTestFaultNodeNodeHealthy("node0"),
 		args: FaultNodeGetAllNPUCardsFromDeviceInfoArgs{
 			node:     node2,
 			cardName: util.NPU910CardName,
@@ -169,6 +176,7 @@ func buildFaultNodeGetAllNPUCardsFromDeviceInfoTests() []FaultNodeGetAllNPUCards
 	return tests
 }
 
+// TestFaultNodeGetAllNPUCardsFromDeviceInfo test for get npu card
 func TestFaultNodeGetAllNPUCardsFromDeviceInfo(t *testing.T) {
 	tests := buildFaultNodeGetAllNPUCardsFromDeviceInfoTests()
 	for _, tt := range tests {

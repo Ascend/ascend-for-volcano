@@ -14,7 +14,18 @@ import (
 )
 
 const (
+	npuIndex2 = 2
 	npuIndex3 = 3
+	npuIndex4 = 4
+	// NPUIndex5 for re-scheduler tests
+	NPUIndex5 = 5
+	// NPUIndex8 for re-scheduler tests
+	NPUIndex8    = 8
+	podRankIndex = "hccl/rankIndex"
+	// NPU910CardName 910 card name
+	NPU910CardName = "huawei.com/Ascend910"
+	// FakeUpdateTime fake update time for test
+	FakeUpdateTime = int64(11110)
 )
 
 // NPUPod test NPU pod struct

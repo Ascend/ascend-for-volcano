@@ -33,34 +33,34 @@ func (reScheduler *ReScheduler) GetGraceDeleteTime(Conf []conf.Configuration) (i
 	defer klog.V(util.LogInfoLev).Infof("leave GetGraceDeleteTime ...")
 	if reScheduler == nil {
 		klog.V(util.LogErrorLev).Infof("GetGraceDeleteTime failed: %s, nil reScheduler", util.ArgumentError)
-		return defaultGraceOverTime, errors.New(util.ArgumentError)
+		return DefaultGraceOverTime, errors.New(util.ArgumentError)
 	}
 	if len(Conf) == 0 {
 		klog.V(util.LogErrorLev).Infof("GetGraceDeleteTime failed: %s, no conf", util.ArgumentError)
-		return defaultGraceOverTime, errors.New(util.ArgumentError)
+		return DefaultGraceOverTime, errors.New(util.ArgumentError)
 	}
 	// Read configmap
 	configuration, err := util.GetConfigFromSchedulerConfigMap(util.CMInitParamKey, Conf)
 	if err != nil {
 		klog.V(util.LogErrorLev).Info("cannot get configuration, GraceOverTime will not be changed.")
-		return defaultGraceOverTime, nil
+		return DefaultGraceOverTime, nil
 	}
 	// get grace over time by user configuration
 	overTimeStr, ok := configuration.Arguments[GraceOverTimeKey]
 	if !ok {
 		klog.V(util.LogErrorLev).Info("set GraceOverTime failed and will not be changed, " +
 			"key grace-over-time doesn't exists.")
-		return defaultGraceOverTime, nil
+		return DefaultGraceOverTime, nil
 	}
 	overTime, err := strconv.ParseInt(overTimeStr, util.Base10, util.BitSize64)
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("set GraceOverTime failed and will not be changed, "+
 			"grace-over-time is invalid [%#v].", overTimeStr)
-		return defaultGraceOverTime, err
+		return DefaultGraceOverTime, err
 	}
 	// check time validity
 	if !reScheduler.checkGraceDeleteTimeValid(overTime) {
-		return defaultGraceOverTime, errors.New("defaultGraceOverTime is out of range")
+		return DefaultGraceOverTime, errors.New("defaultGraceOverTime is out of range")
 	}
 	return overTime, nil
 }
@@ -577,7 +577,7 @@ func (reScheduler *ReScheduler) SynCacheFaultJobWithSession(
 		if !faultJob.isJobInSession(reScheduler.Jobs) {
 			klog.V(util.LogDebugLev).Infof("faultJob name: %s not in session", faultJob.JobName)
 			npuJob, _ := reScheduler.Jobs[faultJob.JobUID]
-			if !npuJob.CheckJobExistsInKubernetes(reScheduler.kubeClient) { // 1.1 delete jobs not in session or k8s
+			if !npuJob.CheckJobExistsInKubernetes(ssn) { // 1.1 delete jobs not in session or k8s
 				klog.V(util.LogDebugLev).Infof(
 					"delete %s from re-scheduler cache due to not existence in session and k8s.", faultJob.JobName)
 				continue
@@ -587,7 +587,7 @@ func (reScheduler *ReScheduler) SynCacheFaultJobWithSession(
 			updatedFaultJobs = append(updatedFaultJobs, faultJob) // 1.2 keep jobs not in session but in k8s
 			continue
 		}
-		// 2. cache Jobs turned normal in session should be deleted (meaning it has been restarted)
+		// 2. cache Jobs turned normal in session should be deleted ,meaning it has been restarted
 		jobInfo, _ := ssn.Jobs[faultJob.JobUID]
 		if faultJob.isJobGraceDeleteSuccess(jobInfo) {
 			klog.V(util.LogErrorLev).Infof("%v grace deleted successful.", faultJob.JobName)
@@ -700,7 +700,7 @@ func (reScheduler *ReScheduler) RestartNeedForceDeleteJobs(ssn *framework.Sessio
 	return nil
 }
 
-// RestartFaultJobs Restart fault jobs by its corresponding strategy (grace/force/off)
+// RestartFaultJobs Restart fault jobs by its corresponding strategy  grace,force,off
 func (reScheduler *ReScheduler) RestartFaultJobs(ssn *framework.Session) error {
 	klog.V(util.LogInfoLev).Infof("enter RestartFaultJobs...")
 	defer klog.V(util.LogInfoLev).Infof("leave RestartFaultJobs...")
@@ -830,8 +830,11 @@ func (reScheduler *ReScheduler) UseAnnotation(task *api.TaskInfo, node *plugin.N
 		return nil
 	}
 	fJob := reScheduler.getFaultJobOfGivenTaskInfoFromCache(task)
+	if fJob == nil {
+		return fmt.Errorf("no fJob %s in reScheduler cache", task.Job)
+	}
 	nodeRankTimes := reScheduler.AllocNodeRankOccurrenceMap[fJob.JobUID]
-	// 1. if given node is in the nodeRankTime, keep it (node is used by the fault job before)
+	// 1. if given node is in the nodeRankTime, keep it ,node is used by the fault job before
 	for _, nodeRankTime := range nodeRankTimes {
 		if node.Name == nodeRankTime.NodeName {
 			task.Pod.Annotations[podRankIndex] = nodeRankTime.RankIndex

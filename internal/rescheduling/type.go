@@ -64,8 +64,9 @@ const (
 	// CmNodeRankTimeMapKind record map jobUID rankIndex node and times of occurrence
 	CmNodeRankTimeMapKind = "node-rankIndex-Occurrence"
 
-	nodeUpdateTime       = 5
-	defaultGraceOverTime = 900
+	nodeUpdateTime = 5
+	// DefaultGraceOverTime time interval for grace delete
+	DefaultGraceOverTime = 900
 	minGraceOverTime     = 2
 	maxGraceOverTime     = 3600
 	maxIntervalTime      = 300

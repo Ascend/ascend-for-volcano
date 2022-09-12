@@ -12,6 +12,11 @@ package rescheduling
 import (
 	"encoding/json"
 	"testing"
+
+	"volcano.sh/volcano/pkg/scheduler/api"
+
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
 func fakeInvalidReSchedulerCMData() *DealReSchedulerConfigmap {
@@ -31,17 +36,17 @@ func dealMarshal(data interface{}) string {
 }
 
 func fakeNormalReSchedulerCMData() *DealReSchedulerConfigmap {
-	FaultNodes := []FaultNode{
-		*FakeTestFaultNodeNodeHealthy("node0"),
-		*FakeTestFaultNodeNodeHealthy("node1"),
+	faultNodes := []FaultNode{
+		*fakeTestFaultNodeNodeHealthy("node0"),
+		*fakeTestFaultNodeNodeHealthy("node1"),
 	}
-	FaultJobs := []FaultJob{
-		*FakeTestFaultJob([]string{"node0", "node1"}, []string{"0", "9"},
+	faultJobs := []FaultJob{
+		*fakeTestFaultJob([]string{"node0", "node1"}, []string{"0", "9"},
 			nil, "job1", "test"),
 	}
 
-	fNodeBuffer := dealMarshal(FaultNodes)
-	fJobBuffer := dealMarshal(FaultJobs)
+	fNodeBuffer := dealMarshal(faultNodes)
+	fJobBuffer := dealMarshal(faultJobs)
 
 	return &DealReSchedulerConfigmap{
 		CMName:      CmName,
@@ -54,15 +59,15 @@ func fakeNormalReSchedulerCMData() *DealReSchedulerConfigmap {
 }
 
 type DealReSchedulerCacheSetFaultNodesFromCMTests struct {
-	name    string
 	fields  *DealReSchedulerCache
+	name    string
 	wantErr bool
 }
 
 func buildDealReSchedulerCacheSetFaultNodesFromCMTests() []DealReSchedulerCacheSetFaultNodesFromCMTests {
-	field1 := FakeReSchedulerCache()
+	field1 := fakeReSchedulerCache()
 	field1.DealReSchedulerConfigmap = fakeInvalidReSchedulerCMData()
-	field2 := FakeReSchedulerCache()
+	field2 := fakeReSchedulerCache()
 	field2.DealReSchedulerConfigmap = fakeNormalReSchedulerCMData()
 
 	test1 := DealReSchedulerCacheSetFaultNodesFromCMTests{
@@ -82,6 +87,7 @@ func buildDealReSchedulerCacheSetFaultNodesFromCMTests() []DealReSchedulerCacheS
 	return testCases
 }
 
+// TestDealReSchedulerCacheSetFaultNodesFromCM test for set FaultNodes struct from configmap
 func TestDealReSchedulerCacheSetFaultNodesFromCM(t *testing.T) {
 	tests := buildDealReSchedulerCacheSetFaultNodesFromCMTests()
 	for _, tt := range tests {
@@ -93,6 +99,95 @@ func TestDealReSchedulerCacheSetFaultNodesFromCM(t *testing.T) {
 			}
 			if err := reCache.SetFaultNodesFromCM(); (err != nil) != tt.wantErr {
 				t.Errorf("SetFaultNodesFromCM() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+type ReSchedulerCacheWriteReSchedulerCacheToEnvCacheFields struct {
+	DealReSchedulerConfigmap   *DealReSchedulerConfigmap
+	FaultNodes                 []FaultNode
+	FaultJobs                  []FaultJob
+	NodeHeartbeats             []NodeHeartbeat
+	AllocNodeRankOccurrenceMap map[api.JobID][]AllocNodeRankOccurrence
+}
+
+type ReSchedulerCacheWriteReSchedulerCacheToEnvCacheArgs struct {
+	env     *plugin.ScheduleEnv
+	jobType string
+}
+
+type ReSchedulerCacheWriteReSchedulerCacheToEnvCacheTests struct {
+	name    string
+	fields  ReSchedulerCacheWriteReSchedulerCacheToEnvCacheFields
+	args    ReSchedulerCacheWriteReSchedulerCacheToEnvCacheArgs
+	wantErr bool
+}
+
+func buildReSchedulerCacheWriteReSchedulerCacheToEnvCache() []ReSchedulerCacheWriteReSchedulerCacheToEnvCacheTests {
+	test1 := ReSchedulerCacheWriteReSchedulerCacheToEnvCacheTests{
+		name: "01-ReSchedulerCache_WriteReSchedulerCacheToEnvCache()-nothing to write",
+		fields: ReSchedulerCacheWriteReSchedulerCacheToEnvCacheFields{
+			DealReSchedulerConfigmap:   nil,
+			FaultNodes:                 []FaultNode{},
+			FaultJobs:                  []FaultJob{},
+			NodeHeartbeats:             []NodeHeartbeat{},
+			AllocNodeRankOccurrenceMap: map[api.JobID][]AllocNodeRankOccurrence{},
+		},
+		args: ReSchedulerCacheWriteReSchedulerCacheToEnvCacheArgs{
+			env: &plugin.ScheduleEnv{
+				Cache: plugin.ScheduleCache{
+					Names:      map[string]string{RePropertyName: CmName},
+					Namespaces: map[string]string{RePropertyName: CmNameSpace},
+					Data:       map[string]map[string]string{RePropertyName: make(map[string]string, util.MapInitNum)},
+				},
+			},
+			jobType: CmFaultJob910x8Kind,
+		},
+		wantErr: false,
+	}
+	faultJob := fakeTestFaultJob([]string{"node0"}, []string{"0", "1"}, nil, "job0", "vcjob")
+	test2 := ReSchedulerCacheWriteReSchedulerCacheToEnvCacheTests{
+		name: "02-ReSchedulerCache_WriteReSchedulerCacheToEnvCache()-with faultJob",
+		fields: ReSchedulerCacheWriteReSchedulerCacheToEnvCacheFields{
+			DealReSchedulerConfigmap:   nil,
+			FaultNodes:                 []FaultNode{},
+			FaultJobs:                  []FaultJob{*faultJob},
+			NodeHeartbeats:             []NodeHeartbeat{},
+			AllocNodeRankOccurrenceMap: map[api.JobID][]AllocNodeRankOccurrence{},
+		},
+		args: ReSchedulerCacheWriteReSchedulerCacheToEnvCacheArgs{
+			env: &plugin.ScheduleEnv{
+				Cache: plugin.ScheduleCache{
+					Names:      map[string]string{RePropertyName: CmName},
+					Namespaces: map[string]string{RePropertyName: CmNameSpace},
+					Data: map[string]map[string]string{RePropertyName: make(map[string]string, util.MapInitNum),
+						JobRecovery: make(map[string]string, util.MapInitNum)},
+				},
+			},
+			jobType: CmFaultJob910x8Kind,
+		},
+		wantErr: false,
+	}
+	tests := []ReSchedulerCacheWriteReSchedulerCacheToEnvCacheTests{test1, test2}
+	return tests
+}
+
+// TestDealReSchedulerCacheWriteReSchedulerCacheToEnvCache test for re-scheduler writing
+func TestDealReSchedulerCacheWriteReSchedulerCacheToEnvCache(t *testing.T) {
+	tests := buildReSchedulerCacheWriteReSchedulerCacheToEnvCache()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reCache := &DealReSchedulerCache{
+				DealReSchedulerConfigmap:   tt.fields.DealReSchedulerConfigmap,
+				FaultNodes:                 tt.fields.FaultNodes,
+				FaultJobs:                  tt.fields.FaultJobs,
+				NodeHeartbeats:             tt.fields.NodeHeartbeats,
+				AllocNodeRankOccurrenceMap: tt.fields.AllocNodeRankOccurrenceMap,
+			}
+			if err := reCache.WriteReSchedulerCacheToEnvCache(
+				tt.args.env, tt.args.jobType); (err != nil) != tt.wantErr {
+				t.Errorf("WriteReSchedulerCacheToEnvCache() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

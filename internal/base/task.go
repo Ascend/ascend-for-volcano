@@ -27,11 +27,12 @@ func (tp *NPUHandler) GetTaskReqNPUNum(task *api.TaskInfo) (int, error) {
 		return 0, errors.New(util.ArgumentError)
 	}
 	nTask, ok := tp.Tasks[string(task.UID)]
-	if !ok || nTask.ReqNPUNum == 0 {
+	if !ok {
 		err := fmt.Errorf("task<%s> is not npu task", task.Name)
 		klog.V(util.LogErrorLev).Infof("GetTaskReqNPUNum err: %s", err.Error())
 		return 0, err
 	}
+	klog.V(util.LogDebugLev).Infof("GetTaskReqNPUNum task req npu<%s>-<%d> ", nTask.ReqNPUName, nTask.ReqNPUNum)
 	return nTask.ReqNPUNum, nil
 }
 
