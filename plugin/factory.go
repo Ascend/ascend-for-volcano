@@ -79,8 +79,8 @@ func (sHandle *ScheduleHandler) IsPluginRegistered(name string) bool {
 
 // checkSession check the ssn's parameters
 func (sHandle *ScheduleHandler) checkSession(ssn *framework.Session) error {
-	if sHandle == nil || ssn == nil || len(ssn.Jobs) == 0 || len(ssn.Nodes) == 0 {
-		klog.V(util.LogInfoLev).Infof("%s nil session or no jobs/nodes hence doing nothing.", PluginName)
+	if sHandle == nil || ssn == nil {
+		klog.V(util.LogInfoLev).Infof("%s nil session hence doing nothing.", PluginName)
 		return errors.New("nil ssn")
 	}
 	return nil
@@ -235,7 +235,6 @@ func (sHandle *ScheduleHandler) InitNPUSession(ssn *framework.Session) error {
 	klog.V(util.LogInfoLev).Infof("enter %s InitNPUSession.", PluginName)
 	defer klog.V(util.LogInfoLev).Infof("leave %s InitNPUSession.", PluginName)
 
-	sHandle.PreStartPlugin(ssn)
 	if err := sHandle.checkSession(ssn); err != nil {
 		klog.V(util.LogErrorLev).Infof("%s checkSession : %s.", PluginName, err)
 		return err
@@ -246,6 +245,7 @@ func (sHandle *ScheduleHandler) InitNPUSession(ssn *framework.Session) error {
 
 	sHandle.InitJobsPlugin()
 	sHandle.InitCache()
+	sHandle.PreStartPlugin(ssn)
 	return nil
 }
 
