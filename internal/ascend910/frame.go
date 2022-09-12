@@ -140,7 +140,15 @@ func (tp *ascend910) PreStartAction(ssn *framework.Session) error {
 	if ssn == nil {
 		return fmt.Errorf("session is nil: %s", util.ArgumentError)
 	}
-	return tp.handle.PreStartAction(ssn)
+	klog.V(util.LogInfoLev).Infof("Enter PreStartAction for %s", tp.GetPluginName())
+	defer klog.V(util.LogInfoLev).Infof("Leave PreStartAction for %s", tp.GetPluginName())
+	for name, handler := range tp.Kind {
+		klog.V(util.LogInfoLev).Infof("preStartAction for %s", name)
+		if err := handler.PreStartAction(ssn); err != nil {
+			klog.V(util.LogErrorLev).Infof("preStartAction %s error: %v", name, err)
+		}
+	}
+	return nil
 }
 
 // PreStopAction post-processing actions for re-scheduling
@@ -151,5 +159,11 @@ func (tp *ascend910) PreStopAction(env *plugin.ScheduleEnv) error {
 	if env == nil {
 		return fmt.Errorf("env is nil: %s", util.ArgumentError)
 	}
-	return tp.handle.PreStopAction(env)
+	for name, handler := range tp.Kind {
+		klog.V(util.LogInfoLev).Infof("preStopAction for %s", name)
+		if err := handler.PreStopAction(env); err != nil {
+			klog.V(util.LogErrorLev).Infof("preStopAction %s error: %v", name, err)
+		}
+	}
+	return nil
 }
