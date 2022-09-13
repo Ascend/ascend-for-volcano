@@ -34,11 +34,11 @@ import (
 )
 
 const (
-	zero              = 0
-	one               = 1
-	two               = 2
-	three             = 3
-	four              = 4
+	sliceIndexZero    = 0
+	sliceIndexOne     = 1
+	sliceIndexTwo     = 2
+	sliceIndexThree   = 3
+	sliceIndexFour    = 4
 	heartbeatInterval = 5
 	fakeTime          = 12345
 )
@@ -355,9 +355,9 @@ func fakeEnvAddCacheFaultJobToEnv(env *plugin.ScheduleEnv, paras []string, rankI
 	if len(paras) < util.NPUIndex3 {
 		return
 	}
-	jobName := paras[zero]
-	node0 := paras[one]
-	node1 := paras[two]
+	jobName := paras[sliceIndexZero]
+	node0 := paras[sliceIndexOne]
+	node1 := paras[sliceIndexTwo]
 	faultTask1 := fakeReSchedulerFaultTask(true, []string{"pod0", "vcjob", node0, jobName, "0"}, podCreateTime,
 		"ppppppppppppp")
 	faultTask2 := fakeReSchedulerFaultTask(false, []string{"pod1", "vcjob", node1, jobName, "1"}, podCreateTime,
@@ -401,9 +401,9 @@ func fakeReSchedulerFaultNodeEmptyCard(nodeName string, unhealthyNPU []string, n
 	if len(updateTimes) < util.NPUIndex3 {
 		return rescheduling.FaultNode{}
 	}
-	updateTime := updateTimes[zero]
-	oldHBTime := updateTimes[one]
-	updateHBTime := updateTimes[two]
+	updateTime := updateTimes[sliceIndexZero]
+	oldHBTime := updateTimes[sliceIndexOne]
+	updateHBTime := updateTimes[sliceIndexTwo]
 	hState := rescheduling.NodeHealthy
 	if len(netUnhealthyNPU) > 0 {
 		isFault = true
@@ -473,11 +473,11 @@ func fakeReSchedulerFaultTask(isFault bool, paras []string,
 	if len(paras) < test.NPUIndex5 {
 		return rescheduling.FaultTask{}
 	}
-	name := paras[zero]
-	ns := paras[one]
-	nodeName := paras[two]
-	jobName := paras[three]
-	rankIndex := paras[four]
+	name := paras[sliceIndexZero]
+	ns := paras[sliceIndexOne]
+	nodeName := paras[sliceIndexTwo]
+	jobName := paras[sliceIndexThree]
+	rankIndex := paras[sliceIndexFour]
 	faultTask := rescheduling.FaultTask{
 		IsFaultTask:   isFault,
 		TaskUID:       api.TaskID(`"` + ns + `"-"` + name + `"`),
