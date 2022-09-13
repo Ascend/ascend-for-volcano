@@ -33,6 +33,16 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
+const (
+	zero              = 0
+	one               = 1
+	two               = 2
+	three             = 3
+	four              = 4
+	heartbeatInterval = 5
+	fakeTime          = 12345
+)
+
 type module910x8Fields struct {
 	reHandle        *rescheduling.ReScheduler
 	baseHandler     base.NPUHandler
@@ -345,9 +355,9 @@ func fakeEnvAddCacheFaultJobToEnv(env *plugin.ScheduleEnv, paras []string, rankI
 	if len(paras) < util.NPUIndex3 {
 		return
 	}
-	jobName := paras[0]
-	node0 := paras[1]
-	node1 := paras[2]
+	jobName := paras[zero]
+	node0 := paras[one]
+	node1 := paras[two]
 	faultTask1 := fakeReSchedulerFaultTask(true, []string{"pod0", "vcjob", node0, jobName, "0"}, podCreateTime,
 		"ppppppppppppp")
 	faultTask2 := fakeReSchedulerFaultTask(false, []string{"pod1", "vcjob", node1, jobName, "1"}, podCreateTime,
@@ -370,8 +380,8 @@ func fakeEnvAddCacheFaultNodeToEnv(env *plugin.ScheduleEnv) {
 	fCard6 := fakeReSchedulerFaultCard("Ascend910-5", "node0", false, rescheduling.CardHealthy)
 	fCard7 := fakeReSchedulerFaultCard("Ascend910-6", "node0", false, rescheduling.CardHealthy)
 	fCard8 := fakeReSchedulerFaultCard("Ascend910-7", "node0", false, rescheduling.CardHealthy)
-	fNode := fakeReSchedulerFaultNodeEmptyCard("node0", []string{"Ascend910-0"}, []string{}, 5, []int64{now - 1, 12456,
-		now - 1})
+	fNode := fakeReSchedulerFaultNodeEmptyCard("node0", []string{"Ascend910-0"}, []string{},
+		heartbeatInterval, []int64{now - 1, fakeTime, now - 1})
 	fakeReSchedulerFaultNodeAddFaultCards(&fNode, fCard1)
 	fakeReSchedulerFaultNodeAddFaultCards(&fNode, fCard2)
 	fakeReSchedulerFaultNodeAddFaultCards(&fNode, fCard3)
@@ -391,9 +401,9 @@ func fakeReSchedulerFaultNodeEmptyCard(nodeName string, unhealthyNPU []string, n
 	if len(updateTimes) < util.NPUIndex3 {
 		return rescheduling.FaultNode{}
 	}
-	updateTime := updateTimes[0]
-	oldHBTime := updateTimes[1]
-	updateHBTime := updateTimes[2]
+	updateTime := updateTimes[zero]
+	oldHBTime := updateTimes[one]
+	updateHBTime := updateTimes[two]
 	hState := rescheduling.NodeHealthy
 	if len(netUnhealthyNPU) > 0 {
 		isFault = true
@@ -463,11 +473,11 @@ func fakeReSchedulerFaultTask(isFault bool, paras []string,
 	if len(paras) < test.NPUIndex5 {
 		return rescheduling.FaultTask{}
 	}
-	name := paras[0]
-	ns := paras[1]
-	nodeName := paras[2]
-	jobName := paras[3]
-	rankIndex := paras[4]
+	name := paras[zero]
+	ns := paras[one]
+	nodeName := paras[two]
+	jobName := paras[three]
+	rankIndex := paras[four]
 	faultTask := rescheduling.FaultTask{
 		IsFaultTask:   isFault,
 		TaskUID:       api.TaskID(`"` + ns + `"-"` + name + `"`),
