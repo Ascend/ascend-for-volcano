@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 )
@@ -60,25 +59,6 @@ func (asJob *SchedulerJobAttr) IsJobOfCardMode() bool {
 
 	klog.V(LogDebugLev).Infof("job(%s) is module type.", asJob.JobName)
 	return ValidStringMap(asJob.Selector, AcceleratorType, CardAcceleratorType)
-}
-
-// CheckJobExistsInKubernetes Check whether the jobs exists in K8S.
-func (asJob *SchedulerJobAttr) CheckJobExistsInKubernetes(ssn *framework.Session) bool {
-	for _, npuTask := range asJob.Tasks {
-		realPod, err := npuTask.GetRealPodByTask(ssn)
-		if realPod != nil { // job中的pod在k8s中能找到, 不能删, job还在
-			return true
-		}
-		if err != nil {
-			if !errors.IsNotFound(err) {
-				klog.V(LogErrorLev).Infof("CheckJobExistsInKubernetes  getRealPodByTask %v %v.", npuTask.TaskName, err)
-				return true
-			}
-		}
-	}
-	klog.V(LogInfoLev).Infof("%v CheckJobExistsInKubernetes, all pods not exist in kubernetes, "+
-		"job can be deleted", asJob.JobName)
-	return false
 }
 
 // CheckJobPodStatusOK check the pod is running.

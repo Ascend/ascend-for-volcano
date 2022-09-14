@@ -201,6 +201,10 @@ func (sHandle *ScheduleHandler) saveCacheToCm() {
 			klog.V(util.LogErrorLev).Infof("SaveCacheToCm %s no namespace or Data in cache.", spName)
 			continue
 		}
+		data, err := util.UpdateConfigmapIncrementally(sHandle.FrameAttr.KubeClient, nameSpace, cmName, data)
+		if err != nil {
+			klog.V(util.LogInfoLev).Infof("get old %s configmap failed: %v, write new data into cm", spName, err)
+		}
 		var tmpCM = &v12.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      cmName,
