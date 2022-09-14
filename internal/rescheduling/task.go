@@ -16,7 +16,7 @@ import (
 	"strconv"
 	"strings"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
@@ -56,9 +56,9 @@ func (fTask *FaultTask) getUseCardName(task *api.TaskInfo, cardName string, card
 }
 
 func (fTask *FaultTask) deleteRealPodByTask(ssn *framework.Session, waitTime int64) error {
-	deleteOptions := metav1.DeleteOptions{
+	deleteOptions := v1.DeleteOptions{
 		GracePeriodSeconds: &waitTime,
-		Preconditions:      metav1.NewUIDPreconditions(string(fTask.TaskUID)),
+		Preconditions:      v1.NewUIDPreconditions(string(fTask.TaskUID)),
 	}
 
 	err := ssn.KubeClient().CoreV1().Pods(fTask.TaskNamespace).Delete(
