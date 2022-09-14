@@ -46,6 +46,10 @@ func (fJob *FaultJob) GetJobFaultRescheduleLabel(job *plugin.SchedulerJob) strin
 }
 
 func (fJob *FaultJob) isJobGraceDeleteSuccess(jobInfo *api.JobInfo) bool {
+	if jobInfo == nil {
+		klog.V(util.LogErrorLev).Infof("jobInfo is nil: %#v", jobInfo)
+		return false
+	}
 	// 1. judge if job task exists
 	if len(jobInfo.Tasks) == 0 {
 		// old pod has been deleted.
@@ -111,14 +115,9 @@ func (fJob *FaultJob) ForceDeleteJob(ssn *framework.Session, schedulerJob *plugi
 		return fmt.Errorf("schedulerJob does not exist")
 	}
 	for _, fTask := range fJob.FaultTasks {
-		npuTask, ok := schedulerJob.Tasks[string(fTask.TaskUID)]
-		if !ok {
-			klog.V(util.LogDebugLev).Infof(
-				"ForceDeleteJob: npuTask %s has been deleted in session.", fTask.TaskName)
-		}
-		err := npuTask.DeleteRealPodByTask(ssn, 0)
+		err := fTask.deleteRealPodByTask(ssn, 0)
 		if err != nil {
-			klog.V(util.LogDebugLev).Infof("ForceDeleteFaultPod %s: %#v.", npuTask.TaskName, err)
+			klog.V(util.LogDebugLev).Infof("ForceDeleteFaultPod %s: %#v.", fTask.TaskName, err)
 		}
 	}
 	return nil

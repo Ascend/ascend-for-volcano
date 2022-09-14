@@ -361,6 +361,9 @@ func (fTask *FaultTask) getTaskUsedFaultCards(fNode *FaultNode) ([]string, error
 		return nil, fmt.Errorf("fNode %s is not fTask %s's occupying node", fNode.NodeName, fTask.NodeName)
 	}
 	var taskUseFaultCard []string
+	if fTask.faultType == NodeUnhealthy { // node unhealthy, return all cards
+		return fTask.UseCardName, nil
+	}
 	for _, taskUseCard := range fTask.UseCardName {
 		for _, fCard := range fNode.FaultCards {
 			if taskUseCard == fCard.NPUName && fCard.IsFaultCard {
