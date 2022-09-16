@@ -413,7 +413,6 @@ func (reScheduler *ReScheduler) GetNeedForceDeleteDelayingNPUJobs(
 		if !ok {
 			klog.V(util.LogErrorLev).Infof(
 				"GetNeedForceDeleteDelayingNPUJobs %v not in ssn.Jobs.", fJob.JobName)
-			continue
 		}
 		if fJob.isJobGraceDeleteSuccess(jobInfo) { // if job successfully restarted, do not force delete
 			klog.V(util.LogErrorLev).Infof("%v grace deleted successful.", fJob.JobName)
@@ -980,8 +979,9 @@ func (reScheduler *ReScheduler) checkNodeFJobNormNodeRelease(
 	}
 	for _, fTask := range curFJob.FaultTasks {
 		fNode := reScheduler.getFNodeOfGivenNameFromCache(fTask.NodeName)
-		if fNode == nil {
-			return fmt.Errorf("node %s does not exist in cache", fTask.NodeName)
+		if fNode == nil {  // if fNode is nil then the node should be a fault one
+			klog.V(util.LogDebugLev).Infof("node %s does not exist in cache", fTask.NodeName)
+			continue
 		}
 		if !fNode.IsFaultNode { // if normal node in faultJob hasn't been released, return error
 			if !fNode.isNodeInSessionByNpuNodes(reScheduler.Nodes) { // case1. node not released and not sent by ssn
