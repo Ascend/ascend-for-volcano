@@ -979,7 +979,7 @@ func (reScheduler *ReScheduler) checkNodeFJobNormNodeRelease(
 	}
 	for _, fTask := range curFJob.FaultTasks {
 		fNode := reScheduler.getFNodeOfGivenNameFromCache(fTask.NodeName)
-		if fNode == nil {  // if fNode is nil then the node should be a fault one
+		if fNode == nil { // if fNode is nil then the node should be a fault one
 			klog.V(util.LogDebugLev).Infof("node %s does not exist in cache", fTask.NodeName)
 			continue
 		}
