@@ -35,6 +35,12 @@ const (
 	JobOffRescheduleLabelValue = "off"
 	// GraceOverTimeKey for GraceOverTime config by user
 	GraceOverTimeKey = "grace-over-time"
+	// ElasticSchedulingKey for distinguishing whether a job is enabled with elastic scheduling
+	ElasticSchedulingKey = "elastic-scheduling"
+	// JobOnElasticScheduling job enabled with elastic scheduling
+	JobOnElasticScheduling = "on"
+	// JobOffElasticScheduling job not enabled with elastic scheduling
+	JobOffElasticScheduling = "off"
 
 	nodeHeartbeat         = "noded/heartbeat"
 	nodeHeartbeatInterval = "noded/heartbeat-interval"
@@ -180,6 +186,7 @@ type FaultJob struct {
 	JobRankIdCreateTime int64 // stop updating when job becomes a real fault one
 	FaultTypes          []string
 	DeleteExecutedFlag  bool
+	ElasticScheduling   string
 }
 
 // NodeHeartbeat object recording nodes and their heartbeats
