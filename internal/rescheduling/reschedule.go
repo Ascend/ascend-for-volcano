@@ -18,7 +18,6 @@ import (
 
 	"k8s.io/klog"
 	"volcano.sh/apis/pkg/apis/scheduling"
-	"volcano.sh/volcano/pkg/cli/job"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
@@ -248,6 +247,8 @@ func (reScheduler *ReScheduler) updateNewFaultJobAttr(
 	npuJob := reScheduler.Jobs[faultJob.JobUID] // 1. set the value of ReScheduleKey, grace/force/off
 	tmpReScheduleKey := faultJob.GetJobFaultRescheduleLabel(&npuJob)
 	faultJob.setJobFaultReScheduleLabel(tmpReScheduleKey)
+	tmpElasticKey := faultJob.GetJobElasticSchedulingLabel(&npuJob)
+	faultJob.setJobElasticReScheduleLabel(tmpElasticKey)
 	if tmpReScheduleKey == JobOffRescheduleLabelValue {
 		klog.V(util.LogErrorLev).Infof("%s not set rescheduleLabel, no need reschedule.", jobInfo.Name)
 		return faultJob
@@ -270,7 +271,8 @@ func (reScheduler *ReScheduler) updateNewFaultJobAttr(
 		}
 		_, ok := reScheduler.Nodes[nodeName]
 		if !ok {
-			klog.V(util.LogInfoLev).Infof("node %s used by job %s not in current session", nodeName, job.Name)
+			klog.V(util.LogInfoLev).Infof("node %s used by job %s not in current session",
+				nodeName, faultJob.JobName)
 			faultJob.setIsFaultJob(true)
 		}
 	}
@@ -837,6 +839,11 @@ func (reScheduler *ReScheduler) UseAnnotation(task *api.TaskInfo, node *plugin.N
 	fJob := reScheduler.getFaultJobOfGivenTaskInfoFromCache(task)
 	if fJob == nil {
 		return fmt.Errorf("no fJob %s in reScheduler cache", task.Job)
+	}
+	if fJob.ElasticScheduling == JobOnElasticScheduling {
+		klog.V(util.LogInfoLev).Infof("task %s is enabled with elastic scheduling, "+
+			"skip volcano rankIndex writing process", task.Name)
+		return nil
 	}
 	nodeRankTimes := reScheduler.AllocNodeRankOccurrenceMap[fJob.JobUID]
 	// 1. if given node is in the nodeRankTime, keep it ,node is used by the fault job before
