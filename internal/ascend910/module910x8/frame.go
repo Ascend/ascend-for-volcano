@@ -231,13 +231,13 @@ func (tp *module910x8) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeIn
 		}
 		scoreMap[node.Name] = nodeWeight * float64(int(healthyNPUNum/util.NPUHexKilo)*npuNumPerHccs-bestScore)
 	}
-	scoreMap, reErr := tp.reHandle.ScoreBestNPUNodes(task, scoreMap)
+	reErr := tp.reHandle.ScoreBestNPUNodes(task, scoreMap)
 	if reErr != nil {
 		klog.V(util.LogErrorLev).Infof(
 			"%s rescheduling ScoreBestNPUNodes failed :%s.", SchedulerName, reErr.Error())
 	}
 	klog.V(util.LogInfoLev).Infof("%s ScoreBestNPUNodes task<%s> scoreMap<%v>", tp.GetPluginName(),
-		task.NodeName, scoreMap)
+		task.Name, scoreMap)
 	return nil
 }
 

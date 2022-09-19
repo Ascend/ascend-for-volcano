@@ -10,12 +10,16 @@ Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
 package rescheduling
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
+	"volcano.sh/volcano/pkg/scheduler/framework"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
@@ -49,6 +53,24 @@ func (fTask *FaultTask) getUseCardName(task *api.TaskInfo, cardName string, card
 		return nil, err
 	}
 	return taskNPUs, nil
+}
+
+func (fTask *FaultTask) deleteRealPodByTask(ssn *framework.Session, waitTime int64) error {
+	deleteOptions := v1.DeleteOptions{
+		GracePeriodSeconds: &waitTime,
+		Preconditions:      v1.NewUIDPreconditions(string(fTask.TaskUID)),
+	}
+
+	err := ssn.KubeClient().CoreV1().Pods(fTask.TaskNamespace).Delete(
+		context.TODO(), fTask.TaskName, deleteOptions)
+	if err != nil {
+		klog.V(util.LogErrorLev).Infof("Failed to delete %s: %#v", fTask.TaskUID, err)
+		return err
+	}
+
+	klog.V(util.LogInfoLev).Infof("%s==%v force terminated and removed from etcd",
+		fTask.TaskName, fTask.TaskUID)
+	return nil
 }
 
 func (fTask *FaultTask) getTaskUseFaultCardHealthState(fNode *FaultNode) []string {

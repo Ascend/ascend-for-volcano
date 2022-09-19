@@ -361,6 +361,9 @@ func (fTask *FaultTask) getTaskUsedFaultCards(fNode *FaultNode) ([]string, error
 		return nil, fmt.Errorf("fNode %s is not fTask %s's occupying node", fNode.NodeName, fTask.NodeName)
 	}
 	var taskUseFaultCard []string
+	if fTask.faultType == NodeUnhealthy { // node unhealthy, return all cards
+		return fTask.UseCardName, nil
+	}
 	for _, taskUseCard := range fTask.UseCardName {
 		for _, fCard := range fNode.FaultCards {
 			if taskUseCard == fCard.NPUName && fCard.IsFaultCard {
@@ -410,7 +413,6 @@ func (reScheduler *ReScheduler) GetNeedForceDeleteDelayingNPUJobs(
 		if !ok {
 			klog.V(util.LogErrorLev).Infof(
 				"GetNeedForceDeleteDelayingNPUJobs %v not in ssn.Jobs.", fJob.JobName)
-			continue
 		}
 		if fJob.isJobGraceDeleteSuccess(jobInfo) { // if job successfully restarted, do not force delete
 			klog.V(util.LogErrorLev).Infof("%v grace deleted successful.", fJob.JobName)
@@ -758,55 +760,56 @@ func (reScheduler *ReScheduler) RestartFaultJobs(ssn *framework.Session) error {
 }
 
 // ScoreBestNPUNodes add scores on scoreMap for normal nodes used by re-scheduling tasks
-func (reScheduler *ReScheduler) ScoreBestNPUNodes(
-	task *api.TaskInfo, scoreMap map[string]float64) (map[string]float64, error) {
+func (reScheduler *ReScheduler) ScoreBestNPUNodes(task *api.TaskInfo, scoreMap map[string]float64) error {
 	if reScheduler == nil {
 		klog.V(util.LogErrorLev).Infof("ScoreBestNPUNodes: %s, nil reScheduler", util.ArgumentError)
-		return scoreMap, errors.New(util.ArgumentError)
+		return errors.New(util.ArgumentError)
 	}
 	if task == nil {
 		klog.V(util.LogErrorLev).Infof("ScoreBestNPUNodes: %s, nil task", util.ArgumentError)
-		return scoreMap, errors.New(util.ArgumentError)
+		return errors.New(util.ArgumentError)
 	}
 	if len(scoreMap) == 0 {
 		mgs := fmt.Errorf("add score by fault NPU task scoreMap is nil")
 		klog.V(util.LogErrorLev).Infof("%#v.", mgs)
-		return scoreMap, mgs
+		return mgs
 	}
 	klog.V(util.LogDebugLev).Infof("enter rescheduling ScoreBestNPUNodes %s...", task.Name)
 	klog.V(util.LogDebugLev).Infof("node score map before add rescheduling weights %#v", scoreMap)
 	defer klog.V(util.LogDebugLev).Infof("leave rescheduling ScoreBestNPUNodes ...")
-	defer klog.V(util.LogDebugLev).Infof("node score map after add rescheduling weights %#v", scoreMap)
 	curfTask := reScheduler.getFaultTaskOfGivenTaskNameFromCache(task.Name) // 1. get faultTask object
 	if curfTask == nil {
-		return scoreMap, fmt.Errorf("task %s is not in rescheduler cache", task.Name)
+		return fmt.Errorf("task %s is not in rescheduler cache", task.Name)
 	}
 	fJob := reScheduler.getFaultJobOfGivenTaskInfoFromCache(task) // 2. get faultJob object given the faultTask object
 	if !fJob.IsFaultJob {                                         // skip adding re-scheduling score for normal jobs
-		return scoreMap, fmt.Errorf("task %s belongs to job %s which is not a fault job",
+		return fmt.Errorf("task %s belongs to job %s which is not a fault job",
 			task.Name, fJob.JobName)
 	}
-	singleOldFlag := false
 	hasOldNodeFlag := false
-	tmpScoreMap := make(map[string]float64, len(scoreMap))
 	for nodeName, _ := range scoreMap {
-		singleOldFlag = false
 		for _, jobUseNode := range fJob.NodeNames {
-			if nodeName == jobUseNode { // if node is old node, add score
-				tmpScoreMap[nodeName] = util.NPUIndex8 * util.NPUIndex8
-				singleOldFlag = true
+			if nodeName == jobUseNode {
+				klog.V(util.LogDebugLev).Infof("node %s is previously used by job", nodeName)
 				hasOldNodeFlag = true
+			}
+		}
+	}
+	if !hasOldNodeFlag {
+		klog.V(util.LogDebugLev).Infof("no old node, no modifications on scoreMap")
+		return nil
+	}
+	for nodeName, _ := range scoreMap {
+		scoreMap[nodeName] = float64(0)
+		for _, jobUseNode := range fJob.NodeNames {
+			if nodeName == jobUseNode {
+				klog.V(util.LogDebugLev).Infof("assign high score to old node %s", nodeName)
+				scoreMap[nodeName] = float64(util.NPUIndex8 * util.NPUIndex8)
 				break
 			}
 		}
-		if !singleOldFlag {
-			tmpScoreMap[nodeName] = 0 // if node is not old node, clear score
-		}
 	}
-	if !hasOldNodeFlag { // if all nodes are new, keep the original scoreMap
-		return scoreMap, nil
-	}
-	return tmpScoreMap, nil
+	return nil
 }
 
 // UseAnnotation reallocate rankIndex for the re-scheduling jobs
@@ -839,6 +842,8 @@ func (reScheduler *ReScheduler) UseAnnotation(task *api.TaskInfo, node *plugin.N
 	// 1. if given node is in the nodeRankTime, keep it ,node is used by the fault job before
 	for _, nodeRankTime := range nodeRankTimes {
 		if node.Name == nodeRankTime.NodeName {
+			klog.V(util.LogInfoLev).Infof("set old node rank index <%s>/<%s>/<%s>", node.Name,
+				task.Name, nodeRankTime.RankIndex)
 			task.Pod.Annotations[podRankIndex] = nodeRankTime.RankIndex
 			return nil
 		}
@@ -960,6 +965,8 @@ func (reScheduler *ReScheduler) CheckNodeNPUByTask(task *api.TaskInfo, vcNode pl
 	if err := reScheduler.checkNodeRankIndexOccupied(curFJob, vcNode); err != nil {
 		return err
 	}
+	klog.V(util.LogDebugLev).Infof("CheckNodeNPUByTask node %s passed rescheduling predicate for task %s",
+		vcNode.Name, task.Name)
 	return nil
 }
 
@@ -967,12 +974,14 @@ func (reScheduler *ReScheduler) CheckNodeNPUByTask(task *api.TaskInfo, vcNode pl
 func (reScheduler *ReScheduler) checkNodeFJobNormNodeRelease(
 	curFJob *FaultJob, curSchedulerJob plugin.SchedulerJob) error {
 	if !curFJob.IsFaultJob { // if current job is not in faultJob cache, skip
+		klog.V(util.LogDebugLev).Infof("job %s is not a fault job", curFJob.JobName)
 		return nil
 	}
 	for _, fTask := range curFJob.FaultTasks {
 		fNode := reScheduler.getFNodeOfGivenNameFromCache(fTask.NodeName)
-		if fNode == nil {
-			return fmt.Errorf("node %s does not exist in cache", fTask.NodeName)
+		if fNode == nil { // if fNode is nil then the node should be a fault one
+			klog.V(util.LogDebugLev).Infof("node %s does not exist in cache", fTask.NodeName)
+			continue
 		}
 		if !fNode.IsFaultNode { // if normal node in faultJob hasn't been released, return error
 			if !fNode.isNodeInSessionByNpuNodes(reScheduler.Nodes) { // case1. node not released and not sent by ssn
@@ -988,6 +997,8 @@ func (reScheduler *ReScheduler) checkNodeFJobNormNodeRelease(
 			}
 		}
 	}
+	klog.V(util.LogDebugLev).Infof("checkNodeFJobNormNodeRelease: check ok, fault job %s task length: %d",
+		curFJob.JobName, len(curFJob.FaultTasks))
 	return nil
 }
 
