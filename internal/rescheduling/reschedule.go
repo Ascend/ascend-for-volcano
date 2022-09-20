@@ -605,7 +605,7 @@ func (reScheduler *ReScheduler) SynCacheFaultJobWithSession(
 		updatedFaultJobs = append(updatedFaultJobs, faultJob)
 	}
 	reScheduler.setFaultJobs(updatedFaultJobs)
-	klog.V(util.LogDebugLev).Infof("ReSchedulerCache fault jobs sync: %#v", reScheduler.FaultJobs)
+	klog.V(util.LogDebugLev).Infof("ReSchedulerCache fault jobs after sync: %#v", reScheduler.FaultJobs)
 }
 
 // SynCacheNodeRankOccMapWithSession Synchronise FaultJobs in cache by updating the information using current session

@@ -71,11 +71,9 @@ func (fJob *FaultJob) isJobGraceDeleteSuccess(jobInfo *api.JobInfo) bool {
 		klog.V(util.LogErrorLev).Infof("jobInfo is nil: %#v", jobInfo)
 		return false
 	}
-	// 1. judge if job task exists
-	if len(jobInfo.Tasks) == 0 {
-		// old pod has been deleted.
-		klog.V(util.LogInfoLev).Infof("isJobGraceDeletedSuccess: %v pods has been deleted.", jobInfo.Name)
-		return true
+	if !plugin.IsJobInitial(jobInfo) {
+		klog.V(util.LogInfoLev).Infof("isJobGraceDeletedSuccess: job %s not initialised.", jobInfo.Name)
+		return false
 	}
 	// 2. judge if the create time of pods in cache and current pod differs
 	restartNum := 0
