@@ -249,7 +249,6 @@ func (fJob *FaultJob) checkJobNodeRankIndexValid() bool {
 	return true
 }
 
-
 func (fJob *FaultJob) setJobFaultReScheduleLabel(value string) {
 	fJob.ReScheduleKey = value
 }

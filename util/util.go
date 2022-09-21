@@ -152,6 +152,7 @@ func IsSliceContain(keyword interface{}, targetSlice interface{}) bool {
 	return ok
 }
 
+// RemoveSliceDuplicateElement remove duplicate element in slice
 func RemoveSliceDuplicateElement(languages []string) []string {
 	result := make([]string, 0, len(languages))
 	temp := map[string]struct{}{}
