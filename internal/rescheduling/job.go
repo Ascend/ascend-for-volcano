@@ -93,7 +93,8 @@ func (fJob *FaultJob) isJobGraceDeleteSuccess(jobInfo *api.JobInfo) bool {
 		}
 	}
 	klog.V(util.LogDebugLev).Infof("<%d/%d> pod of job restarted", restartNum, len(jobInfo.Tasks))
-	if restartNum >= len(jobInfo.Tasks) { // minAvailable must equal to number of replicas
+	if restartNum >= len(jobInfo.Tasks) && plugin.IsJobInitial(
+		jobInfo) { // minAvailable must equal to number of replicas
 		klog.V(util.LogInfoLev).Infof("job all pod %d restart success.", restartNum)
 		return true
 	}
