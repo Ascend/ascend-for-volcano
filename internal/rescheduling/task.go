@@ -38,7 +38,7 @@ func (fTask *FaultTask) getNodeRankIndex(task *api.TaskInfo) (string, error) {
 	if index > maxRankIndex || index < 0 {
 		return "", fmt.Errorf("rankIndex:%#v out of limit", index)
 	}
-
+	klog.V(util.LogInfoLev).Infof("task %s rankIndex read from pod: %s", task.Name, rankIndex)
 	return rankIndex, nil
 }
 
