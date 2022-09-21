@@ -941,7 +941,7 @@ func buildReSchedulerCheckNodeNPUByTaskTests() []ReSchedulerCheckNodeNPUByTaskTe
 		name:    "01-CheckNodeNPUByTaskTests()-old task bind to new pod should be abandoned",
 		fields:  field1,
 		args:    arg1,
-		wantErr: true,
+		wantErr: false,
 	}
 	tests := []ReSchedulerCheckNodeNPUByTaskTests{
 		test1,
@@ -999,7 +999,7 @@ func buildReSchedulerCheckNodeCurNodeIsFaultTests() []ReSchedulerCheckNodeCurNod
 				Name: "pod0",
 			},
 		},
-		wantErr: true,
+		wantErr: false,
 	}
 	tests := []ReSchedulerCheckNodeCurNodeIsFaultTests{
 		test1,

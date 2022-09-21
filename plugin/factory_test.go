@@ -119,9 +119,13 @@ func buildBeforeCloseHandler() []beforeCloseHandlerTest {
 func TestBeforeCloseHandler(t *testing.T) {
 	tests := buildBeforeCloseHandler()
 	tmpPatche := gomonkey.ApplyFunc(util.CreateOrUpdateConfigMap,
-		func(k8s kubernetes.Interface, cm *v1.ConfigMap, cmName, cmNameSpac string) error {
+		func(k8s kubernetes.Interface, cm *v1.ConfigMap, cmName, cmNameSpace string) error {
 			return nil
 		})
+	tmpPatche2 := gomonkey.ApplyFunc(util.GetConfigMapWithRetry, func(
+		_ kubernetes.Interface, _, _ string) (*v1.ConfigMap, error) {
+		return nil, nil
+	})
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sHandle := &ScheduleHandler{
@@ -132,6 +136,7 @@ func TestBeforeCloseHandler(t *testing.T) {
 		})
 	}
 	tmpPatche.Reset()
+	tmpPatche2.Reset()
 }
 
 type getNPUSchedulerArgs struct {

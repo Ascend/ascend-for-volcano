@@ -35,6 +35,23 @@ func isSelectorContains(defValue, jobValue string) bool {
 	return false
 }
 
+// Determine if the two string has same element.
+func isEachStringContainsSameElement(first, second, seq string) bool {
+	if first == second {
+		return true
+	}
+	fList := strings.Split(first, seq)
+	sList := strings.Split(second, seq)
+	for _, vFirst := range fList {
+		for _, vSecond := range sList {
+			if strings.EqualFold(vFirst, vSecond) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // GetTaskSelectors get task's selector.
 func GetTaskSelectors(task *api.TaskInfo) map[string]string {
 	if task == nil {

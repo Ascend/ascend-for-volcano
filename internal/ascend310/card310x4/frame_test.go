@@ -149,7 +149,7 @@ func buildCheckNodeNPUByTaskTestCases() []itest.CheckNodeNPUByTaskTestCase {
 			WantErr: errors.New("getUsableTopFromNode node<node1> don't have npu<huawei.com/Ascend310>"),
 		},
 		{
-			Name: "03-CheckNodeNPUByTask return err when node has no req npu",
+			Name: "04-CheckNodeNPUByTask return err when node has no req npu",
 			Task: test.FakeTaskWithResReq("pod0", util.NPU310CardName, util.NPUIndex3),
 			Node: plugin.NPUNode{
 				Name:       "node1",
@@ -158,13 +158,13 @@ func buildCheckNodeNPUByTaskTestCases() []itest.CheckNodeNPUByTaskTestCase {
 			WantErr: errors.New("getUsableTopFromNode err: top string<Ascend310-0, Ascend310-1> convert faild"),
 		},
 		{
-			Name: "04-CheckNodeNPUByTask return err when node has no req npu",
+			Name: "05-CheckNodeNPUByTask return err when node has no req npu",
 			Task: test.FakeTaskWithResReq("pod0", util.NPU310CardName, util.NPUIndex3),
 			Node: plugin.NPUNode{
 				Name:       "node1",
 				Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1,Ascend310-4"},
 			},
-			WantErr: fmt.Errorf("CheckNodeNPUByTask the npus on this node don't satisfy the schedulable " +
+			WantErr: fmt.Errorf("checkNodeNPUByTask the npus on this node don't satisfy the schedulable " +
 				"topology : req npu(3) illegal not meet node top<[0 1 4]>"),
 		},
 	}
