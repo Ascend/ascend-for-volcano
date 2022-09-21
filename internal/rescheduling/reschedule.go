@@ -967,6 +967,14 @@ func (reScheduler *ReScheduler) CheckNodeNPUByTask(task *api.TaskInfo, vcNode pl
 	klog.V(util.LogDebugLev).Infof("enter rescheduling CheckNodeNPUByTask ...(%s, %s)", task.Name, vcNode.Name)
 	defer klog.V(util.LogDebugLev).Infof("leave rescheduling CheckNodeNPUByTask ...(%s, %s)",
 		task.Name, vcNode.Name)
+	// 1. jobs should not be scheduled to faultNodes
+	if err := reScheduler.checkNodeCurNodeIsFault(vcNode, task); err != nil {
+		return err
+	}
+	// 3. non faultJobs should not occupy normal nodes previously used by distributional
+	if err := reScheduler.checkNodeNewJobUseFJobNormNode(vcNode, task); err != nil {
+		return err
+	}
 	curFTask := reScheduler.getFaultTaskOfGivenTaskNameFromCache(task.Name)
 	curFJob := reScheduler.getFaultJobOfGivenTaskInfoFromCache(task)
 	curSchedulerJob := reScheduler.getSchedulerJobOfGivenUIDFromReScheduler(task.Job)
@@ -980,14 +988,6 @@ func (reScheduler *ReScheduler) CheckNodeNPUByTask(task *api.TaskInfo, vcNode pl
 	// 0. if fTask's corresponding faultJobs' previously used normal nodes haven't be released,
 	// stuck all scheduling process
 	if err := reScheduler.checkNodeFJobNormNodeRelease(curFJob, curSchedulerJob); err != nil {
-		return err
-	}
-	// 1. jobs should not be scheduled to faultNodes
-	if err := reScheduler.checkNodeCurNodeIsFault(curFJob, vcNode, task); err != nil {
-		return err
-	}
-	// 3. non faultJobs should not occupy normal nodes previously used by distributional
-	if err := reScheduler.checkNodeNewJobUseFJobNormNode(curFTask, vcNode, task); err != nil {
 		return err
 	}
 	// 4. faultJobs should not be assigned to nodes' whose rankIndex already occupied by some other new nodes
@@ -1031,31 +1031,28 @@ func (reScheduler *ReScheduler) checkNodeFJobNormNodeRelease(
 	return nil
 }
 
-// 1. fault nodes should not be bound to any task
-func (reScheduler *ReScheduler) checkNodeCurNodeIsFault(
-	curFJob *FaultJob, vcNode plugin.NPUNode, task *api.TaskInfo) error {
-	if len(curFJob.FaultTasks) == 1 {
-		return nil
+func (reScheduler *ReScheduler) checkNodeCurNodeIsFault(vcNode plugin.NPUNode, task *api.TaskInfo) error {
+	schedulerJob, ok := reScheduler.Jobs[task.Job]
+	if !ok {
+		return fmt.Errorf("task %s corresponding job not in session", task.Name)
 	}
 	for _, fNode := range reScheduler.FaultNodes {
 		if vcNode.Name == fNode.NodeName && fNode.IsFaultNode {
-			if len(curFJob.FaultTasks) > 1 {
+			if len(schedulerJob.Tasks) > 1 {
 				return fmt.Errorf("task %s cannot be assigned to node %s because it's in faultNode list",
 					task.Name, vcNode.Name)
 			}
-			if fNode.NodeHealthState == NodeCardNetworkUnhealthy {
-				return nil
+			if fNode.NodeHealthState == NodeUnhealthy { // none distributed job, npu fault considered in previous ops
+				return fmt.Errorf("task %s cannot be assigned to node %s because it's of %s",
+					task.Name, vcNode.Name, NodeUnhealthy)
 			}
-			return fmt.Errorf("task %s cannot be assigned to node %s "+
-				"because it neither healthy nor networkUnhealthy", task.Name, vcNode.Name)
 		}
 	}
 	return nil
 }
 
 // 2. new jobs cannot take normal nodes used by old distributional jobs
-func (reScheduler *ReScheduler) checkNodeNewJobUseFJobNormNode(
-	curFTask *FaultTask, vcNode plugin.NPUNode, task *api.TaskInfo) error {
+func (reScheduler *ReScheduler) checkNodeNewJobUseFJobNormNode(vcNode plugin.NPUNode, task *api.TaskInfo) error {
 	realFaultJobs, err := reScheduler.getRealFaultJobs()
 	if err != nil {
 		klog.V(util.LogDebugLev).Infof("none real fault jobs")
@@ -1065,7 +1062,7 @@ func (reScheduler *ReScheduler) checkNodeNewJobUseFJobNormNode(
 	// faultJobs in the re-scheduling process
 	for _, fJob := range realFaultJobs {
 		for _, fJobUseNode := range fJob.NodeNames {
-			if fJobUseNode == vcNode.Name && curFTask.JobName != fJob.JobName && len(fJob.FaultTasks) > 1 {
+			if fJobUseNode == vcNode.Name && task.Job != fJob.JobUID && len(fJob.FaultTasks) > 1 {
 				klog.V(util.LogDebugLev).Infof("task %s cannot use node %s occupied by faultJob %s",
 					task.Name, vcNode.Name, fJob.JobName)
 				return fmt.Errorf("task %s cannot use node %s occupied by faultJob %s",
