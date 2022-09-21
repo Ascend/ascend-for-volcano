@@ -240,6 +240,16 @@ func (fJob *FaultJob) getIsFaultJob() bool {
 	return false
 }
 
+func (fJob *FaultJob) checkJobNodeRankIndexValid() bool {
+	for _, fTask := range fJob.FaultTasks {
+		if fTask.NodeRankIndex == "" {
+			return false
+		}
+	}
+	return true
+}
+
+
 func (fJob *FaultJob) setJobFaultReScheduleLabel(value string) {
 	fJob.ReScheduleKey = value
 }
