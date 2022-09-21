@@ -74,6 +74,14 @@ func buildNPUAllocateFuncTest() []npuAllocateFuncTest {
 
 func TestNPUAllocateFunc(t *testing.T) {
 	tests := buildNPUAllocateFuncTest()
+	temp := func(task *api.TaskInfo) string {
+		if task == nil {
+			return ""
+		}
+		value, _ := task.Pod.Annotations[test.NPU910CardName]
+		return value
+	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sHandle := ScheduleHandler{
@@ -81,15 +89,9 @@ func TestNPUAllocateFunc(t *testing.T) {
 				ScheduleEnv: tt.fields.ScheduleEnv,
 			}
 			sHandle.NPUAllocateFunc(tt.args.task)
-			temp := func(task *api.TaskInfo) string {
-				if task == nil {
-					return ""
-				}
-				value, _ := task.Pod.Annotations[test.NPU910CardName]
-				return value
-			}(tt.args.task)
-			if temp != tt.want {
-				t.Errorf("NPUAllocateFunc() got = %v, want %v", temp, tt.want)
+			value := temp(tt.args.task)
+			if value != tt.want {
+				t.Errorf("NPUAllocateFunc() got = %v, want %v", value, tt.want)
 			}
 		})
 	}
@@ -263,6 +265,13 @@ func buildNPUDeallocateFuncTest() []npuDeallocateFuncTest {
 
 func TestNPUDeallocateFunc(t *testing.T) {
 	tests := buildNPUDeallocateFuncTest()
+	temp := func(task *api.TaskInfo) string {
+		if task == nil {
+			return ""
+		}
+		value, _ := task.Pod.Annotations[test.NPU910CardName]
+		return value
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sHandle := &ScheduleHandler{
@@ -270,15 +279,9 @@ func TestNPUDeallocateFunc(t *testing.T) {
 				ScheduleEnv: tt.fields.ScheduleEnv,
 			}
 			sHandle.NPUDeallocateFunc(tt.args.task)
-			temp := func(task *api.TaskInfo) string {
-				if task == nil {
-					return ""
-				}
-				value, _ := task.Pod.Annotations[test.NPU910CardName]
-				return value
-			}(tt.args.task)
-			if temp != tt.want {
-				t.Errorf("NPUDeallocateFunc() got = %v, want %v", temp, tt.want)
+			value := temp(tt.args.task)
+			if value != tt.want {
+				t.Errorf("NPUDeallocateFunc() got = %v, want %v", value, tt.want)
 			}
 		})
 	}
