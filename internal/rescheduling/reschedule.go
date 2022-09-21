@@ -881,7 +881,7 @@ func (reScheduler *ReScheduler) useAnnotationSetNewNodeRank(nodeRankTimes []Allo
 	bindNodeFlag := false
 	for _, nodeRankTime := range nodeRankTimes { // check nodes, corresponding index recorded to be used by faultJob
 		fNode := reScheduler.getFNodeOfGivenNameFromCache(nodeRankTime.NodeName) // faultNode object given nodeName
-		if fNode != nil && !fNode.IsFaultNode {                                  // if node is not faultNode, the rankIndex shouldn't be occupied
+		if fNode != nil && !fNode.IsFaultNode {                                  // rID keep for none fault node
 			klog.V(util.LogDebugLev).Infof("node %s is not fault node, rankIndex %s kept", fNode.NodeName,
 				nodeRankTime.RankIndex)
 			newNodeRankTimes = append(newNodeRankTimes, nodeRankTime)
