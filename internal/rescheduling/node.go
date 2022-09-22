@@ -55,22 +55,22 @@ func (fNode *FaultNode) createFaultCardHandlers(node *plugin.NPUNode) ([]FaultCa
 
 // getNodeNPUsByKey get the npu list from node.DeviceInfo
 func (fNode *FaultNode) getNodeNPUsByKey(node *plugin.NPUNode, deviceKey string) ([]string, error) {
-	NPUStr, ok := node.Annotation[deviceKey]
-	if !ok || len(NPUStr) == 0 {
+	npuStr, ok := node.Annotation[deviceKey]
+	if !ok || len(npuStr) == 0 {
 		return nil, fmt.Errorf("%s get nil npus", node.Name)
 	}
-	NPUs := strings.Split(NPUStr, ",")
+	npus := strings.Split(npuStr, ",")
 
-	return NPUs, nil
+	return npus, nil
 }
 
 func (fNode *FaultNode) getNodeHeartbeatByKey(node *plugin.NPUNode, hbKey string) (string, error) {
-	IntervalStr, ok := node.Annotation[hbKey]
-	if !ok || len(IntervalStr) == 0 {
+	intervalStr, ok := node.Annotation[hbKey]
+	if !ok || len(intervalStr) == 0 {
 		klog.V(util.LogErrorLev).Infof("isNodeHealth %s no [%s].", node.Name, nodeHeartbeat)
 		return "", fmt.Errorf("getFaultNodeState %s nil", node.Name)
 	}
-	return IntervalStr, nil
+	return intervalStr, nil
 }
 
 // getAllNPUCardsFromDeviceInfo get un-allocated healthy card from device info
@@ -80,6 +80,7 @@ func (fNode *FaultNode) getAllNPUCardsFromDeviceInfo(node *plugin.NPUNode, cardN
 	allCard = append(allCard, healthyCard...)
 	allCard = append(allCard, fNode.UnhealthyNPU...)
 	allCard = append(allCard, fNode.NetworkUnhealthyNPU...)
+	allCard = util.RemoveSliceDuplicateElement(allCard)
 	if err != nil {
 		return allCard, err
 	}

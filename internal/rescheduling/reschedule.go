@@ -18,7 +18,6 @@ import (
 
 	"k8s.io/klog"
 	"volcano.sh/apis/pkg/apis/scheduling"
-	"volcano.sh/volcano/pkg/cli/job"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
@@ -248,6 +247,8 @@ func (reScheduler *ReScheduler) updateNewFaultJobAttr(
 	npuJob := reScheduler.Jobs[faultJob.JobUID] // 1. set the value of ReScheduleKey, grace/force/off
 	tmpReScheduleKey := faultJob.GetJobFaultRescheduleLabel(&npuJob)
 	faultJob.setJobFaultReScheduleLabel(tmpReScheduleKey)
+	tmpElasticKey := faultJob.GetJobElasticSchedulingLabel(&npuJob)
+	faultJob.setJobElasticReScheduleLabel(tmpElasticKey)
 	if tmpReScheduleKey == JobOffRescheduleLabelValue {
 		klog.V(util.LogErrorLev).Infof("%s not set rescheduleLabel, no need reschedule.", jobInfo.Name)
 		return faultJob
@@ -270,13 +271,10 @@ func (reScheduler *ReScheduler) updateNewFaultJobAttr(
 		}
 		_, ok := reScheduler.Nodes[nodeName]
 		if !ok {
-			klog.V(util.LogInfoLev).Infof("node %s used by job %s not in current session", nodeName, job.Name)
+			klog.V(util.LogInfoLev).Infof("node %s used by job %s not in current session",
+				nodeName, faultJob.JobName)
 			faultJob.setIsFaultJob(true)
 		}
-	}
-	if cardName == util.NPU910CardName { // 5. update JobRankIds of fault cards
-		tmpJobRankIds := reScheduler.getJobRankIdsFromTasks(&faultJob, cardPreName)
-		faultJob.setJobRankIds(tmpJobRankIds)
 	}
 	// 6. update FaultTypes of the job by status of FaultTasks bound on the job
 	if faultJob.IsFaultJob {
@@ -285,6 +283,11 @@ func (reScheduler *ReScheduler) updateNewFaultJobAttr(
 				faultJob.FaultTypes = append(faultJob.FaultTypes, fTask.faultType)
 			}
 		}
+	}
+	klog.V(util.LogDebugLev).Infof("faultJob info: %#v", faultJob)
+	if cardName == util.NPU910CardName { // 5. update JobRankIds of fault cards
+		tmpJobRankIds := reScheduler.getJobRankIdsFromTasks(&faultJob, cardPreName)
+		faultJob.setJobRankIds(tmpJobRankIds)
 	}
 	return faultJob
 }
@@ -336,16 +339,15 @@ func (reScheduler ReScheduler) getJobRankIdsFromTasks(fJob *FaultJob, cardName s
 			klog.V(util.LogInfoLev).Infof("%s setJobRankIdsFromTasks convert %#v", fTask.NodeRankIndex, err)
 		}
 		fNode := reScheduler.getFNodeOfGivenNameFromCache(fTask.NodeName)
-		if fNode == nil {
-			continue
-		}
 		taskUseFaultCards, err := fTask.getTaskUsedFaultCards(fNode)
 		if err != nil {
 			klog.V(util.LogErrorLev).Infof("taskUseFaultCards: %#v", err)
 			continue
 		}
+		klog.V(util.LogDebugLev).Infof("taskUseFaultCards: %#v", taskUseFaultCards)
 		for _, taskUseFaultCard := range taskUseFaultCards {
 			taskUseCardID, err := strconv.Atoi(strings.TrimPrefix(taskUseFaultCard, cardName))
+			klog.V(util.LogInfoLev).Infof("task %s used card Ids: %#v", fTask.TaskName, taskUseCardID)
 			if err != nil {
 				klog.V(util.LogErrorLev).Infof("convert card ID %s to int failed", taskUseFaultCard)
 				continue
@@ -353,17 +355,24 @@ func (reScheduler ReScheduler) getJobRankIdsFromTasks(fJob *FaultJob, cardName s
 			jobRankIds = append(jobRankIds, strconv.Itoa(taskUseCardID+nodeRankIndex*util.NPUIndex8))
 		}
 	}
+	klog.V(util.LogInfoLev).Infof("job %s rankIds: %#v", fJob.JobName, jobRankIds)
 	return jobRankIds
 }
 
 func (fTask *FaultTask) getTaskUsedFaultCards(fNode *FaultNode) ([]string, error) {
+	if fTask.faultType == NodeUnhealthy { // node unhealthy returns all cards,
+		// ahead of fNode equals to nil for node not in session
+		klog.V(util.LogDebugLev).Infof("node unhealthy, return all NPUs used by task %s", fTask.TaskName)
+		return fTask.UseCardName, nil
+	}
+	if fNode == nil {
+		return nil, fmt.Errorf("node is nil")
+	}
 	if fTask.NodeName != fNode.NodeName {
 		return nil, fmt.Errorf("fNode %s is not fTask %s's occupying node", fNode.NodeName, fTask.NodeName)
 	}
 	var taskUseFaultCard []string
-	if fTask.faultType == NodeUnhealthy { // node unhealthy, return all cards
-		return fTask.UseCardName, nil
-	}
+	klog.V(util.LogDebugLev).Infof("task fault type: %s", fTask.faultType)
 	for _, taskUseCard := range fTask.UseCardName {
 		for _, fCard := range fNode.FaultCards {
 			if taskUseCard == fCard.NPUName && fCard.IsFaultCard {
@@ -603,11 +612,11 @@ func (reScheduler *ReScheduler) SynCacheFaultJobWithSession(
 		updatedFaultJobs = append(updatedFaultJobs, faultJob)
 	}
 	reScheduler.setFaultJobs(updatedFaultJobs)
-	klog.V(util.LogDebugLev).Infof("ReSchedulerCache fault jobs sync: %#v", reScheduler.FaultJobs)
+	klog.V(util.LogDebugLev).Infof("ReSchedulerCache fault jobs after sync: %#v", reScheduler.FaultJobs)
 }
 
 // SynCacheNodeRankOccMapWithSession Synchronise FaultJobs in cache by updating the information using current session
-func (reScheduler *ReScheduler) SynCacheNodeRankOccMapWithSession() {
+func (reScheduler *ReScheduler) SynCacheNodeRankOccMapWithSession(ssn *framework.Session) {
 	klog.V(util.LogInfoLev).Infof("enter SynCacheNodeRankOccMapWithSession ...")
 	defer klog.V(util.LogInfoLev).Infof("leave SynCacheNodeRankOccMapWithSession ...")
 	if reScheduler == nil {
@@ -622,7 +631,14 @@ func (reScheduler *ReScheduler) SynCacheNodeRankOccMapWithSession() {
 			if jobUID != fJob.JobUID {
 				continue
 			}
-			if !fJob.IsFaultJob { // delete none faultJobs
+			if !fJob.checkJobNodeRankIndexValid() {
+				newNodeRankOccMap[jobUID] = NodeRankOcc // restarted, leave the old map
+			}
+			ssnJob, ok := ssn.Jobs[fJob.JobUID]
+			if !ok {
+				newNodeRankOccMap[jobUID] = NodeRankOcc
+			}
+			if !fJob.IsFaultJob && plugin.IsJobInitial(ssnJob) { // delete none faultJobs
 				continue
 			}
 			newNodeRankOccMap[jobUID] = NodeRankOcc // only add faultJobs in the re-scheduling process
@@ -838,6 +854,11 @@ func (reScheduler *ReScheduler) UseAnnotation(task *api.TaskInfo, node *plugin.N
 	if fJob == nil {
 		return fmt.Errorf("no fJob %s in reScheduler cache", task.Job)
 	}
+	if fJob.ElasticScheduling == JobOnElasticScheduling {
+		klog.V(util.LogInfoLev).Infof("task %s is enabled with elastic scheduling, "+
+			"skip volcano rankIndex writing process", task.Name)
+		return nil
+	}
 	nodeRankTimes := reScheduler.AllocNodeRankOccurrenceMap[fJob.JobUID]
 	// 1. if given node is in the nodeRankTime, keep it ,node is used by the fault job before
 	for _, nodeRankTime := range nodeRankTimes {
@@ -860,15 +881,15 @@ func (reScheduler *ReScheduler) useAnnotationSetNewNodeRank(nodeRankTimes []Allo
 	bindNodeFlag := false
 	for _, nodeRankTime := range nodeRankTimes { // check nodes, corresponding index recorded to be used by faultJob
 		fNode := reScheduler.getFNodeOfGivenNameFromCache(nodeRankTime.NodeName) // faultNode object given nodeName
-		if fNode == nil {
-			klog.V(util.LogDebugLev).Infof("node %s not in cache", node.Name)
+		if fNode != nil && !fNode.IsFaultNode {                                  // rID keep for none fault node
+			klog.V(util.LogDebugLev).Infof("node %s is not fault node, rankIndex %s kept", fNode.NodeName,
+				nodeRankTime.RankIndex)
 			newNodeRankTimes = append(newNodeRankTimes, nodeRankTime)
 			continue
 		}
-		if !fNode.IsFaultNode { // if node is not faultNode, the rankIndex shouldn't be occupied
-			klog.V(util.LogDebugLev).Infof("node %s is not fault node", fNode.NodeName)
-			newNodeRankTimes = append(newNodeRankTimes, nodeRankTime)
-			continue
+		if fNode == nil { // one old node not in session is an error
+			klog.V(util.LogDebugLev).Infof("node %s not in cache, and it's rankIndex will be assigned to others",
+				nodeRankTime.NodeName)
 		}
 		if nodeRankTime.Occurrence == 1 { // if node is faultNode but rankIndex already assigned to other new nodes
 			klog.V(util.LogDebugLev).Infof("rankIndex %s occupied by other node %s",
@@ -900,9 +921,16 @@ func (reScheduler *ReScheduler) GenerateNodeRankIndexTaskMap() {
 			util.ArgumentError)
 		return
 	}
+	klog.V(util.LogDebugLev).Infof("NodeRankOccMap before add: %#v", reScheduler.AllocNodeRankOccurrenceMap)
 	nodeRankIndexTaskMap := make(map[api.JobID][]AllocNodeRankOccurrence, util.MapInitNum)
 	for _, fJob := range reScheduler.FaultJobs {
+		_, ok := reScheduler.AllocNodeRankOccurrenceMap[fJob.JobUID]
+		if ok {
+			klog.V(util.LogDebugLev).Infof("NodeRankOccMap for job %s already generated, keep it", fJob.JobName)
+			return
+		}
 		if fJob.DeleteExecutedFlag {
+			klog.V(util.LogDebugLev).Infof("Create NodeRankOccMap for job %s", fJob.JobName)
 			var nodeRankTimes []AllocNodeRankOccurrence
 			for _, fTask := range fJob.FaultTasks {
 				nodeRankTime := AllocNodeRankOccurrence{
@@ -916,6 +944,7 @@ func (reScheduler *ReScheduler) GenerateNodeRankIndexTaskMap() {
 		}
 	}
 	reScheduler.AllocNodeRankOccurrenceMap = nodeRankIndexTaskMap
+	klog.V(util.LogDebugLev).Infof("NodeRankOccMap after add: %#v", reScheduler.AllocNodeRankOccurrenceMap)
 }
 
 // CheckNodeNPUByTask used in the predicate process of task and node
@@ -938,6 +967,14 @@ func (reScheduler *ReScheduler) CheckNodeNPUByTask(task *api.TaskInfo, vcNode pl
 	klog.V(util.LogDebugLev).Infof("enter rescheduling CheckNodeNPUByTask ...(%s, %s)", task.Name, vcNode.Name)
 	defer klog.V(util.LogDebugLev).Infof("leave rescheduling CheckNodeNPUByTask ...(%s, %s)",
 		task.Name, vcNode.Name)
+	// 1. jobs should not be scheduled to faultNodes
+	if err := reScheduler.checkNodeCurNodeIsFault(vcNode, task); err != nil {
+		return err
+	}
+	// 3. non faultJobs should not occupy normal nodes previously used by distributional
+	if err := reScheduler.checkNodeNewJobUseFJobNormNode(vcNode, task); err != nil {
+		return err
+	}
 	curFTask := reScheduler.getFaultTaskOfGivenTaskNameFromCache(task.Name)
 	curFJob := reScheduler.getFaultJobOfGivenTaskInfoFromCache(task)
 	curSchedulerJob := reScheduler.getSchedulerJobOfGivenUIDFromReScheduler(task.Job)
@@ -951,14 +988,6 @@ func (reScheduler *ReScheduler) CheckNodeNPUByTask(task *api.TaskInfo, vcNode pl
 	// 0. if fTask's corresponding faultJobs' previously used normal nodes haven't be released,
 	// stuck all scheduling process
 	if err := reScheduler.checkNodeFJobNormNodeRelease(curFJob, curSchedulerJob); err != nil {
-		return err
-	}
-	// 1. jobs should not be scheduled to faultNodes
-	if err := reScheduler.checkNodeCurNodeIsFault(curFJob, vcNode, task); err != nil {
-		return err
-	}
-	// 3. non faultJobs should not occupy normal nodes previously used by distributional
-	if err := reScheduler.checkNodeNewJobUseFJobNormNode(curFTask, vcNode, task); err != nil {
 		return err
 	}
 	// 4. faultJobs should not be assigned to nodes' whose rankIndex already occupied by some other new nodes
@@ -1002,31 +1031,28 @@ func (reScheduler *ReScheduler) checkNodeFJobNormNodeRelease(
 	return nil
 }
 
-// 1. fault nodes should not be bound to any task
-func (reScheduler *ReScheduler) checkNodeCurNodeIsFault(
-	curFJob *FaultJob, vcNode plugin.NPUNode, task *api.TaskInfo) error {
-	if len(curFJob.FaultTasks) == 1 {
-		return nil
+func (reScheduler *ReScheduler) checkNodeCurNodeIsFault(vcNode plugin.NPUNode, task *api.TaskInfo) error {
+	schedulerJob, ok := reScheduler.Jobs[task.Job]
+	if !ok {
+		return fmt.Errorf("task %s corresponding job not in session", task.Name)
 	}
 	for _, fNode := range reScheduler.FaultNodes {
 		if vcNode.Name == fNode.NodeName && fNode.IsFaultNode {
-			if len(curFJob.FaultTasks) > 1 {
+			if len(schedulerJob.Tasks) > 1 {
 				return fmt.Errorf("task %s cannot be assigned to node %s because it's in faultNode list",
 					task.Name, vcNode.Name)
 			}
-			if fNode.NodeHealthState == NodeCardNetworkUnhealthy {
-				return nil
+			if fNode.NodeHealthState == NodeUnhealthy { // none distributed job, npu fault considered in previous ops
+				return fmt.Errorf("task %s cannot be assigned to node %s because it's of %s",
+					task.Name, vcNode.Name, NodeUnhealthy)
 			}
-			return fmt.Errorf("task %s cannot be assigned to node %s "+
-				"because it neither healthy nor networkUnhealthy", task.Name, vcNode.Name)
 		}
 	}
 	return nil
 }
 
 // 2. new jobs cannot take normal nodes used by old distributional jobs
-func (reScheduler *ReScheduler) checkNodeNewJobUseFJobNormNode(
-	curFTask *FaultTask, vcNode plugin.NPUNode, task *api.TaskInfo) error {
+func (reScheduler *ReScheduler) checkNodeNewJobUseFJobNormNode(vcNode plugin.NPUNode, task *api.TaskInfo) error {
 	realFaultJobs, err := reScheduler.getRealFaultJobs()
 	if err != nil {
 		klog.V(util.LogDebugLev).Infof("none real fault jobs")
@@ -1036,7 +1062,7 @@ func (reScheduler *ReScheduler) checkNodeNewJobUseFJobNormNode(
 	// faultJobs in the re-scheduling process
 	for _, fJob := range realFaultJobs {
 		for _, fJobUseNode := range fJob.NodeNames {
-			if fJobUseNode == vcNode.Name && curFTask.JobName != fJob.JobName && len(fJob.FaultTasks) > 1 {
+			if fJobUseNode == vcNode.Name && task.Job != fJob.JobUID && len(fJob.FaultTasks) > 1 {
 				klog.V(util.LogDebugLev).Infof("task %s cannot use node %s occupied by faultJob %s",
 					task.Name, vcNode.Name, fJob.JobName)
 				return fmt.Errorf("task %s cannot use node %s occupied by faultJob %s",
@@ -1127,6 +1153,7 @@ func (reScheduler ReScheduler) getTaskHealthState(fTask *FaultTask) (bool, strin
 	}
 	_, ok := reScheduler.Nodes[fTask.NodeName] // task used node not in session
 	if !ok {
+		klog.V(util.LogInfoLev).Infof("task %s used node %s not in session", fTask.TaskName, fTask.NodeName)
 		return true, NodeUnhealthy
 	}
 	for _, fNode := range realFaultNode {

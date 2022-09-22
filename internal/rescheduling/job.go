@@ -45,16 +45,35 @@ func (fJob *FaultJob) GetJobFaultRescheduleLabel(job *plugin.SchedulerJob) strin
 	return value
 }
 
+// GetJobElasticSchedulingLabel get job's elastic scheduling label
+func (fJob *FaultJob) GetJobElasticSchedulingLabel(job *plugin.SchedulerJob) string {
+	if fJob == nil {
+		klog.V(util.LogErrorLev).Info(
+			"GetJobFaultRescheduleLabel fJob object does not exist")
+		return JobOffElasticScheduling
+	}
+	if job == nil {
+		klog.V(util.LogErrorLev).Info(
+			"GetJobFaultRescheduleLabel SchedulerJob does not exist")
+		return JobOffRescheduleLabelValue
+	}
+	value, ok := job.SchedulerJobAttr.Label[ElasticSchedulingKey]
+	if !ok {
+		klog.V(util.LogErrorLev).Infof(
+			"GetJobFaultRescheduleLabel %s. %s no job reschedule label", value, job.JobName)
+		return JobOffRescheduleLabelValue
+	}
+	return value
+}
+
 func (fJob *FaultJob) isJobGraceDeleteSuccess(jobInfo *api.JobInfo) bool {
 	if jobInfo == nil {
 		klog.V(util.LogErrorLev).Infof("jobInfo is nil: %#v", jobInfo)
 		return false
 	}
-	// 1. judge if job task exists
-	if len(jobInfo.Tasks) == 0 {
-		// old pod has been deleted.
-		klog.V(util.LogInfoLev).Infof("isJobGraceDeletedSuccess: %v pods has been deleted.", jobInfo.Name)
-		return true
+	if !plugin.IsJobInitial(jobInfo) {
+		klog.V(util.LogInfoLev).Infof("isJobGraceDeletedSuccess: job %s not initialised.", jobInfo.Name)
+		return false
 	}
 	// 2. judge if the create time of pods in cache and current pod differs
 	restartNum := 0
@@ -73,8 +92,9 @@ func (fJob *FaultJob) isJobGraceDeleteSuccess(jobInfo *api.JobInfo) bool {
 			restartNum++
 		}
 	}
-
-	if restartNum == len(jobInfo.Tasks) {
+	klog.V(util.LogDebugLev).Infof("<%d/%d> pod of job restarted", restartNum, len(jobInfo.Tasks))
+	if restartNum >= len(jobInfo.Tasks) && plugin.IsJobInitial(
+		jobInfo) { // minAvailable must equal to number of replicas
 		klog.V(util.LogInfoLev).Infof("job all pod %d restart success.", restartNum)
 		return true
 	}
@@ -221,8 +241,21 @@ func (fJob *FaultJob) getIsFaultJob() bool {
 	return false
 }
 
+func (fJob *FaultJob) checkJobNodeRankIndexValid() bool {
+	for _, fTask := range fJob.FaultTasks {
+		if fTask.NodeRankIndex == "" {
+			return false
+		}
+	}
+	return true
+}
+
 func (fJob *FaultJob) setJobFaultReScheduleLabel(value string) {
 	fJob.ReScheduleKey = value
+}
+
+func (fJob *FaultJob) setJobElasticReScheduleLabel(value string) {
+	fJob.ElasticScheduling = value
 }
 
 func (fJob *FaultJob) setFaultTasks(value []FaultTask) {
@@ -256,6 +289,7 @@ func newFaultJobDefault(jobName, jobNamespace string, jobUID api.JobID, updateTi
 		JobRankIdCreateTime: updateTime,
 		FaultTypes:          nil,
 		DeleteExecutedFlag:  false,
+		ElasticScheduling:   JobOffElasticScheduling,
 	}
 	return faultJob
 }

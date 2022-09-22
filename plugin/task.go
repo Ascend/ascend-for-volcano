@@ -47,8 +47,16 @@ func (sHandle ScheduleHandler) NPUAllocateFunc(task *api.TaskInfo) {
 }
 
 func (sHandle *ScheduleHandler) releaseAnnotation(task *api.TaskInfo, vcJob SchedulerJob, vcNode NPUNode) {
+	rankIndex, ok := task.Pod.Annotations[podRankIndex]
+	klog.V(util.LogInfoLev).Infof("task %s node %s rankIndex annotation: %s", task.Name, vcNode.Name, rankIndex)
+	if ok { // if pod rankIndex has been written, delete it
+		klog.V(util.LogInfoLev).Infof("node %s bind failed, release rankIndex annotation: %s",
+			vcNode.Name, rankIndex)
+		delete(task.Pod.Annotations, podRankIndex)
+	}
 	vcTask, ok := vcJob.Tasks[task.Name]
 	if !ok {
+		klog.V(util.LogInfoLev).Infof("task %s not in vcjob %s", vcTask.TaskName, vcJob.JobName)
 		return
 	}
 	reqStr, ok := task.Pod.Annotations[vcTask.ReqNPUName]
@@ -95,7 +103,7 @@ func (sHandle *ScheduleHandler) NPUDeallocateFunc(task *api.TaskInfo) {
 		return
 	}
 	sHandle.releaseAnnotation(task, vcJob, node)
-	klog.V(util.LogDebugLev).Infof("%s %#v useAnnotation node [%s]'s top.", PluginName, task.Name, nodeName)
+	klog.V(util.LogDebugLev).Infof("%s %#v NPUDeallocateFunc node [%s]'s top.", PluginName, task.Name, nodeName)
 }
 
 func updatePodPendingReason(task *api.TaskInfo, reasonTmp string) {

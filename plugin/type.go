@@ -22,6 +22,7 @@ const (
 	nodesNoMeetNPUReqError = "insufficient npus on the schedulable nodes in cluster"
 	nodeNoFitSelectorError = "no matching label on this node"
 	objectNilError         = "object or argument is nil"
+	podRankIndex           = "hccl/rankIndex"
 )
 
 // SchedulerJob the plugin define job info
