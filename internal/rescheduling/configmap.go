@@ -68,7 +68,7 @@ func (dealCM *DealReSchedulerConfigmap) newReSchedulerCMFromEnv(env *plugin.Sche
 	}
 
 	if err := checkReSchedulerCMCheckCode(reCmData.Data); err != nil {
-		klog.V(util.LogErrorLev).Infof("newReSchedulerCMFromEnv: %v", err) // todo
+		klog.V(util.LogErrorLev).Infof("newReSchedulerCMFromEnv: %v", err)
 	}
 	dealCM.setCMName(reCmData.Name)
 	dealCM.setCMNameSpace(reCmData.Namespace)
