@@ -42,16 +42,12 @@ func (fTask *FaultTask) getNodeRankIndex(task *api.TaskInfo) (string, error) {
 	return rankIndex, nil
 }
 
-func (fTask *FaultTask) getUseCardName(task *api.TaskInfo, cardName string, cardMaxNum int) ([]string, error) {
+func (fTask *FaultTask) getUseCardName(task *api.TaskInfo, cardName string) ([]string, error) {
 	strNpu, ok := task.Pod.Annotations[cardName]
 	if !ok {
 		return nil, fmt.Errorf("%s has no NPU from %s", task.Name, cardName)
 	}
 	taskNPUs := strings.Split(strNpu, ",")
-	if len(taskNPUs) > cardMaxNum {
-		err := fmt.Errorf("get err %s npus %#v", task.Name, taskNPUs)
-		return nil, err
-	}
 	return taskNPUs, nil
 }
 
@@ -64,11 +60,10 @@ func (fTask *FaultTask) deleteRealPodByTask(ssn *framework.Session, waitTime int
 	err := ssn.KubeClient().CoreV1().Pods(fTask.TaskNamespace).Delete(
 		context.TODO(), fTask.TaskName, deleteOptions)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("Failed to delete %s: %#v", fTask.TaskUID, err)
 		return err
 	}
 
-	klog.V(util.LogInfoLev).Infof("%s==%v force terminated and removed from etcd",
+	klog.V(util.LogInfoLev).Infof("task %s[%v] force terminated and removed from etcd",
 		fTask.TaskName, fTask.TaskUID)
 	return nil
 }

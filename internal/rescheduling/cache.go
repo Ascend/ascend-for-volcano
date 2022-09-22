@@ -257,10 +257,7 @@ func (reCache *DealReSchedulerCache) writeJobRankIndexToCMString(fJob *FaultJob)
 
 // WriteReSchedulerCacheToEnvCache write the modifications on cache data to env to update re-scheduling configmap
 func (reCache *DealReSchedulerCache) WriteReSchedulerCacheToEnvCache(env *plugin.ScheduleEnv, jobType string) error {
-	if reCache == nil {
-		return errors.New(util.ArgumentError)
-	}
-	if env == nil {
+	if reCache == nil || env == nil {
 		return errors.New(util.ArgumentError)
 	}
 	env.Cache.Names[RePropertyName] = CmName
@@ -290,18 +287,34 @@ func (reCache *DealReSchedulerCache) WriteReSchedulerCacheToEnvCache(env *plugin
 	cmData[jobType] = fJobString
 	cmData[CmNodeHeartbeatKind] = nodeHBString
 	cmData[CmNodeRankTimeMapKind] = nodeRankOccurrenceMapString
+	checkCode := plugin.MakeDataHash(cmData)
+	cmData[CmCheckCode] = checkCode
 	if jobType != CmFaultJob910x8Kind {
 		return nil
 	}
+	if err := reCache.writeRecoveryCacheToEnv(env); err != nil {
+		klog.V(util.LogErrorLev).Infof("WriteReSchedulerCacheToEnvCache: %#v", err)
+	}
+	return nil
+}
+
+func (reCache *DealReSchedulerCache) writeRecoveryCacheToEnv(env *plugin.ScheduleEnv) error {
 	for _, fJob := range reCache.FaultJobs { // configmap for recovery
 		if fJob.IsFaultJob {
 			env.Cache.Names[JobRecovery] = JobFaultRankIDCMPre + fJob.JobName
 			env.Cache.Namespaces[JobRecovery] = fJob.JobNamespace
 			jobRankIndexString, err := reCache.writeJobRankIndexToCMString(&fJob)
 			if err != nil {
-				klog.V(util.LogErrorLev).Infof("WriteReSchedulerCacheToEnvCache: %#v", err)
+				return err
 			}
-			env.Cache.Data[JobRecovery][JobFaultRankIDCMDataKey] = jobRankIndexString
+			cmRecData, ok := env.Cache.Data[JobRecovery]
+			if !ok {
+				cmRecData := make(map[string]string, util.MapInitNum)
+				env.Cache.Data[JobRecovery] = cmRecData
+			}
+			cmRecData[JobFaultRankIDCMDataKey] = jobRankIndexString
+			checkCode := plugin.MakeDataHash(cmRecData)
+			cmRecData[CmCheckCode] = checkCode
 		}
 	}
 	return nil

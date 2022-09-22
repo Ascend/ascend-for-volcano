@@ -46,6 +46,8 @@ func (dealCM *DealReSchedulerConfigmap) newReSchedulerCMFromEnv(env *plugin.Sche
 		cmData[jobType] = ""
 		cmData[CmNodeHeartbeatKind] = ""
 		cmData[CmNodeRankTimeMapKind] = ""
+		checkCode := plugin.MakeDataHash(cmData)
+		cmData[CmCheckCode] = checkCode
 
 		var faultCM = &v1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
@@ -61,11 +63,27 @@ func (dealCM *DealReSchedulerConfigmap) newReSchedulerCMFromEnv(env *plugin.Sche
 		dealCM.setCMName(CmName)
 		dealCM.setCMNameSpace(CmNameSpace)
 		dealCM.setCMData(cmData)
-		return fmt.Errorf("configmap %s in %s has been created", CmName, CmNameSpace)
+		klog.V(util.LogInfoLev).Infof("configmap %s in %s has been created", CmName, CmNameSpace)
+		return nil
 	}
 
+	if err := checkReSchedulerCMCheckCode(reCmData.Data); err != nil {
+		klog.V(util.LogErrorLev).Infof("newReSchedulerCMFromEnv: %v", err) // todo
+	}
 	dealCM.setCMName(reCmData.Name)
 	dealCM.setCMNameSpace(reCmData.Namespace)
 	dealCM.setCMData(reCmData.Data)
+	return nil
+}
+
+func checkReSchedulerCMCheckCode(data map[string]string) error {
+	checkCode, ok := data[CmCheckCode]
+	if !ok {
+		return fmt.Errorf("configmap %s in %s has no checkcode", CmName, CmNameSpace)
+	}
+	delete(data, CmCheckCode)
+	if checkCode != plugin.MakeDataHash(data) {
+		return fmt.Errorf("checkCode does not match")
+	}
 	return nil
 }
