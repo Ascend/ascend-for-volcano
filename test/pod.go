@@ -113,9 +113,9 @@ func FakeNormalTestTasks(num int) []*api.TaskInfo {
 
 // BuildPodWithReqResource build pod with request resource
 func BuildPodWithReqResource(resourceName v1.ResourceName, resourceNum string) *v1.Pod {
-	resource := v1.ResourceList{}
-	AddResource(resource, resourceName, resourceNum)
-	return BuildNPUPod(NPUPod{ReqSource: resource})
+	resourceList := v1.ResourceList{}
+	AddResource(resourceList, resourceName, resourceNum)
+	return BuildNPUPod(NPUPod{ReqSource: resourceList})
 }
 
 func setFakePodLabel(CPod *v1.Pod, selectorKey, selectorValue string) {

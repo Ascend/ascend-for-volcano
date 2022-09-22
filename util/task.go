@@ -102,6 +102,10 @@ func (asTask *NPUTask) EvictJobByTask(ssn *framework.Session, reason string, tas
 		}
 		return err
 	}
+	klog.V(LogInfoLev).Infof("Evict %s : %#v", taskName, taskInfo.UID)
+	if updateErr := asTask.UpdatePodPendingReason(taskInfo, reason); updateErr != nil {
+		return updateErr
+	}
 	return nil
 }
 

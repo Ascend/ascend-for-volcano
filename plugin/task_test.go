@@ -1,0 +1,288 @@
+/*
+Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+*/
+
+/*
+
+Package plugin is using for HuaWei Ascend pin affinity schedule frame.
+
+*/
+package plugin
+
+import (
+	"testing"
+
+	"volcano.sh/volcano/pkg/scheduler/api"
+
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
+)
+
+type npuAllocateFuncArgs struct {
+	task *api.TaskInfo
+}
+
+type npuAllocateFuncTest struct {
+	name   string
+	fields fields
+	args   npuAllocateFuncArgs
+	want   string
+}
+
+func buildNPUAllocateFuncTest() []npuAllocateFuncTest {
+	tasks := test.FakeNormalTestTasks(1)
+	tests := []npuAllocateFuncTest{
+		{
+			name:   "01-NPUAllocateFunc task nil test",
+			fields: fields{},
+			args:   npuAllocateFuncArgs{task: nil},
+			want:   "",
+		},
+		{
+			name: "02-NPUAllocateFunc no job test.",
+			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+				ScheduleEnv: ScheduleEnv{
+					Jobs:      map[api.JobID]SchedulerJob{},
+					Nodes:     map[string]NPUNode{},
+					FrameAttr: VolcanoFrame{}}},
+			args: npuAllocateFuncArgs{task: tasks[0]},
+			want: "",
+		},
+		{
+			name: "03-NPUAllocateFunc no node test",
+			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+				ScheduleEnv: ScheduleEnv{
+					Jobs:      map[api.JobID]SchedulerJob{tasks[0].Job: {}},
+					Nodes:     map[string]NPUNode{},
+					FrameAttr: VolcanoFrame{}}},
+			args: npuAllocateFuncArgs{task: tasks[0]},
+			want: "",
+		},
+		{
+			name: "04-NPUAllocateFunc UseAnnotation failed test.",
+			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+				ScheduleEnv: ScheduleEnv{
+					Jobs:      map[api.JobID]SchedulerJob{tasks[0].Job: {handler: New(testPluginName)}},
+					Nodes:     map[string]NPUNode{tasks[0].NodeName: {}},
+					FrameAttr: VolcanoFrame{}}},
+			args: npuAllocateFuncArgs{task: tasks[0]},
+			want: "",
+		},
+	}
+	return tests
+}
+
+func TestNPUAllocateFunc(t *testing.T) {
+	tests := buildNPUAllocateFuncTest()
+	temp := func(task *api.TaskInfo) string {
+		if task == nil {
+			return ""
+		}
+		value, _ := task.Pod.Annotations[test.NPU910CardName]
+		return value
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sHandle := ScheduleHandler{
+				NPUPlugins:  tt.fields.NPUPlugins,
+				ScheduleEnv: tt.fields.ScheduleEnv,
+			}
+			sHandle.NPUAllocateFunc(tt.args.task)
+			value := temp(tt.args.task)
+			if value != tt.want {
+				t.Errorf("NPUAllocateFunc() got = %v, want %v", value, tt.want)
+			}
+		})
+	}
+}
+
+type npuDeallocateFuncArgs struct {
+	task *api.TaskInfo
+}
+
+type npuDeallocateFuncTest struct {
+	name   string
+	fields fields
+	args   npuDeallocateFuncArgs
+	want   string
+}
+
+func makeNPUDeallocateFuncTest01(_ *api.TaskInfo) npuDeallocateFuncTest {
+	return npuDeallocateFuncTest{
+		name:   "01-NPUDeallocateFunc task nil test",
+		fields: fields{}, args: npuDeallocateFuncArgs{task: nil}, want: "",
+	}
+}
+
+func makeNPUDeallocateFuncTest02(vTask *api.TaskInfo) npuDeallocateFuncTest {
+	return npuDeallocateFuncTest{
+		name: "02-NPUAllocateFunc no job test.",
+		fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			ScheduleEnv: ScheduleEnv{Jobs: map[api.JobID]SchedulerJob{}}},
+		args: npuDeallocateFuncArgs{task: vTask}, want: "Ascend910-4",
+	}
+}
+
+func makeNPUDeallocateFuncTest03(vTask *api.TaskInfo) npuDeallocateFuncTest {
+	return npuDeallocateFuncTest{
+		name: "03-NPUAllocateFunc no node test",
+		fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			ScheduleEnv: ScheduleEnv{
+				Jobs:  map[api.JobID]SchedulerJob{vTask.Job: {}},
+				Nodes: map[string]NPUNode{}}},
+		args: npuDeallocateFuncArgs{task: vTask}, want: "Ascend910-4",
+	}
+}
+
+func makeNPUDeallocateFuncTest04(vTask *api.TaskInfo) npuDeallocateFuncTest {
+	return npuDeallocateFuncTest{
+		name: "04-NPUAllocateFunc UseAnnotation failed test.",
+		fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			ScheduleEnv: ScheduleEnv{
+				Jobs: map[api.JobID]SchedulerJob{
+					vTask.Job: {SchedulerJobAttr: util.SchedulerJobAttr{NPUJob: &util.NPUJob{Tasks: nil}}}},
+				Nodes: map[string]NPUNode{vTask.NodeName: {}}}},
+		args: npuDeallocateFuncArgs{task: vTask}, want: "Ascend910-4",
+	}
+}
+
+func makeNPUDeallocateFuncTest05(vTask *api.TaskInfo) npuDeallocateFuncTest {
+	return npuDeallocateFuncTest{
+		name: "05-NPUAllocateFunc pod no req test.",
+		fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			ScheduleEnv: ScheduleEnv{
+				Jobs: map[api.JobID]SchedulerJob{
+					vTask.Job: {
+						SchedulerJobAttr: util.SchedulerJobAttr{
+							NPUJob: &util.NPUJob{Tasks: map[string]util.NPUTask{vTask.Name: {ReqNPUName: "haha"}}}},
+					},
+				},
+				Nodes: map[string]NPUNode{vTask.NodeName: {}}}},
+		args: npuDeallocateFuncArgs{task: vTask}, want: "Ascend910-4",
+	}
+}
+
+func makeNPUDeallocateFuncTest06(vTask *api.TaskInfo) npuDeallocateFuncTest {
+	tmpSchedulerJobAttr := util.SchedulerJobAttr{
+		NPUJob: &util.NPUJob{
+			Tasks: map[string]util.NPUTask{
+				vTask.Name: {ReqNPUName: test.NPU910CardName, ReqNPUNum: util.NPUIndex2}},
+		},
+	}
+
+	return npuDeallocateFuncTest{
+		name: "06-NPUAllocateFunc pod req num not meet test.",
+		fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			ScheduleEnv: ScheduleEnv{
+				Jobs: map[api.JobID]SchedulerJob{
+					vTask.Job: {
+						SchedulerJobAttr: tmpSchedulerJobAttr,
+					},
+				},
+				Nodes: map[string]NPUNode{vTask.NodeName: {}}}},
+		args: npuDeallocateFuncArgs{task: vTask}, want: "Ascend910-4",
+	}
+}
+
+func makeNPUDeallocateFuncTest07(vTask *api.TaskInfo) npuDeallocateFuncTest {
+	tmpSchedulerJobAttr := util.SchedulerJobAttr{
+		NPUJob: &util.NPUJob{
+			Tasks: map[string]util.NPUTask{
+				vTask.Name: {ReqNPUName: test.NPU910CardName, ReqNPUNum: 1}},
+		},
+	}
+	tmpNPUNode := NPUNode{
+		Annotation: nil,
+	}
+	return npuDeallocateFuncTest{
+		name: "07-NPUAllocateFunc node no annotation value test.",
+		fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			ScheduleEnv: ScheduleEnv{
+				Jobs: map[api.JobID]SchedulerJob{
+					vTask.Job: {SchedulerJobAttr: tmpSchedulerJobAttr},
+				},
+				Nodes: map[string]NPUNode{vTask.NodeName: tmpNPUNode}}},
+		args: npuDeallocateFuncArgs{task: vTask}, want: "Ascend910-4",
+	}
+}
+
+func makeNPUDeallocateFuncTest08(vTask *api.TaskInfo) npuDeallocateFuncTest {
+	tmpSchedulerJobAttr := util.SchedulerJobAttr{
+		NPUJob: &util.NPUJob{
+			Tasks: map[string]util.NPUTask{
+				vTask.Name: {ReqNPUName: test.NPU910CardName, ReqNPUNum: 1}},
+		},
+	}
+	tmpNPUNode := NPUNode{
+		Annotation: map[string]string{test.NPU910CardName: ""},
+	}
+	return npuDeallocateFuncTest{
+		name: "08-NPUAllocateFunc node has empty annotation value test.",
+		fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			ScheduleEnv: ScheduleEnv{
+				Jobs:  map[api.JobID]SchedulerJob{vTask.Job: {SchedulerJobAttr: tmpSchedulerJobAttr}},
+				Nodes: map[string]NPUNode{vTask.NodeName: tmpNPUNode}}},
+		args: npuDeallocateFuncArgs{task: vTask}, want: "Ascend910-4",
+	}
+}
+
+func makeNPUDeallocateFuncTest09(vTask *api.TaskInfo) npuDeallocateFuncTest {
+	tmpSchedulerJobAttr := util.SchedulerJobAttr{
+		NPUJob: &util.NPUJob{
+			Tasks: map[string]util.NPUTask{
+				vTask.Name: {ReqNPUName: test.NPU910CardName, ReqNPUNum: 1}},
+		},
+	}
+	tmpNPUNode := NPUNode{
+		Annotation: map[string]string{test.NPU910CardName: "Ascend910-3"},
+	}
+	return npuDeallocateFuncTest{
+		name: "09-NPUAllocateFunc ok test.",
+		fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			ScheduleEnv: ScheduleEnv{
+				Jobs:  map[api.JobID]SchedulerJob{vTask.Job: {SchedulerJobAttr: tmpSchedulerJobAttr}},
+				Nodes: map[string]NPUNode{vTask.NodeName: tmpNPUNode}}},
+		args: npuDeallocateFuncArgs{task: vTask}, want: "Ascend910-4",
+	}
+}
+
+func buildNPUDeallocateFuncTest() []npuDeallocateFuncTest {
+	vTask := test.BuildTestTaskWithAnnotation(test.NPU910CardName, "1", "Ascend910-4")
+	tests := []npuDeallocateFuncTest{
+		makeNPUDeallocateFuncTest01(vTask),
+		makeNPUDeallocateFuncTest02(vTask),
+		makeNPUDeallocateFuncTest03(vTask),
+		makeNPUDeallocateFuncTest04(vTask),
+		makeNPUDeallocateFuncTest05(vTask),
+		makeNPUDeallocateFuncTest06(vTask),
+		makeNPUDeallocateFuncTest07(vTask),
+		makeNPUDeallocateFuncTest08(vTask),
+		makeNPUDeallocateFuncTest09(vTask),
+	}
+	return tests
+}
+
+func TestNPUDeallocateFunc(t *testing.T) {
+	tests := buildNPUDeallocateFuncTest()
+	temp := func(task *api.TaskInfo) string {
+		if task == nil {
+			return ""
+		}
+		value, _ := task.Pod.Annotations[test.NPU910CardName]
+		return value
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sHandle := &ScheduleHandler{
+				NPUPlugins:  tt.fields.NPUPlugins,
+				ScheduleEnv: tt.fields.ScheduleEnv,
+			}
+			sHandle.NPUDeallocateFunc(tt.args.task)
+			value := temp(tt.args.task)
+			if value != tt.want {
+				t.Errorf("NPUDeallocateFunc() got = %v, want %v", value, tt.want)
+			}
+		})
+	}
+}

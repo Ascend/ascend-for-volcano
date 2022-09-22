@@ -10,6 +10,7 @@ Package plugin is using for HuaWei Ascend pin affinity schedule frame.
 package plugin
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -70,16 +71,23 @@ func (sHandle *ScheduleHandler) releaseAnnotation(task *api.TaskInfo, vcJob Sche
 	if !ok {
 		return
 	}
-	vcNode.Annotation[vcTask.ReqNPUName] = value
+	vcNode.Annotation[vcTask.ReqNPUName] = reqStr
 	if value != "" {
+		if isEachStringContainsSameElement(value, reqStr, ",") {
+			annErr := fmt.Errorf("%s:%s has same NPU used %s:%s", vcNode.Name, value, vcTask.TaskName, reqStr)
+			klog.V(util.LogErrorLev).Infof("releaseAnnotation %s", annErr)
+			return
+		}
 		vcNode.Annotation[vcTask.ReqNPUName] = reqStr + "," + value
 	}
 	sHandle.Nodes[vcNode.Name] = vcNode
+	klog.V(util.LogDebugLev).Infof("%s releaseAnnotation %s's %s on %s,new top:[%s].", PluginName, task.Name,
+		reqStr, vcNode.Name, reqStr+","+value)
 }
 
 // NPUDeallocateFunc Free assigned npu, if allocate failed by volcano frame.
 func (sHandle *ScheduleHandler) NPUDeallocateFunc(task *api.TaskInfo) {
-	if sHandle == nil {
+	if sHandle == nil || task == nil {
 		klog.V(util.LogInfoLev).Infof("NPUDeallocateFunc failed: %s.", util.ArgumentError)
 		return
 	}
