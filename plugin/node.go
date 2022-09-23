@@ -52,14 +52,15 @@ func checkNodeDeviceInfo(nodeData *NodeDeviceInfoWithDevPlugin) error {
 	}
 
 	nodeDeviceInfo := nodeData.DeviceInfo
-	if nodeData.CheckCode != makeDataHash(nodeDeviceInfo) {
+	if nodeData.CheckCode != MakeDataHash(nodeDeviceInfo) {
 		return errors.New("checkCode is not match")
 	}
 
 	return nil
 }
 
-func makeDataHash(data interface{}) string {
+// MakeDataHash check code for configmap
+func MakeDataHash(data interface{}) string {
 	var dataBuffer []byte
 	if dataBuffer = marshalData(data); len(dataBuffer) == 0 {
 		return ""

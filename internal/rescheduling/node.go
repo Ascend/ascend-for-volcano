@@ -67,7 +67,7 @@ func (fNode *FaultNode) getNodeNPUsByKey(node *plugin.NPUNode, deviceKey string)
 func (fNode *FaultNode) getNodeHeartbeatByKey(node *plugin.NPUNode, hbKey string) (string, error) {
 	intervalStr, ok := node.Annotation[hbKey]
 	if !ok || len(intervalStr) == 0 {
-		klog.V(util.LogErrorLev).Infof("isNodeHealth %s no [%s].", node.Name, nodeHeartbeat)
+		klog.V(util.LogDebugLev).Infof("isNodeHealth %s no [%s].", node.Name, nodeHeartbeat)
 		return "", fmt.Errorf("getFaultNodeState %s nil", node.Name)
 	}
 	return intervalStr, nil
@@ -110,17 +110,17 @@ func (fNode *FaultNode) getNodeHeartbeatIntervalFromDeviceInfo(node *plugin.NPUN
 	var err error
 	heartbeatInterval, err = strconv.Atoi(heartbeatIntervalStr)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s cover %s to int64 failed [%#v].",
+		klog.V(util.LogInfoLev).Infof("%s convert %s to int64 failed [%#v].",
 			node.Name, heartbeatIntervalStr, err)
 		return nodeUpdateTime, err
 	}
 
 	if heartbeatInterval > maxIntervalTime || heartbeatInterval < 1 {
-		klog.V(util.LogErrorLev).Infof("%s's HeartbeatInterval %d over limit, will use %d.",
+		klog.V(util.LogInfoLev).Infof("%s's HeartbeatInterval %d over limit, will use %d.",
 			node.Name, heartbeatInterval, nodeUpdateTime)
 		return nodeUpdateTime, nil
 	}
-	klog.V(util.LogDebugLev).Infof("%s heartbeatTimeInterval: %d", node.Name, heartbeatInterval)
+	klog.V(util.LogInfoLev).Infof("%s heartbeatTimeInterval: %d", node.Name, heartbeatInterval)
 	return heartbeatInterval, nil
 }
 
@@ -132,10 +132,10 @@ func (fNode *FaultNode) getNodeHeartbeatFromDeviceInfo(node *plugin.NPUNode) (in
 	}
 	heartbeatTime, err := strconv.ParseInt(heartbeatTimeStr, util.Base10, util.BitSize64)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s cover %s to int64 failed [%#v].", node.Name, heartbeatTimeStr, err)
+		klog.V(util.LogInfoLev).Infof("%s cover %s to int64 failed [%#v].", node.Name, heartbeatTimeStr, err)
 		return 0, err
 	}
-	klog.V(util.LogDebugLev).Infof("%s heartbeatTime: %d", node.Name, heartbeatTime)
+	klog.V(util.LogInfoLev).Infof("%s heartbeatTime: %d", node.Name, heartbeatTime)
 	return heartbeatTime, nil
 }
 
@@ -152,7 +152,7 @@ func (fNode *FaultNode) updateFaultNodesFromDeviceInfo(node *plugin.NPUNode, car
 
 	tmpHBTime, err := fNode.getNodeHeartbeatFromDeviceInfo(node)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("getNodeHeartbeatFromDeviceInfo: %#v", err)
+		klog.V(util.LogDebugLev).Infof("getNodeHeartbeatFromDeviceInfo: %#v", err)
 	}
 
 	klog.V(util.LogDebugLev).Infof(
@@ -171,21 +171,24 @@ func (fNode *FaultNode) updateFaultNodesFromDeviceInfo(node *plugin.NPUNode, car
 
 	tmpUnhealthyNPUs, err := fNode.getUnhealthyCardsFromDeviceInfo(node, cardName)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("getUnhealthyCardsFromDeviceInfo: %#v", err)
+		klog.V(util.LogDebugLev).Infof("getUnhealthyCardsFromDeviceInfo: %#v", err)
 	}
 	fNode.setUnhealthyNPUList(tmpUnhealthyNPUs)
+	klog.V(util.LogInfoLev).Infof("Unhealthy cards from device info: %#v", tmpUnhealthyNPUs)
 
 	tmpNetworkUnhealthyNPUs, err := fNode.getNetworkUnhealthyCardsFromDeviceInfo(node, cardName)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("getNetworkUnhealthyCardsFromDeviceInfo: %#v", err)
+		klog.V(util.LogDebugLev).Infof("getNetworkUnhealthyCardsFromDeviceInfo: %#v", err)
 	}
 	fNode.setNetworkUnhealthyNPUList(tmpNetworkUnhealthyNPUs)
+	klog.V(util.LogInfoLev).Infof("Network unhealthy cards from device info: %#v", tmpUnhealthyNPUs)
 
 	tmpAllCardsList, err := fNode.getAllNPUCardsFromDeviceInfo(node, cardName)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("getAllNPUCardsFromDeviceInfo: %#v", err)
+		klog.V(util.LogDebugLev).Infof("getAllNPUCardsFromDeviceInfo: %#v", err)
 	}
 	fNode.setAllCardList(tmpAllCardsList)
+	klog.V(util.LogInfoLev).Infof("Unallocated and fault cards from device info: %#v", tmpAllCardsList)
 }
 
 // updateFaultNodesAttr update Information from device Info
@@ -194,7 +197,7 @@ func (fNode *FaultNode) updateFaultNodesAttr(node *plugin.NPUNode) error {
 	// 1. create fault Card Object
 	tmpFaultCards, err := fNode.createFaultCardHandlers(node)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("Getting node card failed: %#v", err)
+		klog.V(util.LogDebugLev).Infof("Getting node card failed: %#v", err)
 	}
 	fNode.setFaultCards(tmpFaultCards)
 
@@ -203,21 +206,21 @@ func (fNode *FaultNode) updateFaultNodesAttr(node *plugin.NPUNode) error {
 		if !card.IsFaultCard {
 			continue
 		}
-		klog.V(util.LogInfoLev).Infof("node %s is fault node for having fault cards", node.Name)
 		fNode.setIsFaultNodeValue(true)
 		switch card.FaultType {
 		case CardUnhealthy:
 			fNode.setNodeHealthStateValue(NodeCardUnhealthy)
+			klog.V(util.LogInfoLev).Infof("Node %s health state set to %s", node.Name, NodeCardUnhealthy)
 		case CardNetworkUnhealthy:
 			fNode.setNodeHealthStateValue(NodeCardNetworkUnhealthy)
+			klog.V(util.LogInfoLev).Infof("Node %s health state set to %s", node.Name, NodeCardNetworkUnhealthy)
 		default:
-			klog.V(util.LogErrorLev).Infof("card health state not legal")
+			klog.V(util.LogInfoLev).Infof("card health state %s illegal", card.FaultType)
 		}
 		return nil
 	}
 	fNode.setNodeHealthStateValue(NodeHealthy)
 	fNode.setIsFaultNodeValue(false)
-	klog.V(util.LogDebugLev).Infof("Node %s health state set to %s", node.Name, NodeHealthy)
 
 	// 3. Ensure nodeD enabled to get node heartbeat
 	if !fNode.isNodeDEnabled(node) {
@@ -231,11 +234,12 @@ func (fNode *FaultNode) updateFaultNodesAttr(node *plugin.NPUNode) error {
 	if fNode.isNodeHealthyByHeartbeat() {
 		fNode.setIsFaultNodeValue(false)
 		fNode.setNodeHealthStateValue(NodeHealthy)
+		klog.V(util.LogInfoLev).Infof("Node %s health state set to %s", node.Name, NodeHealthy)
 		return nil
 	}
-	klog.V(util.LogInfoLev).Infof("node %s is fault node for having wrong heartbeat", node.Name)
 	fNode.setIsFaultNodeValue(true)
 	fNode.setNodeHealthStateValue(NodeUnhealthy)
+	klog.V(util.LogInfoLev).Infof("Node %s health state set %s for wrong heartbeat", node.Name, NodeUnhealthy)
 	return nil
 }
 
