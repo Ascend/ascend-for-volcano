@@ -287,7 +287,13 @@ func (reCache *DealReSchedulerCache) WriteReSchedulerCacheToEnvCache(env *plugin
 	cmData[jobType] = fJobString
 	cmData[CmNodeHeartbeatKind] = nodeHBString
 	cmData[CmNodeRankTimeMapKind] = nodeRankOccurrenceMapString
+	_, ok = cmData[CmCheckCode]
+	if ok {
+		delete(cmData, CmCheckCode) // if check code exists, delete and create new
+	}
 	checkCode := plugin.MakeDataHash(cmData)
+	klog.V(util.LogDebugLev).Infof("cm checkCode: %s, calc checkCode: %s, check equal: %v", checkCode,
+		plugin.MakeDataHash(cmData), checkCode == plugin.MakeDataHash(cmData))
 	cmData[CmCheckCode] = checkCode
 	if jobType != CmFaultJob910x8Kind {
 		return nil

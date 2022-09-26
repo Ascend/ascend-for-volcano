@@ -283,10 +283,10 @@ func (reScheduler *ReScheduler) updateNewFaultJobAttr(
 			}
 		}
 	}
-	klog.V(util.LogDebugLev).Infof("job %s fault types: %#v", faultJob.FaultTypes)
+	klog.V(util.LogDebugLev).Infof("job %s fault types: %#v", faultJob.JobName, faultJob.FaultTypes)
 	if cardName == util.NPU910CardName { // 5. update JobRankIds of fault cards
 		tmpJobRankIds := reScheduler.getJobRankIdsFromTasks(&faultJob, cardPreName)
-		klog.V(util.LogDebugLev).Infof("job %s rankIds: %#v", tmpJobRankIds)
+		klog.V(util.LogDebugLev).Infof("job %s rankIds: %#v", faultJob.JobName, tmpJobRankIds)
 		faultJob.setJobRankIds(tmpJobRankIds)
 	}
 	return faultJob
@@ -435,7 +435,7 @@ func (reScheduler *ReScheduler) isDelayingJobTimeout(fJob *FaultJob) bool {
 	createTime := fJob.JobRankIdCreateTime
 	klog.V(util.LogDebugLev).Infof("isDelayingJobTimeOut now: %v create: %v.", nowTime, createTime)
 	if nowTime-createTime > reScheduler.GraceDeleteTime {
-		klog.V(util.LogInfoLev).Infof("Time out: %s > %s", nowTime-createTime, reScheduler.GraceDeleteTime)
+		klog.V(util.LogInfoLev).Infof("Time out: %v > %v", nowTime-createTime, reScheduler.GraceDeleteTime)
 		return true
 	}
 	return false
@@ -1146,8 +1146,7 @@ func (reScheduler ReScheduler) getTaskHealthState(fTask *FaultTask) (bool, strin
 			NodeCardNetworkUnhealthy, NodeCardNetworkUnhealthy)
 		return true, NodeCardNetworkUnhealthy
 	}
-	klog.V(util.LogInfoLev).Infof("task %s all nodes healthy, thus task sets %s", fTask.TaskName, NodeHealthy,
-		NodeHealthy)
+	klog.V(util.LogInfoLev).Infof("task %s all nodes healthy, thus task sets %s", fTask.TaskName, NodeHealthy)
 	return false, NodeHealthy
 }
 

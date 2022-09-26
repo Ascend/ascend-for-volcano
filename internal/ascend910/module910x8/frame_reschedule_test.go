@@ -100,7 +100,7 @@ func buildModule910x8PreStartActionTest1() module910x8PreStartActionTests {
 			},
 		},
 		args:    myArgs,
-		wantErr: false,
+		wantErr: true,
 	}
 	test1.args.cacheFuncBefore2 = func() {
 		tmpPatche2 = gomonkey.ApplyFunc(util.GetConfigMapWithRetry, func(
@@ -586,6 +586,7 @@ func fakeFaultCM(env plugin.ScheduleEnv) *v1.ConfigMap {
 		env.Cache.Data[rescheduling.RePropertyName][rescheduling.CmFaultJob910x8Kind]
 	cmData[rescheduling.CmNodeHeartbeatKind] = ""
 	cmData[rescheduling.CmNodeRankTimeMapKind] = ""
+	cmData[rescheduling.CmCheckCode] = plugin.MakeDataHash(cmData)
 	var faultCM = &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      rescheduling.CmName,
