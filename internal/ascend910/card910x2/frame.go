@@ -87,7 +87,7 @@ func (tp *card910x2) PreStartAction(ssn *framework.Session) error {
 	cardFullName := util.NPU910CardName + util.CardAcceleratorType
 	klog.V(util.LogInfoLev).Infof("Entering PreStartAction of %s", cardFullName)
 	defer klog.V(util.LogInfoLev).Infof("Leaving PreStartAction of %s", cardFullName)
-	if tp == nil || ssn == nil{
+	if tp == nil || ssn == nil {
 		return fmt.Errorf("%s handler not enabled or ssn is nil: %s", cardFullName, util.ArgumentError)
 	}
 	reschEnable, ok := tp.SchedulerJobAttr.Label[rescheduling.JobRescheduleLabelKey]
