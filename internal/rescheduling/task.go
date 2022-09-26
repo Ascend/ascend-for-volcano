@@ -51,7 +51,8 @@ func (fTask *FaultTask) getUseCardName(task *api.TaskInfo, cardName string) ([]s
 	return taskNPUs, nil
 }
 
-func (fTask *FaultTask) deleteRealPodByTask(ssn *framework.Session, waitTime int64) error {
+// DeleteRealPodByTask delete pod from kubernetes of tasks
+func (fTask *FaultTask) DeleteRealPodByTask(ssn *framework.Session, waitTime int64) error {
 	deleteOptions := v1.DeleteOptions{
 		GracePeriodSeconds: &waitTime,
 		Preconditions:      v1.NewUIDPreconditions(string(fTask.TaskUID)),
