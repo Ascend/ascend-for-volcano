@@ -10,9 +10,10 @@ Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
 package rescheduling
 
 import (
-	"github.com/agiledragon/gomonkey/v2"
 	"reflect"
 	"testing"
+
+	"github.com/agiledragon/gomonkey/v2"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
