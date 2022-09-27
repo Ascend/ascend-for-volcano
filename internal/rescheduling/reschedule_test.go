@@ -261,20 +261,6 @@ func fakeNPUNodeWithDeviceInfo(name string) *plugin.NPUNode {
 	return npuNode
 }
 
-// New ReScheduler test
-type newArgs struct {
-	env             *plugin.ScheduleEnv
-	jobType         string
-	cacheFuncBefore func()
-	cacheFuncAfter  func()
-}
-
-type newTests struct {
-	want *ReScheduler
-	name string
-	args newArgs
-}
-
 type FaultReSchedulerGetGraceDeleteTimeFields struct {
 	DealReSchedulerCache *DealReSchedulerCache
 	GraceDeleteTime      int64

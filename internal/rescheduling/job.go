@@ -121,7 +121,7 @@ func (fJob *FaultJob) ForceDeleteJob(ssn *framework.Session, schedulerJob *plugi
 			"getJobFaultRescheduleLabel fJob object or ssn or schedulerJob does not exist")
 	}
 	for _, fTask := range fJob.FaultTasks {
-		err := fTask.deleteRealPodByTask(ssn, 0)
+		err := fTask.DeleteRealPodByTask(ssn, 0)
 		if err != nil {
 			klog.V(util.LogDebugLev).Infof("ForceDeleteFaultPod %s: %#v.", fTask.TaskName, err)
 		}

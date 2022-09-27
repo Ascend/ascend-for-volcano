@@ -10,11 +10,8 @@ Package main is using for HuaWei Ascend pin affinity schedule.
 package main
 
 import (
-	"reflect"
 	"testing"
 
-	"github.com/agiledragon/gomonkey/v2"
-	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
@@ -87,45 +84,11 @@ type onSessionOpenTest struct {
 }
 
 func buildOnSessionOpenTestCases() []onSessionOpenTest {
-	testSsn := test.FakeNormalSSN()
-	var tmpPatche *gomonkey.Patches
-	var tmpPatche2 *gomonkey.Patches
-	var tmpPatche3 *gomonkey.Patches
-	var tmpPatche4 *gomonkey.Patches
 	tests := []onSessionOpenTest{
 		{
 			name:   "OnSessionOpen test ssn nil ok",
 			fields: fields{Scheduler: HandlerStart()},
 			args:   args{ssn: nil, cacheFunBefore: func() {}, cacheFunAfter: func() {}},
-		},
-		{
-			name:   "OnSessionOpen test ssn ok",
-			fields: fields{Scheduler: HandlerStart()},
-			args: args{ssn: testSsn, cacheFunBefore: func() {
-				tmpPatche = gomonkey.ApplyMethod(reflect.TypeOf(new(framework.Session)), "AddJobValidFn",
-					func(_ *framework.Session, _ string, _ api.ValidateExFn) {
-						return
-					})
-				tmpPatche2 = gomonkey.ApplyMethod(reflect.TypeOf(new(framework.Session)), "AddPredicateFn",
-					func(_ *framework.Session, _ string, _ api.PredicateFn) {
-						return
-					})
-				tmpPatche3 = gomonkey.ApplyMethod(reflect.TypeOf(new(framework.Session)), "AddBatchNodeOrderFn",
-					func(_ *framework.Session, _ string, _ api.BatchNodeOrderFn) {
-						return
-					})
-				tmpPatche4 = gomonkey.ApplyMethod(reflect.TypeOf(new(framework.Session)), "AddEventHandler",
-					func(_ *framework.Session, _ *framework.EventHandler) {
-						return
-					})
-			}, cacheFunAfter: func() {
-				if tmpPatche != nil && tmpPatche2 != nil && tmpPatche3 != nil && tmpPatche4 != nil {
-					tmpPatche.Reset()
-					tmpPatche2.Reset()
-					tmpPatche3.Reset()
-					tmpPatche4.Reset()
-				}
-			}},
 		},
 	}
 	return tests
