@@ -2,7 +2,7 @@
 # Perform  test volcano-huawei-npu-scheduler plugin
 # Copyright @ Huawei Technologies CO., Ltd. 2020-2022. All rights reserved
 
-set -ex
+set -e
 
 export GO111MODULE=on
 export GONOSUMDB="*"
