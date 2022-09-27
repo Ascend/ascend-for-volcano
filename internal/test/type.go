@@ -4,7 +4,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 
 /*
 
-Package test is using for HuaWei Ascend pin fault rescheduling.
+Package test is using for HuaWei Ascend testing.
 
 */
 package test

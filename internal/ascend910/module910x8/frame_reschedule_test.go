@@ -11,7 +11,6 @@ package module910x8
 
 import (
 	"encoding/json"
-	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -69,48 +68,6 @@ type module910x8PreStartActionTests struct {
 	wantErr bool
 }
 
-// buildModule910x8PreStartActionTest1 initial: no contents in reCache; 4 nodes, node0 card fault; 2 jobs,
-// job0-pod0 on fault node
-func buildModule910x8PreStartActionTest1() module910x8PreStartActionTests {
-	ssn1 := test.FakeSSNReSchedule()
-	env := fakeEnvEmpty()
-	fakeEnvAddJobsAndNodesToEnv(&env)
-	var tmpPatche1 *gomonkey.Patches
-	var tmpPatche2 *gomonkey.Patches
-	var tmpPatche3 *gomonkey.Patches
-	var tmpPatche4 *gomonkey.Patches
-	myArgs := buildModule910x8PreStartActionTestCacheArgs(tmpPatche1, tmpPatche2, tmpPatche3, tmpPatche4, nil)
-	myArgs.ssn = ssn1
-	test1 := module910x8PreStartActionTests{
-		name: "01-PreStartAction()-no fault initially, add card fault and corresponding job fault in session",
-		fields: module910x8Fields{
-			baseHandler: base.NPUHandler{
-				SchedulerPlugin:  plugin.SchedulerPlugin{},
-				SchedulerJobAttr: env.Jobs["vcjob/job0"].SchedulerJobAttr,
-				ScheduleEnv:      env,
-				MaxNodeNPUNum:    0,
-				MaxCardNPUNum:    0,
-			},
-			reHandle: &rescheduling.ReScheduler{
-				GraceDeleteTime:      0,
-				Level:                "",
-				Jobs:                 nil,
-				Nodes:                nil,
-				DealReSchedulerCache: nil,
-			},
-		},
-		args:    myArgs,
-		wantErr: true,
-	}
-	test1.args.cacheFuncBefore2 = func() {
-		tmpPatche2 = gomonkey.ApplyFunc(util.GetConfigMapWithRetry, func(
-			_ kubernetes.Interface, _, _ string) (*v1.ConfigMap, error) {
-			return nil, errors.New("")
-		})
-	}
-	return test1
-}
-
 func buildModule910x8PreStartActionTestCacheArgs(tmpPatche1 *gomonkey.Patches,
 	tmpPatche2 *gomonkey.Patches, tmpPatche3 *gomonkey.Patches, tmpPatche4 *gomonkey.Patches,
 	faultCM *v1.ConfigMap) module910x8PreStartActionArgs {
@@ -160,7 +117,7 @@ func buildModule910x8PreStartActionTestCacheArgs(tmpPatche1 *gomonkey.Patches,
 	return args
 }
 
-func buildModule910x8PreStartActionTest2() module910x8PreStartActionTests {
+func buildModule910x8PreStartActionTest() module910x8PreStartActionTests {
 	ssn1 := test.FakeSSNReSchedule()
 	env := fakeEnvEmpty()
 	fakeEnvAddJobsAndNodesToEnv(&env)
@@ -193,82 +150,9 @@ func buildModule910x8PreStartActionTest2() module910x8PreStartActionTests {
 	return test6
 }
 
-func buildModule910x8PreStartActionTest4() module910x8PreStartActionTests {
-	ssn1 := test.FakeSSNReSchedule()
-	env := fakeEnvEmpty()
-	fakeEnvAddJobsAndNodesToEnv(&env)
-	fakeEnvAddCacheFaultNodeToEnv(&env)
-	fakeEnvAddCacheFaultJobToEnv(&env, []string{"job0", "node0", "node1"}, 0, time.Now().Unix()-1)
-	var tmpPatche1 *gomonkey.Patches
-	var tmpPatche2 *gomonkey.Patches
-	var tmpPatche3 *gomonkey.Patches
-	var tmpPatche4 *gomonkey.Patches
-	reHandle := rescheduling.ReScheduler{
-		GraceDeleteTime: rescheduling.DefaultGraceOverTime,
-		Level:           "",
-		Jobs:            env.Jobs,
-		Nodes:           env.Nodes,
-		DealReSchedulerCache: &rescheduling.DealReSchedulerCache{
-			FaultNodes: nil,
-			FaultJobs:  nil,
-			DealReSchedulerConfigmap: &rescheduling.DealReSchedulerConfigmap{
-				CMName:      rescheduling.CmName,
-				CMNameSpace: rescheduling.CmNameSpace,
-				CMData: map[string]string{rescheduling.CmFaultNodeKind: env.Cache.Data[rescheduling.
-					RePropertyName][rescheduling.CmFaultNodeKind],
-					rescheduling.CmFaultJob910x8Kind: env.Cache.Data[rescheduling.
-						RePropertyName][rescheduling.CmFaultJob910x8Kind]},
-			},
-		},
-	}
-	faultCM := fakeFaultCM(env)
-	myArgs := buildModule910x8PreStartActionTestCacheArgs(tmpPatche1, tmpPatche2, tmpPatche3, tmpPatche4, faultCM)
-	myArgs.ssn = ssn1
-	test7 := module910x8PreStartActionTests{
-		name: "04-PreStartAction()-with fault node and job in cm and faultJob not in session",
-		fields: module910x8Fields{
-			baseHandler: fakeBaseHandlerEmpty(env),
-			reHandle:    &reHandle,
-		},
-		args:    myArgs,
-		wantErr: false,
-	}
-	return test7
-}
-
-func buildModule910x8PreStartActionTest3() module910x8PreStartActionTests {
-	ssn1 := test.FakeSSNReSchedule()
-	env := fakeEnvEmpty()
-	fakeEnvAddJobsAndNodesToEnv(&env)
-	fakeEnvAddCacheFaultNodeToEnv(&env)
-	fakeEnvAddCacheFaultJobToEnv(&env, []string{"job2", "node0", "node1"}, time.Now().Unix()-1, time.Now().Unix()-1)
-
-	var tmpPatche1 *gomonkey.Patches
-	var tmpPatche2 *gomonkey.Patches
-	var tmpPatche3 *gomonkey.Patches
-	var tmpPatche4 *gomonkey.Patches
-	reHandle := fakeReSchedulerNew(env)
-	faultCM := fakeFaultCM(env)
-	myArgs := buildModule910x8PreStartActionTestCacheArgs(tmpPatche1, tmpPatche2, tmpPatche3, tmpPatche4, faultCM)
-	myArgs.ssn = ssn1
-	test2 := module910x8PreStartActionTests{
-		name: "03-PreStartAction()-with fault node and job in cm job not in session",
-		fields: module910x8Fields{
-			baseHandler: fakeBaseHandlerEmpty(env),
-			reHandle:    &reHandle,
-		},
-		args:    myArgs,
-		wantErr: false,
-	}
-	return test2
-}
-
 func buildModule910x8PreStartActionTests() []module910x8PreStartActionTests {
 	return []module910x8PreStartActionTests{
-		buildModule910x8PreStartActionTest1(),
-		buildModule910x8PreStartActionTest2(),
-		buildModule910x8PreStartActionTest3(),
-		buildModule910x8PreStartActionTest4(),
+		buildModule910x8PreStartActionTest(),
 	}
 }
 
