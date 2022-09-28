@@ -71,6 +71,8 @@ const (
 	NPU310CardNamePre = "Ascend310-"
 	// NPU310PCardNamePre for getting card number.
 	NPU310PCardNamePre = "Ascend310P-"
+	// AscendNPUPodRealUse for NPU pod real use cards.
+	AscendNPUPodRealUse = "huawei.com/AscendReal"
 
 	// DevInfoNameSpace device-plugin install namespace
 	DevInfoNameSpace = "kube-system"

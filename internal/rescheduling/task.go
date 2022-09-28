@@ -43,7 +43,7 @@ func (fTask *FaultTask) getNodeRankIndex(task *api.TaskInfo) (string, error) {
 }
 
 func (fTask *FaultTask) getUseCardName(task *api.TaskInfo, cardName string) ([]string, error) {
-	strNpu, ok := task.Pod.Annotations[cardName]
+	strNpu, ok := task.Pod.Annotations[util.AscendNPUPodRealUse]
 	if !ok {
 		return nil, fmt.Errorf("%s has no NPU from %s", task.Name, cardName)
 	}
