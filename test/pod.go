@@ -11,16 +11,14 @@ package test
 
 import (
 	"fmt"
-	"k8s.io/api/core/v1"
 	"strconv"
 
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 	"volcano.sh/volcano/pkg/scheduler/api"
-
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
 func makePodSpec(pod NPUPod) v1.PodSpec {
@@ -59,15 +57,6 @@ func SetTestNPUPodAnnotation(pod *v1.Pod, annotationKey string, annotationValue 
 	pod.Annotations[annotationKey] = annotationValue
 }
 
-// SetTestNPUPodSelector set NPU pod selector.
-func SetTestNPUPodSelector(pod *v1.Pod, selectorKey, selectorValue string) {
-	if pod.Spec.NodeSelector == nil {
-		pod.Spec.NodeSelector = make(map[string]string, npuIndex3)
-	}
-
-	pod.Spec.NodeSelector[selectorKey] = selectorValue
-}
-
 func buildNPUResourceList(CCpu string, CMemory string, npuResourceType v1.ResourceName, npu string) v1.ResourceList {
 	npuNum, err := strconv.Atoi(npu)
 	if err != nil {
@@ -92,7 +81,7 @@ func buildNPUResourceList(CCpu string, CMemory string, npuResourceType v1.Resour
 func FakeNormalTestTask(name string, nodename string, groupname string) *api.TaskInfo {
 	pod := NPUPod{
 		Namespace: "vcjob", Name: name, NodeName: nodename, GroupName: groupname, Phase: v1.PodRunning,
-		ReqSource: buildNPUResourceList("1", "1000", util.NPU910CardName, strconv.Itoa(util.NPUIndex8)),
+		ReqSource: buildNPUResourceList("1", "1000", NPU910CardName, strconv.Itoa(NPUIndex8)),
 	}
 	task := api.NewTaskInfo(BuildNPUPod(pod))
 	return task
@@ -116,17 +105,6 @@ func BuildPodWithReqResource(resourceName v1.ResourceName, resourceNum string) *
 	resourceList := v1.ResourceList{}
 	AddResource(resourceList, resourceName, resourceNum)
 	return BuildNPUPod(NPUPod{ReqSource: resourceList})
-}
-
-func setFakePodLabel(CPod *v1.Pod, selectorKey, selectorValue string) {
-	if CPod.Labels == nil {
-		CPod.Labels = make(map[string]string)
-	}
-	if selectorValue == "" {
-		CPod.Labels = make(map[string]string)
-		return
-	}
-	CPod.Labels[selectorKey] = selectorValue
 }
 
 // BuildTestTaskWithAnnotation build test task with annotation
@@ -169,7 +147,7 @@ func SetFakeNPUPodStatus(fPod *v1.Pod, status v1.PodPhase) {
 // AddTestTaskLabel add test job's label.
 func AddTestTaskLabel(task *api.TaskInfo, labelKey, labelValue string) {
 	if len(task.Pod.Spec.NodeSelector) == 0 {
-		task.Pod.Spec.NodeSelector = make(map[string]string, util.MapInitNum)
+		task.Pod.Spec.NodeSelector = make(map[string]string, npuIndex3)
 	}
 	task.Pod.Spec.NodeSelector[labelKey] = labelValue
 }

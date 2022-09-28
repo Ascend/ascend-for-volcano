@@ -71,6 +71,8 @@ const (
 	NPU310CardNamePre = "Ascend310-"
 	// NPU310PCardNamePre for getting card number.
 	NPU310PCardNamePre = "Ascend310P-"
+	// AscendNPUPodRealUse for NPU pod real use cards.
+	AscendNPUPodRealUse = "huawei.com/AscendReal"
 
 	// DevInfoNameSpace device-plugin install namespace
 	DevInfoNameSpace = "kube-system"
@@ -87,8 +89,6 @@ const (
 	PodPredicateTime = "predicate-time"
 	// NodeNotMeetTopologyWarning node not satisfy the schedulable topology warning.
 	NodeNotMeetTopologyWarning = "the npus on this node don't satisfy the schedulable topology"
-	// NodeNoFitNPUWarning node no fit npu number warning.
-	NodeNoFitNPUWarning = "node no fit npu number"
 	// ArgumentError argument nil error.
 	ArgumentError = "invalid argument"
 )

@@ -109,7 +109,7 @@ func getNodeDeviceInfoFromCM(kubeClient kubernetes.Interface, node *api.NodeInfo
 
 // InitNPUNodeByNodeInf init NPU node from node info and cm.
 func (n *NPUNode) InitNPUNodeByNodeInf(npuNode *api.NodeInfo, kubeClient kubernetes.Interface) error {
-	if n == nil {
+	if n == nil || npuNode == nil {
 		klog.V(util.LogInfoLev).Infof("InitNPUNodeByNodeInf failed: %s.", util.ArgumentError)
 		return errors.New(util.ArgumentError)
 	}

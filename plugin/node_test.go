@@ -11,8 +11,11 @@ package plugin
 
 import (
 	"errors"
+	"github.com/agiledragon/gomonkey/v2"
+	"k8s.io/client-go/kubernetes"
 	"reflect"
 	"testing"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 
 	"k8s.io/api/core/v1"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -116,6 +119,22 @@ func buildNodePredicateTest() []nodePredicateTest {
 			args:    nodePredicateArgs{taskInfo: tTasks[0], nodeInfo: tNode},
 			wantErr: false,
 		},
+		{
+			name: "04-NodePredicate node not in test.",
+			fields: fields{ScheduleEnv: ScheduleEnv{
+				Jobs:  map[api.JobID]SchedulerJob{tTasks[0].Job: {}},
+				Nodes: map[string]NPUNode{"haha": {}}}},
+			args:    nodePredicateArgs{taskInfo: tTasks[0], nodeInfo: tNode},
+			wantErr: false,
+		},
+		{
+			name: "05-NodePredicate ok test.",
+			fields: fields{ScheduleEnv: ScheduleEnv{
+				Jobs:  map[api.JobID]SchedulerJob{tTasks[0].Job: {}},
+				Nodes: map[string]NPUNode{"haha": {}}}},
+			args:    nodePredicateArgs{taskInfo: tTasks[0], nodeInfo: tNode},
+			wantErr: false,
+		},
 	}
 	return tests
 }
@@ -191,6 +210,122 @@ func TestCheckNodeDeviceInfo(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := checkNodeDeviceInfo(tt.dvInfo); !reflect.DeepEqual(err, tt.wantErr) {
 				t.Errorf("checkNodeDeviceInfo() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+type initNPUNodeByNodeInfArgs struct {
+	npuNode    *api.NodeInfo
+	kubeClient kubernetes.Interface
+}
+
+type initNPUNodeByNodeInfTest struct {
+	name    string
+	fields  nodeFields
+	args    initNPUNodeByNodeInfArgs
+	wantErr bool
+}
+
+func buildInitNPUNodeByNodeInfTest() []initNPUNodeByNodeInfTest {
+	tNode := test.FakeNormalTestNode("testNode")
+	test.SetFakeNodeSource(tNode, test.NPU910CardName, util.NPUIndex3)
+	tests := []initNPUNodeByNodeInfTest{
+		{
+			name:    "01-InitNPUNodeByNodeInf nil test.",
+			fields:  nodeFields{},
+			args:    initNPUNodeByNodeInfArgs{npuNode: nil, kubeClient: nil},
+			wantErr: true,
+		},
+		{
+			name:    "01-InitNPUNodeByNodeInf capability nil ascend test.",
+			fields:  nodeFields{},
+			args:    initNPUNodeByNodeInfArgs{npuNode: tNode, kubeClient: nil},
+			wantErr: true,
+		},
+	}
+	return tests
+}
+
+// TestInitNPUNodeByNodeInf test InitNPUNodeByNodeInf
+func TestInitNPUNodeByNodeInf(t *testing.T) {
+	tests := buildInitNPUNodeByNodeInfTest()
+	tmpPatch := gomonkey.ApplyFunc(util.GetConfigMapWithRetry, func(
+		_ kubernetes.Interface, _, _ string) (*v1.ConfigMap, error) {
+		return &v1.ConfigMap{Data: map[string]string{"DeviceInfoCfg": "{\"DeviceInfo\":{\"DeviceList\":{\"huawei.com/Ascend910\":\"Ascend910-0\", }, " +
+			"\"UpdateTime\":1664190162}, \"CheckCode\":\"\"}"}}, nil
+	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := &NPUNode{
+				Name:       tt.fields.Name,
+				Capability: tt.fields.Capability,
+				Allocate:   tt.fields.Allocate,
+				Idle:       tt.fields.Idle,
+				Annotation: tt.fields.Annotation,
+				Label:      tt.fields.Label,
+			}
+			if err := n.InitNPUNodeByNodeInf(tt.args.npuNode, tt.args.kubeClient); (err != nil) != tt.wantErr {
+				t.Errorf("InitNPUNodeByNodeInf() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+	tmpPatch.Reset()
+}
+
+type checkNPUResourceStableReSchedulingArgs struct {
+	vcJob SchedulerJob
+}
+
+type checkNPUResourceStableReSchedulingTest struct {
+	name    string
+	fields  nodeFields
+	args    checkNPUResourceStableReSchedulingArgs
+	wantErr bool
+}
+
+func buildCheckNPUResourceStableReSchedulingTest() []checkNPUResourceStableReSchedulingTest {
+	tJob := SchedulerJob{handler: New(testPluginName)}
+	tests := []checkNPUResourceStableReSchedulingTest{
+		{
+			name:    "01-CheckNPUResourceStableReScheduling nil test.",
+			fields:  nodeFields{},
+			args:    checkNPUResourceStableReSchedulingArgs{vcJob: tJob},
+			wantErr: true,
+		},
+		{
+			name: "02-CheckNPUResourceStableReScheduling not stable test.",
+			fields: nodeFields{Name: "haha", Idle: map[v1.ResourceName]float64{testCardName: 1},
+				Annotation: map[string]string{testCardName: "AscendTest-0,AscendTest-1"}},
+			args:    checkNPUResourceStableReSchedulingArgs{vcJob: tJob},
+			wantErr: true,
+		},
+		{
+			name: "03-CheckNPUResourceStableReScheduling ok test.",
+			fields: nodeFields{Name: "haha", Idle: map[v1.ResourceName]float64{testCardName: util.NPUHexKilo},
+				Annotation: map[string]string{testCardName: "AscendTest-0"}},
+			args:    checkNPUResourceStableReSchedulingArgs{vcJob: tJob},
+			wantErr: false,
+		},
+	}
+	return tests
+}
+
+// TestCheckNPUResourceStableReScheduling test CheckNPUResourceStableReScheduling
+func TestCheckNPUResourceStableReScheduling(t *testing.T) {
+	tests := buildCheckNPUResourceStableReSchedulingTest()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := NPUNode{
+				Name:       tt.fields.Name,
+				Capability: tt.fields.Capability,
+				Allocate:   tt.fields.Allocate,
+				Idle:       tt.fields.Idle,
+				Annotation: tt.fields.Annotation,
+				Label:      tt.fields.Label,
+			}
+			if err := n.CheckNPUResourceStableReScheduling(tt.args.vcJob); (err != nil) != tt.wantErr {
+				t.Errorf("CheckNPUResourceStableReScheduling() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

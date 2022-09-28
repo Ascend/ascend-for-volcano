@@ -59,7 +59,7 @@ func (sHandle *ScheduleHandler) releaseAnnotation(task *api.TaskInfo, vcJob Sche
 		klog.V(util.LogInfoLev).Infof("task %s not in vcjob %s", vcTask.TaskName, vcJob.JobName)
 		return
 	}
-	reqStr, ok := task.Pod.Annotations[vcTask.ReqNPUName]
+	reqStr, ok := task.Pod.Annotations[util.AscendNPUPodRealUse]
 	if !ok {
 		return
 	}
@@ -73,6 +73,7 @@ func (sHandle *ScheduleHandler) releaseAnnotation(task *api.TaskInfo, vcJob Sche
 	}
 	vcNode.Annotation[vcTask.ReqNPUName] = reqStr
 	if value != "" {
+		// if failed, reset by next session.
 		if isEachStringContainsSameElement(value, reqStr, ",") {
 			annErr := fmt.Errorf("%s:%s has same NPU used %s:%s", vcNode.Name, value, vcTask.TaskName, reqStr)
 			klog.V(util.LogErrorLev).Infof("releaseAnnotation %s", annErr)

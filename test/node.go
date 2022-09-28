@@ -11,55 +11,11 @@ package test
 
 import (
 	"strconv"
-	"strings"
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"volcano.sh/volcano/pkg/scheduler/api"
-
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
-
-// SetNPUNodeLabel set NPU node label.
-func SetNPUNodeLabel(node *v1.Node, labelKey string, labelValue string) {
-	if labelValue == "" {
-		return
-	}
-
-	if node.Labels == nil {
-		node.Labels = make(map[string]string, npuIndex3)
-	}
-
-	node.Labels[labelKey] = labelValue
-}
-
-// SetTestNPUNodeOther set NPU node other for add npu resource.
-func SetTestNPUNodeOther(node *api.NodeInfo, otherKey, otherValue string) {
-	if node.Others == nil {
-		node.Others = make(map[string]interface{}, npuIndex3)
-	}
-
-	node.Others[otherKey] = otherValue
-}
-
-// SetTestNPUNodeAnnotation set NPU node annotation for add fault npu resource.
-func SetTestNPUNodeAnnotation(node *api.NodeInfo, name string, value string) {
-	SetTestNPUNodeOther(node, name, value)
-	if node.Node.Annotations == nil {
-		node.Node.Annotations = make(map[string]string, npuIndex3)
-	}
-
-	node.Node.Annotations[name] = value
-
-	stringSlice := strings.Split(value, ",")
-	if node.Allocatable == nil || len(node.Allocatable.ScalarResources) == 0 {
-		allo := api.Resource{ScalarResources: map[v1.ResourceName]float64{
-			v1.ResourceName(name): float64(len(stringSlice)) * util.NPUHexKilo}}
-		node.Allocatable = &allo
-		return
-	}
-	node.Allocatable.ScalarResources[v1.ResourceName(name)] = float64(len(stringSlice)) * util.NPUHexKilo
-}
 
 // BuildNPUNode built NPU node object
 func BuildNPUNode(node NPUNode) *v1.Node {
@@ -104,30 +60,13 @@ func FakeNormalTestNodes(num int) []*api.NodeInfo {
 	return nodes
 }
 
-// SetFakeNodeIdleSource Set fake node the idle source.
-func SetFakeNodeIdleSource(nodeInf *api.NodeInfo, name string, value int) {
+// SetFakeNodeSource Set fake node the idle, Capability, Allocatable source.
+func SetFakeNodeSource(nodeInf *api.NodeInfo, name string, value int) {
 	idle := api.Resource{ScalarResources: map[v1.ResourceName]float64{
-		v1.ResourceName(name): float64(value) * util.NPUHexKilo}}
+		v1.ResourceName(name): float64(value) * NPUHexKilo}}
 	nodeInf.Idle = &idle
-}
-
-// BuildNodeWithFakeOther build node with fake node other
-func BuildNodeWithFakeOther(nodeName, name string, value string) *api.NodeInfo {
-	nodeInfo := FakeNormalTestNode(nodeName)
-	if value != "" {
-		SetTestNPUNodeOther(nodeInfo, name, value)
-	}
-	return nodeInfo
-}
-
-// BuildUnstableNode build unstable node
-func BuildUnstableNode(nodeName, resourceName, otherNpuNum string, idleNpuNum int) *api.NodeInfo {
-	nodeInfo := FakeNormalTestNode(nodeName)
-	if otherNpuNum != "" {
-		SetTestNPUNodeOther(nodeInfo, resourceName, otherNpuNum)
-	}
-	if idleNpuNum != 0 {
-		SetFakeNodeIdleSource(nodeInfo, resourceName, idleNpuNum)
-	}
-	return nodeInfo
+	Capability := api.Resource{ScalarResources: map[v1.ResourceName]float64{
+		v1.ResourceName(name): float64(value) * NPUHexKilo}}
+	nodeInf.Capability = &Capability
+	nodeInf.Allocatable = &Capability
 }
