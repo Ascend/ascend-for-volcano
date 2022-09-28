@@ -73,6 +73,12 @@ func (tp *chip310x4) SelectNPUFromNode(task *api.TaskInfo, node plugin.NPUNode) 
 		return nil, err
 	}
 
+	// secure request, avoid index out of range
+	if err := tp.JudgeNodeAndTaskNPU(taskNPUNum, nodeTop); err != nil {
+		klog.V(util.LogErrorLev).Infof("%s selectNPUFromNode %s", tp.GetPluginName(), err.Error())
+		return nil, err
+	}
+
 	priorityArray := []int{1, util.NPUIndex2, util.NPUIndex3, util.NPUIndex4}
 
 	cardNumGroups := tp.GetCardNumGroupsFromTop(nodeTop)

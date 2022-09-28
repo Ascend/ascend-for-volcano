@@ -38,7 +38,7 @@ func (tp *NPUHandler) GetTaskReqNPUNum(task *api.TaskInfo) (int, error) {
 
 // SetNPUTopologyToPodFn set task select npu to pod annotation
 func (tp *NPUHandler) SetNPUTopologyToPodFn(task *api.TaskInfo, top []int) {
-	if tp == nil || task == nil || len(top) == 0 {
+	if tp == nil || task == nil || task.Pod == nil || task.Pod.Annotations == nil || len(top) == 0 {
 		return
 	}
 	topologyStr := util.ChangeIntArrToStr(top, tp.GetAnnoPreVal())

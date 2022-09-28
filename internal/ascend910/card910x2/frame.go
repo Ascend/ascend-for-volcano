@@ -188,6 +188,11 @@ func (tp *card910x2) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo
 		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
 		return err
 	}
+	if taskNPUNum < 1 || taskNPUNum > tp.MaxNodeNPUNum {
+		err = fmt.Errorf("task<%s> req npu num<%d> is invalid", task.Name, taskNPUNum)
+		klog.V(util.LogErrorLev).Infof("%s ScoreBestNPUNodes err: %s", tp.GetPluginName(), err.Error())
+		return err
+	}
 	for _, node := range nodes {
 		nNode, ok := tp.Nodes[node.Name]
 		if !ok {
@@ -196,6 +201,9 @@ func (tp *card910x2) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo
 		nodeTop, err := tp.GetUsableTopFromNode(nNode)
 		if err != nil {
 			klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
+			continue
+		}
+		if len(nodeTop) > tp.MaxNodeNPUNum {
 			continue
 		}
 		bestScore := tp.affScoreList[taskNPUNum-1][len(nodeTop)-1]
