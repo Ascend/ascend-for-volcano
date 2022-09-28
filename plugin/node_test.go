@@ -11,16 +11,16 @@ package plugin
 
 import (
 	"errors"
-	"github.com/agiledragon/gomonkey/v2"
-	"k8s.io/client-go/kubernetes"
 	"reflect"
 	"testing"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 
+	"github.com/agiledragon/gomonkey/v2"
 	"k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
 	"volcano.sh/volcano/pkg/scheduler/api"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
 type nodeFields struct {
@@ -252,8 +252,8 @@ func TestInitNPUNodeByNodeInf(t *testing.T) {
 	tests := buildInitNPUNodeByNodeInfTest()
 	tmpPatch := gomonkey.ApplyFunc(util.GetConfigMapWithRetry, func(
 		_ kubernetes.Interface, _, _ string) (*v1.ConfigMap, error) {
-		return &v1.ConfigMap{Data: map[string]string{"DeviceInfoCfg": "{\"DeviceInfo\":{\"DeviceList\":{\"huawei.com/Ascend910\":\"Ascend910-0\", }, " +
-			"\"UpdateTime\":1664190162}, \"CheckCode\":\"\"}"}}, nil
+		return &v1.ConfigMap{Data: map[string]string{"DeviceInfoCfg": `{"DeviceInfo":{"DeviceList":" 
+			"{"huawei.com/Ascend910":"Ascend910-0"}, "UpdateTime":1664190162}, "CheckCode":""}`}}, nil
 	})
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
