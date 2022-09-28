@@ -87,19 +87,12 @@ func (tp *card910x2) PreStartAction(ssn *framework.Session) error {
 	cardFullName := util.NPU910CardName + util.CardAcceleratorType
 	klog.V(util.LogInfoLev).Infof("Entering PreStartAction of %s", cardFullName)
 	defer klog.V(util.LogInfoLev).Infof("Leaving PreStartAction of %s", cardFullName)
-	if tp == nil {
-		return fmt.Errorf("%s handler not enabled: %s", cardFullName, util.ArgumentError)
-	}
-	if ssn == nil {
-		return fmt.Errorf("%s session is nil: %s", cardFullName, util.ArgumentError)
+	if tp == nil || ssn == nil {
+		return fmt.Errorf("%s handler not enabled or ssn is nil: %s", cardFullName, util.ArgumentError)
 	}
 	reschEnable, ok := tp.SchedulerJobAttr.Label[rescheduling.JobRescheduleLabelKey]
-	if !ok {
-		klog.V(util.LogErrorLev).Infof("%s no re-scheduler key", cardFullName)
-		return nil
-	}
-	if reschEnable == rescheduling.JobOffRescheduleLabelValue {
-		klog.V(util.LogInfoLev).Infof("%s RescheduleLabel not enabled", cardFullName)
+	if !ok || reschEnable == rescheduling.JobOffRescheduleLabelValue {
+		klog.V(util.LogErrorLev).Infof("%s RescheduleLabel not enabled", cardFullName)
 		return nil
 	}
 	tp.reHandle = rescheduling.New(&tp.ScheduleEnv, rescheduling.CmFaultJob910x2Kind)
@@ -137,11 +130,8 @@ func (tp *card910x2) PreStopAction(env *plugin.ScheduleEnv) error {
 	cardFullName := util.NPU910CardName + util.CardAcceleratorType
 	klog.V(util.LogInfoLev).Infof("enter PreStopAction of %s...", cardFullName)
 	defer klog.V(util.LogInfoLev).Infof("leave PreStopAction of %s...", cardFullName)
-	if tp == nil || tp.reHandle == nil {
-		return fmt.Errorf("%s reSchedule not enabled: %s", cardFullName, util.ArgumentError)
-	}
-	if env == nil {
-		return fmt.Errorf("%s env is nil: %s", cardFullName, util.ArgumentError)
+	if tp == nil || tp.reHandle == nil || env == nil {
+		return fmt.Errorf("%s reSchedule not enabled or nil env: %s", cardFullName, util.ArgumentError)
 	}
 	if err := tp.reHandle.WriteReSchedulerCacheToEnvCache(env, rescheduling.CmFaultJob910x2Kind); err != nil {
 		return err

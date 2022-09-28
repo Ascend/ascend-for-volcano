@@ -4,13 +4,16 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 
 /*
 
-Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
+Package rescheduling is using for HuaWei Ascend pin fault
 
 */
-package module910x8
+package rescheduling
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
+	"k8s.io/klog"
 	"reflect"
 	"strings"
 	"testing"
@@ -26,24 +29,70 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/base"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/rescheduling"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
 const (
-	sliceIndexZero    = 0
-	sliceIndexOne     = 1
-	sliceIndexTwo     = 2
-	sliceIndexThree   = 3
-	sliceIndexFour    = 4
-	heartbeatInterval = 5
-	fakeTime          = 12345
+	sliceIndexZero  = 0
+	sliceIndexOne   = 1
+	sliceIndexTwo   = 2
+	sliceIndexThree = 3
+	sliceIndexFour  = 4
+	hbInterval      = 5
+	fakeHBTime      = 12345
 )
 
+// PreStartAction test for whole reScheduler pre-start operations
+func (tp *module910x8Fields) PreStartAction(ssn *framework.Session) error {
+	moduleFullName := util.NPU910CardName + util.ModuleAcceleratorType
+	if tp == nil {
+		return fmt.Errorf("%s handler not enabled: %s", moduleFullName, util.ArgumentError)
+	}
+	if ssn == nil {
+		return fmt.Errorf("%s session is nil: %s", moduleFullName, util.ArgumentError)
+	}
+	reschEnable, ok := tp.baseHandler.SchedulerJobAttr.Label[JobRescheduleLabelKey]
+	if !ok {
+		return nil
+	}
+	if reschEnable == JobOffRescheduleLabelValue {
+		return nil
+	}
+	tp.reHandle = New(&tp.baseHandler.ScheduleEnv, CmFaultJob910x8Kind)
+	if tp.reHandle == nil {
+		return fmt.Errorf("%s reSchedule not enabled: %s", moduleFullName, util.ArgumentError)
+	}
+	tp.reHandle.New910ReScheduler()
+	tp.reHandle.SynCacheFaultNodeWithSession(util.NPU910CardName)
+	tp.reHandle.AddFaultNodeWithSession(util.NPU910CardName)
+	tp.reHandle.SynCacheFaultJobWithSession(ssn, util.NPU910CardName, util.NPU910CardNamePre)
+	tp.reHandle.SynCacheNodeRankOccMapWithSession(ssn)
+	// 1. restart Fault Jobs that are recorded in cache
+	if restartErr := tp.reHandle.RestartNeedForceDeleteJobs(ssn); restartErr != nil {
+	}
+	// 2. get all the new 910x8 jobs in session
+	runningJobs910x8, getRunErr := tp.reHandle.GetRunningJobs(ssn, util.NPU910CardName, util.ModuleAcceleratorType)
+	if getRunErr != nil {
+		klog.V(util.LogInfoLev).Infof("%s GetRunningJobs: %s", moduleFullName, getRunErr.Error())
+	}
+	// 3. get nodes of session and fault jobs of 910x8
+	err := tp.reHandle.AddFaultJobWithSession(runningJobs910x8, util.NPU910CardName, util.NPU910CardNamePre)
+	if err != nil {
+		klog.V(util.LogErrorLev).Infof("%s AddFaultJobWithSession", moduleFullName)
+	}
+	// 4. restart the fault jobs
+	if restartErr := tp.reHandle.RestartFaultJobs(ssn); restartErr != nil {
+		return restartErr
+	}
+	// 5. save structure for later allocation process
+	tp.reHandle.GenerateNodeRankIndexTaskMap()
+	return nil
+}
+
 type module910x8Fields struct {
-	reHandle        *rescheduling.ReScheduler
+	reHandle        *ReScheduler
 	baseHandler     base.NPUHandler
 	netUnhealthyKey string
 	affScoreList    [][]int
@@ -68,6 +117,48 @@ type module910x8PreStartActionTests struct {
 	wantErr bool
 }
 
+// buildModule910x8PreStartActionTest1 initial: no contents in reCache; 4 nodes, node0 card fault; 2 jobs,
+// job0-pod0 on fault node
+func buildModule910x8PreStartActionTest1() module910x8PreStartActionTests {
+	ssn1 := test.FakeSSNReSchedule()
+	env := fakeEnvEmpty()
+	fakeEnvAddJobsAndNodesToEnv(&env)
+	var tmpPatche1 *gomonkey.Patches
+	var tmpPatche2 *gomonkey.Patches
+	var tmpPatche3 *gomonkey.Patches
+	var tmpPatche4 *gomonkey.Patches
+	myArgs := buildModule910x8PreStartActionTestCacheArgs(tmpPatche1, tmpPatche2, tmpPatche3, tmpPatche4, nil)
+	myArgs.ssn = ssn1
+	test1 := module910x8PreStartActionTests{
+		name: "01-PreStartAction()-no fault initially, add card fault and corresponding job fault in session",
+		fields: module910x8Fields{
+			baseHandler: base.NPUHandler{
+				SchedulerPlugin:  plugin.SchedulerPlugin{},
+				SchedulerJobAttr: env.Jobs["vcjob/job0"].SchedulerJobAttr,
+				ScheduleEnv:      env,
+				MaxNodeNPUNum:    0,
+				MaxCardNPUNum:    0,
+			},
+			reHandle: &ReScheduler{
+				GraceDeleteTime:      0,
+				Level:                "",
+				Jobs:                 nil,
+				Nodes:                nil,
+				DealReSchedulerCache: nil,
+			},
+		},
+		args:    myArgs,
+		wantErr: true,
+	}
+	test1.args.cacheFuncBefore2 = func() {
+		tmpPatche2 = gomonkey.ApplyFunc(util.GetConfigMapWithRetry, func(
+			_ kubernetes.Interface, _, _ string) (*v1.ConfigMap, error) {
+			return nil, errors.New("")
+		})
+	}
+	return test1
+}
+
 func buildModule910x8PreStartActionTestCacheArgs(tmpPatche1 *gomonkey.Patches,
 	tmpPatche2 *gomonkey.Patches, tmpPatche3 *gomonkey.Patches, tmpPatche4 *gomonkey.Patches,
 	faultCM *v1.ConfigMap) module910x8PreStartActionArgs {
@@ -83,8 +174,8 @@ func buildModule910x8PreStartActionTestCacheArgs(tmpPatche1 *gomonkey.Patches,
 			})
 		},
 		cacheFuncBefore3: func() {
-			tmpPatche3 = gomonkey.ApplyMethod(reflect.TypeOf(&rescheduling.FaultJob{}),
-				"CheckJobExistsInKubernetes", func(_ *rescheduling.FaultJob,
+			tmpPatche3 = gomonkey.ApplyMethod(reflect.TypeOf(&FaultJob{}),
+				"CheckJobExistsInKubernetes", func(_ *FaultJob,
 					_ *framework.Session) bool {
 					return true
 				})
@@ -117,7 +208,7 @@ func buildModule910x8PreStartActionTestCacheArgs(tmpPatche1 *gomonkey.Patches,
 	return args
 }
 
-func buildModule910x8PreStartActionTest() module910x8PreStartActionTests {
+func buildModule910x8PreStartActionTest2() module910x8PreStartActionTests {
 	ssn1 := test.FakeSSNReSchedule()
 	env := fakeEnvEmpty()
 	fakeEnvAddJobsAndNodesToEnv(&env)
@@ -150,9 +241,80 @@ func buildModule910x8PreStartActionTest() module910x8PreStartActionTests {
 	return test6
 }
 
+func buildModule910x8PreStartActionTest4() module910x8PreStartActionTests {
+	ssn1 := test.FakeSSNReSchedule()
+	env := fakeEnvEmpty()
+	fakeEnvAddJobsAndNodesToEnv(&env)
+	fakeEnvAddCacheFaultNodeToEnv(&env)
+	fakeEnvAddCacheFaultJobToEnv(&env, []string{"job0", "node0", "node1"}, 0, time.Now().Unix()-1)
+	var tmpPatche1 *gomonkey.Patches
+	var tmpPatche2 *gomonkey.Patches
+	var tmpPatche3 *gomonkey.Patches
+	var tmpPatche4 *gomonkey.Patches
+	reHandle := ReScheduler{
+		GraceDeleteTime: DefaultGraceOverTime,
+		Level:           "",
+		Jobs:            env.Jobs,
+		Nodes:           env.Nodes,
+		DealReSchedulerCache: &DealReSchedulerCache{
+			FaultNodes: nil,
+			FaultJobs:  nil,
+			DealReSchedulerConfigmap: &DealReSchedulerConfigmap{
+				CMName:      CmName,
+				CMNameSpace: CmNameSpace,
+				CMData: map[string]string{CmFaultNodeKind: env.Cache.Data[RePropertyName][CmFaultNodeKind],
+					CmFaultJob910x8Kind: env.Cache.Data[RePropertyName][CmFaultJob910x8Kind]},
+			},
+		},
+	}
+	faultCM := fakeFaultCM(env)
+	myArgs := buildModule910x8PreStartActionTestCacheArgs(tmpPatche1, tmpPatche2, tmpPatche3, tmpPatche4, faultCM)
+	myArgs.ssn = ssn1
+	test7 := module910x8PreStartActionTests{
+		name: "04-PreStartAction()-with fault node and job in cm and faultJob not in session",
+		fields: module910x8Fields{
+			baseHandler: fakeBaseHandlerEmpty(env),
+			reHandle:    &reHandle,
+		},
+		args:    myArgs,
+		wantErr: false,
+	}
+	return test7
+}
+
+func buildModule910x8PreStartActionTest3() module910x8PreStartActionTests {
+	ssn1 := test.FakeSSNReSchedule()
+	env := fakeEnvEmpty()
+	fakeEnvAddJobsAndNodesToEnv(&env)
+	fakeEnvAddCacheFaultNodeToEnv(&env)
+	fakeEnvAddCacheFaultJobToEnv(&env, []string{"job2", "node0", "node1"}, time.Now().Unix()-1, time.Now().Unix()-1)
+
+	var tmpPatche1 *gomonkey.Patches
+	var tmpPatche2 *gomonkey.Patches
+	var tmpPatche3 *gomonkey.Patches
+	var tmpPatche4 *gomonkey.Patches
+	reHandle := fakeReSchedulerNew(env)
+	faultCM := fakeFaultCM(env)
+	myArgs := buildModule910x8PreStartActionTestCacheArgs(tmpPatche1, tmpPatche2, tmpPatche3, tmpPatche4, faultCM)
+	myArgs.ssn = ssn1
+	test2 := module910x8PreStartActionTests{
+		name: "03-PreStartAction()-with fault node and job in cm job not in session",
+		fields: module910x8Fields{
+			baseHandler: fakeBaseHandlerEmpty(env),
+			reHandle:    &reHandle,
+		},
+		args:    myArgs,
+		wantErr: false,
+	}
+	return test2
+}
+
 func buildModule910x8PreStartActionTests() []module910x8PreStartActionTests {
 	return []module910x8PreStartActionTests{
-		buildModule910x8PreStartActionTest(),
+		buildModule910x8PreStartActionTest1(),
+		buildModule910x8PreStartActionTest2(),
+		buildModule910x8PreStartActionTest3(),
+		buildModule910x8PreStartActionTest4(),
 	}
 }
 
@@ -167,8 +329,8 @@ func TestModule910x8PreStartAction(t *testing.T) {
 				tt.args.cacheFuncBefore3()
 			}
 			tt.args.cacheFuncBefore4()
-			tp := &module910x8{
-				NPUHandler:      tt.fields.baseHandler,
+			tp := &module910x8Fields{
+				baseHandler:     tt.fields.baseHandler,
 				netUnhealthyKey: tt.fields.netUnhealthyKey,
 				affScoreList:    tt.fields.affScoreList,
 				reHandle:        tt.fields.reHandle,
@@ -188,17 +350,17 @@ func TestModule910x8PreStartAction(t *testing.T) {
 
 func fakeEnvEmpty() plugin.ScheduleEnv {
 	schedulerCache := plugin.ScheduleCache{
-		Names:      map[string]string{util.RePropertyCacheName: rescheduling.CmName},
-		Namespaces: map[string]string{util.RePropertyCacheName: rescheduling.CmNameSpace},
+		Names:      map[string]string{util.RePropertyCacheName: CmName},
+		Namespaces: map[string]string{util.RePropertyCacheName: CmNameSpace},
 		Data: map[string]map[string]string{
-			util.RePropertyCacheName: {rescheduling.CmFaultNodeKind: "", rescheduling.CmFaultJob910x8Kind: ""},
+			util.RePropertyCacheName: {CmFaultNodeKind: "", CmFaultJob910x8Kind: ""},
 		},
 	}
 	frameAttr := plugin.VolcanoFrame{
 		Conf: []conf.Configuration{
 			{
 				Name:      util.CMInitParamKey,
-				Arguments: map[string]string{rescheduling.GraceOverTimeKey: "800"},
+				Arguments: map[string]string{GraceOverTimeKey: "800"},
 			},
 		},
 	}
@@ -250,22 +412,22 @@ func fakeEnvAddCacheFaultJobToEnv(env *plugin.ScheduleEnv, paras []string, rankI
 		rankIdCreateTime, true)
 	fakeReSchedulerFaultJobAddTask(&faultJob, faultTask1)
 	fakeReSchedulerFaultJobAddTask(&faultJob, faultTask2)
-	faultJobString := dealMarshal([]rescheduling.FaultJob{faultJob})
-	env.Cache.Data[rescheduling.RePropertyName][rescheduling.CmFaultJob910x8Kind] = faultJobString
+	faultJobString := dealFrameMarshal([]FaultJob{faultJob})
+	env.Cache.Data[RePropertyName][CmFaultJob910x8Kind] = faultJobString
 }
 
 func fakeEnvAddCacheFaultNodeToEnv(env *plugin.ScheduleEnv) {
 	now := time.Now().Unix()
-	fCard1 := fakeReSchedulerFaultCard("Ascend910-0", "node0", true, rescheduling.CardUnhealthy)
-	fCard2 := fakeReSchedulerFaultCard("Ascend910-1", "node0", false, rescheduling.CardHealthy)
-	fCard3 := fakeReSchedulerFaultCard("Ascend910-2", "node0", false, rescheduling.CardHealthy)
-	fCard4 := fakeReSchedulerFaultCard("Ascend910-3", "node0", false, rescheduling.CardHealthy)
-	fCard5 := fakeReSchedulerFaultCard("Ascend910-4", "node0", false, rescheduling.CardHealthy)
-	fCard6 := fakeReSchedulerFaultCard("Ascend910-5", "node0", false, rescheduling.CardHealthy)
-	fCard7 := fakeReSchedulerFaultCard("Ascend910-6", "node0", false, rescheduling.CardHealthy)
-	fCard8 := fakeReSchedulerFaultCard("Ascend910-7", "node0", false, rescheduling.CardHealthy)
+	fCard1 := fakeReSchedulerFaultCard("Ascend910-0", "node0", true, CardUnhealthy)
+	fCard2 := fakeReSchedulerFaultCard("Ascend910-1", "node0", false, CardHealthy)
+	fCard3 := fakeReSchedulerFaultCard("Ascend910-2", "node0", false, CardHealthy)
+	fCard4 := fakeReSchedulerFaultCard("Ascend910-3", "node0", false, CardHealthy)
+	fCard5 := fakeReSchedulerFaultCard("Ascend910-4", "node0", false, CardHealthy)
+	fCard6 := fakeReSchedulerFaultCard("Ascend910-5", "node0", false, CardHealthy)
+	fCard7 := fakeReSchedulerFaultCard("Ascend910-6", "node0", false, CardHealthy)
+	fCard8 := fakeReSchedulerFaultCard("Ascend910-7", "node0", false, CardHealthy)
 	fNode := fakeReSchedulerFaultNodeEmptyCard("node0", []string{"Ascend910-0"}, []string{},
-		heartbeatInterval, []int64{now - 1, fakeTime, now - 1})
+		hbInterval, []int64{now - 1, fakeHBTime, now - 1})
 	fakeReSchedulerFaultNodeAddFaultCards(&fNode, fCard1)
 	fakeReSchedulerFaultNodeAddFaultCards(&fNode, fCard2)
 	fakeReSchedulerFaultNodeAddFaultCards(&fNode, fCard3)
@@ -274,31 +436,31 @@ func fakeEnvAddCacheFaultNodeToEnv(env *plugin.ScheduleEnv) {
 	fakeReSchedulerFaultNodeAddFaultCards(&fNode, fCard6)
 	fakeReSchedulerFaultNodeAddFaultCards(&fNode, fCard7)
 	fakeReSchedulerFaultNodeAddFaultCards(&fNode, fCard8)
-	faultNodes := []rescheduling.FaultNode{fNode}
-	faultNodesMarshaled := dealMarshal(faultNodes)
-	env.Cache.Data[rescheduling.RePropertyName][rescheduling.CmFaultNodeKind] = faultNodesMarshaled
+	faultNodes := []FaultNode{fNode}
+	faultNodesMarshaled := dealFrameMarshal(faultNodes)
+	env.Cache.Data[RePropertyName][CmFaultNodeKind] = faultNodesMarshaled
 }
 
 func fakeReSchedulerFaultNodeEmptyCard(nodeName string, unhealthyNPU []string, netUnhealthyNPU []string,
-	HBinterval int, updateTimes []int64) rescheduling.FaultNode {
+	HBinterval int, updateTimes []int64) FaultNode {
 	var isFault bool
 	if len(updateTimes) < util.NPUIndex3 {
-		return rescheduling.FaultNode{}
+		return FaultNode{}
 	}
 	updateTime := updateTimes[sliceIndexZero]
 	oldHBTime := updateTimes[sliceIndexOne]
 	updateHBTime := updateTimes[sliceIndexTwo]
-	hState := rescheduling.NodeHealthy
+	hState := NodeHealthy
 	if len(netUnhealthyNPU) > 0 {
 		isFault = true
-		hState = rescheduling.NodeCardNetworkUnhealthy
+		hState = NodeCardNetworkUnhealthy
 	}
 	if len(unhealthyNPU) > 0 {
 		isFault = true
-		hState = rescheduling.NodeCardUnhealthy
+		hState = NodeCardUnhealthy
 	}
 
-	faultNode := rescheduling.FaultNode{
+	faultNode := FaultNode{
 		NodeName:            nodeName,
 		UpdateTime:          updateTime,
 		UnhealthyNPU:        unhealthyNPU,
@@ -308,7 +470,7 @@ func fakeReSchedulerFaultNodeEmptyCard(nodeName string, unhealthyNPU []string, n
 		NodeHealthState:     hState,
 		AllCards: []string{"Ascend910-0,Ascend910-1,Ascend910-2,Ascend910-3,Ascend910-4,Ascend910-5," +
 			"Ascend910-6,Ascend910-7"},
-		FaultCards:          make([]rescheduling.FaultCard, util.MapInitNum),
+		FaultCards:          make([]FaultCard, util.MapInitNum),
 		HeartbeatInterval:   HBinterval,
 		OldHeartbeatTime:    oldHBTime,
 		UpdateHeartbeatTime: updateHBTime,
@@ -316,8 +478,8 @@ func fakeReSchedulerFaultNodeEmptyCard(nodeName string, unhealthyNPU []string, n
 	return faultNode
 }
 
-func fakeReSchedulerFaultCard(name, nodeName string, isFault bool, faultType string) rescheduling.FaultCard {
-	faultCard := rescheduling.FaultCard{
+func fakeReSchedulerFaultCard(name, nodeName string, isFault bool, faultType string) FaultCard {
+	faultCard := FaultCard{
 		IsFaultCard: isFault,
 		NPUName:     name,
 		NodeName:    nodeName,
@@ -326,13 +488,13 @@ func fakeReSchedulerFaultCard(name, nodeName string, isFault bool, faultType str
 	return faultCard
 }
 
-func fakeReSchedulerFaultNodeAddFaultCards(fNode *rescheduling.FaultNode, fCard rescheduling.FaultCard) {
+func fakeReSchedulerFaultNodeAddFaultCards(fNode *FaultNode, fCard FaultCard) {
 	fNode.FaultCards = append(fNode.FaultCards, fCard)
 }
 
 func fakeReSchedulerFaultJobEmptyTask(jobName, jobNamespace string, updateTime int64,
-	rankCreateTime int64, isFault bool) rescheduling.FaultJob {
-	faultJob := rescheduling.FaultJob{
+	rankCreateTime int64, isFault bool) FaultJob {
+	faultJob := FaultJob{
 		ReScheduleKey:       "grace",
 		IsFaultJob:          isFault,
 		IsInSession:         true,
@@ -341,28 +503,28 @@ func fakeReSchedulerFaultJobEmptyTask(jobName, jobNamespace string, updateTime i
 		JobNamespace:        jobNamespace,
 		JobRankIds:          []string{},
 		NodeNames:           []string{"node0", "node1"},
-		FaultTasks:          []rescheduling.FaultTask{},
+		FaultTasks:          []FaultTask{},
 		UpdateTime:          updateTime,
 		JobRankIdCreateTime: rankCreateTime,
 	}
 	return faultJob
 }
 
-func fakeReSchedulerFaultJobAddTask(fJob *rescheduling.FaultJob, fTask rescheduling.FaultTask) {
+func fakeReSchedulerFaultJobAddTask(fJob *FaultJob, fTask FaultTask) {
 	fJob.FaultTasks = append(fJob.FaultTasks, fTask)
 }
 
 func fakeReSchedulerFaultTask(isFault bool, paras []string,
-	podCreateTime int64, podUID types.UID) rescheduling.FaultTask {
+	podCreateTime int64, podUID types.UID) FaultTask {
 	if len(paras) < test.NPUIndex5 {
-		return rescheduling.FaultTask{}
+		return FaultTask{}
 	}
 	name := paras[sliceIndexZero]
 	ns := paras[sliceIndexOne]
 	nodeName := paras[sliceIndexTwo]
 	jobName := paras[sliceIndexThree]
 	rankIndex := paras[sliceIndexFour]
-	faultTask := rescheduling.FaultTask{
+	faultTask := FaultTask{
 		IsFaultTask:   isFault,
 		TaskUID:       api.TaskID(`"` + ns + `"-"` + name + `"`),
 		TaskName:      name,
@@ -385,7 +547,7 @@ func fakeSchedulerJobEmptyTask(jobName, namespace string) plugin.SchedulerJob {
 				NameSpace: namespace,
 				Selector:  map[string]string{util.AcceleratorType: util.ModuleAcceleratorType},
 				Label: map[string]string{
-					rescheduling.JobRescheduleLabelKey: rescheduling.JobGraceRescheduleLabelValue,
+					JobRescheduleLabelKey: JobGraceRescheduleLabelValue,
 				},
 			},
 			NPUJob: &util.NPUJob{
@@ -436,16 +598,16 @@ func fakeNPUNodeUnhealthy(nodeName string, unHealthyCard []string, networkUnheal
 		Allocate:   nil,
 		Idle:       nil,
 		Annotation: map[string]string{
-			util.NPU910CardName: strings.Join(healthyCards, ","),
-			util.NPU910CardName + "-" + rescheduling.CardUnhealthy:        strings.Join(unHealthyCard, ","),
-			util.NPU910CardName + "-" + rescheduling.CardNetworkUnhealthy: strings.Join(networkUnhealthyCard, ","),
+			util.NPU910CardName:                              strings.Join(healthyCards, ","),
+			util.NPU910CardName + "-" + CardUnhealthy:        strings.Join(unHealthyCard, ","),
+			util.NPU910CardName + "-" + CardNetworkUnhealthy: strings.Join(networkUnhealthyCard, ","),
 		},
 		Label: nil,
 	}
 	return node0
 }
 
-func dealMarshal(data interface{}) string {
+func dealFrameMarshal(data interface{}) string {
 	dataString, err := json.Marshal(data)
 	if err != nil {
 		return ""
@@ -465,29 +627,29 @@ func fakeBaseHandlerEmpty(env plugin.ScheduleEnv) base.NPUHandler {
 
 func fakeFaultCM(env plugin.ScheduleEnv) *v1.ConfigMap {
 	cmData := make(map[string]string, util.MapInitNum)
-	cmData[rescheduling.CmFaultNodeKind] = env.Cache.Data[rescheduling.RePropertyName][rescheduling.CmFaultNodeKind]
-	cmData[rescheduling.CmFaultJob910x8Kind] =
-		env.Cache.Data[rescheduling.RePropertyName][rescheduling.CmFaultJob910x8Kind]
-	cmData[rescheduling.CmNodeHeartbeatKind] = ""
-	cmData[rescheduling.CmNodeRankTimeMapKind] = ""
-	cmData[rescheduling.CmCheckCode] = plugin.MakeDataHash(cmData)
+	cmData[CmFaultNodeKind] = env.Cache.Data[RePropertyName][CmFaultNodeKind]
+	cmData[CmFaultJob910x8Kind] =
+		env.Cache.Data[RePropertyName][CmFaultJob910x8Kind]
+	cmData[CmNodeHeartbeatKind] = ""
+	cmData[CmNodeRankTimeMapKind] = ""
+	cmData[CmCheckCode] = plugin.MakeDataHash(cmData)
 	var faultCM = &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      rescheduling.CmName,
-			Namespace: rescheduling.CmNameSpace,
+			Name:      CmName,
+			Namespace: CmNameSpace,
 		},
 		Data: cmData,
 	}
 	return faultCM
 }
 
-func fakeReSchedulerNew(env plugin.ScheduleEnv) rescheduling.ReScheduler {
-	reScheduler := rescheduling.ReScheduler{
+func fakeReSchedulerNew(env plugin.ScheduleEnv) ReScheduler {
+	reScheduler := ReScheduler{
 		GraceDeleteTime: 0,
 		Level:           "",
 		Jobs:            env.Jobs,
 		Nodes:           env.Nodes,
-		DealReSchedulerCache: &rescheduling.DealReSchedulerCache{
+		DealReSchedulerCache: &DealReSchedulerCache{
 			FaultNodes:               nil,
 			FaultJobs:                nil,
 			DealReSchedulerConfigmap: nil,

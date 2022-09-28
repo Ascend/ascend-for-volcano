@@ -156,7 +156,7 @@ func buildFaultNodeGetAllNPUCardsFromDeviceInfoTests() []FaultNodeGetAllNPUCards
 			node:     fakeNPUNodeNilDeviceInfo("node0"),
 			cardName: util.NPU910CardName,
 		},
-		want:    nil,
+		want:    []string{},
 		wantErr: true,
 	}
 	test2 := FaultNodeGetAllNPUCardsFromDeviceInfoTests{

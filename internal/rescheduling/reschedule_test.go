@@ -261,20 +261,6 @@ func fakeNPUNodeWithDeviceInfo(name string) *plugin.NPUNode {
 	return npuNode
 }
 
-// New ReScheduler test
-type newArgs struct {
-	env             *plugin.ScheduleEnv
-	jobType         string
-	cacheFuncBefore func()
-	cacheFuncAfter  func()
-}
-
-type newTests struct {
-	want *ReScheduler
-	name string
-	args newArgs
-}
-
 type FaultReSchedulerGetGraceDeleteTimeFields struct {
 	DealReSchedulerCache *DealReSchedulerCache
 	GraceDeleteTime      int64
@@ -941,7 +927,7 @@ func buildReSchedulerCheckNodeNPUByTaskTests() []ReSchedulerCheckNodeNPUByTaskTe
 		name:    "01-CheckNodeNPUByTaskTests()-old task bind to new pod should be abandoned",
 		fields:  field1,
 		args:    arg1,
-		wantErr: false,
+		wantErr: true,
 	}
 	tests := []ReSchedulerCheckNodeNPUByTaskTests{
 		test1,
@@ -999,7 +985,7 @@ func buildReSchedulerCheckNodeCurNodeIsFaultTests() []ReSchedulerCheckNodeCurNod
 				Name: "pod0",
 			},
 		},
-		wantErr: false,
+		wantErr: true,
 	}
 	tests := []ReSchedulerCheckNodeCurNodeIsFaultTests{
 		test1,
@@ -1013,8 +999,7 @@ func TestReSchedulerCheckNodeCurNodeIsFault(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			reScheduler := fakeTestTTReScheduler(tt.fields)
-			if err := reScheduler.checkNodeCurNodeIsFault(
-				tt.args.curFJob, tt.args.vcNode, tt.args.task); (err != nil) != tt.wantErr {
+			if err := reScheduler.checkNodeCurNodeIsFault(tt.args.vcNode, tt.args.task); (err != nil) != tt.wantErr {
 				t.Errorf("checkNodeCurNodeIsFault() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

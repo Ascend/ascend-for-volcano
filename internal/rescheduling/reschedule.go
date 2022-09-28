@@ -92,20 +92,14 @@ func (reScheduler *ReScheduler) createFaultTaskHandler(job *api.JobInfo, cardNam
 		}
 		faultTask.setNodeRankIndex(tmpNodeRankIndex)
 		// 3. update UseCardName
-		if cardName == util.NPU910CardName {
-			tmpUseCardName, getErr := faultTask.getUseCardName(task, cardName, util.NPUIndex8)
-			if getErr != nil {
-				klog.V(util.LogErrorLev).Infof("getUseCardName %s %#v", task.Name, getErr)
-			}
-			faultTask.setUseCardName(tmpUseCardName)
-		} else {
-			tmpUseCardName, getErr := faultTask.getUseCardName(task, cardName, util.NPUIndex4)
-			if getErr != nil {
-				klog.V(util.LogErrorLev).Infof("getUseCardName %s %#v", task.Name, getErr)
-			}
-			faultTask.setUseCardName(tmpUseCardName)
+		tmpUseCardName, getErr := faultTask.getUseCardName(task, cardName)
+		if getErr != nil {
+			klog.V(util.LogInfoLev).Infof("getUseCardName %s %#v", task.Name, getErr)
 		}
+		faultTask.setUseCardName(tmpUseCardName)
 		isFaultTask, nodeHealthState := reScheduler.getTaskHealthState(&faultTask)
+		klog.V(util.LogInfoLev).Infof("task %s is fault task: %v, health state: %s", task.Name, isFaultTask,
+			nodeHealthState)
 		faultTask.setIsFaultTask(isFaultTask)
 		faultTask.setFaultType(nodeHealthState)
 		faultTasks = append(faultTasks, faultTask)
@@ -127,119 +121,42 @@ func (reScheduler *ReScheduler) GetRunningJobs(
 	for _, jobInfo := range ssn.Jobs {
 		if (jobInfo.PodGroup.Status.Phase != scheduling.PodGroupRunning) &&
 			(jobInfo.PodGroup.Status.Phase != scheduling.PodGroupUnknown) { // pending jobs would not be put into cache
-			klog.V(util.LogDebugLev).Infof("job %s pod group is not running but %s",
+			klog.V(util.LogDebugLev).Infof("job %s pod group is not running but %s, skip",
 				jobInfo.Name, jobInfo.PodGroup.Status.Phase)
 			continue
 		}
-		klog.V(util.LogDebugLev).Infof("job %s status: podGroup status %s",
-			jobInfo.Name, jobInfo.PodGroup.Status.Phase)
 		schedulerJob, ok := reScheduler.Jobs[jobInfo.UID]
 		if !ok || schedulerJob.NPUJob == nil {
-			klog.V(util.LogDebugLev).Infof("job %s not in session", jobInfo.UID)
+			klog.V(util.LogDebugLev).Infof("job %s not in session, skip", jobInfo.UID)
 			continue
 		}
-		if schedulerJob.ReqNPUNum == 0 || schedulerJob.ReqNPUName != cardName {
-			klog.V(util.LogDebugLev).Infof("job %s requires npu %d, name %s", schedulerJob.JobName,
+		if schedulerJob.ReqNPUNum == 0 || schedulerJob.ReqNPUName != cardName { // req type is not current card type
+			klog.V(util.LogDebugLev).Infof("job %s requires npu %d name %s: illegal, skip", schedulerJob.JobName,
 				schedulerJob.ReqNPUNum, schedulerJob.ReqNPUName)
 			continue
 		}
 		if len(schedulerJob.Selector) == 0 {
-			klog.V(util.LogErrorLev).Infof("job(%s) has no selectors.", schedulerJob.JobName)
+			klog.V(util.LogDebugLev).Infof("job %s has no selectors: illegal, skip", schedulerJob.JobName)
 			continue
 		}
 		if cardName != util.NPU910CardName {
 			myJobs[jobInfo.UID] = jobInfo
+			klog.V(util.LogInfoLev).Infof("job %s require %s, add to %s running job", jobInfo.UID,
+				schedulerJob.ReqNPUName, cardName)
 			continue
 		}
 		accType, ok := schedulerJob.Selector[util.AcceleratorType]
 		if (!ok && jobType == util.ModuleAcceleratorType) || (ok && accType == jobType) { // failed, deal as 910module
 			myJobs[jobInfo.UID] = jobInfo
+			klog.V(util.LogInfoLev).Infof("job %s require %s, add to %s running job", jobInfo.UID,
+				schedulerJob.ReqNPUName, cardName)
 		}
 	}
 	if len(myJobs) == 0 {
+		klog.V(util.LogInfoLev).Infof("nil %s jobs", cardName)
 		return nil, fmt.Errorf("nil %s jobs", cardName)
 	}
 	return myJobs, nil
-}
-
-func (reScheduler *ReScheduler) is910x8Job(job plugin.SchedulerJob, cardName string) bool {
-	if job.ReqNPUNum == 0 {
-		klog.V(util.LogDebugLev).Infof("job %s no use npu", job.JobName)
-		return false
-	}
-	if cardName != util.NPU910CardName {
-		klog.V(util.LogDebugLev).Infof("job %s is not 910 type", job.JobName)
-		return false
-	}
-	if job.IsJobOfCardMode() {
-		klog.V(util.LogDebugLev).Infof("job %s is card mode", job.JobName)
-		return false
-	}
-	return true
-}
-
-func (reScheduler *ReScheduler) is910x2Job(job plugin.SchedulerJob, cardName string) bool {
-	if job.ReqNPUNum == 0 {
-		klog.V(util.LogDebugLev).Infof("job %s no use npu", job.JobName)
-		return false
-	}
-	if cardName != util.NPU910CardName {
-		klog.V(util.LogDebugLev).Infof("job %s is not 910 type", job.JobName)
-		return false
-	}
-	if !job.IsJobOfCardMode() {
-		klog.V(util.LogDebugLev).Infof("job %s is not card mode", job.JobName)
-		return false
-	}
-	return true
-}
-
-func (reScheduler *ReScheduler) isCard310X4Job(job plugin.SchedulerJob, cardName string) bool {
-	if job.ReqNPUNum == 0 {
-		klog.V(util.LogDebugLev).Infof("job %s no use npu", job.JobName)
-		return false
-	}
-	if cardName != util.NPU310CardName {
-		klog.V(util.LogDebugLev).Infof("job %s is not 910 type", job.JobName)
-		return false
-	}
-	if !job.IsJobOfCardMode() {
-		klog.V(util.LogDebugLev).Infof("job %s is not card mode", job.JobName)
-		return false
-	}
-	return true
-}
-
-func (reScheduler *ReScheduler) isChip310X4Job(job plugin.SchedulerJob, cardName string) bool {
-	if job.ReqNPUNum == 0 {
-		klog.V(util.LogDebugLev).Infof("job %s no use npu", job.JobName)
-		return false
-	}
-	if cardName != util.NPU310CardName {
-		klog.V(util.LogDebugLev).Infof("job %s is not 910 type", job.JobName)
-		return false
-	}
-	if job.IsJobOfCardMode() {
-		klog.V(util.LogDebugLev).Infof("job %s is not card mode", job.JobName)
-		return false
-	}
-	return true
-}
-
-func (reScheduler *ReScheduler) isChip310PJob(job plugin.SchedulerJob, cardName string) bool {
-	if job.ReqNPUNum == 0 {
-		klog.V(util.LogDebugLev).Infof("job %s no use npu", job.JobName)
-		return false
-	}
-	if cardName != util.NPU310PCardName {
-		klog.V(util.LogDebugLev).Infof("job %s is not 910 type", job.JobName)
-		return false
-	}
-	if job.IsJobOfCardMode() {
-		klog.V(util.LogDebugLev).Infof("job %s is not card mode", job.JobName)
-		return false
-	}
-	return true
 }
 
 func (reScheduler *ReScheduler) updateNewFaultJobAttr(
@@ -250,19 +167,21 @@ func (reScheduler *ReScheduler) updateNewFaultJobAttr(
 	tmpElasticKey := faultJob.GetJobElasticSchedulingLabel(&npuJob)
 	faultJob.setJobElasticReScheduleLabel(tmpElasticKey)
 	if tmpReScheduleKey == JobOffRescheduleLabelValue {
-		klog.V(util.LogErrorLev).Infof("%s not set rescheduleLabel, no need reschedule.", jobInfo.Name)
+		klog.V(util.LogInfoLev).Infof("job %s rescheduleLabel off, skip rescheduling.", jobInfo.Name)
 		return faultJob
 	}
-	klog.V(util.LogInfoLev).Infof("%s set rescheduleLabel %v", jobInfo.Name, tmpReScheduleKey)
+	klog.V(util.LogInfoLev).Infof("job %s set rescheduleLabel %v", jobInfo.Name, tmpReScheduleKey)
 	// 2. create new FaultTask objects and update corresponding attributes
 	tmpFaultTasks, err := reScheduler.createFaultTaskHandler(jobInfo, cardName)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s createFaultTaskHandler failed: %#v", jobInfo.Name, err)
+		klog.V(util.LogInfoLev).Infof("job %s createFaultTaskHandler failed: %#v", jobInfo.Name, err)
 	}
 	faultJob.setFaultTasks(tmpFaultTasks)
 	tmpNodeNames := faultJob.getJobUseNodes() // 3. update the value of Job used nodeNames
+	klog.V(util.LogDebugLev).Infof("job %s used nodes: %#v", faultJob.JobName, tmpNodeNames)
 	faultJob.setNodeNames(tmpNodeNames)
 	tmpIsFaultJob := faultJob.getIsFaultJob() // 4. update the value of IsFaultJob
+	klog.V(util.LogDebugLev).Infof("job %s if fault job: %#v", faultJob.JobName, tmpIsFaultJob)
 	faultJob.setIsFaultJob(tmpIsFaultJob)
 	// 4.1 additionally, jobs using nodes that are not ready in current session should also be set false
 	for _, nodeName := range faultJob.NodeNames {
@@ -271,7 +190,7 @@ func (reScheduler *ReScheduler) updateNewFaultJobAttr(
 		}
 		_, ok := reScheduler.Nodes[nodeName]
 		if !ok {
-			klog.V(util.LogInfoLev).Infof("node %s used by job %s not in current session",
+			klog.V(util.LogInfoLev).Infof("job %s set fault job as node %s used not in current session",
 				nodeName, faultJob.JobName)
 			faultJob.setIsFaultJob(true)
 		}
@@ -284,9 +203,10 @@ func (reScheduler *ReScheduler) updateNewFaultJobAttr(
 			}
 		}
 	}
-	klog.V(util.LogDebugLev).Infof("faultJob info: %#v", faultJob)
+	klog.V(util.LogDebugLev).Infof("job %s fault types: %#v", faultJob.JobName, faultJob.FaultTypes)
 	if cardName == util.NPU910CardName { // 5. update JobRankIds of fault cards
 		tmpJobRankIds := reScheduler.getJobRankIdsFromTasks(&faultJob, cardPreName)
+		klog.V(util.LogDebugLev).Infof("job %s rankIds: %#v", faultJob.JobName, tmpJobRankIds)
 		faultJob.setJobRankIds(tmpJobRankIds)
 	}
 	return faultJob
@@ -297,12 +217,8 @@ func (reScheduler *ReScheduler) AddFaultJobWithSession(
 	jobs map[api.JobID]*api.JobInfo, cardName string, cardPreName string) error {
 	klog.V(util.LogInfoLev).Infof("enter AddFaultJobWithSession ... ")
 	defer klog.V(util.LogInfoLev).Infof("leave AddFaultJobWithSession ... ")
-	if reScheduler == nil {
-		klog.V(util.LogErrorLev).Infof("AddFaultJobWithSession: %s, nil reScheduler", util.ArgumentError)
-		return errors.New(util.ArgumentError)
-	}
-	if len(jobs) == 0 {
-		klog.V(util.LogErrorLev).Infof("AddFaultJobWithSession: %s, nil job in session", util.ArgumentError)
+	if reScheduler == nil || len(jobs) == 0 {
+		klog.V(util.LogErrorLev).Infof("AddFaultJobWithSession: %s, nil reScheduler or job", util.ArgumentError)
 		return errors.New(util.ArgumentError)
 	}
 	klog.V(util.LogDebugLev).Infof("ReSchedulerCache fault jobs before add: %#v", reScheduler.FaultJobs)
@@ -321,6 +237,7 @@ func (reScheduler *ReScheduler) AddFaultJobWithSession(
 			continue
 		}
 		// 2. create FaultJob objects for jobs not in cache but sent by session
+		klog.V(util.LogDebugLev).Infof("Add job %s to cache", jobInfo.Name)
 		faultJob := newFaultJobDefault(jobInfo.Name, jobInfo.Namespace, jobInfo.UID, nowTime)
 		faultJob = reScheduler.updateNewFaultJobAttr(faultJob, jobInfo, cardName, cardPreName)
 		reScheduler.FaultJobs = append(reScheduler.FaultJobs, faultJob)
@@ -400,19 +317,9 @@ func (reScheduler *ReScheduler) GetNeedForceDeleteDelayingNPUJobs(
 	schedulerJobs map[api.JobID]plugin.SchedulerJob, ssn *framework.Session) ([]plugin.SchedulerJob, error) {
 	klog.V(util.LogInfoLev).Infof("enter GetNeedForceDeleteDelayingNPUJobs ... ")
 	defer klog.V(util.LogInfoLev).Infof("leave GetNeedForceDeleteDelayingNPUJobs ... ")
-	if reScheduler == nil {
-		klog.V(util.LogErrorLev).Infof("GetNeedForceDeleteDelayingNPUJobs: %s, nil reScheduler",
-			util.ArgumentError)
-		return nil, errors.New(util.ArgumentError)
-	}
-	if len(schedulerJobs) == 0 {
-		klog.V(util.LogErrorLev).Infof("GetNeedForceDeleteDelayingNPUJobs: %s, nil schedulerJobs",
-			util.ArgumentError)
-		return nil, errors.New(util.ArgumentError)
-	}
-	if ssn == nil {
-		klog.V(util.LogErrorLev).Infof("GetNeedForceDeleteDelayingNPUJobs: %s, nil session",
-			util.ArgumentError)
+	if reScheduler == nil || len(schedulerJobs) == 0 || ssn == nil {
+		klog.V(util.LogErrorLev).Infof("GetNeedForceDeleteDelayingNPUJobs: %s, "+
+			"nil reScheduler or schedulerJobs or session", util.ArgumentError)
 		return nil, errors.New(util.ArgumentError)
 	}
 	var forceJobs []plugin.SchedulerJob
@@ -420,17 +327,16 @@ func (reScheduler *ReScheduler) GetNeedForceDeleteDelayingNPUJobs(
 	for _, fJob := range graceDeleteFaultJobs {
 		jobInfo, ok := ssn.Jobs[fJob.JobUID] // if job in cache not in session, do not force delete
 		if !ok {
-			klog.V(util.LogErrorLev).Infof(
+			klog.V(util.LogDebugLev).Infof(
 				"GetNeedForceDeleteDelayingNPUJobs %v not in ssn.Jobs.", fJob.JobName)
 		}
 		if fJob.isJobGraceDeleteSuccess(jobInfo) { // if job successfully restarted, do not force delete
-			klog.V(util.LogErrorLev).Infof("%v grace deleted successful.", fJob.JobName)
 			continue
 		}
 		if !reScheduler.isDelayingJobTimeout(&fJob) { // if job not restarted and not time out, do not force delete
 			continue
 		}
-		klog.V(util.LogErrorLev).Infof("%v is time out for delete.", fJob.JobName)
+		klog.V(util.LogWarningLev).Infof("grace delete job %s is time out for force delete.", fJob.JobName)
 		schedulerJob, ok := schedulerJobs[fJob.JobUID]
 		if !ok {
 			continue
@@ -447,8 +353,9 @@ func (reScheduler *ReScheduler) GetNeedForceDeleteDelayingNPUJobs(
 func (reScheduler *ReScheduler) isDelayingJobTimeout(fJob *FaultJob) bool {
 	nowTime := time.Now().Unix()
 	createTime := fJob.JobRankIdCreateTime
-	klog.V(util.LogErrorLev).Infof("isDelayingJobTimeOut now:%v create:%v.", nowTime, createTime)
+	klog.V(util.LogDebugLev).Infof("isDelayingJobTimeOut now: %v create: %v.", nowTime, createTime)
 	if nowTime-createTime > reScheduler.GraceDeleteTime {
+		klog.V(util.LogInfoLev).Infof("Time out: %v > %v", nowTime-createTime, reScheduler.GraceDeleteTime)
 		return true
 	}
 	return false
@@ -466,7 +373,7 @@ func New(env *plugin.ScheduleEnv, jobType string) *ReScheduler {
 	klog.V(util.LogDebugLev).Infof("Initialising graceDeleteTime.")
 	graceDeleteTime, err := faultReScheduler.GetGraceDeleteTime(env.FrameAttr.Conf)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("GetGraceDeleteTime %#v.", err)
+		klog.V(util.LogDebugLev).Infof("GetGraceDeleteTime %#v.", err)
 	}
 	faultReScheduler.setGraceOverTime(graceDeleteTime)
 	// 2. Initialise ReScheduler.DealReSchedulerCache
@@ -483,20 +390,21 @@ func New(env *plugin.ScheduleEnv, jobType string) *ReScheduler {
 	// 2.2 read configmap from kubernetes
 	if cmErr := reSchedulerConfigmap.newReSchedulerCMFromEnv(env, jobType); cmErr != nil {
 		klog.V(util.LogErrorLev).Infof("GetConfigmapFromKubernetes %#v", cmErr)
+		return nil
 	}
 	reSchedulerCache.DealReSchedulerConfigmap = &reSchedulerConfigmap
 	// 2.2 Initialise ReScheduler.DealReSchedulerCache.FaultNodes by unmarshal data read from cm
 	if setNodeErr := reSchedulerCache.SetFaultNodesFromCM(); setNodeErr != nil {
-		klog.V(util.LogErrorLev).Infof("SetFaultNodesFromCM: %#v", setNodeErr)
+		klog.V(util.LogDebugLev).Infof("SetFaultNodesFromCM: %#v", setNodeErr)
 	}
 	// 2.3 Initialise ReScheduler.DealReSchedulerCache.NodeHeartbeats by unmarshal data read from cm
 	if setHBErr := reSchedulerCache.SetNodeHeartbeatFromCM(); setHBErr != nil {
-		klog.V(util.LogErrorLev).Infof("SetNodeHeartbeatFromCM: %#v", setHBErr)
+		klog.V(util.LogDebugLev).Infof("SetNodeHeartbeatFromCM: %#v", setHBErr)
 	}
 	// 2.4 Initialise ReScheduler.DealReSchedulerCache.AllocNodeRankOccurrenceMap by unmarshal data read from cm
 	if jobType == CmFaultJob910x8Kind {
 		if setNROErr := reSchedulerCache.SetNodeRankOccurrenceMapFromCM(); setNROErr != nil {
-			klog.V(util.LogErrorLev).Infof("SetNodeRankOccurrenceMapFromCM: %#v", setNROErr)
+			klog.V(util.LogDebugLev).Infof("SetNodeRankOccurrenceMapFromCM: %#v", setNROErr)
 		}
 	} else {
 		reSchedulerCache.setNodeRankOccurrenceMap(map[api.JobID][]AllocNodeRankOccurrence{})
@@ -517,7 +425,7 @@ func (reScheduler *ReScheduler) New910ReScheduler() {
 		return
 	}
 	if setJobErr := reScheduler.DealReSchedulerCache.SetFaultJobsFromCM(CmFaultJob910x8Kind); setJobErr != nil {
-		klog.V(util.LogErrorLev).Infof("SetFaultJobsFromCM: %#v", setJobErr)
+		klog.V(util.LogDebugLev).Infof("SetFaultJobsFromCM: %#v", setJobErr)
 	}
 	return
 }
@@ -547,6 +455,7 @@ func (reScheduler *ReScheduler) SynCacheFaultNodeWithSession(cardName string) {
 	}
 	var updatedFaultNodes []FaultNode
 	for _, faultNode := range reScheduler.FaultNodes {
+		klog.V(util.LogInfoLev).Infof("Updating fault node %s recorded cache", faultNode.NodeName)
 		// 1. nodes not in session should be kept in cache
 		if !faultNode.isNodeInSessionByNpuNodes(reScheduler.Nodes) {
 			klog.V(util.LogInfoLev).Infof("node %s in cache is not in session, keep without updating.",
@@ -561,7 +470,7 @@ func (reScheduler *ReScheduler) SynCacheFaultNodeWithSession(cardName string) {
 		// 2.2 update information sent by session NPUNodes
 		faultNode.updateFaultNodesFromDeviceInfo(&npuNode, cardName)
 		if err := faultNode.updateFaultNodesAttr(&npuNode); err != nil {
-			klog.V(util.LogErrorLev).Infof("updateFaultNodesAttr: %#v", err)
+			klog.V(util.LogDebugLev).Infof("updateFaultNodesAttr: %#v", err)
 		}
 		updatedFaultNodes = append(updatedFaultNodes, faultNode)
 	}
@@ -583,7 +492,7 @@ func (reScheduler *ReScheduler) SynCacheFaultJobWithSession(
 	for _, faultJob := range reScheduler.FaultJobs {
 		// 1. cache Jobs exceeded max waiting time should be deleted and treated as normal new jobs
 		if nowTime-faultJob.JobRankIdCreateTime > maxIntervalTime+reScheduler.GraceDeleteTime {
-			klog.V(util.LogDebugLev).Infof("delete %s from CM for overTime %v => %v.",
+			klog.V(util.LogInfoLev).Infof("delete %s from CM for overTime %v => %v.",
 				faultJob.JobName, nowTime, faultJob.JobRankIdCreateTime)
 			continue
 		}
@@ -591,7 +500,7 @@ func (reScheduler *ReScheduler) SynCacheFaultJobWithSession(
 		if !faultJob.isJobInSession(reScheduler.Jobs) {
 			klog.V(util.LogDebugLev).Infof("faultJob name: %s not in session", faultJob.JobName)
 			if !faultJob.CheckJobExistsInKubernetes(ssn) { // 1.1 delete jobs not in session or k8s
-				klog.V(util.LogDebugLev).Infof(
+				klog.V(util.LogInfoLev).Infof(
 					"delete %s from re-scheduler cache due to not existence in session and k8s.", faultJob.JobName)
 				continue
 			}
@@ -603,9 +512,9 @@ func (reScheduler *ReScheduler) SynCacheFaultJobWithSession(
 		// 2. cache Jobs turned normal in session should be deleted ,meaning it has been restarted
 		jobInfo, _ := ssn.Jobs[faultJob.JobUID]
 		if faultJob.isJobGraceDeleteSuccess(jobInfo) {
-			klog.V(util.LogErrorLev).Infof("%v grace deleted successful.", faultJob.JobName)
+			klog.V(util.LogDebugLev).Infof("%s grace deleted successful.", faultJob.JobName)
 			if jobInfo.PodGroup.Status.Phase == scheduling.PodGroupRunning { // new job successfully running
-				klog.V(util.LogErrorLev).Infof("job %s new pods running, delete from cache", jobInfo.Name)
+				klog.V(util.LogInfoLev).Infof("job %s new pods running, delete from cache", jobInfo.Name)
 				continue
 			}
 		}
@@ -668,21 +577,20 @@ func (reScheduler *ReScheduler) AddFaultNodeWithSession(cardName string) {
 			}
 		}
 		if flag {
-			klog.V(util.LogInfoLev).Infof("node %s is already in session", npuNodeName)
+			klog.V(util.LogDebugLev).Infof("node %s is already in session, skip adding", npuNodeName)
 			continue // 1. skip nodes already in cached FaultNodes
 		}
 		newNodes[npuNodeName] = npuNode // create new for those not in cache
 	}
 	for name, npuNode := range newNodes {
-		klog.V(util.LogInfoLev).Infof("Updating node from node name: %s, from node value: %s",
-			name, npuNode.Name)
+		klog.V(util.LogDebugLev).Infof("Adding node %s to reScheduler cache", name)
 		// 0. Initialise faultNode
 		faultNode := newFaultNodeDefault(npuNode.Name, nowTime)
 		faultNode.OldHeartbeatTime = reScheduler.getLastNodeHeartbeatByNodeNameFromCache(npuNode.Name)
 		faultNode.UpdateHeartbeatTime = reScheduler.getLastNodeHeartUpdateTimeByNodeNameFromCache(npuNode.Name)
 		faultNode.updateFaultNodesFromDeviceInfo(&npuNode, cardName)
 		if err := faultNode.updateFaultNodesAttr(&npuNode); err != nil {
-			klog.V(util.LogErrorLev).Infof("node %s updateFaultNodesAttr err: %#v", npuNode.Name, err)
+			klog.V(util.LogInfoLev).Infof("node %s updateFaultNodesAttr err: %#v", npuNode.Name, err)
 		}
 		reScheduler.FaultNodes = append(reScheduler.FaultNodes, faultNode)
 	}
@@ -693,13 +601,9 @@ func (reScheduler *ReScheduler) AddFaultNodeWithSession(cardName string) {
 func (reScheduler *ReScheduler) RestartNeedForceDeleteJobs(ssn *framework.Session) error {
 	klog.V(util.LogInfoLev).Infof("enter RestartNeedForceDeleteJobs...")
 	defer klog.V(util.LogInfoLev).Infof("leave RestartNeedForceDeleteJobs...")
-	if reScheduler == nil {
-		klog.V(util.LogErrorLev).Infof("RestartNeedForceDeleteJobs failed: %s, nil reScheduler",
+	if reScheduler == nil || ssn == nil {
+		klog.V(util.LogErrorLev).Infof("RestartNeedForceDeleteJobs failed: %s, nil reScheduler or session",
 			util.ArgumentError)
-		return errors.New(util.ArgumentError)
-	}
-	if ssn == nil {
-		klog.V(util.LogErrorLev).Infof("RestartNeedForceDeleteJobs: %s, nil session", util.ArgumentError)
 		return errors.New(util.ArgumentError)
 	}
 	needDeleteNPUJobs, err := reScheduler.GetNeedForceDeleteDelayingNPUJobs(reScheduler.Jobs, ssn)
@@ -724,13 +628,9 @@ func (reScheduler *ReScheduler) RestartNeedForceDeleteJobs(ssn *framework.Sessio
 func (reScheduler *ReScheduler) RestartFaultJobs(ssn *framework.Session) error {
 	klog.V(util.LogInfoLev).Infof("enter RestartFaultJobs...")
 	defer klog.V(util.LogInfoLev).Infof("leave RestartFaultJobs...")
-	if reScheduler == nil {
-		klog.V(util.LogErrorLev).Infof("RestartFaultJobs failed: %s, nil reScheduler",
+	if reScheduler == nil || ssn == nil {
+		klog.V(util.LogErrorLev).Infof("RestartFaultJobs failed: %s, nil reScheduler or nil session",
 			util.ArgumentError)
-		return errors.New(util.ArgumentError)
-	}
-	if ssn == nil {
-		klog.V(util.LogErrorLev).Infof("RestartFaultJobs: %s, nil session", util.ArgumentError)
 		return errors.New(util.ArgumentError)
 	}
 	// 1. Get fault jobs, only faultJobs that haven't been evicted yet should be put into list
@@ -765,9 +665,10 @@ func (reScheduler *ReScheduler) RestartFaultJobs(ssn *framework.Session) error {
 		klog.V(util.LogInfoLev).Infof("%s need restart.", restartFaultJob.JobName)
 		if restartErr := restartFaultJob.restartSingleFaultJob(
 			ssn, reScheduler.kubeClient, &schedulerJob, jobRestartReason); restartErr != nil {
-			klog.V(util.LogErrorLev).Infof("RestartJob %#v.", restartErr)
+			klog.V(util.LogErrorLev).Infof("RestartJob %s %#v.", schedulerJob.JobName, restartErr)
 		} else {
 			restartFaultJob.DeleteExecutedFlag = true
+			klog.V(util.LogInfoLev).Infof("RestartJob %s execution success, set flag true", schedulerJob.JobName)
 		}
 		newCacheJobs = append(newCacheJobs, restartFaultJob) // modify restartFlag and put modified fJob into cache
 	}
@@ -777,18 +678,10 @@ func (reScheduler *ReScheduler) RestartFaultJobs(ssn *framework.Session) error {
 
 // ScoreBestNPUNodes add scores on scoreMap for normal nodes used by re-scheduling tasks
 func (reScheduler *ReScheduler) ScoreBestNPUNodes(task *api.TaskInfo, scoreMap map[string]float64) error {
-	if reScheduler == nil {
-		klog.V(util.LogErrorLev).Infof("ScoreBestNPUNodes: %s, nil reScheduler", util.ArgumentError)
+	if reScheduler == nil || task == nil || len(scoreMap) == 0 {
+		klog.V(util.LogErrorLev).Infof("ScoreBestNPUNodes: %s, nil reScheduler or task or scoreMap",
+			util.ArgumentError)
 		return errors.New(util.ArgumentError)
-	}
-	if task == nil {
-		klog.V(util.LogErrorLev).Infof("ScoreBestNPUNodes: %s, nil task", util.ArgumentError)
-		return errors.New(util.ArgumentError)
-	}
-	if len(scoreMap) == 0 {
-		mgs := fmt.Errorf("add score by fault NPU task scoreMap is nil")
-		klog.V(util.LogErrorLev).Infof("%#v.", mgs)
-		return mgs
 	}
 	klog.V(util.LogDebugLev).Infof("enter rescheduling ScoreBestNPUNodes %s...", task.Name)
 	klog.V(util.LogDebugLev).Infof("node score map before add rescheduling weights %#v", scoreMap)
@@ -799,8 +692,7 @@ func (reScheduler *ReScheduler) ScoreBestNPUNodes(task *api.TaskInfo, scoreMap m
 	}
 	fJob := reScheduler.getFaultJobOfGivenTaskInfoFromCache(task) // 2. get faultJob object given the faultTask object
 	if !fJob.IsFaultJob {                                         // skip adding re-scheduling score for normal jobs
-		return fmt.Errorf("task %s belongs to job %s which is not a fault job",
-			task.Name, fJob.JobName)
+		return fmt.Errorf("task %s belongs to job %s which is not a fault job", task.Name, fJob.JobName)
 	}
 	hasOldNodeFlag := false
 	for nodeName, _ := range scoreMap {
@@ -812,7 +704,7 @@ func (reScheduler *ReScheduler) ScoreBestNPUNodes(task *api.TaskInfo, scoreMap m
 		}
 	}
 	if !hasOldNodeFlag {
-		klog.V(util.LogDebugLev).Infof("no old node, no modifications on scoreMap")
+		klog.V(util.LogInfoLev).Infof("no old node, no modifications on scoreMap")
 		return nil
 	}
 	for nodeName, _ := range scoreMap {
@@ -825,23 +717,14 @@ func (reScheduler *ReScheduler) ScoreBestNPUNodes(task *api.TaskInfo, scoreMap m
 			}
 		}
 	}
+	klog.V(util.LogDebugLev).Infof("node score map after add rescheduling weights %#v", scoreMap)
 	return nil
 }
 
 // UseAnnotation reallocate rankIndex for the re-scheduling jobs
 func (reScheduler *ReScheduler) UseAnnotation(task *api.TaskInfo, node *plugin.NPUNode) error {
-	if reScheduler == nil {
-		klog.V(util.LogErrorLev).Infof("UseAnnotation failed: %s, nil reScheduler",
-			util.ArgumentError)
-		return errors.New(util.ArgumentError)
-	}
-	if task == nil {
-		klog.V(util.LogErrorLev).Infof("UseAnnotation failed: %s, nil task",
-			util.ArgumentError)
-		return errors.New(util.ArgumentError)
-	}
-	if node == nil {
-		klog.V(util.LogErrorLev).Infof("UseAnnotation failed: %s, nil node",
+	if reScheduler == nil || task == nil || node == nil {
+		klog.V(util.LogErrorLev).Infof("UseAnnotation failed: %s, nil reScheduler or task or node",
 			util.ArgumentError)
 		return errors.New(util.ArgumentError)
 	}
@@ -903,6 +786,12 @@ func (reScheduler *ReScheduler) useAnnotationSetNewNodeRank(nodeRankTimes []Allo
 		}
 		nodeRankTime.Occurrence++ // indicate the rankIndex has been bound so should not be used by other nodes
 		newNodeRankTimes = append(newNodeRankTimes, nodeRankTime)
+		createNewNodeRankTime := AllocNodeRankOccurrence{
+			NodeName:   node.Name,
+			RankIndex:  nodeRankTime.RankIndex,
+			Occurrence: 0,
+		}
+		newNodeRankTimes = append(newNodeRankTimes, createNewNodeRankTime)
 		klog.V(util.LogDebugLev).Infof(
 			"Assigning rankIndex %s to node %s...(use annotation task %s)",
 			nodeRankTime.RankIndex, node.Name, task.Name)
@@ -924,10 +813,11 @@ func (reScheduler *ReScheduler) GenerateNodeRankIndexTaskMap() {
 	klog.V(util.LogDebugLev).Infof("NodeRankOccMap before add: %#v", reScheduler.AllocNodeRankOccurrenceMap)
 	nodeRankIndexTaskMap := make(map[api.JobID][]AllocNodeRankOccurrence, util.MapInitNum)
 	for _, fJob := range reScheduler.FaultJobs {
-		_, ok := reScheduler.AllocNodeRankOccurrenceMap[fJob.JobUID]
+		oldRecord, ok := reScheduler.AllocNodeRankOccurrenceMap[fJob.JobUID]
 		if ok {
 			klog.V(util.LogDebugLev).Infof("NodeRankOccMap for job %s already generated, keep it", fJob.JobName)
-			return
+			nodeRankIndexTaskMap[fJob.JobUID] = oldRecord
+			continue // todo: continue but do not change those whose jobid already occurred
 		}
 		if fJob.DeleteExecutedFlag {
 			klog.V(util.LogDebugLev).Infof("Create NodeRankOccMap for job %s", fJob.JobName)
@@ -949,18 +839,8 @@ func (reScheduler *ReScheduler) GenerateNodeRankIndexTaskMap() {
 
 // CheckNodeNPUByTask used in the predicate process of task and node
 func (reScheduler *ReScheduler) CheckNodeNPUByTask(task *api.TaskInfo, vcNode plugin.NPUNode) error {
-	if reScheduler == nil {
-		klog.V(util.LogErrorLev).Infof("CheckNodeNPUByTask failed: %s, nil reScheduler",
-			util.ArgumentError)
-		return errors.New(util.ArgumentError)
-	}
-	if task == nil {
-		klog.V(util.LogErrorLev).Infof("CheckNodeNPUByTask failed: %s, nil task",
-			util.ArgumentError)
-		return errors.New(util.ArgumentError)
-	}
-	if len(vcNode.Name) == 0 {
-		klog.V(util.LogErrorLev).Infof("CheckNodeNPUByTask failed: %s, nil node",
+	if reScheduler == nil || task == nil || len(vcNode.Name) == 0 {
+		klog.V(util.LogErrorLev).Infof("CheckNodeNPUByTask failed: %s, nil reScheduler or task or node",
 			util.ArgumentError)
 		return errors.New(util.ArgumentError)
 	}
@@ -1043,11 +923,12 @@ func (reScheduler *ReScheduler) checkNodeCurNodeIsFault(vcNode plugin.NPUNode, t
 					task.Name, vcNode.Name)
 			}
 			if fNode.NodeHealthState == NodeUnhealthy { // none distributed job, npu fault considered in previous ops
-				return fmt.Errorf("task %s cannot be assigned to node %s because it's of %s",
-					task.Name, vcNode.Name, NodeUnhealthy)
+				return fmt.Errorf("task %s cannot be assigned to %s node %s", task.Name, NodeUnhealthy,
+					vcNode.Name)
 			}
 		}
 	}
+	klog.V(util.LogInfoLev).Infof("node %s is not fault node, check success", vcNode.Name)
 	return nil
 }
 
@@ -1063,13 +944,15 @@ func (reScheduler *ReScheduler) checkNodeNewJobUseFJobNormNode(vcNode plugin.NPU
 	for _, fJob := range realFaultJobs {
 		for _, fJobUseNode := range fJob.NodeNames {
 			if fJobUseNode == vcNode.Name && task.Job != fJob.JobUID && len(fJob.FaultTasks) > 1 {
-				klog.V(util.LogDebugLev).Infof("task %s cannot use node %s occupied by faultJob %s",
+				klog.V(util.LogDebugLev).Infof("task %s cannot use normal node %s occupied by faultJob %s",
 					task.Name, vcNode.Name, fJob.JobName)
 				return fmt.Errorf("task %s cannot use node %s occupied by faultJob %s",
 					task.Name, vcNode.Name, fJob.JobName)
 			}
 		}
 	}
+	klog.V(util.LogInfoLev).Infof("node %s is not normal node used by fault job or current task %s is in "+
+		"reScheduler job, check success", vcNode.Name, task.Name)
 	return nil
 }
 
@@ -1085,6 +968,7 @@ func (reScheduler *ReScheduler) checkNodeRankIndexOccupied(curFJob *FaultJob, vc
 			}
 		}
 	}
+	klog.V(util.LogDebugLev).Infof("checkNodeRankIndexOccupied: check ok for node %s", vcNode.Name)
 	return nil
 }
 
@@ -1153,26 +1037,36 @@ func (reScheduler ReScheduler) getTaskHealthState(fTask *FaultTask) (bool, strin
 	}
 	_, ok := reScheduler.Nodes[fTask.NodeName] // task used node not in session
 	if !ok {
-		klog.V(util.LogInfoLev).Infof("task %s used node %s not in session", fTask.TaskName, fTask.NodeName)
+		klog.V(util.LogInfoLev).Infof("task %s used node %s not in session, set %s", fTask.TaskName,
+			fTask.NodeName, NodeUnhealthy)
 		return true, NodeUnhealthy
 	}
 	for _, fNode := range realFaultNode {
 		if fNode.NodeName == fTask.NodeName {
 			if !fNode.IsFaultNode { // if task used node isFaultNode is false, return healthy
+				klog.V(util.LogInfoLev).Infof("task %s use healthy node %s, thus task sets %s", fTask.TaskName,
+					fNode.NodeName, NodeHealthy)
 				return false, NodeHealthy
 			}
 			if fNode.NodeHealthState == NodeUnhealthy { // if task used node is nodeUnhealthy, return
+				klog.V(util.LogInfoLev).Infof("task %s use %s node %s, thus task sets %s", fTask.TaskName,
+					NodeUnhealthy, fNode.NodeName, NodeUnhealthy)
 				return true, NodeUnhealthy
 			}
 			nodeUseCardHealthState = fTask.getTaskUseFaultCardHealthState(&fNode) // get fault NPUs on task used node
 		}
 	}
 	if util.IsSliceContain(NodeCardUnhealthy, nodeUseCardHealthState) { // if has unhealthy npu, return in advance
+		klog.V(util.LogInfoLev).Infof("task %s use %s node, thus task sets %s", fTask.TaskName,
+			NodeCardUnhealthy, NodeCardUnhealthy)
 		return true, NodeCardUnhealthy
 	}
 	if util.IsSliceContain(NodeCardNetworkUnhealthy, nodeUseCardHealthState) { // if has networkUnhealthy npu, return
+		klog.V(util.LogInfoLev).Infof("task %s use %s node, thus task sets %s", fTask.TaskName,
+			NodeCardNetworkUnhealthy, NodeCardNetworkUnhealthy)
 		return true, NodeCardNetworkUnhealthy
 	}
+	klog.V(util.LogInfoLev).Infof("task %s all nodes healthy, thus task sets %s", fTask.TaskName, NodeHealthy)
 	return false, NodeHealthy
 }
 

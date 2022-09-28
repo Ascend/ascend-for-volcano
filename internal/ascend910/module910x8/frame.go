@@ -84,23 +84,17 @@ func (tp *module910x8) PreStartAction(ssn *framework.Session) error {
 	moduleFullName := util.NPU910CardName + util.ModuleAcceleratorType
 	klog.V(util.LogInfoLev).Infof("Entering PreStartAction of %s...", moduleFullName)
 	defer klog.V(util.LogInfoLev).Infof("Leaving PreStartAction of %s", moduleFullName)
-	if tp == nil {
-		return fmt.Errorf("%s handler not enabled: %s", moduleFullName, util.ArgumentError)
-	}
-	if ssn == nil {
-		return fmt.Errorf("%s session is nil: %s", moduleFullName, util.ArgumentError)
+	if tp == nil || ssn == nil {
+		return fmt.Errorf("%s handler not enabled or ssn is nil: %s", moduleFullName, util.ArgumentError)
 	}
 	reschEnable, ok := tp.SchedulerJobAttr.Label[rescheduling.JobRescheduleLabelKey]
-	if !ok {
-		klog.V(util.LogErrorLev).Infof("%s no re-scheduler key 910x8", moduleFullName)
-		return nil
-	}
-	if reschEnable == rescheduling.JobOffRescheduleLabelValue {
-		klog.V(util.LogInfoLev).Infof("%s RescheduleLabel not enabled", moduleFullName)
+	if !ok || reschEnable == rescheduling.JobOffRescheduleLabelValue {
+		klog.V(util.LogErrorLev).Infof("%s RescheduleLabel not enabled", moduleFullName)
 		return nil
 	}
 	tp.reHandle = rescheduling.New(&tp.ScheduleEnv, rescheduling.CmFaultJob910x8Kind)
 	if tp.reHandle == nil {
+		klog.V(util.LogErrorLev).Infof("create new fault handler failed.")
 		return fmt.Errorf("%s reSchedule not enabled: %s", moduleFullName, util.ArgumentError)
 	}
 	tp.reHandle.New910ReScheduler()
@@ -115,7 +109,7 @@ func (tp *module910x8) PreStartAction(ssn *framework.Session) error {
 	// 2. get all the new 910x8 jobs in session
 	runningJobs910x8, getRunErr := tp.reHandle.GetRunningJobs(ssn, util.NPU910CardName, util.ModuleAcceleratorType)
 	if getRunErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s GetRunningJobs: %s", moduleFullName, getRunErr.Error())
+		klog.V(util.LogInfoLev).Infof("%s GetRunningJobs: %s", moduleFullName, getRunErr.Error())
 	}
 	// 3. get nodes of session and fault jobs of 910x8
 	err := tp.reHandle.AddFaultJobWithSession(runningJobs910x8, util.NPU910CardName, util.NPU910CardNamePre)
@@ -137,11 +131,8 @@ func (tp *module910x8) PreStopAction(env *plugin.ScheduleEnv) error {
 	moduleFullName := util.NPU910CardName + util.ModuleAcceleratorType
 	klog.V(util.LogInfoLev).Infof("enter PreStopAction %s...", moduleFullName)
 	defer klog.V(util.LogInfoLev).Infof("leave PreStopAction %s...", moduleFullName)
-	if tp == nil || tp.reHandle == nil {
-		return fmt.Errorf("%s reSchedule not enabled: %s", moduleFullName, util.ArgumentError)
-	}
-	if env == nil {
-		return fmt.Errorf("%s env is nil: %s", moduleFullName, util.ArgumentError)
+	if tp == nil || tp.reHandle == nil || env == nil {
+		return fmt.Errorf("%s reSchedule not enabled or nil env: %s", moduleFullName, util.ArgumentError)
 	}
 	if err := tp.reHandle.WriteReSchedulerCacheToEnvCache(env, rescheduling.CmFaultJob910x8Kind); err != nil {
 		return err

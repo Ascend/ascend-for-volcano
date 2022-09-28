@@ -65,6 +65,8 @@ const (
 	CmNodeHeartbeatKind = "node-heartbeat"
 	// CmNodeRankTimeMapKind record map jobUID rankIndex node and times of occurrence
 	CmNodeRankTimeMapKind = "node-rankIndex-Occurrence"
+	// CmCheckCode Check code key
+	CmCheckCode = "checkCode"
 
 	nodeUpdateTime = 5
 	// DefaultGraceOverTime time interval for grace delete

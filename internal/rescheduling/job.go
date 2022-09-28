@@ -25,44 +25,35 @@ import (
 
 // GetJobFaultRescheduleLabel Get job's fault reschedule label.
 func (fJob *FaultJob) GetJobFaultRescheduleLabel(job *plugin.SchedulerJob) string {
-	if fJob == nil {
+	if fJob == nil || job == nil {
 		klog.V(util.LogErrorLev).Info(
-			"GetJobFaultRescheduleLabel fJob object does not exist")
-		return JobOffRescheduleLabelValue
-	}
-	if job == nil {
-		klog.V(util.LogErrorLev).Info(
-			"GetJobFaultRescheduleLabel SchedulerJob does not exist")
+			"GetJobFaultRescheduleLabel fJob or schedulerJob does not exist")
 		return JobOffRescheduleLabelValue
 	}
 	value, ok := job.SchedulerJobAttr.Label[JobRescheduleLabelKey]
 	if !ok {
-		klog.V(util.LogErrorLev).Infof(
+		klog.V(util.LogInfoLev).Infof(
 			"GetJobFaultRescheduleLabel %s. %s no job reschedule label", value, job.JobName)
 		return JobOffRescheduleLabelValue
 	}
-
+	klog.V(util.LogInfoLev).Infof("GetJobFaultRescheduleLabel job: %s, label: %s", job.JobName, value)
 	return value
 }
 
 // GetJobElasticSchedulingLabel get job's elastic scheduling label
 func (fJob *FaultJob) GetJobElasticSchedulingLabel(job *plugin.SchedulerJob) string {
-	if fJob == nil {
+	if fJob == nil || job == nil {
 		klog.V(util.LogErrorLev).Info(
-			"GetJobFaultRescheduleLabel fJob object does not exist")
+			"GetJobElasticSchedulingLabel fJob or schedulerJob object does not exist")
 		return JobOffElasticScheduling
-	}
-	if job == nil {
-		klog.V(util.LogErrorLev).Info(
-			"GetJobFaultRescheduleLabel SchedulerJob does not exist")
-		return JobOffRescheduleLabelValue
 	}
 	value, ok := job.SchedulerJobAttr.Label[ElasticSchedulingKey]
 	if !ok {
 		klog.V(util.LogErrorLev).Infof(
-			"GetJobFaultRescheduleLabel %s. %s no job reschedule label", value, job.JobName)
+			"GetJobElasticSchedulingLabel %s. %s no job reschedule label", value, job.JobName)
 		return JobOffRescheduleLabelValue
 	}
+	klog.V(util.LogInfoLev).Infof("GetJobElasticSchedulingLabel job: %s, label: %s", job.JobName, value)
 	return value
 }
 
@@ -87,17 +78,18 @@ func (fJob *FaultJob) isJobGraceDeleteSuccess(jobInfo *api.JobInfo) bool {
 		}
 		podCreateTimeCur := npuTask.Pod.CreationTimestamp.Unix() // current pod create time
 		if podCreateTimeCur != podCreateTimeRecord {
-			klog.V(util.LogInfoLev).Infof("pod restart success[new:%v---old:%v]",
-				podCreateTimeCur, podCreateTimeRecord)
+			klog.V(util.LogInfoLev).Infof("pod %s restart success[new:%v---old:%v]",
+				npuTask.Pod.Name, podCreateTimeCur, podCreateTimeRecord)
 			restartNum++
 		}
 	}
 	klog.V(util.LogDebugLev).Infof("<%d/%d> pod of job restarted", restartNum, len(jobInfo.Tasks))
 	if restartNum >= len(jobInfo.Tasks) && plugin.IsJobInitial(
 		jobInfo) { // minAvailable must equal to number of replicas
-		klog.V(util.LogInfoLev).Infof("job all pod %d restart success.", restartNum)
+		klog.V(util.LogInfoLev).Infof("job %s grace delete success", jobInfo.Name)
 		return true
 	}
+	klog.V(util.LogInfoLev).Infof("job %s not yet restarted", jobInfo.Name)
 	return false
 }
 
@@ -124,18 +116,12 @@ func (fJob *FaultJob) CheckJobExistsInKubernetes(ssn *framework.Session) bool {
 // ForceDeleteJob force delete jobs includes labelled force delete ones and grace delete failed ones
 func (fJob *FaultJob) ForceDeleteJob(ssn *framework.Session, schedulerJob *plugin.SchedulerJob) error {
 	klog.V(util.LogDebugLev).Infof("enter ForceDeleteJob")
-	if fJob == nil {
+	if fJob == nil || ssn == nil || schedulerJob == nil {
 		return fmt.Errorf(
-			"getJobFaultRescheduleLabel fJob object does not exist")
-	}
-	if ssn == nil {
-		return fmt.Errorf("session does not exist")
-	}
-	if schedulerJob == nil {
-		return fmt.Errorf("schedulerJob does not exist")
+			"getJobFaultRescheduleLabel fJob object or ssn or schedulerJob does not exist")
 	}
 	for _, fTask := range fJob.FaultTasks {
-		err := fTask.deleteRealPodByTask(ssn, 0)
+		err := fTask.DeleteRealPodByTask(ssn, 0)
 		if err != nil {
 			klog.V(util.LogDebugLev).Infof("ForceDeleteFaultPod %s: %#v.", fTask.TaskName, err)
 		}
