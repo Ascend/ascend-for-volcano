@@ -26,6 +26,8 @@ const (
 	podRankIndex = "hccl/rankIndex"
 	// NPU910CardName 910 card name
 	NPU910CardName = "huawei.com/Ascend910"
+	// AscendNPUPodRealUse for NPU pod real use cards.
+	AscendNPUPodRealUse = "huawei.com/AscendReal"
 	// FakeUpdateTime fake update time for test
 	FakeUpdateTime = int64(11110)
 )

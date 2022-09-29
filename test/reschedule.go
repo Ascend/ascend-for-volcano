@@ -73,13 +73,13 @@ func modifyJobInf(jobInf0 *api.JobInfo, jobInf1 *api.JobInfo) {
 	jobInf0.PodGroup.Labels["fault-scheduling"] = "grace"
 	jobInf1.PodGroup.Labels["fault-scheduling"] = "grace"
 	jobInf0.Tasks[api.TaskID(taskName0)].Pod.Annotations = map[string]string{podRankIndex: "0",
-		NPU910CardName: annoCards}
+		NPU910CardName: annoCards, AscendNPUPodRealUse: annoCards}
 	jobInf0.Tasks[api.TaskID(taskName1)].Pod.Annotations = map[string]string{podRankIndex: "1",
-		NPU910CardName: annoCards}
+		NPU910CardName: annoCards, AscendNPUPodRealUse: annoCards}
 	jobInf1.Tasks[api.TaskID(taskName0)].Pod.Annotations =
-		map[string]string{podRankIndex: "2", NPU910CardName: annoCards}
+		map[string]string{podRankIndex: "2", NPU910CardName: annoCards, AscendNPUPodRealUse: annoCards}
 	jobInf1.Tasks[api.TaskID(taskName1)].Pod.Annotations =
-		map[string]string{podRankIndex: "3", NPU910CardName: annoCards}
+		map[string]string{podRankIndex: "3", NPU910CardName: annoCards, AscendNPUPodRealUse: annoCards}
 	jobInf0.Tasks[api.TaskID(taskName0)].NodeName = "node0"
 	jobInf0.Tasks[api.TaskID(taskName1)].NodeName = "node1"
 	jobInf1.Tasks[api.TaskID(taskName0)].NodeName = "node2"
