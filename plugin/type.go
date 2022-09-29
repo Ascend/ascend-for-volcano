@@ -50,7 +50,7 @@ type VolcanoFrame struct {
 
 // ScheduleCache the plugin defined caches saving cm data
 type ScheduleCache struct {
-	// special name, value
+	// special, name, value
 	Names, Namespaces map[string]string
 	Data              map[string]map[string]string
 }

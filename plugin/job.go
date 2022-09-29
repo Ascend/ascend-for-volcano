@@ -289,7 +289,7 @@ func (sHandle *ScheduleHandler) updatePodGroupPendingReason(job *api.JobInfo, re
 		Status:             v1.ConditionTrue,
 		LastTransitionTime: metav1.Now(),
 		TransitionID:       string(sHandle.FrameAttr.UID),
-		Reason:             scheduling.NotEnoughResourcesReason,
+		Reason:             reason,
 		Message:            reason,
 	}
 
