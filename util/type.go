@@ -89,8 +89,6 @@ const (
 	PodPredicateTime = "predicate-time"
 	// NodeNotMeetTopologyWarning node not satisfy the schedulable topology warning.
 	NodeNotMeetTopologyWarning = "the npus on this node don't satisfy the schedulable topology"
-	// NodeNoFitNPUWarning node no fit npu number warning.
-	NodeNoFitNPUWarning = "node no fit npu number"
 	// ArgumentError argument nil error.
 	ArgumentError = "invalid argument"
 )

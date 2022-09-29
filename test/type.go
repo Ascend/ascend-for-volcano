@@ -20,7 +20,9 @@ const (
 	// NPUIndex5 for re-scheduler tests
 	NPUIndex5 = 5
 	// NPUIndex8 for re-scheduler tests
-	NPUIndex8    = 8
+	NPUIndex8 = 8
+	// NPUHexKilo for const 1000,volcano frame used.
+	NPUHexKilo   = 1000
 	podRankIndex = "hccl/rankIndex"
 	// NPU910CardName 910 card name
 	NPU910CardName = "huawei.com/Ascend910"
