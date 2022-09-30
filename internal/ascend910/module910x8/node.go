@@ -105,8 +105,16 @@ func getNodeHccsArray(nodeTop []int) ([]int, []int) {
 }
 
 func (tp *module910x8) getNodeBestScore(taskNPUNum int, npuTop []int) (int, error) {
-	sNodeInf := initSelectNodeInf(npuTop)
 	var bestScore = affScore4
+
+	sNodeInf := initSelectNodeInf(npuTop)
+	if sNodeInf.allNPUNum < 1 ||
+		sNodeInf.allNPUNum > tp.MaxNodeNPUNum ||
+		sNodeInf.rightNPUNum > npuNumPerHccs ||
+		sNodeInf.leftNPUNum > npuNumPerHccs {
+		return bestScore, fmt.Errorf("node top<%v> is invalid", npuTop)
+	}
+
 	var err = fmt.Errorf("node top<%v> is not meet task req npu<%d>", npuTop, taskNPUNum)
 	if taskNPUNum == nodeNPUNumber {
 		if len(npuTop) == nodeNPUNumber {
@@ -114,9 +122,10 @@ func (tp *module910x8) getNodeBestScore(taskNPUNum int, npuTop []int) (int, erro
 		}
 		return bestScore, err
 	}
+	if taskNPUNum < 1 || taskNPUNum > npuNumPerHccs {
+		return bestScore, fmt.Errorf("task req npu num<%d> is invalid", taskNPUNum)
+	}
 	switch {
-	case sNodeInf.allNPUNum == 0:
-		return bestScore, err
 	case sNodeInf.rightNPUNum == 0:
 		bestScore = tp.affScoreList[taskNPUNum-1][sNodeInf.leftNPUNum-1]
 	case sNodeInf.leftNPUNum == 0:

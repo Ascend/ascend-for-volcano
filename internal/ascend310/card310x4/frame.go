@@ -110,6 +110,12 @@ func (tp *card310x4) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo
 		return err
 	}
 
+	if taskNPUNum < 1 || taskNPUNum > tp.MaxCardNPUNum {
+		err = fmt.Errorf("task<%s> req npu num<%d> is invalid", task.Name, taskNPUNum)
+		klog.V(util.LogErrorLev).Infof("%s ScoreBestNPUNodes err: %s", tp.GetPluginName(), err.Error())
+		return err
+	}
+
 	for _, node := range nodes {
 		if reflect.ValueOf(node).IsNil() {
 			klog.V(util.LogWarningLev).Infof("%s ScoreBestNPUNodes get node nil.", tp.GetPluginName())
