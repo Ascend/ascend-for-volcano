@@ -870,8 +870,8 @@ func (reScheduler *ReScheduler) CheckNodeNPUByTask(task *api.TaskInfo, vcNode pl
 	if err := reScheduler.checkNodeFJobNormNodeRelease(curFJob, curSchedulerJob); err != nil {
 		return err
 	}
-	// 4. faultJobs should not be assigned to nodes' whose rankIndex already occupied by some other new nodes
-	if err := reScheduler.checkNodeRankIndexOccupied(curFJob, vcNode); err != nil {
+	// 4. job's previously old node should only be assigned to new node once
+	if err := reScheduler.checkFJobFNodeRankIndexAllAllocated(curFJob, vcNode); err != nil {
 		return err
 	}
 	klog.V(util.LogDebugLev).Infof("CheckNodeNPUByTask node %s passed rescheduling predicate for task %s",
@@ -956,19 +956,34 @@ func (reScheduler *ReScheduler) checkNodeNewJobUseFJobNormNode(vcNode plugin.NPU
 	return nil
 }
 
-// 3. check if current node's rankIndex is occupied already
-func (reScheduler *ReScheduler) checkNodeRankIndexOccupied(curFJob *FaultJob, vcNode plugin.NPUNode) error {
+// checkFJobFNodeRankIndexAllAllocated ensure rankIndex of fNode not allocated is enough for nodes not occurred
+func (reScheduler *ReScheduler) checkFJobFNodeRankIndexAllAllocated(curFJob *FaultJob, vcNode plugin.NPUNode) error {
 	nodeRankTimes, ok := reScheduler.AllocNodeRankOccurrenceMap[curFJob.JobUID]
-	if ok {
-		for _, nodeRankTime := range nodeRankTimes {
-			if vcNode.Name == nodeRankTime.NodeName && nodeRankTime.Occurrence != 0 {
-				return fmt.Errorf("fault node %s rankIndex %s cannot be assigned to node %s, "+
-					"since it has been assigned to other node with occurrence %d",
-					nodeRankTime.NodeName, nodeRankTime.RankIndex, vcNode.Name, nodeRankTime.Occurrence)
-			}
+	if !ok {
+		return fmt.Errorf("job %s's rankIndexMap not found in cache", curFJob.JobUID)
+	}
+	countFNode := 0
+	countRankId := 0
+	for _, nodeRankTime := range nodeRankTimes {
+		if vcNode.Name == nodeRankTime.NodeName { // node already in old node cache
+			return nil
+		}
+		fNode := reScheduler.getFNodeOfGivenNameFromCache(nodeRankTime.NodeName)
+		if fNode == nil {
+			return fmt.Errorf("node %s not found in cache", vcNode.Name)
+		}
+		if fNode.IsFaultNode {
+			countFNode++
+		}
+		if nodeRankTime.Occurrence == 1 {
+			countRankId++
 		}
 	}
-	klog.V(util.LogDebugLev).Infof("checkNodeRankIndexOccupied: check ok for node %s", vcNode.Name)
+	if countFNode == countRankId {
+		return fmt.Errorf("node %s cannot be assigned to job %s since job's rank index has been assigned to "+
+			"other nodes", vcNode.Name, curFJob.JobName)
+	}
+	klog.V(util.LogDebugLev).Infof("checkFJobFNodeRankIndexAllAllocated: check ok for node %s", vcNode.Name)
 	return nil
 }
 
