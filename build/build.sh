@@ -46,8 +46,6 @@ function build() {
 
     cd "${TOP_DIR}"
     go mod tidy
-    go mod download
-    go mod vendor
 
     cd "${BASE_PATH}"/output/
 
