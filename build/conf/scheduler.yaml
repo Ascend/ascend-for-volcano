@@ -21,6 +21,7 @@ compile:
     language: go
     compilePath: "{{ BASE_PATH }}/output"
     parameters: [
+      ["mod", "mod"],
       ["buildmode", "pie"],
       ["ldflags", '-s -linkmode=external -extldflags=-Wl,-z,now -X "volcano.sh/volcano/pkg/version.Built={{ systemEnv.DATE }}" -X "volcano.sh/volcano/pkg/version.Version={{ BASE_VER }}"'],
       ["o", "vc-scheduler {{ CMD_PATH }}/scheduler"]
