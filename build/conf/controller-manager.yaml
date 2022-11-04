@@ -23,9 +23,6 @@ compile:
             src: [ '{{ systemEnv.workspace }}/ascend-volcano-plugin' ]
             des: "{{ systemEnv.workspace }}/go/src/volcano.sh/volcano/pkg/scheduler/plugins/"
         - commands:
-            - command: cd {{ systemEnv.workspace }}/go/src/volcano.sh/volcano;go mod tidy
-            - command: cd {{ systemEnv.workspace }}/go/src/volcano.sh/volcano;go mod download
-            - command: cd {{ systemEnv.workspace }}/go/src/volcano.sh/volcano;go mod vendor
             - command: export DATE=$(date "+%Y-%m-%d %H:%M:%S")
       exclude:
         - remove: ["{{ BASE_PATH }}/output/vc-controller-manager"]
@@ -34,6 +31,7 @@ compile:
     language: go
     compilePath: "{{ BASE_PATH }}/output"
     parameters: [
+      ["mod", "mod"],
       ["buildmode", "pie"],
       ["ldflags", '-s -linkmode=external -extldflags=-Wl,-z,now -X "volcano.sh/volcano/pkg/version.Built={{ systemEnv.DATE }}" -X "volcano.sh/volcano/pkg/version.Version={{ BASE_VER }}"'],
       ["o", "vc-controller-manager {{ CMD_PATH }}/controller-manager"]
