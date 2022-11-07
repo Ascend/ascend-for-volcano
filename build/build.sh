@@ -45,6 +45,7 @@ function build() {
     export PATH=$GOPATH/bin:$PATH
 
     cd "${TOP_DIR}"
+    go mod tidy
 
     cd "${BASE_PATH}"/output/
 
