@@ -23,6 +23,7 @@ compile:
             src: [ '{{ systemEnv.workspace }}/ascend-volcano-plugin' ]
             des: "{{ systemEnv.workspace }}/go/src/volcano.sh/volcano/pkg/scheduler/plugins/"
         - commands:
+            - command: cd {{ systemEnv.workspace }}/go/src/volcano.sh/volcano;go mod tidy
             - command: export DATE=$(date "+%Y-%m-%d %H:%M:%S")
       exclude:
         - remove: ["{{ BASE_PATH }}/output/vc-controller-manager"]
