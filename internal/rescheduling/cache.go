@@ -165,8 +165,8 @@ func (reCache *DealReSchedulerCache) marshalCacheDataToString(data interface{}) 
 func (reCache DealReSchedulerCache) getRealFaultJobs() ([]FaultJob, error) {
 	var realFaultJobs []FaultJob
 	for _, fJob := range reCache.FaultJobs {
-		if !fJob.IsFaultJob { // non-faultJob should not appear in configmap
-			continue
+		if !fJob.IsFaultJob || fJob.ReScheduleKey == JobOffRescheduleLabelValue {
+			continue // only save real-fault and reschedule-enabled jobs
 		}
 		// if and only if the task is distributional would a network unhealthy card trigger re-scheduling
 		if util.IsSliceContain(NodeCardNetworkUnhealthy, fJob.FaultTypes) &&

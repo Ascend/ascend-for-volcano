@@ -859,14 +859,19 @@ func (reScheduler *ReScheduler) CheckNodeNPUByTask(task *api.TaskInfo, vcNode pl
 	curFJob := reScheduler.getFaultJobOfGivenTaskInfoFromCache(task)
 	curSchedulerJob := reScheduler.getSchedulerJobOfGivenUIDFromReScheduler(task.Job)
 	if curFTask == nil {
-		klog.V(util.LogDebugLev).Infof("task %s not in rescheduler cache", task.Name)
+		klog.V(util.LogDebugLev).Infof("task %s not in reschedule cache", task.Name)
 		return nil // cannot return error, or will be stuck for new job scheduling
 	}
 	if curFJob == nil {
 		return fmt.Errorf("task %s does not have corresponding job in cache", task.Name)
 	}
+	if !curFJob.IsFaultJob || curFJob.ReScheduleKey == JobOffRescheduleLabelValue {
+		klog.V(util.LogDebugLev).Infof("CheckNodeNPUByTask job %s is not fault job, node %s check over",
+			curFJob.JobName, vcNode.Name)
+		return nil
+	}
 	// 0. if fTask's corresponding faultJobs' previously used normal nodes haven't be released,
-	// stuck all scheduling process
+	// stuck the task scheduling process
 	if err := reScheduler.checkNodeFJobNormNodeRelease(curFJob, curSchedulerJob); err != nil {
 		return err
 	}
@@ -970,7 +975,7 @@ func (reScheduler *ReScheduler) checkFJobFNodeRankIndexAllAllocated(curFJob *Fau
 		}
 		fNode := reScheduler.getFNodeOfGivenNameFromCache(nodeRankTime.NodeName)
 		if fNode == nil {
-			return fmt.Errorf("node %s not found in cache", vcNode.Name)
+			return fmt.Errorf("node %s not found in cache", nodeRankTime.NodeName)
 		}
 		if fNode.IsFaultNode {
 			countFNode++
