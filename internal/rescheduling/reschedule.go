@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"volcano.sh/volcano/pkg/cli/job"
 
 	"k8s.io/klog"
 	"volcano.sh/apis/pkg/apis/scheduling"
@@ -847,12 +848,12 @@ func (reScheduler *ReScheduler) CheckNodeNPUByTask(task *api.TaskInfo, vcNode pl
 	klog.V(util.LogDebugLev).Infof("enter rescheduling CheckNodeNPUByTask ...(%s, %s)", task.Name, vcNode.Name)
 	defer klog.V(util.LogDebugLev).Infof("leave rescheduling CheckNodeNPUByTask ...(%s, %s)",
 		task.Name, vcNode.Name)
-	// 1. jobs should not be scheduled to faultNodes
-	if err := reScheduler.checkNodeCurNodeIsFault(vcNode, task); err != nil {
-		return err
-	}
 	// 3. non faultJobs should not occupy normal nodes previously used by distributional
 	if err := reScheduler.checkNodeNewJobUseFJobNormNode(vcNode, task); err != nil {
+		return err
+	}
+	// 1. jobs should not be scheduled to faultNodes
+	if err := reScheduler.checkNodeCurNodeIsFault(vcNode, task); err != nil {
 		return err
 	}
 	curFTask := reScheduler.getFaultTaskOfGivenTaskNameFromCache(task.Name)
@@ -920,6 +921,11 @@ func (reScheduler *ReScheduler) checkNodeCurNodeIsFault(vcNode plugin.NPUNode, t
 	schedulerJob, ok := reScheduler.Jobs[task.Job]
 	if !ok {
 		return fmt.Errorf("task %s corresponding job not in session", task.Name)
+	}
+	reschKey, ok := schedulerJob.SchedulerJobAttr.Label[JobRescheduleLabelKey]
+	if !ok || reschKey == JobOffRescheduleLabelValue {
+		klog.V(util.LogInfoLev).Infof("job %s rescheduling not enabled, skip check node", job.Name)
+		return nil
 	}
 	for _, fNode := range reScheduler.FaultNodes {
 		if vcNode.Name == fNode.NodeName && fNode.IsFaultNode {
