@@ -15,7 +15,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"volcano.sh/volcano/pkg/cli/job"
 
 	"k8s.io/klog"
 	"volcano.sh/apis/pkg/apis/scheduling"
@@ -924,7 +923,7 @@ func (reScheduler *ReScheduler) checkNodeCurNodeIsFault(vcNode plugin.NPUNode, t
 	}
 	reschKey, ok := schedulerJob.SchedulerJobAttr.Label[JobRescheduleLabelKey]
 	if !ok || reschKey == JobOffRescheduleLabelValue {
-		klog.V(util.LogInfoLev).Infof("job %s rescheduling not enabled, skip check node", job.Name)
+		klog.V(util.LogInfoLev).Infof("job %s rescheduling not enabled, skip check node", schedulerJob.JobName)
 		return nil
 	}
 	for _, fNode := range reScheduler.FaultNodes {
