@@ -87,11 +87,6 @@ func (tp *module910x8) PreStartAction(ssn *framework.Session) error {
 	if tp == nil || ssn == nil {
 		return fmt.Errorf("%s handler not enabled or ssn is nil: %s", moduleFullName, util.ArgumentError)
 	}
-	reschEnable, ok := tp.SchedulerJobAttr.Label[rescheduling.JobRescheduleLabelKey]
-	if !ok || reschEnable == rescheduling.JobOffRescheduleLabelValue {
-		klog.V(util.LogErrorLev).Infof("%s RescheduleLabel not enabled", moduleFullName)
-		return nil
-	}
 	tp.reHandle = rescheduling.New(&tp.ScheduleEnv, rescheduling.CmFaultJob910x8Kind)
 	if tp.reHandle == nil {
 		klog.V(util.LogErrorLev).Infof("create new fault handler failed.")
