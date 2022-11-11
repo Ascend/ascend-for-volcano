@@ -183,18 +183,6 @@ func (reScheduler *ReScheduler) updateNewFaultJobAttr(
 	tmpIsFaultJob := faultJob.getIsFaultJob() // 4. update the value of IsFaultJob
 	klog.V(util.LogDebugLev).Infof("job %s if fault job: %#v", faultJob.JobName, tmpIsFaultJob)
 	faultJob.setIsFaultJob(tmpIsFaultJob)
-	// 4.1 additionally, jobs using nodes that are not ready in current session should also be set false
-	for _, nodeName := range faultJob.NodeNames {
-		if nodeName == "" {
-			continue
-		}
-		_, ok := reScheduler.Nodes[nodeName]
-		if !ok {
-			klog.V(util.LogInfoLev).Infof("job %s set fault job as node %s used not in current session",
-				nodeName, faultJob.JobName)
-			faultJob.setIsFaultJob(true)
-		}
-	}
 	// 6. update FaultTypes of the job by status of FaultTasks bound on the job
 	if faultJob.IsFaultJob {
 		for _, fTask := range faultJob.FaultTasks {
@@ -1059,12 +1047,6 @@ func (reScheduler ReScheduler) getTaskHealthState(fTask *FaultTask) (bool, strin
 	realFaultNode := reScheduler.getRealFaultNodes()
 	if fTask.NodeName == "" {
 		return false, NodeHealthy // tasks has not yet been scheduled
-	}
-	_, ok := reScheduler.Nodes[fTask.NodeName] // task used node not in session
-	if !ok {
-		klog.V(util.LogInfoLev).Infof("task %s used node %s not in session, set %s", fTask.TaskName,
-			fTask.NodeName, NodeUnhealthy)
-		return true, NodeUnhealthy
 	}
 	for _, fNode := range realFaultNode {
 		if fNode.NodeName == fTask.NodeName {
