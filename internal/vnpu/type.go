@@ -49,6 +49,8 @@ const (
 	JobPendingWaitTime = 300
 	// VNPUScoreWeight for volcano select vnpu node core.
 	VNPUScoreWeight = 64
+	// PreAllocateFailureWaitTime wait time to judge pre-allocation failure
+	PreAllocateFailureWaitTime = 10
 )
 
 // ComVNPU vnpu struct
