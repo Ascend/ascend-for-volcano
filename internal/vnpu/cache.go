@@ -14,7 +14,7 @@ import (
 	"fmt"
 	"sort"
 
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -23,10 +23,12 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
+// InitVConfigMap init VConfigMap
 func (vCache *VCache) InitVConfigMap(client kubernetes.Interface) {
 	vCache.vConfigMap.ReadCMFromKubernetes(client)
 }
 
+// InitVJobs init VJobs
 func (vCache *VCache) InitVJobs(env *plugin.ScheduleEnv, divideKinds []string) error {
 	klog.V(util.LogInfoLev).Info("enter InitVJobs...")
 	if err := vCache.ReadVJobsFromVCM(); err != nil {
@@ -78,7 +80,7 @@ func (vCache *VCache) initVJobsFromSession(env *plugin.ScheduleEnv, divideKinds 
 			klog.V(util.LogInfoLev).Infof("job %s is not vnpu job, do not put into vCache", vJob.jobUID)
 			continue
 		}
-		vCache.AddOrUpdateVJobToCache(vJob)
+		vCache.addOrUpdateVJobToCache(vJob)
 	}
 	return nil
 }
@@ -124,6 +126,7 @@ func (vCache *VCache) getVCacheCMData() map[string]string {
 	return cacheBuffer
 }
 
+// GetAndSortNotPreAllocVJobsFromCache get and sort NotPreAlloc VJobs from cache
 func (vCache *VCache) GetAndSortNotPreAllocVJobsFromCache(env *plugin.ScheduleEnv) []VJob {
 	klog.V(util.LogInfoLev).Info("GetAndSort jobs of %s in cache", VJobStatusNotPreSegmented)
 	vJobsToBePreAlloc := vCache.getNeedAllocVJobsFromCache(env)
@@ -150,7 +153,7 @@ func (vCache *VCache) sortNeedAllocVJobsByAllocTime(vJobs []VJob) []VJob {
 	return tempVJobs
 }
 
-func (vCache *VCache) GetNeedDeleteJobsFromCache() []VJob {
+func (vCache *VCache) getNeedDeleteJobsFromCache() []VJob {
 	var vJobToBeDeleted []VJob
 	for _, vJob := range vCache.vJobs {
 		if vJob.jobStatus == VJobStatusDestroying {
@@ -160,11 +163,11 @@ func (vCache *VCache) GetNeedDeleteJobsFromCache() []VJob {
 	return vJobToBeDeleted
 }
 
-func (vCache *VCache) AddOrUpdateVJobToCache(vJob VJob) {
+func (vCache *VCache) addOrUpdateVJobToCache(vJob VJob) {
 	vCache.vJobs[vJob.jobUID] = vJob
 }
 
-func (vCache *VCache) DeleteVJobFromCache(vJobUID api.JobID) {
+func (vCache *VCache) deleteVJobFromCache(vJobUID api.JobID) {
 	delete(vCache.vJobs, vJobUID)
 }
 

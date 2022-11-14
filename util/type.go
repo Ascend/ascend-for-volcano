@@ -4,7 +4,7 @@
 package util
 
 import (
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 )
@@ -137,6 +137,7 @@ type SchedulerJobAttr struct {
 	*NPUJob
 }
 
+// ComConfigMap common config map
 type ComConfigMap struct {
 	Name      string
 	Namespace string

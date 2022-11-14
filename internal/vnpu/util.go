@@ -16,7 +16,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/api"
 )
 
-func Add(vReses []VResource) VResource {
+func add(vReses []VResource) VResource {
 	vResTotal := VResource{
 		Aicore: 0,
 		Aicpu:  0,
@@ -39,7 +39,7 @@ func Add(vReses []VResource) VResource {
 	return vResTotal
 }
 
-func Sub(vRes1 VResource, vRes2 VResource) VResource {
+func sub(vRes1 VResource, vRes2 VResource) VResource {
 	return VResource{
 		Aicore: vRes1.Aicore - vRes2.Aicore,
 		Aicpu:  vRes1.Aicpu - vRes2.Aicpu,
@@ -52,8 +52,8 @@ func Sub(vRes1 VResource, vRes2 VResource) VResource {
 	}
 }
 
-func (vResource VResource) BeGreater(vRes VResource) bool {
-	vResSub := Sub(vResource, vRes)
+func (vResource VResource) beGreater(vRes VResource) bool {
+	vResSub := sub(vResource, vRes)
 	v := reflect.ValueOf(vResSub)
 	for i := 0; i < v.NumField(); i++ {
 		if v.Field(i).Int() < 0 {
@@ -63,7 +63,7 @@ func (vResource VResource) BeGreater(vRes VResource) bool {
 	return true
 }
 
-func GetPodUsedNPUNames(task *api.TaskInfo, resType string) []string {
+func getPodUsedNPUNames(task *api.TaskInfo, resType string) []string {
 	if task == nil {
 		return nil
 	}

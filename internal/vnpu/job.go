@@ -37,6 +37,7 @@ func (vJob *VJob) setAllocFlag(allocFlag bool) {
 	vJob.allocFlag = allocFlag
 }
 
+// IsJobValidVNPUJob state check for unhandled job
 func (vJob *VJob) IsJobValidVNPUJob(divideKinds []string) bool {
 	if !vJob.isJobTaskNumValid() {
 		return false
@@ -66,6 +67,7 @@ func (vJob *VJob) isJobResourceTypeValid(divideKinds []string) bool {
 	return flag
 }
 
+// IsJobReadyForPreAlloc state check for not unhandled job
 func (vJob *VJob) IsJobReadyForPreAlloc(schedulerJob plugin.SchedulerJob) bool {
 	if schedulerJob.PGStatus == scheduling.PodGroupInqueue {
 		klog.V(util.LogInfoLev).Infof("%s IsVJobCanPreHandle Inqueue.", vJob.jobUID)
@@ -78,16 +80,6 @@ func (vJob *VJob) IsJobReadyForPreAlloc(schedulerJob plugin.SchedulerJob) bool {
 		}
 	}
 	return true
-}
-
-func (vJob *VJob) IsJobPreAllocated(vCache *VCache) bool {
-	if vJob.isJobNew(vCache) { // new job needs preAlloc
-		return false
-	}
-	if vJob.isJobSetPreAllocFlag(vCache) { // old job with set flag does not need preAlloc
-		return true
-	}
-	return false // old job without alloc flag should be preAllocated
 }
 
 func (vJob *VJob) isJobNew(vCache *VCache) bool {
@@ -110,18 +102,19 @@ func (vJob *VJob) isJobSetPreAllocFlag(vCache *VCache) bool {
 
 // IsClusterResourceSufficient ensure cluster total resource is enough
 func (vJob *VJob) IsClusterResourceSufficient(vNodes map[string]VNode) bool {
-	VResCluster := vJob.GetClusterUnsegmentedResource(vNodes)
-	return VResCluster.BeGreater(vJob.resourceReq)
+	VResCluster := vJob.getClusterUnsegmentedResource(vNodes)
+	return VResCluster.beGreater(vJob.resourceReq)
 }
 
-func (vJob *VJob) GetClusterUnsegmentedResource(vNodes map[string]VNode) VResource {
+func (vJob *VJob) getClusterUnsegmentedResource(vNodes map[string]VNode) VResource {
 	var unsegmentedRes []VResource
 	for _, vNode := range vNodes {
 		unsegmentedRes = append(unsegmentedRes, vNode.nodeUnsegmentedRes)
 	}
-	return Add(unsegmentedRes)
+	return add(unsegmentedRes)
 }
 
+// IsJobAllocated state check for pre-allocated jobs
 func (vJob *VJob) IsJobAllocated(schedulerJob plugin.SchedulerJob) bool {
 	if schedulerJob.PGStatus != scheduling.PodGroupRunning {
 		return false
@@ -134,6 +127,7 @@ func (vJob *VJob) IsJobAllocated(schedulerJob plugin.SchedulerJob) bool {
 	return true
 }
 
+// IsJobNeedDeleting state check for allocated jobs
 func (vJob *VJob) IsJobNeedDeleting(schedulerJob plugin.SchedulerJob, ssn *framework.Session) bool {
 	if !vJob.isJobPodTerminated(schedulerJob, ssn) {
 		return false
@@ -198,13 +192,13 @@ func (vJob *VJob) setAllocCardName(allocCardName string) {
 	vJob.allocCardName = allocCardName
 }
 
-func (vJob *VJob) RecordVJobPreSegmentInfo(vNode *VNode, vChip *VChip) {
+func (vJob *VJob) recordVJobPreSegmentInfo(vNode *VNode, vChip *VChip) {
 	vJob.reqNodeName = vNode.nodeName
 	vJob.reqCardName = vChip.cardName
 	vJob.allocFlag = true
 }
 
-func (vJob *VJob) ClearVJobPreSegmentInfo() {
+func (vJob *VJob) clearVJobPreSegmentInfo() {
 	vJob.reqNodeName = ""
 	vJob.reqCardName = ""
 	vJob.allocFlag = false
@@ -216,14 +210,14 @@ func (vJob *VJob) setVJobAllocInfo(allocCardName string) {
 	vJob.updateTime = time.Now().Unix()
 }
 
-// GetVJobUsedNPUNames called after vJobs being allocated and pod annotation written
-func (vJob *VJob) GetVJobUsedNPUNames(ssnJob *api.JobInfo) (string, error) {
+// getVJobUsedNPUNames called after vJobs being allocated and pod annotation written
+func (vJob *VJob) getVJobUsedNPUNames(ssnJob *api.JobInfo) (string, error) {
 	var cards []string
 	if vJob.jobUID != ssnJob.UID {
 		return "", fmt.Errorf("vJob UID %s and schedulerJob UID %s do not match", vJob.jobUID, ssnJob.UID)
 	}
 	for _, schedulerTask := range ssnJob.Tasks {
-		chips := GetPodUsedNPUNames(schedulerTask, vJob.reqCardName)
+		chips := getPodUsedNPUNames(schedulerTask, vJob.reqCardName)
 		cards = append(cards, chips...)
 	}
 	if len(cards) == 0 {
@@ -232,8 +226,8 @@ func (vJob *VJob) GetVJobUsedNPUNames(ssnJob *api.JobInfo) (string, error) {
 	return cards[0], nil
 }
 
-// IsVJobInDeviceInfo todo function to be completed
-func (vJob *VJob) IsVJobInDeviceInfo(node plugin.NPUNode) bool {
+// isVJobInDeviceInfo todo function to be completed
+func (vJob *VJob) isVJobInDeviceInfo(node plugin.NPUNode) bool {
 	return false
 }
 

@@ -51,8 +51,9 @@ const (
 	VNPUScoreWeight = 64
 )
 
+// ComVNPU vnpu struct
 type ComVNPU struct {
-	*VNPUHandler
+	*ComVNPUHandler
 	// The vNPU chip divide name. Like huawei.com/Ascend910-16c,huawei.com/Ascend910-8c and so on.
 	DivideKinds []string
 	// divide vNPU coefficient for each chip.
@@ -61,22 +62,24 @@ type ComVNPU struct {
 	NPUCardCoreKey string
 }
 
-type VNPUHandler struct {
+// ComVNPUHandler vnpu handler
+type ComVNPUHandler struct {
 	*Action
 	vNodes map[string]VNode
 	base.NPUHandler
 }
 
 type staticVNPUHandler struct {
-	*VNPUHandler
+	*ComVNPUHandler
 }
 
 type dynamicVNPUHandler struct {
-	*VNPUHandler
+	*ComVNPUHandler
 	*VCache
 	dpVConfigMap *util.ComConfigMap
 }
 
+// VResource resource dimensions
 type VResource struct {
 	Aicore int
 	Aicpu  int
@@ -88,6 +91,7 @@ type VResource struct {
 	Jpege  int
 }
 
+// VChip vnpu chip
 type VChip struct {
 	cardName          string
 	cardType          string
@@ -101,6 +105,7 @@ type VChip struct {
 	vGroupFragNum     int
 }
 
+// VNode vnpu node
 type VNode struct {
 	nodeName           string
 	nodeCardType       string
@@ -111,20 +116,22 @@ type VNode struct {
 	nodeUnsegmentedRes VResource
 }
 
+// Action vnpu actions
 type Action struct {
 	template map[string]VResource
 }
 
+// VCache vnpu cache
 type VCache struct {
 	vConfigMap *util.ComConfigMap
 	vJobs      map[api.JobID]VJob
 	checkCode  string
 }
 
+// VJob vnpu job
 type VJob struct {
 	jobUID    api.JobID
 	jobStatus string
-	//jobTaskStatus []v1.PodPhase
 	reqVNPUType   string
 	reqNodeName   string
 	reqCardName   string
@@ -137,6 +144,7 @@ type VJob struct {
 	updateTime    int64
 }
 
+// VJobList struct for sorting
 type VJobList []VJob
 
 type dpvConfigMap struct {
