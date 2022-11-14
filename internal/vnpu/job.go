@@ -27,7 +27,7 @@ import (
 
 func (vJob *VJob) initVJobStatus(divideKinds []string) error {
 	if !vJob.IsJobValidVNPUJob(divideKinds) {
-		return fmt.Errorf("vJob %s is not valid vnpu job, should not be put into cache")
+		return fmt.Errorf("vJob %s is not valid vnpu job, should not be put into cache", vJob.jobUID)
 	}
 	vJob.setVJobStatus(VJobStatusUnhandled)
 	return nil

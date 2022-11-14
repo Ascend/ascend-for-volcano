@@ -128,7 +128,7 @@ func (vCache *VCache) getVCacheCMData() map[string]string {
 
 // GetAndSortNotPreAllocVJobsFromCache get and sort NotPreAlloc VJobs from cache
 func (vCache *VCache) GetAndSortNotPreAllocVJobsFromCache(env *plugin.ScheduleEnv) []VJob {
-	klog.V(util.LogInfoLev).Info("GetAndSort jobs of %s in cache", VJobStatusNotPreSegmented)
+	klog.V(util.LogInfoLev).Infof("GetAndSort jobs of %s in cache", VJobStatusNotPreSegmented)
 	vJobsToBePreAlloc := vCache.getNeedAllocVJobsFromCache(env)
 	vJobsToBePreAllocSorted := vCache.sortNeedAllocVJobsByAllocTime(vJobsToBePreAlloc)
 	return vJobsToBePreAllocSorted
@@ -139,7 +139,7 @@ func (vCache *VCache) getNeedAllocVJobsFromCache(env *plugin.ScheduleEnv) []VJob
 	for jobUID, vJob := range vCache.vJobs {
 		_, ok := env.Jobs[jobUID]
 		if !ok || vJob.jobStatus != VJobStatusNotPreSegmented {
-			klog.V(util.LogDebugLev).Info("vJob %s not in session, so skip preAlloc check", jobUID)
+			klog.V(util.LogDebugLev).Infof("vJob %s not in session, so skip preAlloc check", jobUID)
 			continue
 		}
 		vJobsToBePreAlloc = append(vJobsToBePreAlloc, vJob)
