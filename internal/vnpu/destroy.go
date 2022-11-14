@@ -17,6 +17,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
+// Destroy destroy actions for vnpu jobs
 func (action *Action) Destroy(vCache *VCache, ssn *framework.Session, env *plugin.ScheduleEnv) {
 	action.dealAllocated(vCache, env, ssn)
 	action.dealDestroying(vCache, env)

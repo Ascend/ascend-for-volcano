@@ -18,6 +18,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
+// Initialize initialize template
 func (action *Action) Initialize(template map[string]VResource) {
 	action.template = template
 }
@@ -118,7 +119,7 @@ func (action *Action) addFailedPreAllocJobResBackToDevice(vJob VJob, vNodes map[
 func (action *Action) stateTransferPreSegmentedBackward(vJob VJob, env *plugin.ScheduleEnv) bool {
 	_, ok := env.Jobs[vJob.jobUID]
 	elapsedTime := time.Now().Unix() - vJob.updateTime
-	return ok && vJob.jobStatus == VJobStatusSegmented && elapsedTime > 10
+	return ok && vJob.jobStatus == VJobStatusSegmented && elapsedTime > PreAllocateFailureWaitTime
 }
 
 func (action *Action) preAllocateVJob(vJob *VJob, vNodes map[string]VNode) (*VNode, *VChip, error) {
