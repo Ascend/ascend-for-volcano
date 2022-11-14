@@ -130,8 +130,8 @@ type VCache struct {
 
 // VJob vnpu job
 type VJob struct {
-	jobUID    api.JobID
-	jobStatus string
+	jobUID        api.JobID
+	jobStatus     string
 	reqVNPUType   string
 	reqNodeName   string
 	reqCardName   string
