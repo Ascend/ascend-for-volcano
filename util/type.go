@@ -3,7 +3,11 @@
 // Package util is using for the total variable.
 package util
 
-import "volcano.sh/volcano/pkg/scheduler/api"
+import (
+	"k8s.io/api/core/v1"
+	"volcano.sh/apis/pkg/apis/scheduling"
+	"volcano.sh/volcano/pkg/scheduler/api"
+)
 
 const (
 	// LogErrorLev for log error.
@@ -30,7 +34,7 @@ const (
 	BitSize64 = 64
 	// NPUHexKilo for const 1000,volcano frame used.
 	NPUHexKilo = 1000
-	// NPUCardPreName for NPU card pre-name.
+	// NPUCardPreName for NPU card pre-Name.
 	NPUCardPreName = "huawei.com/Ascend"
 	// ArchSelector MindX-dl arch selector.
 	ArchSelector = "host-arch"
@@ -74,7 +78,12 @@ const (
 	// AscendNPUPodRealUse for NPU pod real use cards.
 	AscendNPUPodRealUse = "huawei.com/AscendReal"
 
-	// DevInfoNameSpace device-plugin install namespace
+	// SegmentEnable for VNPU segment enable flag. Default is "false".
+	SegmentEnable = "presetVirtualDevice"
+	// SegmentNoEnable SegmentEnable not enable.
+	SegmentNoEnable = "SegmentEnable not enable"
+
+	// DevInfoNameSpace device-plugin install Namespace
 	DevInfoNameSpace = "kube-system"
 	// DevInfoPreName like "mindx-dl-deviceinfo-ubuntu"
 	DevInfoPreName = "mindx-dl-deviceinfo-"
@@ -115,7 +124,10 @@ type ComJob struct {
 type NPUJob struct {
 	ReqNPUName string
 	ReqNPUNum  int
-	// the mapKey is taskID,not name.
+	PGStatus   scheduling.PodGroupPhase
+	TaskStatus []v1.PodPhase
+	CreateTime int64
+	// the mapKey is taskID,not Name.
 	Tasks map[string]NPUTask
 }
 
@@ -123,4 +135,11 @@ type NPUJob struct {
 type SchedulerJobAttr struct {
 	ComJob
 	*NPUJob
+}
+
+// ComConfigMap common config map
+type ComConfigMap struct {
+	Name      string
+	Namespace string
+	Data      map[string]string
 }
