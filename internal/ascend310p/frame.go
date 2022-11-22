@@ -36,13 +36,8 @@ func New(npuName string) plugin.ISchedulerPlugin {
 func (tp *ascend310P) PreStartAction(ssn *framework.Session) error {
 	klog.V(util.LogInfoLev).Infof("Entering PreStartAction of %s", util.NPU310PCardName)
 	defer klog.V(util.LogInfoLev).Infof("Leaving PreStartAction of %s", util.NPU310PCardName)
-	if tp == nil || ssn == nil {
+	if tp == nil || ssn == nil || tp.FrameAttr.KubeClient == nil {
 		return fmt.Errorf("%s handler not enabled or ssn is nil: %s", util.NPU310PCardName, util.ArgumentError)
-	}
-	reschEnable, ok := tp.SchedulerJobAttr.Label[rescheduling.JobRescheduleLabelKey]
-	if !ok || reschEnable == rescheduling.JobOffRescheduleLabelValue {
-		klog.V(util.LogErrorLev).Infof("%s RescheduleLabel not enabled", util.NPU310PCardName)
-		return nil
 	}
 	tp.reHandle = rescheduling.New(&tp.ScheduleEnv, rescheduling.CmFaultJob310PKind)
 	if tp.reHandle == nil {
