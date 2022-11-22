@@ -84,7 +84,7 @@ func (tp *module910x8) PreStartAction(ssn *framework.Session) error {
 	moduleFullName := util.NPU910CardName + util.ModuleAcceleratorType
 	klog.V(util.LogInfoLev).Infof("Entering PreStartAction of %s...", moduleFullName)
 	defer klog.V(util.LogInfoLev).Infof("Leaving PreStartAction of %s", moduleFullName)
-	if tp == nil || ssn == nil {
+	if tp == nil || ssn == nil || tp.FrameAttr.KubeClient == nil {
 		return fmt.Errorf("%s handler not enabled or ssn is nil: %s", moduleFullName, util.ArgumentError)
 	}
 	tp.reHandle = rescheduling.New(&tp.ScheduleEnv, rescheduling.CmFaultJob910x8Kind)

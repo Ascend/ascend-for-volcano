@@ -274,7 +274,7 @@ func buildAscend310PreStartActionTest2() ascend310PreStartActionTests {
 			ssn:      test.FakeSSNReSchedule(),
 			addCache: false,
 		},
-		wantErr: false,
+		wantErr: true,
 	}
 	test2.fields.NPUHandler.SchedulerJobAttr.Label = map[string]string{rescheduling.
 		JobRescheduleLabelKey: rescheduling.JobOffRescheduleLabelValue}
@@ -319,7 +319,7 @@ func buildAscend310PreStartActionTest3() ascend310PreStartActionTests {
 			cacheFuncAfter8:  func() { itest.PatchReset(tmpPatch8) },
 			cacheFuncAfter9:  func() { itest.PatchReset(tmpPatch9) },
 		},
-		wantErr: false,
+		wantErr: true,
 	}
 	test3.fields.NPUHandler.SchedulerJobAttr.Label = map[string]string{rescheduling.
 		JobRescheduleLabelKey: rescheduling.JobGraceRescheduleLabelValue}

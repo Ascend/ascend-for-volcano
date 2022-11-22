@@ -458,7 +458,7 @@ func buildCard910x2PreStartActionTest2() card910x2PreStartActionTests {
 			ssn:      test.FakeSSNReSchedule(),
 			addCache: false,
 		},
-		wantErr: false,
+		wantErr: true,
 	}
 	test2.fields.NPUHandler.SchedulerJobAttr.Label = map[string]string{rescheduling.
 		JobRescheduleLabelKey: rescheduling.JobOffRescheduleLabelValue}
@@ -504,7 +504,7 @@ func buildCard910x2PreStartActionTest3() card910x2PreStartActionTests {
 			cacheFuncAfter8:  func() { itest.PatchReset(tmpPatch8) },
 			cacheFuncAfter9:  func() { itest.PatchReset(tmpPatch9) },
 		},
-		wantErr: false,
+		wantErr: true,
 	}
 	test3.fields.NPUHandler.SchedulerJobAttr.Label = map[string]string{rescheduling.
 		JobRescheduleLabelKey: rescheduling.JobGraceRescheduleLabelValue}
