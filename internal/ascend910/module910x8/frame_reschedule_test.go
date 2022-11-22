@@ -145,7 +145,7 @@ func buildModule910x8PreStartActionTest() module910x8PreStartActionTests {
 			reHandle: &reHandle,
 		},
 		args:    myArgs,
-		wantErr: false,
+		wantErr: true,
 	}
 	return test6
 }
