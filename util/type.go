@@ -62,6 +62,8 @@ const (
 	ModuleAcceleratorType = "module"
 	// ChipAcceleratorType for chip mode.
 	ChipAcceleratorType = "chip"
+	// HalfAcceleratorType for half mode
+	HalfAcceleratorType = "half"
 
 	// NPU910CardName for judge 910 npu resource.
 	NPU910CardName = "huawei.com/Ascend910"

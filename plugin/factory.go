@@ -124,16 +124,23 @@ func (vf *VolcanoFrame) AddDefaultSchedulerSelectorConfig() {
 		vf.Conf[0].Arguments = defaultSchedulerConfig
 		return
 	}
-
 	for k, v := range defaultSchedulerConfig {
-		value, ok := vf.Conf[0].Arguments[k]
+		confs, ok := vf.Conf[0].Arguments[k]
 		if ok {
-			vf.Conf[0].Arguments[k] = value + "|" + v
+			vf.Conf[0].Arguments[k] = addConf(confs, v)
 			continue
 		}
 		vf.Conf[0].Arguments[k] = v
 	}
-	return
+}
+
+func addConf(configs, value string) string {
+	for _, cfg := range strings.Split(value, "|") {
+		if !isSelectorContains(configs, cfg) {
+			configs += "|" + cfg
+		}
+	}
+	return configs
 }
 
 // InitVolcanoFrameFromSsn init frame parameter from ssn.

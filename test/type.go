@@ -16,7 +16,8 @@ import (
 const (
 	npuIndex2 = 2
 	npuIndex3 = 3
-	npuIndex4 = 4
+	// NPUIndex4 for re-scheduler tests
+	NPUIndex4 = 4
 	// NPUIndex5 for re-scheduler tests
 	NPUIndex5 = 5
 	// NPUIndex8 for re-scheduler tests

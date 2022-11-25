@@ -32,9 +32,9 @@ func FakeSSNReSchedule() *framework.Session {
 		StatusUpdater: &util.FakeStatusUpdater{},
 		VolumeBinder:  &util.FakeVolumeBinder{},
 
-		Recorder: record.NewFakeRecorder(npuIndex4),
+		Recorder: record.NewFakeRecorder(NPUIndex4),
 	}
-	nodes := FakeNormalTestNodes(npuIndex4)
+	nodes := FakeNormalTestNodes(NPUIndex4)
 	for _, node := range nodes {
 		schedulerCache.AddNode(node.Node)
 	}

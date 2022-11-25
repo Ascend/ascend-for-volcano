@@ -468,7 +468,7 @@ func (reScheduler *ReScheduler) SynCacheFaultNodeWithSession(cardName string) {
 
 // SynCacheFaultJobWithSession Synchronise FaultJobs in cache by updating the information using current session
 func (reScheduler *ReScheduler) SynCacheFaultJobWithSession(
-	ssn *framework.Session, cardName string, cardPreName string) {
+	ssn *framework.Session, _ string, _ string) {
 	klog.V(util.LogInfoLev).Infof("enter SynCacheFaultJobWithSession...")
 	defer klog.V(util.LogInfoLev).Infof("leave SynCacheFaultJobWithSession...")
 	if reScheduler == nil {
@@ -623,6 +623,10 @@ func (reScheduler *ReScheduler) RestartFaultJobs(ssn *framework.Session) error {
 	}
 	// 1. Get fault jobs, only faultJobs that haven't been evicted yet should be put into list
 	realFaultJobs, err := reScheduler.getRealFaultJobs()
+	if err != nil {
+		return fmt.Errorf("restartFaultJobs: %#v", err)
+	}
+
 	restartFaultJobs := reScheduler.getJobsToBeRestarted(realFaultJobs) // each job only triggers restart once
 	var newCacheJobs []FaultJob
 	var flag bool
@@ -638,9 +642,7 @@ func (reScheduler *ReScheduler) RestartFaultJobs(ssn *framework.Session) error {
 			newCacheJobs = append(newCacheJobs, fJob) // jobs no need to restart directly put back to cache FaultJobs
 		}
 	}
-	if err != nil {
-		return fmt.Errorf("restartFaultJobs: %#v", err)
-	}
+
 	klog.V(util.LogDebugLev).Infof("Jobs to be restarted: %#v", restartFaultJobs)
 	// 2. Restart fault jobs
 	for _, restartFaultJob := range restartFaultJobs {
@@ -683,7 +685,7 @@ func (reScheduler *ReScheduler) ScoreBestNPUNodes(task *api.TaskInfo, scoreMap m
 		return fmt.Errorf("task %s belongs to job %s which is not a fault job", task.Name, fJob.JobName)
 	}
 	hasOldNodeFlag := false
-	for nodeName, _ := range scoreMap {
+	for nodeName := range scoreMap {
 		for _, jobUseNode := range fJob.NodeNames {
 			if nodeName == jobUseNode {
 				klog.V(util.LogDebugLev).Infof("node %s is previously used by job", nodeName)
@@ -695,7 +697,7 @@ func (reScheduler *ReScheduler) ScoreBestNPUNodes(task *api.TaskInfo, scoreMap m
 		klog.V(util.LogInfoLev).Infof("no old node, no modifications on scoreMap")
 		return nil
 	}
-	for nodeName, _ := range scoreMap {
+	for nodeName := range scoreMap {
 		scoreMap[nodeName] = float64(0)
 		for _, jobUseNode := range fJob.NodeNames {
 			if nodeName == jobUseNode {
@@ -725,6 +727,7 @@ func (reScheduler *ReScheduler) UseAnnotation(task *api.TaskInfo, node *plugin.N
 	if fJob == nil {
 		return fmt.Errorf("no fJob %s in reScheduler cache", task.Job)
 	}
+
 	if fJob.ElasticScheduling == JobOnElasticScheduling {
 		klog.V(util.LogInfoLev).Infof("task %s is enabled with elastic scheduling, "+
 			"skip volcano rankIndex writing process", task.Name)
