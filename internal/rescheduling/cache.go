@@ -296,7 +296,7 @@ func (reCache *DealReSchedulerCache) WriteReSchedulerCacheToEnvCache(env *plugin
 	klog.V(util.LogDebugLev).Infof("cm checkCode: %s, calc checkCode: %s, check equal: %v", checkCode,
 		plugin.MakeDataHash(cmData), checkCode == plugin.MakeDataHash(cmData))
 	cmData[CmCheckCode] = checkCode
-	if jobType != CmFaultJob910x8Kind {
+	if jobType != CmFaultJob910x8Kind && jobType != CmFaultJob910x4Kind {
 		return nil
 	}
 	if err := reCache.writeRecoveryCacheToEnv(env); err != nil {
