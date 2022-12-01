@@ -275,7 +275,7 @@ func buildGIsJobInitialTest() []isJobInitialTest {
 		{
 			name: "01-IsJobInitial pending test",
 			args: isJobInitialArgs{job: tJob2},
-			want: false,
+			want: true,
 		},
 		{
 			name: "02-IsJobInitial test ok",

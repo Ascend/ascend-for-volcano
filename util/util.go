@@ -164,3 +164,21 @@ func RemoveSliceDuplicateElement(languages []string) []string {
 	}
 	return result
 }
+
+// RemoveCommonElement remove common element from s1
+func RemoveCommonElement(s1, s2 []int) []int {
+	var res []int
+	for _, e1 := range s1 {
+		existFlag := false
+		for _, e2 := range s2 {
+			if e1 == e2 {
+				existFlag = true
+				break
+			}
+		}
+		if !existFlag {
+			res = append(res, e1)
+		}
+	}
+	return res
+}

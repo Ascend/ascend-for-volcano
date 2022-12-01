@@ -193,15 +193,7 @@ func (sJob *SchedulerJob) InitSelfPluginByJobInfo(sHandle *ScheduleHandler) {
 
 // IsJobInitial Determine if the task is ready.
 func IsJobInitial(job *api.JobInfo) bool {
-	if job.ValidTaskNum() < job.MinAvailable {
-		return false
-	}
-
-	if job.PodGroup.Status.Phase != scheduling.PodGroupRunning {
-		klog.V(util.LogInfoLev).Infof("%s not running %#v", job.UID, job.PodGroup.Status.Phase)
-		return false
-	}
-	return true
+	return job.ValidTaskNum() >= job.MinAvailable
 }
 
 // Init the SchedulerJob's init.
@@ -351,9 +343,11 @@ func (sHandle *ScheduleHandler) JobValid(obj interface{}) *api.ValidateResult {
 			Message: fmt.Sprintf("validJobFn [%#v] failed:%#v", obj, reason)}
 	}
 	if !IsJobInitial(job) {
-		klog.V(util.LogDebugLev).Infof("%s job(%s) not ready:%#v.", PluginName, job.Name,
+		reason := "job is not ready"
+		klog.V(util.LogErrorLev).Infof("%s job(%s) not ready:%#v.", PluginName, job.Name,
 			job.PodGroup.Status.Phase)
-		return nil
+		return &api.ValidateResult{Pass: false, Reason: reason,
+			Message: fmt.Sprintf("validJobFn [%#v] failed:%#v", obj, reason)}
 	}
 	vcJob, ok := sHandle.Jobs[job.UID]
 	if !ok {

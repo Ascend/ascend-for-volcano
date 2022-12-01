@@ -106,7 +106,7 @@ func (reCache *DealReSchedulerCache) SetFaultJobsFromCM(jobType string) error {
 	}
 	faultJobData, ok := reCache.CMData[jobType]
 	if !ok {
-		return fmt.Errorf("reading %s data from reScheduler configmap failed", CmFaultJob910x8Kind)
+		return fmt.Errorf("reading %s data from reScheduler configmap failed", jobType)
 	}
 	faultJobs, err := reCache.getFaultJobsFromCM(faultJobData)
 	if err != nil {

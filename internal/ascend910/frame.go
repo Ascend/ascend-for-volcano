@@ -18,6 +18,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910/card910x2"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910/half910x4"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910/module910x8"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/base"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
@@ -40,6 +41,7 @@ func New(npuName string) plugin.ISchedulerPlugin {
 	npuPlugin.Kind = map[string]base.AscendHandler{}
 	npuPlugin.Kind[card910x2.SchedulerName] = card910x2.New(card910x2.SchedulerName)
 	npuPlugin.Kind[module910x8.SchedulerName] = module910x8.New(module910x8.SchedulerName)
+	npuPlugin.Kind[half910x4.SchedulerName] = half910x4.New(half910x4.SchedulerName)
 	return npuPlugin
 }
 
