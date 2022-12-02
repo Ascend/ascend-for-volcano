@@ -182,3 +182,20 @@ func RemoveCommonElement(s1, s2 []int) []int {
 	}
 	return res
 }
+
+// Add add resource
+func (vResource *VResource) Add(resource *VResource) {
+	vResource.Aicore += resource.Aicore
+	vResource.Aicpu += resource.Aicpu
+}
+
+// Sub sub resource
+func (vResource *VResource) Sub(resource *VResource) {
+	vResource.Aicore -= resource.Aicore
+	vResource.Aicpu -= resource.Aicpu
+}
+
+// BeGreater judge resource greater or equal to
+func (vResource VResource) BeGreater(resource VResource) bool {
+	return vResource.Aicore >= resource.Aicore && vResource.Aicpu >= resource.Aicpu
+}

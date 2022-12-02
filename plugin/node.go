@@ -70,6 +70,8 @@ type VNode struct {
 	TotalChipNum int
 	// FreeChipNum num of free chips get from device-info
 	FreeChipNum int
+	// TotalRes total resource on node
+	TotalRes util.VResource
 	// Chips map chipID to VChip class
 	Chips map[int]*VChip
 }
@@ -84,6 +86,9 @@ type VChip struct {
 	ID          []string
 	PodMap      map[string]*v1.Pod
 	SegmentFlag bool
+	TotalRes    util.VResource
+	UsedRes     util.VResource
+	FreeRes     util.VResource
 }
 
 // checkNodeDeviceInfo will be add more later
@@ -179,6 +184,9 @@ func (n *NPUNode) InitNPUNodeByNodeInf(npuNode *api.NodeInfo, kubeClient kuberne
 	}
 	for k, v := range data.DeviceList {
 		n.Annotation[k] = v
+	}
+	if setVNPUErr := n.setNodeVNPUInfo(npuNode); setVNPUErr != nil {
+		klog.V(util.LogDebugLev).Infof("setNodeVNPUInfo %s %v", npuNode.Name, setVNPUErr)
 	}
 	return nil
 }

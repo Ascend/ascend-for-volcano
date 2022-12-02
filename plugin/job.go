@@ -196,6 +196,11 @@ func IsJobInitial(job *api.JobInfo) bool {
 	return job.ValidTaskNum() >= job.MinAvailable
 }
 
+// IsJobRestarted used for rescheduling, judge if job restarted
+func IsJobRestarted(job *api.JobInfo) bool {
+	return IsJobInitial(job) && job.PodGroup.Status.Phase == scheduling.PodGroupRunning
+}
+
 // Init the SchedulerJob's init.
 func (sJob *SchedulerJob) Init(vcJob *api.JobInfo, sHandle *ScheduleHandler) error {
 	if sJob == nil || vcJob == nil {

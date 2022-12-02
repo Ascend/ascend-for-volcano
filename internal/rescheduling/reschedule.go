@@ -535,7 +535,7 @@ func (reScheduler *ReScheduler) SynCacheNodeRankOccMapWithSession(ssn *framework
 			if !ok {
 				newNodeRankOccMap[jobUID] = NodeRankOcc
 			}
-			if !fJob.IsFaultJob && plugin.IsJobInitial(ssnJob) { // delete none faultJobs
+			if !fJob.IsFaultJob && plugin.IsJobRestarted(ssnJob) { // delete none faultJobs
 				continue
 			}
 			newNodeRankOccMap[jobUID] = NodeRankOcc // only add faultJobs in the re-scheduling process
