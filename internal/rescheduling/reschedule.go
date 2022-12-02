@@ -390,7 +390,7 @@ func New(env *plugin.ScheduleEnv, jobType string) *ReScheduler {
 		klog.V(util.LogDebugLev).Infof("SetNodeHeartbeatFromCM: %#v", setHBErr)
 	}
 	// 2.4 Initialise ReScheduler.DealReSchedulerCache.AllocNodeRankOccurrenceMap by unmarshal data read from cm
-	if jobType == CmFaultJob910x8Kind {
+	if jobType == CmFaultJob910x8Kind || jobType == CmFaultJob910x4Kind {
 		if setNROErr := reSchedulerCache.SetNodeRankOccurrenceMapFromCM(); setNROErr != nil {
 			klog.V(util.LogDebugLev).Infof("SetNodeRankOccurrenceMapFromCM: %#v", setNROErr)
 		}
