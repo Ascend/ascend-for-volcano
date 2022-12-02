@@ -90,44 +90,68 @@ func TestValidNPUJob(t *testing.T) {
 	}
 }
 
-func buildUseAnnotationTestCases01() []itest.UseAnnotationTestCase {
-	return []itest.UseAnnotationTestCase{
-		{
-			Name: "01-UseAnnotation task will select the npu which is on the card that has 1 npu other than 2",
-			Task: test.FakeTaskWithResReq("pod0", util.NPU310CardName, 1),
-			Node: plugin.NPUNode{
+func buildUseAnnotationTestCase1() itest.UseAnnotationTestCase {
+	return itest.UseAnnotationTestCase{
+		Name: "01-UseAnnotation task will select the npu which is on the card that has 1 npu other than 2",
+		Task: test.FakeTaskWithResReq("pod0", util.NPU310CardName, 1),
+		Node: plugin.NPUNode{
+			CommonNode: plugin.CommonNode{
 				Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-4,Ascend310-5"},
 			},
-			PodAnno: "Ascend310-0",
-			WantNode: &plugin.NPUNode{
+		},
+		PodAnno: "Ascend310-0",
+		WantNode: &plugin.NPUNode{
+			CommonNode: plugin.CommonNode{
 				Allocate: map[v1.ResourceName]float64{util.NPU310CardName: npuNum2 * util.NPUHexKilo},
 			},
 		},
-		{
-			Name: "02-UseAnnotation task will select the npu which is on the card that has 2 npu other than 3",
-			Task: test.FakeTaskWithResReq("pod0", util.NPU310CardName, 1),
-			Node: plugin.NPUNode{
+	}
+}
+
+func buildUseAnnotationTestCase2() itest.UseAnnotationTestCase {
+	return itest.UseAnnotationTestCase{
+		Name: "02-UseAnnotation task will select the npu which is on the card that has 2 npu other than 3",
+		Task: test.FakeTaskWithResReq("pod0", util.NPU310CardName, 1),
+		Node: plugin.NPUNode{
+			CommonNode: plugin.CommonNode{
 				Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1,Ascend310-4," +
 					"Ascend310-5,Ascend310-6"},
 			},
-			PodAnno: "Ascend310-0",
-			WantNode: &plugin.NPUNode{
+		},
+		PodAnno: "Ascend310-0",
+		WantNode: &plugin.NPUNode{
+			CommonNode: plugin.CommonNode{
 				Annotation: map[string]string{util.NPU310CardName: "Ascend310-1,Ascend310-4,Ascend310-5,Ascend310-6"},
 			},
 		},
-		{
-			Name: "03-UseAnnotation task will select the npu which is on the card that has 3 npu other than 4",
-			Task: test.FakeTaskWithResReq("pod0", util.NPU310CardName, 1),
-			Node: plugin.NPUNode{
+	}
+}
+
+func buildUseAnnotationTestCase3() itest.UseAnnotationTestCase {
+	return itest.UseAnnotationTestCase{
+		Name: "03-UseAnnotation task will select the npu which is on the card that has 3 npu other than 4",
+		Task: test.FakeTaskWithResReq("pod0", util.NPU310CardName, 1),
+		Node: plugin.NPUNode{
+			CommonNode: plugin.CommonNode{
 				Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1,Ascend310-2,Ascend310-4," +
 					"Ascend310-5,Ascend310-6,Ascend310-7"},
 			},
-			PodAnno: "Ascend310-0",
-			WantNode: &plugin.NPUNode{
+		},
+		PodAnno: "Ascend310-0",
+		WantNode: &plugin.NPUNode{
+			CommonNode: plugin.CommonNode{
 				Annotation: map[string]string{util.NPU310CardName: "Ascend310-1,Ascend310-2,Ascend310-4,Ascend310-5," +
 					"Ascend310-6,Ascend310-7"},
 			},
 		},
+	}
+}
+
+func buildUseAnnotationTestCases() []itest.UseAnnotationTestCase {
+	return []itest.UseAnnotationTestCase{
+		buildUseAnnotationTestCase1(),
+		buildUseAnnotationTestCase2(),
+		buildUseAnnotationTestCase3(),
 	}
 }
 
@@ -138,7 +162,7 @@ func TestUseAnnotation(t *testing.T) {
 	test.SetFakeJobResRequest(job, util.NPU310CardName, "1")
 	attr := itest.FakeSchedulerJobAttrByJob(job)
 	npu.SetSchedulerAttr(attr)
-	testCases := buildUseAnnotationTestCases01()
+	testCases := buildUseAnnotationTestCases()
 	for _, tt := range testCases {
 		t.Run(tt.Name, func(t *testing.T) {
 			node := npu.UseAnnotation(tt.Task, tt.Node)

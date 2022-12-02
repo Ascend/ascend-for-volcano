@@ -106,8 +106,10 @@ func buildCheckNodeNPUByTaskTestCases() []itest.CheckNodeNPUByTaskTestCase {
 			Name: "01-CheckNodeNPUByTask return err when task is nil",
 			Task: nil,
 			Node: plugin.NPUNode{
-				Name:       "node1",
-				Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1"},
+				CommonNode: plugin.CommonNode{
+					Name:       "node1",
+					Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1"},
+				},
 			},
 			WantErr: errors.New(util.ArgumentError),
 		},
@@ -115,8 +117,10 @@ func buildCheckNodeNPUByTaskTestCases() []itest.CheckNodeNPUByTaskTestCase {
 			Name: "02-CheckNodeNPUByTask return err when node annotation is nil",
 			Task: test.FakeTaskWithResReq("pod1", util.NPU310CardName, util.NPUIndex2),
 			Node: plugin.NPUNode{
-				Name:       "node1",
-				Annotation: nil,
+				CommonNode: plugin.CommonNode{
+					Name:       "node1",
+					Annotation: nil,
+				},
 			},
 			WantErr: errors.New(util.ArgumentError),
 		},
@@ -184,14 +188,20 @@ func buildUseAnnotationTestCases() []itest.UseAnnotationTestCase {
 			Name: "01-ScoreBestNPUNodes return nil when task is nil",
 			Task: nil,
 			Node: plugin.NPUNode{
-				Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1"},
+				CommonNode: plugin.CommonNode{
+					Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1"},
+				},
 			},
 			WantNode: nil,
 		},
 		{
-			Name:     "02-ScoreBestNPUNodes return nil when node annotation is nil",
-			Task:     test.FakeNormalTestTask("pod1", "node1", "vcjob"),
-			Node:     plugin.NPUNode{Annotation: nil},
+			Name: "02-ScoreBestNPUNodes return nil when node annotation is nil",
+			Task: test.FakeNormalTestTask("pod1", "node1", "vcjob"),
+			Node: plugin.NPUNode{
+				CommonNode: plugin.CommonNode{
+					Annotation: nil,
+				},
+			},
 			WantNode: nil,
 		},
 	}

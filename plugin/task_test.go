@@ -193,7 +193,7 @@ func makeNPUDeallocateFuncTest07(vTask *api.TaskInfo) npuDeallocateFuncTest {
 		},
 	}
 	tmpNPUNode := NPUNode{
-		Annotation: nil,
+		CommonNode: CommonNode{Annotation: nil},
 	}
 	return npuDeallocateFuncTest{
 		name: "07-NPUAllocateFunc node no annotation value test.",
@@ -215,7 +215,9 @@ func makeNPUDeallocateFuncTest08(vTask *api.TaskInfo) npuDeallocateFuncTest {
 		},
 	}
 	tmpNPUNode := NPUNode{
-		Annotation: map[string]string{test.NPU910CardName: ""},
+		CommonNode: CommonNode{
+			Annotation: map[string]string{test.NPU910CardName: ""},
+		},
 	}
 	return npuDeallocateFuncTest{
 		name: "08-NPUAllocateFunc node has empty annotation value test.",
@@ -235,7 +237,9 @@ func makeNPUDeallocateFuncTest09(vTask *api.TaskInfo) npuDeallocateFuncTest {
 		},
 	}
 	tmpNPUNode := NPUNode{
-		Annotation: map[string]string{test.NPU910CardName: "Ascend910-3"},
+		CommonNode: CommonNode{
+			Annotation: map[string]string{test.NPU910CardName: "Ascend910-3"},
+		},
 	}
 	return npuDeallocateFuncTest{
 		name: "09-NPUAllocateFunc ok test.",

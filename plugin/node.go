@@ -41,6 +41,51 @@ type NodeDeviceInfoWithDevPlugin struct {
 	CheckCode  string
 }
 
+// NPUNode the plugin define node info.
+type NPUNode struct {
+	CommonNode
+	VNode
+}
+
+// CommonNode common npu node properties
+type CommonNode struct {
+	Name       string
+	Capability map[v1.ResourceName]float64
+	Allocate   map[v1.ResourceName]float64
+	Idle       map[v1.ResourceName]float64
+	Annotation map[string]string
+	Label      map[string]string
+}
+
+// VNode vnpu node class
+type VNode struct {
+	nodeName string
+	// ChipKind Ascend910/310/310p
+	ChipKind string
+	// ServerType Ascend310p-10-dual cardType-cardCoreNum-duo
+	ServerType string
+	// AccType module/half/card only for 910, default module
+	AccType string
+	// TotalChipNum num of total chips
+	TotalChipNum int
+	// FreeChipNum num of free chips get from device-info
+	FreeChipNum int
+	// Chips map chipID to VChip class
+	Chips map[int]*VChip
+}
+
+// VChip vnpu chip class
+type VChip struct {
+	Name string
+	// Kind Ascend910/Ascend310/Ascend310P
+	Kind        string
+	isDual      bool
+	CoreNum     int
+	ID          []string
+	PodMap      map[string]*v1.Pod
+	SegmentFlag bool
+}
+
 // checkNodeDeviceInfo will be add more later
 func checkNodeDeviceInfo(nodeData *NodeDeviceInfoWithDevPlugin) error {
 	if nodeData == nil {

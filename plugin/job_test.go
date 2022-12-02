@@ -506,9 +506,11 @@ type CheckNodeNumTest struct {
 
 func buildCheckNodeNumTest() []CheckNodeNumTest {
 	tTasks := test.FakeNormalTestTasks(1)
-	tNode1 := NPUNode{Name: "testNode1", Idle: map[v1.ResourceName]float64{util.NPU910CardName: util.NPUIndex2}}
-	tNode2 := NPUNode{Name: "testNode2", Idle: map[v1.ResourceName]float64{
-		util.NPU910CardName: util.NPUIndex8 * util.NPUHexKilo}}
+	tNode1 := NPUNode{CommonNode: CommonNode{
+		Name: "testNode1", Idle: map[v1.ResourceName]float64{util.NPU910CardName: util.NPUIndex2}},
+	}
+	tNode2 := NPUNode{CommonNode: CommonNode{Name: "testNode2", Idle: map[v1.ResourceName]float64{
+		util.NPU910CardName: util.NPUIndex8 * util.NPUHexKilo}}}
 	tests := []CheckNodeNumTest{
 		{
 			name:    "01-CheckNodeNum no task request test.",
@@ -520,7 +522,8 @@ func buildCheckNodeNumTest() []CheckNodeNumTest {
 			name: "02-CheckNodeNum no task test.",
 			fields: schedulerJobFields{SchedulerJobAttr: util.SchedulerJobAttr{
 				NPUJob: &util.NPUJob{Tasks: map[string]util.NPUTask{}}}},
-			args:    CheckNodeNumArgs{taskInfo: tTasks[0], vcNode: NPUNode{Name: "testNode1", Idle: nil}},
+			args: CheckNodeNumArgs{taskInfo: tTasks[0], vcNode: NPUNode{CommonNode{Name: "testNode1", Idle: nil},
+				VNode{}}},
 			wantErr: true,
 		},
 		{
@@ -528,7 +531,8 @@ func buildCheckNodeNumTest() []CheckNodeNumTest {
 			fields: schedulerJobFields{SchedulerJobAttr: util.SchedulerJobAttr{NPUJob: &util.
 				NPUJob{Tasks: map[string]util.NPUTask{string(tTasks[0].UID): {TaskName: tTasks[0].Name,
 				ReqNPUName: util.NPU910CardName, ReqNPUNum: util.NPUIndex8}}}}},
-			args:    CheckNodeNumArgs{taskInfo: tTasks[0], vcNode: NPUNode{Name: "testNode1", Idle: nil}},
+			args: CheckNodeNumArgs{taskInfo: tTasks[0], vcNode: NPUNode{CommonNode{Name: "testNode1", Idle: nil},
+				VNode{}}},
 			wantErr: true,
 		},
 		{

@@ -431,16 +431,18 @@ func fakeNPUNodeUnhealthy(nodeName string, unHealthyCard []string, networkUnheal
 	}
 
 	node0 := plugin.NPUNode{
-		Name:       nodeName,
-		Capability: nil,
-		Allocate:   nil,
-		Idle:       nil,
-		Annotation: map[string]string{
-			util.NPU910CardName: strings.Join(healthyCards, ","),
-			util.NPU910CardName + "-" + rescheduling.CardUnhealthy:        strings.Join(unHealthyCard, ","),
-			util.NPU910CardName + "-" + rescheduling.CardNetworkUnhealthy: strings.Join(networkUnhealthyCard, ","),
+		CommonNode: plugin.CommonNode{
+			Name:       nodeName,
+			Capability: nil,
+			Allocate:   nil,
+			Idle:       nil,
+			Annotation: map[string]string{
+				util.NPU910CardName: strings.Join(healthyCards, ","),
+				util.NPU910CardName + "-" + rescheduling.CardUnhealthy:        strings.Join(unHealthyCard, ","),
+				util.NPU910CardName + "-" + rescheduling.CardNetworkUnhealthy: strings.Join(networkUnhealthyCard, ","),
+			},
+			Label: nil,
 		},
-		Label: nil,
 	}
 	return node0
 }

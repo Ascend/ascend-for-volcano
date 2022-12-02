@@ -68,12 +68,14 @@ func TestCheckNPUResourceStable(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			n := NPUNode{
-				Name:       tt.fields.Name,
-				Capability: tt.fields.Capability,
-				Allocate:   tt.fields.Allocate,
-				Idle:       tt.fields.Idle,
-				Annotation: tt.fields.Annotation,
-				Label:      tt.fields.Label,
+				CommonNode: CommonNode{
+					Name:       tt.fields.Name,
+					Capability: tt.fields.Capability,
+					Allocate:   tt.fields.Allocate,
+					Idle:       tt.fields.Idle,
+					Annotation: tt.fields.Annotation,
+					Label:      tt.fields.Label,
+				},
 			}
 			if err := n.CheckNPUResourceStable(tt.args.vcJob); (err != nil) != tt.wantErr {
 				t.Errorf("CheckNPUResourceStable() error = %v, wantErr %v", err, tt.wantErr)
@@ -258,12 +260,14 @@ func TestInitNPUNodeByNodeInf(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			n := &NPUNode{
-				Name:       tt.fields.Name,
-				Capability: tt.fields.Capability,
-				Allocate:   tt.fields.Allocate,
-				Idle:       tt.fields.Idle,
-				Annotation: tt.fields.Annotation,
-				Label:      tt.fields.Label,
+				CommonNode: CommonNode{
+					Name:       tt.fields.Name,
+					Capability: tt.fields.Capability,
+					Allocate:   tt.fields.Allocate,
+					Idle:       tt.fields.Idle,
+					Annotation: tt.fields.Annotation,
+					Label:      tt.fields.Label,
+				},
 			}
 			if err := n.InitNPUNodeByNodeInf(tt.args.npuNode, tt.args.kubeClient); (err != nil) != tt.wantErr {
 				t.Errorf("InitNPUNodeByNodeInf() error = %v, wantErr %v", err, tt.wantErr)
@@ -317,12 +321,14 @@ func TestCheckNPUResourceStableReScheduling(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			n := NPUNode{
-				Name:       tt.fields.Name,
-				Capability: tt.fields.Capability,
-				Allocate:   tt.fields.Allocate,
-				Idle:       tt.fields.Idle,
-				Annotation: tt.fields.Annotation,
-				Label:      tt.fields.Label,
+				CommonNode: CommonNode{
+					Name:       tt.fields.Name,
+					Capability: tt.fields.Capability,
+					Allocate:   tt.fields.Allocate,
+					Idle:       tt.fields.Idle,
+					Annotation: tt.fields.Annotation,
+					Label:      tt.fields.Label,
+				},
 			}
 			if err := n.CheckNPUResourceStableReScheduling(tt.args.vcJob); (err != nil) != tt.wantErr {
 				t.Errorf("CheckNPUResourceStableReScheduling() error = %v, wantErr %v", err, tt.wantErr)
