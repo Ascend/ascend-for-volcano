@@ -6,7 +6,6 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 package plugin
 
 import (
-	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -29,16 +28,6 @@ const (
 type SchedulerJob struct {
 	util.SchedulerJobAttr
 	handler ISchedulerPlugin
-}
-
-// NPUNode the plugin define node info.
-type NPUNode struct {
-	Name       string
-	Capability map[v1.ResourceName]float64
-	Allocate   map[v1.ResourceName]float64
-	Idle       map[v1.ResourceName]float64
-	Annotation map[string]string
-	Label      map[string]string
 }
 
 // VolcanoFrame passed in by the volcano frame.

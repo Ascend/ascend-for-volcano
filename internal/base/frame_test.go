@@ -113,54 +113,84 @@ func TestValidNPUJob(t *testing.T) {
 	}
 }
 
-func buildCheckNodeNPUByTaskTestCases() []itest.CheckNodeNPUByTaskTestCase {
-	return []itest.CheckNodeNPUByTaskTestCase{
-		{
-			Name: "01-CheckNodeNPUByTask when return nil node npu meet task req",
-			Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex2),
-			Node: plugin.NPUNode{
+func buildCheckNodeNPUByTaskTestCase1() itest.CheckNodeNPUByTaskTestCase {
+	return itest.CheckNodeNPUByTaskTestCase{
+		Name: "01-CheckNodeNPUByTask when return nil node npu meet task req",
+		Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex2),
+		Node: plugin.NPUNode{
+			CommonNode: plugin.CommonNode{
 				Name:       "node1",
 				Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0,Ascend310P-1"},
 			},
-			WantErr: nil,
 		},
-		{
-			Name: "02-CheckNodeNPUByTask return err when task is not npu task",
-			Task: test.FakeTaskWithResReq("pod1", util.NPU310PCardName, util.NPUIndex2),
-			Node: plugin.NPUNode{
+		WantErr: nil,
+	}
+}
+
+func buildCheckNodeNPUByTaskTestCase2() itest.CheckNodeNPUByTaskTestCase {
+	return itest.CheckNodeNPUByTaskTestCase{
+		Name: "02-CheckNodeNPUByTask return err when task is not npu task",
+		Task: test.FakeTaskWithResReq("pod1", util.NPU310PCardName, util.NPUIndex2),
+		Node: plugin.NPUNode{
+			CommonNode: plugin.CommonNode{
 				Name:       "node1",
 				Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0,Ascend310P-1"},
 			},
-			WantErr: errors.New("task<pod1> is not npu task"),
 		},
-		{
-			Name: "03-CheckNodeNPUByTask return err when node has no req npu",
-			Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex2),
-			Node: plugin.NPUNode{
+		WantErr: errors.New("task<pod1> is not npu task"),
+	}
+}
+
+func buildCheckNodeNPUByTaskTestCase3() itest.CheckNodeNPUByTaskTestCase {
+	return itest.CheckNodeNPUByTaskTestCase{
+		Name: "03-CheckNodeNPUByTask return err when node has no req npu",
+		Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex2),
+		Node: plugin.NPUNode{
+			CommonNode: plugin.CommonNode{
 				Name:       "node1",
 				Annotation: map[string]string{util.NPU910CardName: "Ascend310P-0,Ascend310P-1"},
 			},
-			WantErr: errors.New("getUsableTopFromNode node<node1> don't have npu<huawei.com/Ascend310P>"),
 		},
-		{
-			Name: "04-CheckNodeNPUByTask return err when node has no req npu",
-			Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex2),
-			Node: plugin.NPUNode{
+		WantErr: errors.New("getUsableTopFromNode node<node1> don't have npu<huawei.com/Ascend310P>"),
+	}
+}
+
+func buildCheckNodeNPUByTaskTestCase4() itest.CheckNodeNPUByTaskTestCase {
+	return itest.CheckNodeNPUByTaskTestCase{
+		Name: "04-CheckNodeNPUByTask return err when node has no req npu",
+		Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex2),
+		Node: plugin.NPUNode{
+			CommonNode: plugin.CommonNode{
 				Name:       "node1",
 				Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0, Ascend310P-1"},
 			},
-			WantErr: fmt.Errorf("getUsableTopFromNode err: top string<Ascend310P-0, Ascend310P-1> " +
-				"convert faild"),
 		},
-		{
-			Name: "05-CheckNodeNPUByTask return err when node has no enough npu",
-			Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex2),
-			Node: plugin.NPUNode{
+		WantErr: fmt.Errorf("getUsableTopFromNode err: top string<Ascend310P-0, Ascend310P-1> " +
+			"convert faild"),
+	}
+}
+
+func buildCheckNodeNPUByTaskTestCase5() itest.CheckNodeNPUByTaskTestCase {
+	return itest.CheckNodeNPUByTaskTestCase{
+		Name: "05-CheckNodeNPUByTask return err when node has no enough npu",
+		Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex2),
+		Node: plugin.NPUNode{
+			CommonNode: plugin.CommonNode{
 				Name:       "node1",
 				Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0"},
 			},
-			WantErr: errors.New("judgeNodeAndTaskNPU node don't have enough resource, req<2>, idle<1>"),
 		},
+		WantErr: errors.New("judgeNodeAndTaskNPU node don't have enough resource, req<2>, idle<1>"),
+	}
+}
+
+func buildCheckNodeNPUByTaskTestCases() []itest.CheckNodeNPUByTaskTestCase {
+	return []itest.CheckNodeNPUByTaskTestCase{
+		buildCheckNodeNPUByTaskTestCase1(),
+		buildCheckNodeNPUByTaskTestCase2(),
+		buildCheckNodeNPUByTaskTestCase3(),
+		buildCheckNodeNPUByTaskTestCase4(),
+		buildCheckNodeNPUByTaskTestCase5(),
 	}
 }
 
@@ -205,21 +235,27 @@ func buildUseAnnotationTestCases01() []itest.UseAnnotationTestCase {
 			Name: "01-UseAnnotation success when node resource meet task req",
 			Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex2),
 			Node: plugin.NPUNode{
-				Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0,Ascend310P-1"},
-				Allocate:   map[v1.ResourceName]float64{util.NPU310PCardName: util.NPUIndex2 * util.NPUHexKilo},
+				CommonNode: plugin.CommonNode{
+					Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0,Ascend310P-1"},
+					Allocate:   map[v1.ResourceName]float64{util.NPU310PCardName: util.NPUIndex2 * util.NPUHexKilo},
+				},
 			},
 			PodAnno: "Ascend310P-0,Ascend310P-1",
 			WantNode: &plugin.NPUNode{
-				Allocate:   map[v1.ResourceName]float64{util.NPU310PCardName: util.NPUIndex2 * util.NPUHexKilo},
-				Annotation: map[string]string{util.NPU310PCardName: ""},
+				CommonNode: plugin.CommonNode{
+					Allocate:   map[v1.ResourceName]float64{util.NPU310PCardName: util.NPUIndex2 * util.NPUHexKilo},
+					Annotation: map[string]string{util.NPU310PCardName: ""},
+				},
 			},
 		},
 		{
 			Name: "02-UseAnnotation return err when task is nil",
 			Task: nil,
 			Node: plugin.NPUNode{
-				Annotation: map[string]string{util.NPU310PCardName: ""},
-				Allocate:   map[v1.ResourceName]float64{util.NPU310PCardName: 0},
+				CommonNode: plugin.CommonNode{
+					Annotation: map[string]string{util.NPU310PCardName: ""},
+					Allocate:   map[v1.ResourceName]float64{util.NPU310PCardName: 0},
+				},
 			},
 			PodAnno:  "",
 			WantNode: nil,
@@ -228,8 +264,10 @@ func buildUseAnnotationTestCases01() []itest.UseAnnotationTestCase {
 			Name: "03-UseAnnotation return err when node annotation is nil",
 			Task: new(api.TaskInfo),
 			Node: plugin.NPUNode{
-				Annotation: nil,
-				Allocate:   map[v1.ResourceName]float64{util.NPU310PCardName: 0},
+				CommonNode: plugin.CommonNode{
+					Annotation: nil,
+					Allocate:   map[v1.ResourceName]float64{util.NPU310PCardName: 0},
+				},
 			},
 			PodAnno:  "",
 			WantNode: nil,
@@ -243,8 +281,10 @@ func buildUseAnnotationTestCases02() []itest.UseAnnotationTestCase {
 			Name: "04-UseAnnotation return err when node annotation resource less than task req npu",
 			Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex2),
 			Node: plugin.NPUNode{
-				Annotation: map[string]string{util.NPU310PCardName: ""},
-				Allocate:   map[v1.ResourceName]float64{util.NPU310PCardName: 0},
+				CommonNode: plugin.CommonNode{
+					Annotation: map[string]string{util.NPU310PCardName: ""},
+					Allocate:   map[v1.ResourceName]float64{util.NPU310PCardName: 0},
+				},
 			},
 			PodAnno:  "",
 			WantNode: nil,

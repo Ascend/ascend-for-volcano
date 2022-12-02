@@ -140,10 +140,12 @@ func buildCheckNodeNPUByTaskTestCases01() []itest.CheckNodeNPUByTaskTestCase {
 			Name: "01-CheckNodeNPUByTask return nil when node npu meet task req",
 			Task: test.FakeTaskWithResReq("pod0", util.NPU910CardName, util.NPUIndex4),
 			Node: plugin.NPUNode{
-				Name: "node1",
-				Annotation: map[string]string{
-					util.NPU910CardName: "Ascend910-0,Ascend910-1,Ascend910-2,Ascend910-3",
-					networkUnhealthyNPU: "Ascend910-0"},
+				CommonNode: plugin.CommonNode{
+					Name: "node1",
+					Annotation: map[string]string{
+						util.NPU910CardName: "Ascend910-0,Ascend910-1,Ascend910-2,Ascend910-3",
+						networkUnhealthyNPU: "Ascend910-0"},
+				},
 			},
 			WantErr: nil,
 		},
@@ -151,8 +153,10 @@ func buildCheckNodeNPUByTaskTestCases01() []itest.CheckNodeNPUByTaskTestCase {
 			Name: "02-CheckNodeNPUByTask return err when task is not npu task",
 			Task: test.FakeTaskWithResReq("pod1", util.NPU910CardName, util.NPUIndex4),
 			Node: plugin.NPUNode{
-				Name:       "node1",
-				Annotation: map[string]string{util.NPU910CardName: "Ascend910-0,Ascend910-1,Ascend910-2,Ascend910-3"},
+				CommonNode: plugin.CommonNode{
+					Name:       "node1",
+					Annotation: map[string]string{util.NPU910CardName: "Ascend910-0,Ascend910-1,Ascend910-2,Ascend910-3"},
+				},
 			},
 			WantErr: errors.New("task<pod1> is not npu task"),
 		},
@@ -160,8 +164,10 @@ func buildCheckNodeNPUByTaskTestCases01() []itest.CheckNodeNPUByTaskTestCase {
 			Name: "03-CheckNodeNPUByTask return err when node has no req npu",
 			Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex4),
 			Node: plugin.NPUNode{
-				Name:       "node1",
-				Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1,Ascend310-2"},
+				CommonNode: plugin.CommonNode{
+					Name:       "node1",
+					Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1,Ascend310-2"},
+				},
 			},
 			WantErr: errors.New("node<node1> don't have npu<huawei.com/Ascend910>"),
 		},
@@ -175,8 +181,10 @@ func buildCheckNodeNPUByTaskTestCases02() []itest.CheckNodeNPUByTaskTestCase {
 			Name: "04-CheckNodeNPUByTask return err when node has no req npu",
 			Task: test.FakeTaskWithResReq("pod0", util.NPU910CardName, util.NPUIndex4),
 			Node: plugin.NPUNode{
-				Name:       "node1",
-				Annotation: map[string]string{util.NPU910CardName: "Ascend910-0, Ascend910-1"},
+				CommonNode: plugin.CommonNode{
+					Name:       "node1",
+					Annotation: map[string]string{util.NPU910CardName: "Ascend910-0, Ascend910-1"},
+				},
 			},
 			WantErr: errors.New("checkNodeNPUByTask the npus on this node don't satisfy the schedulable topology " +
 				"err: [] not meet req npu(4)"),
@@ -185,9 +193,11 @@ func buildCheckNodeNPUByTaskTestCases02() []itest.CheckNodeNPUByTaskTestCase {
 			Name: "05-CheckNodeNPUByTask return err when node has no req npu",
 			Task: test.FakeTaskWithResReq("pod0", util.NPU910CardName, util.NPUIndex4),
 			Node: plugin.NPUNode{
-				Name: "node1",
-				Annotation: map[string]string{
-					util.NPU910CardName: "Ascend910-0,Ascend910-1,Ascend910-4",
+				CommonNode: plugin.CommonNode{
+					Name: "node1",
+					Annotation: map[string]string{
+						util.NPU910CardName: "Ascend910-0,Ascend910-1,Ascend910-4",
+					},
 				},
 			},
 			WantErr: errors.New("checkNodeNPUByTask the npus on this node don't satisfy the schedulable topology " +
@@ -197,10 +207,12 @@ func buildCheckNodeNPUByTaskTestCases02() []itest.CheckNodeNPUByTaskTestCase {
 			Name: "06-CheckNodeNPUByTask return err when node has no req npu",
 			Task: test.FakeTaskWithResReq("pod0", util.NPU910CardName, util.NPUIndex4),
 			Node: plugin.NPUNode{
-				Name: "node1",
-				Annotation: map[string]string{
-					util.NPU910CardName: "Ascend910-0,Ascend910-1,Ascend910-4,Ascend910-5",
-					networkUnhealthyNPU: "Ascend910-5",
+				CommonNode: plugin.CommonNode{
+					Name: "node1",
+					Annotation: map[string]string{
+						util.NPU910CardName: "Ascend910-0,Ascend910-1,Ascend910-4,Ascend910-5",
+						networkUnhealthyNPU: "Ascend910-5",
+					},
 				},
 			},
 			WantErr: errors.New("checkNodeNPUByTask the npus on this node don't satisfy the schedulable " +
@@ -215,8 +227,10 @@ func buildCheckNodeNPUByTaskTestCases03() []itest.CheckNodeNPUByTaskTestCase {
 			Name: "01-CheckNodeNPUByTask return err when task is nil",
 			Task: nil,
 			Node: plugin.NPUNode{
-				Name:       "node1",
-				Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0,Ascend310P-1"},
+				CommonNode: plugin.CommonNode{
+					Name:       "node1",
+					Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0,Ascend310P-1"},
+				},
 			},
 			WantErr: errors.New(util.ArgumentError),
 		},
@@ -224,8 +238,10 @@ func buildCheckNodeNPUByTaskTestCases03() []itest.CheckNodeNPUByTaskTestCase {
 			Name: "02-CheckNodeNPUByTask return err when node annotation is nil",
 			Task: test.FakeTaskWithResReq("pod1", util.NPU310PCardName, util.NPUIndex2),
 			Node: plugin.NPUNode{
-				Name:       "node1",
-				Annotation: nil,
+				CommonNode: plugin.CommonNode{
+					Name:       "node1",
+					Annotation: nil,
+				},
 			},
 			WantErr: errors.New(util.ArgumentError),
 		},
@@ -325,21 +341,25 @@ func buildFakeScheduleEnv() plugin.ScheduleEnv {
 	const allocateNPUNum8 = 8
 	return plugin.ScheduleEnv{
 		Nodes: map[string]plugin.NPUNode{
-			"node1": {Annotation: map[string]string{util.NPU910CardName: "Ascend910-0", networkUnhealthyNPU: ""},
-				Allocate: map[v1.ResourceName]float64{util.NPU910CardName: allocateNPUNum8 * util.NPUHexKilo}},
-			"node2": {Annotation: map[string]string{util.NPU910CardName: "Ascend910-0,Ascend910-1"}},
-			"node3": {Annotation: map[string]string{util.NPU910CardName: "Ascend910-0,Ascend910-1,Ascend910-2",
+			"node1": {CommonNode: plugin.CommonNode{Annotation: map[string]string{util.NPU910CardName: "Ascend910-0",
 				networkUnhealthyNPU: ""},
-				Allocate: map[v1.ResourceName]float64{util.NPU910CardName: allocateNPUNum8 * util.NPUHexKilo}},
-			"node11": {Annotation: map[string]string{util.NPU910CardName: "Ascend910-4,Ascend910-5",
-				networkUnhealthyNPU: ""},
-				Allocate: map[v1.ResourceName]float64{util.NPU910CardName: allocateNPUNum8 * util.NPUHexKilo}},
-			"node12": {Annotation: map[string]string{util.NPU910CardName: "Ascend910-4,Ascend910-5,Ascend910-6," +
-				"Ascend910-7", networkUnhealthyNPU: ""},
-				Allocate: map[v1.ResourceName]float64{util.NPU910CardName: allocateNPUNum8 * util.NPUHexKilo}},
-			"node13": {Annotation: map[string]string{}},
-			"node14": {Annotation: map[string]string{util.NPU910CardName: "Ascend910-0"}},
-			"node15": {Annotation: map[string]string{util.NPU910CardName: "", networkUnhealthyNPU: ""}},
+				Allocate: map[v1.ResourceName]float64{util.NPU910CardName: allocateNPUNum8 * util.NPUHexKilo}}},
+			"node2": {CommonNode: plugin.CommonNode{Annotation: map[string]string{util.NPU910CardName: "Ascend910-0," +
+				"Ascend910-1"}}},
+			"node3": {CommonNode: plugin.CommonNode{Annotation: map[string]string{util.NPU910CardName: "Ascend910-0," +
+				"Ascend910-1,Ascend910-2", networkUnhealthyNPU: ""},
+				Allocate: map[v1.ResourceName]float64{util.NPU910CardName: allocateNPUNum8 * util.NPUHexKilo}}},
+			"node11": {CommonNode: plugin.CommonNode{Annotation: map[string]string{
+				util.NPU910CardName: "Ascend910-4,Ascend910-5", networkUnhealthyNPU: ""},
+				Allocate: map[v1.ResourceName]float64{util.NPU910CardName: allocateNPUNum8 * util.NPUHexKilo}}},
+			"node12": {CommonNode: plugin.CommonNode{Annotation: map[string]string{
+				util.NPU910CardName: "Ascend910-4,Ascend910-5,Ascend910-6,Ascend910-7", networkUnhealthyNPU: ""},
+				Allocate: map[v1.ResourceName]float64{util.NPU910CardName: allocateNPUNum8 * util.NPUHexKilo}}},
+			"node13": {CommonNode: plugin.CommonNode{Annotation: map[string]string{}}},
+			"node14": {CommonNode: plugin.CommonNode{Annotation: map[string]string{util.
+				NPU910CardName: "Ascend910-0"}}},
+			"node15": {CommonNode: plugin.CommonNode{Annotation: map[string]string{util.NPU910CardName: "",
+				networkUnhealthyNPU: ""}}},
 		},
 	}
 }
@@ -372,25 +392,33 @@ func buildUseAnnotationTestCases01() []itest.UseAnnotationTestCase {
 			Name: "01-UseAnnotation task will select the npu which is the only one on the ring",
 			Task: test.FakeTaskWithResReq("pod0", util.NPU910CardName, 1),
 			Node: plugin.NPUNode{
-				Annotation: map[string]string{util.NPU910CardName: "Ascend910-0,Ascend910-4,Ascend910-5",
-					networkUnhealthyNPU: ""},
+				CommonNode: plugin.CommonNode{
+					Annotation: map[string]string{util.NPU910CardName: "Ascend910-0,Ascend910-4,Ascend910-5",
+						networkUnhealthyNPU: ""},
+				},
 			},
 			PodAnno: "Ascend910-0",
 			WantNode: &plugin.NPUNode{
-				Annotation: map[string]string{util.NPU910CardName: "Ascend910-4,Ascend910-5", networkUnhealthyNPU: ""},
+				CommonNode: plugin.CommonNode{
+					Annotation: map[string]string{util.NPU910CardName: "Ascend910-4,Ascend910-5", networkUnhealthyNPU: ""},
+				},
 			},
 		},
 		{
 			Name: "02-UseAnnotation task will select the npu which is on the card that has 3 npu other than 2",
 			Task: test.FakeTaskWithResReq("pod0", util.NPU910CardName, 1),
 			Node: plugin.NPUNode{
-				Annotation: map[string]string{util.NPU910CardName: "Ascend910-0,Ascend910-1,Ascend910-2,Ascend910-4," +
-					"Ascend910-5", networkUnhealthyNPU: "Ascend910-0"},
+				CommonNode: plugin.CommonNode{
+					Annotation: map[string]string{util.NPU910CardName: "Ascend910-0,Ascend910-1,Ascend910-2,Ascend910-4," +
+						"Ascend910-5", networkUnhealthyNPU: "Ascend910-0"},
+				},
 			},
 			PodAnno: "Ascend910-0",
 			WantNode: &plugin.NPUNode{
-				Annotation: map[string]string{util.NPU910CardName: "Ascend910-1,Ascend910-2,Ascend910-4,Ascend910-5",
-					networkUnhealthyNPU: ""},
+				CommonNode: plugin.CommonNode{
+					Annotation: map[string]string{util.NPU910CardName: "Ascend910-1,Ascend910-2,Ascend910-4,Ascend910-5",
+						networkUnhealthyNPU: ""},
+				},
 			},
 		},
 	}
@@ -402,25 +430,33 @@ func buildUseAnnotationTestCases02() []itest.UseAnnotationTestCase {
 			Name: "03-UseAnnotation task will select the npu which is on the card that has 3 npu other than 2",
 			Task: test.FakeTaskWithResReq("pod0", util.NPU910CardName, 1),
 			Node: plugin.NPUNode{
-				Annotation: map[string]string{util.NPU910CardName: "Ascend910-0,Ascend910-1,Ascend910-4,Ascend910-5," +
-					"Ascend910-6", networkUnhealthyNPU: ""},
+				CommonNode: plugin.CommonNode{
+					Annotation: map[string]string{util.NPU910CardName: "Ascend910-0,Ascend910-1,Ascend910-4,Ascend910-5," +
+						"Ascend910-6", networkUnhealthyNPU: ""},
+				},
 			},
 			PodAnno: "Ascend910-4",
 			WantNode: &plugin.NPUNode{
-				Annotation: map[string]string{util.NPU910CardName: "Ascend910-0,Ascend910-1,Ascend910-5,Ascend910-6",
-					networkUnhealthyNPU: ""},
+				CommonNode: plugin.CommonNode{
+					Annotation: map[string]string{util.NPU910CardName: "Ascend910-0,Ascend910-1,Ascend910-5,Ascend910-6",
+						networkUnhealthyNPU: ""},
+				},
 			},
 		},
 		{
 			Name: "04-UseAnnotation task will select the npu which is on the card that has 2 npu other than 4",
 			Task: test.FakeTaskWithResReq("pod0", util.NPU910CardName, 1),
 			Node: plugin.NPUNode{
-				Annotation: map[string]string{util.NPU910CardName: "Ascend910-0,Ascend910-1,Ascend910-4,Ascend910-5," +
-					"Ascend910-6,Ascend910-7", networkUnhealthyNPU: ""}},
+				CommonNode: plugin.CommonNode{
+					Annotation: map[string]string{util.NPU910CardName: "Ascend910-0,Ascend910-1,Ascend910-4,Ascend910-5," +
+						"Ascend910-6,Ascend910-7", networkUnhealthyNPU: ""}},
+			},
 			PodAnno: "Ascend910-0",
 			WantNode: &plugin.NPUNode{
-				Annotation: map[string]string{util.NPU910CardName: "Ascend910-1,Ascend910-4,Ascend910-5,Ascend910-6," +
-					"Ascend910-7", networkUnhealthyNPU: ""}},
+				CommonNode: plugin.CommonNode{
+					Annotation: map[string]string{util.NPU910CardName: "Ascend910-1,Ascend910-4,Ascend910-5,Ascend910-6," +
+						"Ascend910-7", networkUnhealthyNPU: ""}},
+			},
 		},
 	}
 }

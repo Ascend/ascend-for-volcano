@@ -232,12 +232,14 @@ func fakeReSchedulerCache() *DealReSchedulerCache {
 func fakeNPUNodeNilDeviceInfo(name string) *plugin.NPUNode {
 	nodeInfo := test.FakeNormalTestNode(name)
 	return &plugin.NPUNode{
-		Name:       name,
-		Capability: nodeInfo.Capability.ScalarResources,
-		Allocate:   nodeInfo.Allocatable.ScalarResources,
-		Idle:       nodeInfo.Idle.ScalarResources,
-		Annotation: nodeInfo.Node.Annotations,
-		Label:      nodeInfo.Node.Labels,
+		CommonNode: plugin.CommonNode{
+			Name:       name,
+			Capability: nodeInfo.Capability.ScalarResources,
+			Allocate:   nodeInfo.Allocatable.ScalarResources,
+			Idle:       nodeInfo.Idle.ScalarResources,
+			Annotation: nodeInfo.Node.Annotations,
+			Label:      nodeInfo.Node.Labels,
+		},
 	}
 }
 
@@ -251,12 +253,14 @@ func fakeNPUNodeWithDeviceInfo(name string) *plugin.NPUNode {
 	}
 	nodeInfo := test.FakeNormalTestNode(name)
 	npuNode := &plugin.NPUNode{
-		Name:       name,
-		Capability: nodeInfo.Capability.ScalarResources,
-		Allocate:   nodeInfo.Allocatable.ScalarResources,
-		Idle:       nodeInfo.Idle.ScalarResources,
-		Annotation: anno,
-		Label:      nodeInfo.Node.Labels,
+		CommonNode: plugin.CommonNode{
+			Name:       name,
+			Capability: nodeInfo.Capability.ScalarResources,
+			Allocate:   nodeInfo.Allocatable.ScalarResources,
+			Idle:       nodeInfo.Idle.ScalarResources,
+			Annotation: anno,
+			Label:      nodeInfo.Node.Labels,
+		},
 	}
 	return npuNode
 }
@@ -920,7 +924,9 @@ func buildReSchedulerCheckNodeNPUByTaskTests() []ReSchedulerCheckNodeNPUByTaskTe
 	arg1 := ReSchedulerCheckNodeNPUByTaskArgs{
 		task: test.FakeNormalTestTask("pod1", "node1", "job0"),
 		vcNode: plugin.NPUNode{
-			Name: "node2",
+			CommonNode: plugin.CommonNode{
+				Name: "node2",
+			},
 		},
 	}
 	test1 := ReSchedulerCheckNodeNPUByTaskTests{
@@ -979,7 +985,9 @@ func buildReSchedulerCheckNodeCurNodeIsFaultTests() []ReSchedulerCheckNodeCurNod
 				},
 			},
 			vcNode: plugin.NPUNode{
-				Name: "node0",
+				CommonNode: plugin.CommonNode{
+					Name: "node0",
+				},
 			},
 			task: &api.TaskInfo{
 				Name: "pod0",
@@ -1032,7 +1040,9 @@ func buildReSchedulerUseAnnotationTestArgs(nodeName string) ReSchedulerUseAnnota
 			},
 		},
 		node: &plugin.NPUNode{
-			Name: nodeName,
+			CommonNode: plugin.CommonNode{
+				Name: nodeName,
+			},
 		},
 	}
 	return args

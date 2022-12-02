@@ -119,56 +119,85 @@ func TestValidNPUJob(t *testing.T) {
 	}
 }
 
-func buildCheckNodeNPUByTaskTestCases() []itest.CheckNodeNPUByTaskTestCase {
-	return []itest.CheckNodeNPUByTaskTestCase{
-		{
-			Name: "01-CheckNodeNPUByTask when return nil node npu meet task req",
-			Task: test.FakeTaskWithResReq("pod0", util.NPU310CardName, util.NPUIndex3),
-			Node: plugin.NPUNode{
+func buildCheckNodeNPUByTaskTestCase1() itest.CheckNodeNPUByTaskTestCase {
+	return itest.CheckNodeNPUByTaskTestCase{
+		Name: "01-CheckNodeNPUByTask when return nil node npu meet task req",
+		Task: test.FakeTaskWithResReq("pod0", util.NPU310CardName, util.NPUIndex3),
+		Node: plugin.NPUNode{
+			CommonNode: plugin.CommonNode{
 				Name:       "node1",
 				Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1,Ascend310-2"},
 			},
-			WantErr: nil,
 		},
-		{
-			Name: "02-CheckNodeNPUByTask return err when task is not npu task",
-			Task: test.FakeTaskWithResReq("pod1", util.NPU310CardName, util.NPUIndex3),
-			Node: plugin.NPUNode{
+		WantErr: nil,
+	}
+}
+
+func buildCheckNodeNPUByTaskTestCase2() itest.CheckNodeNPUByTaskTestCase {
+	return itest.CheckNodeNPUByTaskTestCase{
+		Name: "02-CheckNodeNPUByTask return err when task is not npu task",
+		Task: test.FakeTaskWithResReq("pod1", util.NPU310CardName, util.NPUIndex3),
+		Node: plugin.NPUNode{
+			CommonNode: plugin.CommonNode{
 				Name:       "node1",
 				Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1,Ascend310-2"},
 			},
-			WantErr: errors.New("task<pod1> is not npu task"),
 		},
-		{
-			Name: "03-CheckNodeNPUByTask return err when node has no req npu",
-			Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex3),
-			Node: plugin.NPUNode{
+		WantErr: errors.New("task<pod1> is not npu task"),
+	}
+}
+
+func buildCheckNodeNPUByTaskTestCase3() itest.CheckNodeNPUByTaskTestCase {
+	return itest.CheckNodeNPUByTaskTestCase{
+		Name: "03-CheckNodeNPUByTask return err when node has no req npu",
+		Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex3),
+		Node: plugin.NPUNode{
+			CommonNode: plugin.CommonNode{
 				Name:       "node1",
 				Annotation: map[string]string{util.NPU310PCardName: "Ascend310-0,Ascend310-1,Ascend310-2"},
 			},
-			WantErr: errors.New("getUsableTopFromNode node<node1> don't have npu<huawei.com/Ascend310>"),
 		},
-		{
-			Name: "04-CheckNodeNPUByTask return err when node has no req npu",
-			Task: test.FakeTaskWithResReq("pod0", util.NPU310CardName, util.NPUIndex3),
-			Node: plugin.NPUNode{
+		WantErr: errors.New("getUsableTopFromNode node<node1> don't have npu<huawei.com/Ascend310>"),
+	}
+}
+
+func buildCheckNodeNPUByTaskTestCase4() itest.CheckNodeNPUByTaskTestCase {
+	return itest.CheckNodeNPUByTaskTestCase{
+		Name: "04-CheckNodeNPUByTask return err when node has no req npu",
+		Task: test.FakeTaskWithResReq("pod0", util.NPU310CardName, util.NPUIndex3),
+		Node: plugin.NPUNode{
+			CommonNode: plugin.CommonNode{
 				Name:       "node1",
 				Annotation: map[string]string{util.NPU310CardName: "Ascend310-0, Ascend310-1"},
 			},
-			WantErr: errors.New("getUsableTopFromNode err: top string<Ascend310-0, Ascend310-1> convert faild"),
 		},
-		{
-			Name: "05-CheckNodeNPUByTask return err when node has no req npu",
-			Task: test.FakeTaskWithResReq("pod0", util.NPU310CardName, util.NPUIndex3),
-			Node: plugin.NPUNode{
+		WantErr: errors.New("getUsableTopFromNode err: top string<Ascend310-0, Ascend310-1> convert faild"),
+	}
+}
+
+func buildCheckNodeNPUByTaskTestCase5() itest.CheckNodeNPUByTaskTestCase {
+	return itest.CheckNodeNPUByTaskTestCase{
+		Name: "05-CheckNodeNPUByTask return err when node has no req npu",
+		Task: test.FakeTaskWithResReq("pod0", util.NPU310CardName, util.NPUIndex3),
+		Node: plugin.NPUNode{
+			CommonNode: plugin.CommonNode{
 				Name:       "node1",
 				Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1,Ascend310-4"},
 			},
-			WantErr: fmt.Errorf("checkNodeNPUByTask the npus on this node don't satisfy the schedulable " +
-				"topology : req npu(3) illegal not meet node top<[0 1 4]>"),
 		},
+		WantErr: fmt.Errorf("checkNodeNPUByTask the npus on this node don't satisfy the schedulable " +
+			"topology : req npu(3) illegal not meet node top<[0 1 4]>"),
 	}
+}
 
+func buildCheckNodeNPUByTaskTestCases() []itest.CheckNodeNPUByTaskTestCase {
+	return []itest.CheckNodeNPUByTaskTestCase{
+		buildCheckNodeNPUByTaskTestCase1(),
+		buildCheckNodeNPUByTaskTestCase2(),
+		buildCheckNodeNPUByTaskTestCase3(),
+		buildCheckNodeNPUByTaskTestCase4(),
+		buildCheckNodeNPUByTaskTestCase5(),
+	}
 }
 
 // TestCheckNodeNPUByTask
@@ -247,14 +276,17 @@ func TestScoreBestNPUNodes(t *testing.T) {
 	attr := itest.FakeSchedulerJobAttrByJob(job)
 	env := plugin.ScheduleEnv{
 		Nodes: map[string]plugin.NPUNode{
-			"node1": {Annotation: map[string]string{util.NPU310CardName: "Ascend310-0"}},
-			"node2": {Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1"}},
-			"node3": {Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1,Ascend310-2"}},
-			"node4": {Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1," +
-				"Ascend310-2,Ascend310-3"}},
-			"node5": {Annotation: map[string]string{util.NPU310CardName: "Ascend310-0, Ascend310-4"}},
-			"node6": {Annotation: map[string]string{util.NPU310CardName: ""}},
-			"node7": {Annotation: map[string]string{util.NPU310CardName: "Ascend310-4"}},
+			"node1": {CommonNode: plugin.CommonNode{Annotation: map[string]string{util.NPU310CardName: "Ascend310-0"}}},
+			"node2": {CommonNode: plugin.CommonNode{Annotation: map[string]string{util.NPU310CardName: "Ascend310-0," +
+				"Ascend310-1"}}},
+			"node3": {CommonNode: plugin.CommonNode{Annotation: map[string]string{util.NPU310CardName: "Ascend310-0," +
+				"Ascend310-1,Ascend310-2"}}},
+			"node4": {CommonNode: plugin.CommonNode{Annotation: map[string]string{util.NPU310CardName: "Ascend310-0," +
+				"Ascend310-1,Ascend310-2,Ascend310-3"}}},
+			"node5": {CommonNode: plugin.CommonNode{Annotation: map[string]string{util.NPU310CardName: "Ascend310-0, " +
+				"Ascend310-4"}}},
+			"node6": {CommonNode: plugin.CommonNode{Annotation: map[string]string{util.NPU310CardName: ""}}},
+			"node7": {CommonNode: plugin.CommonNode{Annotation: map[string]string{util.NPU310CardName: "Ascend310-4"}}},
 		},
 	}
 	npu.SetSchedulerAttr(attr)
@@ -277,23 +309,31 @@ func buildUseAnnotationTestCases01() []itest.UseAnnotationTestCase {
 			Name: "01-UseAnnotation task will select the npu which is the only one on the card",
 			Task: test.FakeTaskWithResReq("pod0", util.NPU310CardName, 1),
 			Node: plugin.NPUNode{
-				Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-4,Ascend310-5"},
+				CommonNode: plugin.CommonNode{
+					Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-4,Ascend310-5"},
+				},
 			},
 			PodAnno: "Ascend310-0",
 			WantNode: &plugin.NPUNode{
-				Allocate: map[v1.ResourceName]float64{util.NPU310CardName: 0},
+				CommonNode: plugin.CommonNode{
+					Allocate: map[v1.ResourceName]float64{util.NPU310CardName: 0},
+				},
 			},
 		},
 		{
 			Name: "02-UseAnnotation task will select the npu which is on the card that has 3 npu other than 2",
 			Task: test.FakeTaskWithResReq("pod0", util.NPU310CardName, 1),
 			Node: plugin.NPUNode{
-				Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1,Ascend310-2,Ascend310-4," +
-					"Ascend310-5"},
+				CommonNode: plugin.CommonNode{
+					Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1,Ascend310-2,Ascend310-4," +
+						"Ascend310-5"},
+				},
 			},
 			PodAnno: "Ascend310-0",
 			WantNode: &plugin.NPUNode{
-				Allocate: map[v1.ResourceName]float64{util.NPU310CardName: npuNum4 * util.NPUHexKilo},
+				CommonNode: plugin.CommonNode{
+					Allocate: map[v1.ResourceName]float64{util.NPU310CardName: npuNum4 * util.NPUHexKilo},
+				},
 			},
 		},
 	}
@@ -305,25 +345,33 @@ func buildUseAnnotationTestCases02() []itest.UseAnnotationTestCase {
 			Name: "03-UseAnnotation task will select the npu which is on the card that has 3 npu other than 2",
 			Task: test.FakeTaskWithResReq("pod0", util.NPU310CardName, 1),
 			Node: plugin.NPUNode{
-				Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1,Ascend310-4,Ascend310-5," +
-					"Ascend310-6"},
+				CommonNode: plugin.CommonNode{
+					Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1,Ascend310-4,Ascend310-5," +
+						"Ascend310-6"},
+				},
 			},
 			PodAnno: "Ascend310-4",
 			WantNode: &plugin.NPUNode{
-				Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1,Ascend310-5,Ascend310-6"},
+				CommonNode: plugin.CommonNode{
+					Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1,Ascend310-5,Ascend310-6"},
+				},
 			},
 		},
 		{
 			Name: "04-UseAnnotation task will select the npu which is on the card that has 2 npu other than 4",
 			Task: test.FakeTaskWithResReq("pod0", util.NPU310CardName, 1),
 			Node: plugin.NPUNode{
-				Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1,Ascend310-4,Ascend310-5," +
-					"Ascend310-6,Ascend310-7"},
+				CommonNode: plugin.CommonNode{
+					Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1,Ascend310-4,Ascend310-5," +
+						"Ascend310-6,Ascend310-7"},
+				},
 			},
 			PodAnno: "Ascend310-0",
 			WantNode: &plugin.NPUNode{
-				Annotation: map[string]string{util.NPU310CardName: "Ascend310-1,Ascend310-4,Ascend310-5,Ascend310-6," +
-					"Ascend310-0,Ascend310-7"},
+				CommonNode: plugin.CommonNode{
+					Annotation: map[string]string{util.NPU310CardName: "Ascend310-1,Ascend310-4,Ascend310-5,Ascend310-6," +
+						"Ascend310-0,Ascend310-7"},
+				},
 			},
 		},
 	}
