@@ -56,20 +56,14 @@ const (
 	AscendDVPPValue = "dvpp"
 	// RingController ascend-310P/ascend-310/ascend-910
 	RingController = "ring-controller.atlas"
-	podObjectType          = "Pod"
+	podObjectType  = "Pod"
 
 	// Ascend310P 310P template name
 	Ascend310P = "Ascend310P"
-	// Ascend310 310 template name
-	Ascend310 = "Ascend310"
 	// Ascend910 910 template name
 	Ascend910 = "Ascend910"
 	// RingController310P 310p ring controller name
 	RingController310P = "ascend-310P"
-	// RingController310 310 ring controller name
-	RingController310 = "ascend-310"
-	// RingController910 910 ring controller name
-	RingController910 = "ascend-910"
 )
 
 // GetResourceFromStr vDeviceResourceStr like 4c.3cpu.ndvpp

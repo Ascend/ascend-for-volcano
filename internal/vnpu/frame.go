@@ -10,9 +10,13 @@ Package vnpu is using for HuaWei Ascend pin fault rescheduling.
 package vnpu
 
 import (
+	"fmt"
+
 	"k8s.io/klog"
+	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
@@ -44,4 +48,24 @@ func CheckVNPUSegmentEnable(ssn *framework.Session) bool {
 	}
 
 	return CheckVNPUSegmentEnableByConfig(ssn.Configurations)
+}
+
+// CheckNodeNPUByTask todo: deal with fault chips
+func (tp *ComVNPU) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode) error {
+	taskResReq, err := plugin.TransferTaskLabelToResReq(task)
+	if err != nil {
+		return fmt.Errorf("%s task<%s> CheckNodeNPUByTask err: %s", tp.GetPluginName(), task.Name, err.Error())
+	}
+
+	if !node.IsNodeTotalResEnough(taskResReq) {
+		return fmt.Errorf("%s task<%s> CheckNodeNPUByTask err: node resource not enough", tp.GetPluginName(),
+			task.Name)
+	}
+
+	if !node.IsNodeChipResEnough(taskResReq) {
+		return fmt.Errorf("%s task<%s> CheckNodeNPUByTask err: chip resource not enough", tp.GetPluginName(),
+			task.Name)
+	}
+
+	return nil
 }
