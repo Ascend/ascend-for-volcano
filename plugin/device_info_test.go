@@ -10,10 +10,12 @@ Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
 package plugin
 
 import (
-	"k8s.io/apimachinery/pkg/api/resource"
 	"reflect"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/api/resource"
 	"volcano.sh/volcano/pkg/scheduler/api"
+
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
