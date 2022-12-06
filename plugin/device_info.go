@@ -25,93 +25,50 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
-const (
-	// PodEventMsgAllocateFailed dp
-	PodEventMsgAllocateFailed = "Allocate failed due to rpc error: code = Unknown desc = NoNPUAffinity, " +
-		"which is unexpected"
-	// PodEventReasonAllocateFailed dp
-	PodEventReasonAllocateFailed = "UnexpectedAdmissionError"
-	// PodEventTypeAllocateFailed dp
-	PodEventTypeAllocateFailed = "Warning"
-
-	// AscendVNPULevel vnpu level
-	AscendVNPULevel = "vnpu-level"
-	// AscendVNPULevelLow low
-	AscendVNPULevelLow = "low"
-	// AscendVNPULevelHigh high
-	AscendVNPULevelHigh = "high"
-	// AscendVNPUPrefix vir
-	AscendVNPUPrefix = "vir"
-	// AscendVNPUDVPP dvpp enable
-	AscendVNPUDVPP = "vnpu-dvpp"
-	// AscendDVPPEnabledOff off
-	AscendDVPPEnabledOff = "no"
-	// AscendDVPPEnabledNull null
-	AscendDVPPEnabledNull = "null"
-	// AscendDVPPEnabledOn on
-	AscendDVPPEnabledOn = "yes"
-	// AscendNDVPPValue value
-	AscendNDVPPValue = "ndvpp"
-	// AscendDVPPValue value
-	AscendDVPPValue = "dvpp"
-	// RingController ascend-310P/ascend-310/ascend-910
-	RingController = "ring-controller.atlas"
-	podObjectType  = "Pod"
-
-	// Ascend310P 310P template name
-	Ascend310P = "Ascend310P"
-	// Ascend910 910 template name
-	Ascend910 = "Ascend910"
-	// RingController310P 310p ring controller name
-	RingController310P = "ascend-310P"
-)
-
 // GetResourceFromStr vDeviceResourceStr like 4c.3cpu.ndvpp
 func GetResourceFromStr(vDeviceResourceStr string) *util.VResource {
-	klog.V(util.LogInfoLev).Infof("GetResourceFromStr parsing ")
+	klog.V(util.LogInfoLev).Infof("GetResourceFromStr parsing resource")
 	resources := strings.Split(vDeviceResourceStr, ".") // like 4c.3cpu.ndvpp/2c.1cpu/8c
-	if len(resources) < 1 {
-		klog.V(util.LogErrorLev).Infof("%s: resource %s format incorrect", util.AscendNPUPodRealUse, resources)
-		return nil
-	}
 
 	// 1. get coreNum from template
-	aicoreNum, err := strconv.Atoi(strings.TrimSuffix(resources[0], "c")) // like 4c
-	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s: aicore %s format incorrect", util.AscendNPUPodRealUse, resources[0])
+	aicoreNum := getAicoreFromTemplate(resources) // like 4c
+	if aicoreNum == util.ErrorInt {
+		klog.V(util.LogErrorLev).Infof("%s aicore %s", vDeviceResourceStr, FormatIncorrectError)
 		return nil
 	}
 
 	// 2. get aicpu from template
-	aicpuNum := getAicpuFromTemplate(resources, aicoreNum)
+	aicpuNum := getAicpuFromTemplate(resources, aicoreNum) // like 4c.3cpu
 	if aicpuNum == util.ErrorInt {
-		klog.V(util.LogDebugLev).Infof("%s aicpu format error", vDeviceResourceStr)
+		klog.V(util.LogDebugLev).Infof("%s aicpu %s", vDeviceResourceStr, FormatIncorrectError)
 		return nil
 	}
 
-	if len(resources) < util.NPUIndex3 {
-		return &util.VResource{
-			Aicore: aicoreNum,
-			Aicpu:  aicpuNum,
-			DVPP:   AscendDVPPEnabledNull,
-		}
-	}
-
-	// 3. get cvpp from template
-	var dvppValue string
-	switch resources[util.NPUIndex2] {
-	case AscendDVPPValue:
-		dvppValue = AscendDVPPEnabledOn
-	case AscendNDVPPValue:
-		dvppValue = AscendDVPPEnabledOff
-	default:
-		dvppValue = AscendDVPPEnabledNull
-	}
+	dvppValue := getDvppFromTemplate(resources)
 	return &util.VResource{
 		Aicore: aicoreNum,
 		Aicpu:  aicpuNum,
 		DVPP:   dvppValue,
 	}
+}
+
+func getAicoreFromTemplate(resources []string) int {
+	if len(resources) < 1 {
+		klog.V(util.LogErrorLev).Infof("%v resource %s", resources, FormatIncorrectError)
+		return util.ErrorInt
+	}
+
+	if !strings.HasSuffix(resources[0], "c") {
+		klog.V(util.LogErrorLev).Infof("%s aicore %s", resources[0], FormatIncorrectError)
+		return util.ErrorInt
+	}
+
+	aicoreNum, err := strconv.Atoi(strings.TrimSuffix(resources[0], "c")) // like 4c
+	if err != nil {
+		klog.V(util.LogErrorLev).Infof("%s aicore %s", resources[0], FormatIncorrectError)
+		return util.ErrorInt
+	}
+	return aicoreNum
 }
 
 func getAicpuFromTemplate(resources []string, aicoreNum int) int {
@@ -128,7 +85,25 @@ func getAicpuFromTemplate(resources []string, aicoreNum int) int {
 	return aicpuNum
 }
 
-// IsPodWholeCard judge if card is whole card Ascend910-0/Ascend910-4c-100-1-1
+func getDvppFromTemplate(resources []string) string {
+	if len(resources) < util.NPUIndex3 {
+		return AscendDVPPEnabledNull
+	}
+
+	// 3. get dvpp from template
+	var dvppValue string
+	switch resources[util.NPUIndex2] {
+	case AscendDVPPValue:
+		dvppValue = AscendDVPPEnabledOn
+	case AscendNDVPPValue:
+		dvppValue = AscendDVPPEnabledOff
+	default:
+		dvppValue = AscendDVPPEnabledNull
+	}
+	return dvppValue
+}
+
+// IsPodWholeCard judge if card is whole card 0,1/Ascend910-4c-100-1-1
 func IsPodWholeCard(realCardName string) bool {
 	temp := strings.Split(realCardName, ",")
 	for _, cardName := range temp {
@@ -145,13 +120,9 @@ func GetCardPhysicsID(cardNameStr string, isWholeCard bool) ([]int, error) {
 	var physicsIDs []int
 	// deal vnpu card
 	if !isWholeCard {
-		cardNameSplit := strings.Split(cardNameStr, "-")
-		if len(cardNameSplit) != util.NPUIndex5 {
-			return physicsIDs, fmt.Errorf("getCardPhysicsID vnpu real device <%s> format error", cardNameStr)
-		}
-		phyCardID, err := strconv.Atoi(cardNameSplit[util.NPUIndex3])
+		phyCardID, err := getCardPhysicsIDVNPUCard(cardNameStr)
 		if err != nil {
-			return physicsIDs, fmt.Errorf("getCardPhysicsID vnpu device<%s> get physics id failed", cardNameStr)
+			return physicsIDs, fmt.Errorf("getCardPhysicsID vnpu device <%s> get id failed", cardNameStr)
 		}
 		physicsIDs = append(physicsIDs, phyCardID)
 		return physicsIDs, nil
@@ -166,6 +137,18 @@ func GetCardPhysicsID(cardNameStr string, isWholeCard bool) ([]int, error) {
 		physicsIDs = append(physicsIDs, phyCardID)
 	}
 	return physicsIDs, nil
+}
+
+func getCardPhysicsIDVNPUCard(cardNameStr string) (int, error) {
+	cardNameSplit := strings.Split(cardNameStr, "-")
+	if len(cardNameSplit) != util.NPUIndex5 {
+		return 0, fmt.Errorf("getCardPhysicsIDVNPUCard vnpu real device <%s> format error", cardNameStr)
+	}
+	phyCardID, err := strconv.Atoi(cardNameSplit[util.NPUIndex3])
+	if err != nil {
+		return 0, fmt.Errorf("getCardPhysicsIDVNPUCard vnpu device <%s> get physics id failed", cardNameStr)
+	}
+	return phyCardID, nil
 }
 
 // GetWholeCardIDFromCardNameStr get card physics id from Ascend910-0
@@ -227,9 +210,9 @@ func getDVPPEnable(task *api.TaskInfo) string {
 }
 
 func getAiCpuNum(task *api.TaskInfo, coreNum int) (int, error) {
-	ringControllerType, ok := task.Pod.Labels[RingController] // ascend-910/ascend-310P/ascend-310
+	ringControllerType, ok := task.Pod.Labels[util.RingController] // ascend-910/ascend-310P/ascend-310
 	if !ok {
-		return 0, fmt.Errorf("getAiCpuNum get label %s failed", RingController)
+		return 0, fmt.Errorf("getAiCpuNum get label %s failed", util.RingController)
 	}
 	vnpuLevel, ok := task.Pod.Labels[AscendVNPULevel]
 	if !ok {

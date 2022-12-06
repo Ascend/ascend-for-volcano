@@ -12,6 +12,7 @@ package plugin
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -37,7 +38,7 @@ func initTemplate() []util.VTemplate {
 		AICore:   util.CoreNum32,
 		AICPU:    util.CpuNum14,
 	}
-	nodeTemplate[util.NPUIndex3] = util.VTemplate{
+	nodeTemplate[util.NPUIndex2] = util.VTemplate{
 		ChipKind: Ascend910,
 		AICore:   util.CoreNum30,
 		AICPU:    util.CpuNum14,
@@ -46,62 +47,53 @@ func initTemplate() []util.VTemplate {
 }
 
 func (n *NPUNode) setNodeVNPUInfo(ni *api.NodeInfo) error {
-	nodeTemplate := initTemplate()
+	n.VNode = VNode{
+		Chips: make(map[int]*VChip, util.MapInitNum),
+	}
 
-	// 1. get chipKind like Ascend910, chipLabel like Ascend310P-8, accType like module/card/half
-	chipKind, chipLabel, err := n.getChipPropertiesFromNPUNodeLabel()
-	if err != nil {
+	// 2. get chipKind like Ascend910, chipLabel like Ascend310P-8
+	if err := n.setChipPropertiesFromNPUNode(); err != nil {
 		return fmt.Errorf("setNodeVNPUInfo %s: %v", n.Name, err)
 	}
 
-	// 2. set accType for 910 module/half/card, "" for 310/310P
-	accType := n.getAccTypeFromNpuNode()
-
-	// 3. get resource capacity, totalChipNum, freeChipNum
-	totalRes, totalChipNum, err := n.getTotalResAndChipNumFromNpuNode(nodeTemplate)
-	if err != nil {
+	// 1. get resource capacity, totalChipNum, freeChipNum
+	if err := n.setTotalResAndChipNumByTemplates(); err != nil {
 		return fmt.Errorf("setNodeVNPUInfo node %s: %v", n.Name, err)
 	}
 
-	freeChipNum, err := n.getFreeChipNum()
-	if err != nil {
-		return fmt.Errorf("setNodeVNPUInfo node %s: %v", n.Name, err)
-	}
-
-	n.VNode = VNode{
-		nodeName:     n.Name,
-		ChipKind:     chipKind,
-		ServerType:   chipLabel,
-		AccType:      accType,
-		TotalChipNum: totalChipNum,
-		FreeChipNum:  freeChipNum,
-		TotalRes:     *totalRes,
-	}
-
-	// 4. create vChips on node and update vChip resource
-	if err := n.createVChips(ni); err != nil {
+	// 3. create vChips on node and update vChip resource
+	if err := n.initVChips(ni); err != nil {
 		return fmt.Errorf("setNodeVNPUInfo node %s: %v", n.Name, err)
 	}
 
 	return nil
 }
 
-// getChipPropertiesFromNPUNodeLabel returns chipKind, chipLabel, accType
-func (n NPUNode) getChipPropertiesFromNPUNodeLabel() (string, string, error) {
+// setChipPropertiesFromNPUNode returns chipKind, chipLabel, accType
+func (n *NPUNode) setChipPropertiesFromNPUNode() error {
 	chipKind, err := n.getChipKindFromNpuNode() // 1. set ChipKind(Ascend910/Ascend310/Ascend310P)
 	if err != nil {
-		return "", "", fmt.Errorf("setNodeVNPUInfo node %s: %v", n.Name, err)
+		return fmt.Errorf("setNodeVNPUInfo node %s: %v", n.Name, err)
 	}
+	n.VNode.ChipKind = chipKind
 
 	chipLabel, ok := n.Label[util.ServerType] // 2. set ServerType(like Ascend310P-10-dual/Ascend910-30)
 	if !ok {
-		return chipKind, "", fmt.Errorf("setNodeVNPUInfo node %s no node label <%s>", n.Name, util.ServerType)
+		return fmt.Errorf("setNodeVNPUInfo node %s no node label <%s>", n.Name, util.ServerType)
 	}
+	n.VNode.ServerType = chipLabel
 
-	return chipKind, chipLabel, nil
+	nodeFreeChips, ok := n.Annotation[util.HwPreName+n.VNode.ChipKind] // 3. set free chip num from device-info
+	if !ok {
+		return errors.New("getFreeChipNum failed")
+	}
+	nodeFreeChipsSplit := strings.Split(nodeFreeChips, ",")
+	n.VNode.FreeChipNum = len(nodeFreeChipsSplit)
+
+	return nil
 }
 
-// getChipKindFromNpuNode return Ascend910/Ascend310p/Ascend310
+// getChipKindFromNpuNode input huawei-Ascend910 return Ascend910/Ascend310p/Ascend310
 func (n NPUNode) getChipKindFromNpuNode() (string, error) {
 	tempVal, ok := n.Label[util.Accelerator]
 	if !ok {
@@ -115,48 +107,38 @@ func (n NPUNode) getChipKindFromNpuNode() (string, error) {
 	return chipKind[1], nil
 }
 
-func (n NPUNode) getAccTypeFromNpuNode() string {
-	if util.HwPreName+n.VNode.ChipKind != util.NPU910CardName {
-		return ""
-	}
-	accType, ok := n.Label[util.AcceleratorType]
-	if !ok {
-		return util.ModuleAcceleratorType
-	}
-	return accType
-}
-
-func (n NPUNode) getTotalResAndChipNumFromNpuNode(templates []util.VTemplate) (*util.VResource, int, error) {
-	// 1. get totalCore (by multiplying chipNum and coreNumPerChip
+// setTotalResAndChipNumByTemplates set totalRes, totalChipNum and serverType
+func (n *NPUNode) setTotalResAndChipNumByTemplates() error {
+	// 1. get and set total AiCore from capability like Capacity: huawei.com/npu-core: 56
 	totalCore, ok := n.Capability[util.AscendNPUCore]
 	if !ok {
-		return nil, 0, fmt.Errorf("getTotalResFromNpuNode no resource <%s>", util.AscendNPUCore)
+		return fmt.Errorf("getTotalResFromNpuNode no resource <%s>", util.AscendNPUCore)
 	}
+	n.VNode.TotalRes.Aicore = int(totalCore)
 
-	// 2.1 get totalChipNum
-	totalChipNum, err := n.VNode.getTotalChipNum()
+	// 2.2 get totalChipNum use totalChipNum = totalCoreNum / coreNumPerChip
+	totalChipNum, err := n.getTotalChipNum()
 	if err != nil {
-		return nil, 0, errors.New("getTotalResFromNpuNode get total chip number failed")
+		return fmt.Errorf("getTotalResFromNpuNode failed: %v", err)
 	}
+	n.VNode.TotalChipNum = totalChipNum
 
-	// 2.2 get cpuNum per chip
-	cpuPerChip := n.getCpuNumPerChip(templates, int(totalCore))
+	// 2.2 get cpuNum per chip use totalAiCpuNum = aicpuNumPerChip * totalChipNum
+	templates := initTemplate()
+	cpuPerChip := n.getCpuNumPerChip(templates)
 	if cpuPerChip == 0 {
-		return nil, 0, errors.New("getTotalResFromNpuNode get aicpu from template failed")
+		return errors.New("getTotalResFromNpuNode get aicpu from template failed")
 	}
+	n.VNode.TotalRes.Aicpu = cpuPerChip * totalChipNum
+	n.VNode.TotalRes.DVPP = AscendDVPPEnabledOff
 
-	totalRes := &util.VResource{
-		Aicore: int(totalCore),
-		Aicpu:  cpuPerChip * totalChipNum,
-		DVPP:   AscendDVPPEnabledNull,
-	}
-	return totalRes, totalChipNum, nil
+	return nil
 }
 
-func (n NPUNode) getCpuNumPerChip(templates []util.VTemplate, totalCore int) int {
+func (n NPUNode) getCpuNumPerChip(templates []util.VTemplate) int {
 	cpuPerChip := 0
 	for _, temp := range templates {
-		if temp.ChipKind != n.VNode.ChipKind || temp.AICore != int(totalCore) {
+		if temp.ChipKind != n.VNode.ChipKind || temp.AICore*n.TotalChipNum != n.VNode.TotalRes.Aicore {
 			continue
 		}
 		cpuPerChip = temp.AICPU
@@ -164,7 +146,7 @@ func (n NPUNode) getCpuNumPerChip(templates []util.VTemplate, totalCore int) int
 	return cpuPerChip
 }
 
-func (n NPUNode) createVChips(ni *api.NodeInfo) error {
+func (n *NPUNode) initVChips(ni *api.NodeInfo) error {
 	chipCoreNum, err := n.VNode.getVChipCoreNum()
 	if err != nil {
 		return fmt.Errorf("vNode %s get vChip coreNum failed: %v", n.Name, err)
@@ -175,18 +157,25 @@ func (n NPUNode) createVChips(ni *api.NodeInfo) error {
 		return fmt.Errorf("vNode %s get vChip totalRes failed", n.Name)
 	} // 2. get total resource on each chip
 
-	freeCardIDs := n.getFreeCardIDsFromDeviceInfo()
-	if len(freeCardIDs) == 0 {
-		return fmt.Errorf("vNode %s getFreeCardIDsFromDeviceInfo failed", n.Name)
-	}
-	for _, freeCardID := range freeCardIDs {
-		n.VNode.Chips[freeCardID] = n.VNode.NewVChip(freeCardID, chipCoreNum, *chipTotalRes)
-	} // 3. create new VChip by freeCardID
+	if err := n.initFreeWholeVChips(chipCoreNum, *chipTotalRes); err != nil {
+		return fmt.Errorf("vNode %s initFreeWholeVChips failed", n.Name)
+	} // 3. create new VChip by freeCardID whole card
 
 	for _, ti := range ni.Tasks {
 		n.VNode.addNPUResource(ti.Pod, chipCoreNum, *chipTotalRes)
 	} // 4. update VChips and create VChips for chips being occupied
 
+	return nil
+}
+
+func (n NPUNode) initFreeWholeVChips(chipCoreNum int, chipTotalRes util.VResource) error {
+	freeCardIDs := n.getFreeCardIDsFromDeviceInfo()
+	if len(freeCardIDs) == 0 {
+		return fmt.Errorf("vNode %s getFreeCardIDsFromDeviceInfo failed", n.Name)
+	}
+	for _, freeCardID := range freeCardIDs {
+		n.VNode.Chips[freeCardID] = n.VNode.NewVChip(freeCardID, chipCoreNum, chipTotalRes)
+	}
 	return nil
 }
 
@@ -208,56 +197,23 @@ func (n *NPUNode) getFreeCardIDsFromDeviceInfo() []int {
 	return freeCardIDs
 }
 
-func (vNode *VNode) setNodeName(value string) {
-	vNode.nodeName = value
-}
-
-func (vNode *VNode) setChipKind(value string) {
-	vNode.ChipKind = value
-}
-
-func (vNode *VNode) setServerType(value string) {
-	vNode.ServerType = value
-}
-
-func (vNode *VNode) setAccType(value string) {
-	vNode.AccType = value
-}
-
-func (vNode *VNode) setTotalChipNum(value int) {
-	vNode.TotalChipNum = value
-}
-
-func (vNode *VNode) setTotalRes(value util.VResource) {
-	vNode.TotalRes = value
-}
-
-func (vNode *VNode) setFreeChipNum(value int) {
-	vNode.FreeChipNum = value
-}
-
 func (vNode *VNode) getTotalChipNum() (int, error) {
 	numCorePerChip, err := vNode.getVChipCoreNum()
 	if err != nil {
 		return 0, fmt.Errorf("getTotalChipNum error: %v", err)
 	}
 	totalChipNum := vNode.TotalRes.Aicore / numCorePerChip
-	return totalChipNum, nil
-}
-
-func (n NPUNode) getFreeChipNum() (int, error) {
-	nodeFreeChips, ok := n.Annotation[util.HwPreName+n.VNode.ChipKind]
-	if !ok {
-		return 0, errors.New("getFreeChipNum failed")
+	if vNode.TotalRes.Aicore % numCorePerChip != 0 {
+		return 0, errors.New("getTotalChipNum error: total resource cannot be divided by coreNumPerChip")
 	}
-	nodeFreeChipsSplit := strings.Split(nodeFreeChips, ",")
-	return len(nodeFreeChipsSplit), nil
+	return totalChipNum, nil
 }
 
 // NewVChip create new vChip
 func (vNode *VNode) NewVChip(id int, coreNum int, totalRes util.VResource) *VChip {
 	chipName := vNode.ChipKind + "-" + strconv.Itoa(id)
 	vChip := VChip{
+		PodMap: make(map[string]*v1.Pod, util.MapInitNum),
 		Name:     chipName,
 		Kind:     vNode.ChipKind,
 		CoreNum:  coreNum,
@@ -301,7 +257,7 @@ func (vNode *VNode) getVChipTotalRes() *util.VResource {
 	return &util.VResource{
 		Aicore: AiCore,
 		Aicpu:  AiCpu,
-		DVPP:   AscendDVPPEnabledNull,
+		DVPP:   AscendDVPPEnabledOff,
 	}
 }
 
@@ -324,7 +280,7 @@ func (vNode *VNode) addNPUResourceWholeCard(ascendRealStr string, pod *v1.Pod, c
 		return
 	}
 	for _, id := range physicsID {
-		// 1. get chip total resource
+		// 1. get resource of pod, which is chip total resource
 		podVResource := vNode.getVChipTotalRes()
 		if podVResource == nil {
 			klog.V(util.LogErrorLev).Info("addNPUResourceWholeCard get VChip total resource failed")
@@ -339,7 +295,7 @@ func (vNode *VNode) addNPUResourceWholeCard(ascendRealStr string, pod *v1.Pod, c
 		}
 
 		// 3. update node
-		curVChip.addRealCardID(vNode.ChipKind + "-" + strconv.Itoa(id))
+		curVChip.addRealCardID(strconv.Itoa(id))
 		curVChip.addPodToPodMap(pod)
 		curVChip.UsedRes.Add(podVResource)
 		curVChip.FreeRes.Sub(podVResource)
@@ -362,7 +318,7 @@ func (vNode *VNode) addNPUResourceVNPUCard(ascendStr string, pod *v1.Pod, coreNu
 		vNode.Chips[physicsID[0]] = curVChip
 	}
 
-	// 3. get resource
+	// 3. get resource of pod
 	ascendRealSplit := strings.Split(ascendStr, "-")
 	if len(ascendRealSplit) != util.NPUIndex5 {
 		return
@@ -427,9 +383,13 @@ func (vChip *VChip) updateDVPP(podResDVPP string) {
 		vChip.UsedRes.DVPP = AscendDVPPEnabledOn
 		vChip.FreeRes.DVPP = AscendDVPPEnabledOff
 	}
-	if podResDVPP == AscendDVPPEnabledOff {
+	if podResDVPP == AscendDVPPEnabledOff && vChip.UsedRes.DVPP == AscendDVPPEnabledOff {
 		vChip.UsedRes.DVPP = AscendDVPPEnabledOff
 		vChip.FreeRes.DVPP = AscendDVPPEnabledOn
+	}
+	if podResDVPP == AscendDVPPEnabledNull && vChip.UsedRes.DVPP != AscendDVPPEnabledOn {
+		vChip.UsedRes.DVPP = AscendDVPPEnabledNull
+		vChip.UsedRes.DVPP = AscendDVPPEnabledNull
 	}
 }
 
@@ -445,21 +405,29 @@ func (n NPUNode) IsNodeTotalResEnough(vRes util.VResource) bool {
 // IsNodeChipResEnough judge if chip on node can be allocated to job
 func (n NPUNode) IsNodeChipResEnough(vRes util.VResource) bool {
 	for _, vChip := range n.Chips {
-		if !vChip.isChipResourceEnough(vRes) {
-			klog.V(util.LogDebugLev).Infof("vChip %s resource <%#v> not enough", vChip.Name, vChip.FreeRes)
-			continue
-		}
-		if !vChip.isChipVGroupValid(vRes) {
-			klog.V(util.LogDebugLev).Infof("vChip %s vGroup not enough", vChip.Name)
-			continue
-		}
-		if !vChip.isChipDVPPValid(vRes) {
-			klog.V(util.LogDebugLev).Infof("vChip %s DVPP not enough", vChip.Name)
+		if !vChip.IsChipMeetResReq(vRes) {
+			klog.V(util.LogDebugLev).Infof("vChip %s does not meet resource requirements", vChip.Name)
 			continue
 		}
 		return true
 	}
 	return false
+}
+
+func (vChip *VChip) IsChipMeetResReq(vRes util.VResource) bool {
+	if !vChip.isChipResourceEnough(vRes) {
+		klog.V(util.LogDebugLev).Infof("vChip %s resource <%#v> not enough", vChip.Name, vChip.FreeRes)
+		return false
+	}
+	if !vChip.isChipVGroupValid(vRes) {
+		klog.V(util.LogDebugLev).Infof("vChip %s vGroup not enough", vChip.Name)
+		return false
+	}
+	if !vChip.isChipDVPPValid(vRes) {
+		klog.V(util.LogDebugLev).Infof("vChip %s DVPP not enough", vChip.Name)
+		return false
+	}
+	return true
 }
 
 // isChipResourceEnough check if core is enough for task
@@ -531,4 +499,68 @@ func (vChip *VChip) isChipDVPPValid(vRes util.VResource) bool {
 	}
 	// 3. if task dvpp no, the node's free resource can be any
 	return true
+}
+
+// SelectChipFromNode get chip with least resource that meets vRes requirements
+func (vNode *VNode) SelectChipFromNode(vRes util.VResource) (string, error) {
+	var Chips []*VChip
+	for _, Chip := range vNode.Chips {
+		Chips = append(Chips, Chip)
+	}
+
+	tempVChips := vChipsList(Chips)
+	sort.Sort(tempVChips)
+	if len(tempVChips) == 0 {
+		klog.V(util.LogErrorLev).Info("SelectChipFromNode sorted chips len 0")
+	}
+
+	var allocChip *VChip
+	for _, chip := range tempVChips {
+		if !chip.IsChipMeetResReq(vRes) {
+			klog.V(util.LogDebugLev).Infof("chip %s does not meet resource requirements", chip.Name)
+			continue
+		}
+		allocChip = chip
+		break
+	}
+	if allocChip == nil {
+		return "", errors.New("chip is nil")
+	}
+	allocChipSplit := strings.Split(allocChip.Name, "-")
+	if len(allocChipSplit) < util.NPUIndex2 {
+		return "", errors.New("chip name format error")
+	}
+	return allocChipSplit[util.NPUIndex1], nil
+}
+
+// IsResourceWholeCard judge if resource is whole card by node total resource
+func (vNode *VNode) IsResourceWholeCard(vRes util.VResource) bool {
+	chipCoreNum, err := vNode.getVChipCoreNum()
+	if err != nil {
+		klog.V(util.LogWarningLev).Infof("IsResourceWholeCard get chipCoreNum failed")
+	}
+	return vRes.Aicore % chipCoreNum == 0
+}
+
+type vChipsList []*VChip
+
+// Len for order.
+func (vChips vChipsList) Len() int {
+	return len(vChips)
+}
+
+// Less for order.
+func (vChips vChipsList) Less(i, j int) bool {
+	if i > vChips.Len() || j > vChips.Len() {
+		return false
+	}
+	return !vChips[i].FreeRes.BeGreater(vChips[j].FreeRes)
+}
+
+// Swap for order.
+func (vChips vChipsList) Swap(i, j int) {
+	if i > vChips.Len() || j > vChips.Len() {
+		return
+	}
+	vChips[i], vChips[j] = vChips[j], vChips[i]
 }
