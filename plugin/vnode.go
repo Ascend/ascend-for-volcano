@@ -338,36 +338,12 @@ func (vNode *VNode) addNPUResourceVNPUCard(ascendStr string, pod *v1.Pod, coreNu
 	curVChip.updateDVPP(podVResource.DVPP)
 }
 
-func (vChip *VChip) setName(value string) {
-	vChip.Name = value
-}
-
-func (vChip *VChip) setKind(value string) {
-	vChip.Kind = value
-}
-
 func (vChip *VChip) setIsDual(value bool) {
 	vChip.isDual = value
 }
 
-func (vChip *VChip) setCoreNum(value int) {
-	vChip.CoreNum = value
-}
-
 func (vChip *VChip) setSegmentFlag(value bool) {
 	vChip.SegmentFlag = value
-}
-
-func (vChip *VChip) setTotalRes(value util.VResource) {
-	vChip.TotalRes = value
-}
-
-func (vChip *VChip) setFreeRes(value util.VResource) {
-	vChip.FreeRes = value
-}
-
-func (vChip *VChip) setUsedRes(value util.VResource) {
-	vChip.UsedRes = value
 }
 
 func (vChip *VChip) addRealCardID(id string) {
