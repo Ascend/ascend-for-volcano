@@ -11,6 +11,8 @@ package vnpu
 
 import (
 	"fmt"
+	"strconv"
+
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
@@ -67,4 +69,98 @@ func (tp *ComVNPU) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode) e
 	}
 
 	return nil
+}
+
+// ScoreBestNPUNodes node with least free resource would be sorted to higher rank
+func (tp *ComVNPU) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo, scoreMap map[string]float64) error {
+	// 1. sort nodes with free resource from low to high
+	nodesSorted := tp.OrderVNodesByFreeResource(nodes)
+	if len(nodesSorted) == 0 {
+		return fmt.Errorf("%s task<%s> ScoreBestNPUNodes err: sorted nodes len 0", tp.GetPluginName(), task.Name)
+	}
+
+	// 2. give the first node high score
+	scoreMap[nodesSorted[0].Name] = util.Base10 * util.Base10 * util.Base10
+	return nil
+}
+
+func (tp *ComVNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
+	klog.V(util.LogDebugLev).Infof("%s UseAnnotation task<%s> node<%s> resource<%s> Annotation: %#v",
+		tp.GetPluginName(), task.Name, node.Name, tp.GetAnnoName(), node.Annotation)
+	taskResReq, err := plugin.TransferTaskLabelToResReq(task)
+	if err != nil {
+		klog.V(util.LogErrorLev).Infof("%s task<%s> UseAnnotation err: %s", tp.GetPluginName(), task.Name, err.Error())
+		return nil
+	}
+
+	allocChipID, err := node.VNode.SelectChipFromNode(taskResReq)
+	if err != nil {
+		klog.V(util.LogErrorLev).Infof("%s task<%s> UseAnnotation err: %s", tp.GetPluginName(), task.Name, err.Error())
+		return nil
+	}
+
+	tp.SetNPUTopologyToPodFn(task, node, taskResReq, allocChipID)
+	return tp.UpdateNodeInfo(node, allocChipID, &taskResReq)
+}
+
+func (tp *ComVNPU) SetNPUTopologyToPodFn(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource,
+	allocChipID string) {
+	// 1. whole card
+	if node.IsResourceWholeCard(taskResReq) {
+		task.Pod.Annotations[util.AscendNPUCore] = allocChipID
+		klog.V(util.LogInfoLev).Infof("%s setNPUTopologyToPod %s top:%s.", tp.GetPluginName(),
+			task.Name, allocChipID)
+		return
+	}
+
+	// 2.1 like vir04
+	virStr := getAiCoreNumStr(taskResReq.Aicore)
+	segmentAnnotation := fmt.Sprintf("%s-%s", allocChipID, virStr)
+	if node.ChipKind != plugin.Ascend310P || taskResReq.Aicore == taskResReq.Aicpu {
+		task.Pod.Annotations[util.AscendNPUCore] = segmentAnnotation
+		klog.V(util.LogInfoLev).Infof("%s setNPUTopologyToPod %s top:%s.", tp.GetPluginName(),
+			task.Name, segmentAnnotation)
+		return
+	}
+
+	// 2.2 like vir04_3c
+	segmentAnnotation = fmt.Sprintf("%s_%sc", segmentAnnotation, strconv.Itoa(taskResReq.Aicpu))
+
+	// 2.3 like vir04_3c_ndvpp
+	switch taskResReq.DVPP {
+	case plugin.AscendDVPPEnabledNull:
+		klog.V(util.LogDebugLev).Infof("null dvpp")
+	case plugin.AscendDVPPEnabledOff:
+		segmentAnnotation = fmt.Sprintf("%s_%s", segmentAnnotation, plugin.AscendNDVPPValue)
+	case plugin.AscendDVPPEnabledOn:
+		segmentAnnotation = fmt.Sprintf("%s_%s", segmentAnnotation, plugin.AscendDVPPValue)
+	}
+	task.Pod.Annotations[util.AscendNPUCore] = segmentAnnotation
+	klog.V(util.LogInfoLev).Infof("%s setNPUTopologyToPod %s top:%s.", tp.GetPluginName(),
+		task.Name, segmentAnnotation)
+	return
+}
+
+func getAiCoreNumStr(AiCoreNum int) string {
+	coreNumStr := strconv.Itoa(AiCoreNum)
+	if len(coreNumStr) < util.NPUIndex2 {
+		coreNumStr = "0" + coreNumStr
+	}
+	return plugin.AscendVNPUPrefix + coreNumStr
+}
+
+func (tp *ComVNPU) UpdateNodeInfo(node plugin.NPUNode, allocChipID string, taskResReq *util.VResource) *plugin.NPUNode {
+	for chipID, chip := range node.Chips {
+		if strconv.Itoa(chipID) != allocChipID {
+			continue
+		}
+		chip.UsedRes.Add(taskResReq)
+		chip.FreeRes.Sub(taskResReq)
+		if !node.IsResourceWholeCard(*taskResReq) {
+			chip.SegmentFlag = true
+		}
+	}
+	klog.V(util.LogInfoLev).Infof("%s UpdateNodeInfo node <%s> chip resource updated", tp.GetPluginName(),
+		node.Name)
+	return &node
 }
