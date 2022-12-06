@@ -59,31 +59,34 @@ type CommonNode struct {
 
 // VNode vnpu node class
 type VNode struct {
-	nodeName string
+	// Chips map chipID to VChip class
+	Chips map[int]*VChip
 	// ChipKind Ascend910/310/310p
 	ChipKind string
 	// ServerType Ascend310p-10-dual cardType-cardCoreNum-duo
 	ServerType string
-	// AccType module/half/card only for 910, default module
-	AccType string
-	// TotalChipNum num of total chips
+	// TotalChipNum num of total chips, get from capacity
 	TotalChipNum int
 	// FreeChipNum num of free chips get from device-info
 	FreeChipNum int
-	// Chips map chipID to VChip class
-	Chips map[int]*VChip
+	// TotalRes total resource on node
+	TotalRes util.VResource
 }
 
 // VChip vnpu chip class
 type VChip struct {
+	ID          []string
+	PodMap      map[string]*v1.Pod
+	// Name Ascend910-0
 	Name string
 	// Kind Ascend910/Ascend310/Ascend310P
 	Kind        string
 	isDual      bool
 	CoreNum     int
-	ID          []string
-	PodMap      map[string]*v1.Pod
 	SegmentFlag bool
+	TotalRes    util.VResource
+	UsedRes     util.VResource
+	FreeRes     util.VResource
 }
 
 // checkNodeDeviceInfo will be add more later
@@ -179,6 +182,9 @@ func (n *NPUNode) InitNPUNodeByNodeInf(npuNode *api.NodeInfo, kubeClient kuberne
 	}
 	for k, v := range data.DeviceList {
 		n.Annotation[k] = v
+	}
+	if setVNPUErr := n.setNodeVNPUInfo(npuNode); setVNPUErr != nil {
+		klog.V(util.LogDebugLev).Infof("setNodeVNPUInfo %s %v", npuNode.Name, setVNPUErr)
 	}
 	return nil
 }
