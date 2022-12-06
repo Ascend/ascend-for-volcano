@@ -51,6 +51,26 @@ func CheckVNPUSegmentEnable(ssn *framework.Session) bool {
 	return CheckVNPUSegmentEnableByConfig(ssn.Configurations)
 }
 
+// CheckNodeNPUByTask todo: deal with fault chips
+func (tp *ComVNPU) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode) error {
+	taskResReq, err := plugin.TransferTaskLabelToResReq(task)
+	if err != nil {
+		return fmt.Errorf("%s task<%s> CheckNodeNPUByTask err: %s", tp.GetPluginName(), task.Name, err.Error())
+	}
+
+	if !node.IsNodeTotalResEnough(taskResReq) {
+		return fmt.Errorf("%s task<%s> CheckNodeNPUByTask err: node resource not enough", tp.GetPluginName(),
+			task.Name)
+	}
+
+	if !node.IsNodeChipResEnough(taskResReq) {
+		return fmt.Errorf("%s task<%s> CheckNodeNPUByTask err: chip resource not enough", tp.GetPluginName(),
+			task.Name)
+	}
+
+	return nil
+}
+
 // ScoreBestNPUNodes node with least free resource would be sorted to higher rank
 func (tp *ComVNPU) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo, scoreMap map[string]float64) error {
 	// 1. sort nodes with free resource from low to high
@@ -60,7 +80,7 @@ func (tp *ComVNPU) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo, 
 	}
 
 	// 2. give the first node high score
-	scoreMap[nodesSorted[0].Name] = util.Base10 * util.Base10 * util.Base10
+	scoreMap[nodesSorted[0].Name] += util.NPUIndex8
 	return nil
 }
 
