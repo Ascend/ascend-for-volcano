@@ -12,6 +12,7 @@ package test
 import (
 	"fmt"
 	"strconv"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -81,6 +82,7 @@ func buildNPUResourceList(CCpu string, CMemory string, npuResourceType v1.Resour
 func FakeNormalTestTask(name string, nodename string, groupname string) *api.TaskInfo {
 	pod := NPUPod{
 		Namespace: "vcjob", Name: name, NodeName: nodename, GroupName: groupname, Phase: v1.PodRunning,
+		Labels:    make(map[string]string, util.MapInitNum),
 		ReqSource: buildNPUResourceList("1", "1000", NPU910CardName, strconv.Itoa(NPUIndex8)),
 	}
 	task := api.NewTaskInfo(BuildNPUPod(pod))

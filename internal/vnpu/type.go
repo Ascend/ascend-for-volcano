@@ -10,8 +10,8 @@ Package vnpu is using for HuaWei Ascend pin fault rescheduling.
 package vnpu
 
 import (
-	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/base"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
@@ -31,16 +31,6 @@ const (
 	// VJobStatusDestroyed destroyed
 	VJobStatusDestroyed = "Destroyed"
 
-	// VNPUCMNameSpace for uninstall volcano, also delete cm
-	VNPUCMNameSpace = "volcano-system"
-	// VNPUCMName the cm intercommunicate to device-plugin.
-	VNPUCMName = "mindx-dl-vnpu-manager"
-	// VNPUCMDataKey cm date key
-	VNPUCMDataKey = "VNPUCfg"
-	// VNPUCacheCMName solidified the vnpu pre-alloc cache.
-	VNPUCacheCMName = "mindx-dl-vnpu-cache"
-	// VNPUNodeLabelKey for select vnpu node label key.
-	VNPUNodeLabelKey = "npu-spec"
 	// VNPUNodeLabelValue for select vnpu node label value.
 	VNPUNodeLabelValue = "vnpu"
 	// DeleteOverTime over time for job finish deal.
@@ -67,88 +57,17 @@ type ComVNPU struct {
 // ComVNPUHandler vnpu handler
 type ComVNPUHandler struct {
 	*Action
-	vNodes map[string]VNode
+	vNodes map[string]plugin.VNode
 	base.NPUHandler
 }
 
-type staticVNPUHandler struct {
-	*ComVNPUHandler
+type staticVNPU struct {
 }
 
-type dynamicVNPUHandler struct {
-	*ComVNPUHandler
-	*VCache
-	dpVConfigMap *util.ComConfigMap
-}
-
-// VResource resource dimensions
-type VResource struct {
-	Aicore int
-	Aicpu  int
-	Vpc    int
-	Vdec   int
-	Jpegd  int
-	Pngd   int
-	Venc   int
-	Jpege  int
-}
-
-// VChip vnpu chip
-type VChip struct {
-	cardName          string
-	cardType          string
-	segmentFlag       bool
-	wholeChipUsedFlag bool
-	allocatedRes      VResource
-	segmentedRes      VResource
-	unsegmentedRes    VResource
-	mountedCoreNum    int
-	segmentingCoreNum int
-	vGroupFragNum     int
-}
-
-// VNode vnpu node
-type VNode struct {
-	nodeName           string
-	nodeCardType       string
-	nodeCardNum        int
-	nodeChips          map[string]VChip
-	nodeAllocatableRes VResource
-	nodeSegmentedRes   VResource
-	nodeUnsegmentedRes VResource
+type dynamicVNPU struct {
 }
 
 // Action vnpu actions
 type Action struct {
-	template map[string]VResource
-}
-
-// VCache vnpu cache
-type VCache struct {
-	vConfigMap *util.ComConfigMap
-	vJobs      map[api.JobID]VJob
-	checkCode  string
-}
-
-// VJob vnpu job
-type VJob struct {
-	jobUID        api.JobID
-	jobStatus     string
-	reqVNPUType   string
-	reqNodeName   string
-	reqCardName   string
-	taskNum       int
-	allocCardName string
-	allocFlag     bool
-	resourceReq   VResource
-	createTime    int64
-	allocTime     int64
-	updateTime    int64
-}
-
-// VJobList struct for sorting
-type VJobList []VJob
-
-type dpvConfigMap struct {
-	util.ComConfigMap
+	template map[string]util.VResource
 }

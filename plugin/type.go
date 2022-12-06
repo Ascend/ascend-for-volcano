@@ -22,6 +22,45 @@ const (
 	nodeNoFitSelectorError = "no matching label on this node"
 	objectNilError         = "object or argument is nil"
 	podRankIndex           = "hccl/rankIndex"
+
+	// PodEventMsgAllocateFailed dp pod segment failed msg
+	PodEventMsgAllocateFailed = "Allocate failed due to rpc error: code = Unknown desc = NoNPUAffinity, " +
+		"which is unexpected"
+	// PodEventReasonAllocateFailed dp pod segment failed reason
+	PodEventReasonAllocateFailed = "UnexpectedAdmissionError"
+	// PodEventTypeAllocateFailed dp pod segment failed type
+	PodEventTypeAllocateFailed = "Warning"
+	// FormatIncorrectError format incorrect error
+	FormatIncorrectError = "format incorrect"
+
+	// AscendVNPULevel vnpu level
+	AscendVNPULevel = "vnpu-level"
+	// AscendVNPULevelLow low
+	AscendVNPULevelLow = "low"
+	// AscendVNPULevelHigh high
+	AscendVNPULevelHigh = "high"
+	// AscendVNPUPrefix vir
+	AscendVNPUPrefix = "vir"
+	// AscendVNPUDVPP dvpp enable
+	AscendVNPUDVPP = "vnpu-dvpp"
+	// AscendDVPPEnabledOff off
+	AscendDVPPEnabledOff = "no"
+	// AscendDVPPEnabledNull null
+	AscendDVPPEnabledNull = "null"
+	// AscendDVPPEnabledOn on
+	AscendDVPPEnabledOn = "yes"
+	// AscendNDVPPValue value
+	AscendNDVPPValue = "ndvpp"
+	// AscendDVPPValue value
+	AscendDVPPValue = "dvpp"
+	podObjectType   = "Pod"
+
+	// Ascend310P 310P template name
+	Ascend310P = "Ascend310P"
+	// Ascend910 910 template name
+	Ascend910 = "Ascend910"
+	// RingController310P 310p ring controller name
+	RingController310P = "ascend-310P"
 )
 
 // SchedulerJob the plugin define job info

@@ -75,8 +75,8 @@ type VNode struct {
 
 // VChip vnpu chip class
 type VChip struct {
-	ID          []string
-	PodMap      map[string]*v1.Pod
+	PodMap map[string]*v1.Pod
+	ID     []string
 	// Name Ascend910-0
 	Name string
 	// Kind Ascend910/Ascend310/Ascend310P

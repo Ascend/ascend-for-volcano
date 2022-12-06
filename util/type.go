@@ -62,6 +62,8 @@ const (
 	HuaweiArchArm = "huawei-arm"
 	// HuaweiArchX86 for x86.
 	HuaweiArchX86 = "huawei-x86"
+	// RingController ascend-310P/ascend-310/ascend-910
+	RingController = "ring-controller.atlas"
 
 	// Accelerator for custom tag.
 	Accelerator = "accelerator"
@@ -172,13 +174,6 @@ type VTemplate struct {
 type SchedulerJobAttr struct {
 	ComJob
 	*NPUJob
-}
-
-// ComConfigMap common config map
-type ComConfigMap struct {
-	Name      string
-	Namespace string
-	Data      map[string]string
 }
 
 // VResource resource dimensions
