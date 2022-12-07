@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package plugin is using for HuaWei Ascend pin affinity schedule frame.
-
 */
 package plugin
 
@@ -311,7 +309,7 @@ func (sHandle *ScheduleHandler) NodePredicate(taskInfo *api.TaskInfo, nodeInfo *
 	}
 	// task and frame conf has check before in job valid.
 	if !util.IsSelectorMeetJob(vcJob.Selector, vcNode.Label) {
-		meetErr := fmt.Errorf("job(%s) selector:%#v not meet node<%s> label or selector:%#v", vcJob.JobName,
+		meetErr := fmt.Errorf("job(%s) selector:%#v not meet node<%s> label or selector:%#v", vcJob.Name,
 			vcJob.Selector, vcNode.Name, vcNode.Label)
 		klog.V(util.LogErrorLev).Infof(meetErr.Error())
 		return meetErr

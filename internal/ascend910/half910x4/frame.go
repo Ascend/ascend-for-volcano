@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package half910x4 is using for HuaWei A800/9000 Ascend910 pin affinity schedule.
-
 */
 package half910x4
 
@@ -47,7 +45,7 @@ func (tp *half910x4) ValidNPUJob() *api.ValidateResult {
 	taskNum := len(tp.Tasks)
 
 	klog.V(util.LogDebugLev).Infof("%s Module DistributeTrainMode %s has %d tasks.",
-		tp.GetPluginName(), tp.JobName, taskNum)
+		tp.GetPluginName(), tp.Name, taskNum)
 
 	if taskNum <= 1 {
 		if err := tp.checkSingleTrainMode(); err != nil {

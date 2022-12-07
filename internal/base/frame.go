@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package base is using for HuaWei Ascend pin affinity schedule.
-
 */
 package base
 
@@ -37,22 +35,18 @@ func (tp *NPUHandler) InitMyJobPlugin(attr util.SchedulerJobAttr, env plugin.Sch
 func (tp *NPUHandler) ValidNPUJob() *api.ValidateResult {
 	if tp == nil {
 		err := errors.New(util.ArgumentError)
-		return &api.ValidateResult{
-			Pass:    false,
-			Reason:  err.Error(),
-			Message: err.Error(),
-		}
+		return &api.ValidateResult{Pass: false, Reason: err.Error(), Message: err.Error()}
 	}
-	klog.V(util.LogDebugLev).Infof("%s ValidNPUJob job(%s).", tp.GetPluginName(), tp.JobName)
+	klog.V(util.LogDebugLev).Infof("%s ValidNPUJob job(%s).", tp.GetPluginName(), tp.Name)
 
 	for _, task := range tp.Tasks {
 		taskNPU := task.ReqNPUNum
 
 		klog.V(util.LogDebugLev).Infof("%s check task<%s> require npu<%d>.",
-			tp.GetPluginName(), task.TaskName, taskNPU)
+			tp.GetPluginName(), task.Name, taskNPU)
 
 		if taskNPU < 1 || taskNPU > tp.MaxNodeNPUNum {
-			err := fmt.Errorf("task<%s-%s> req npu num<%d> is invalid", tp.JobName, task.TaskName, taskNPU)
+			err := fmt.Errorf("task<%s-%s> req npu num<%d> is invalid", tp.Name, task.Name, taskNPU)
 			klog.V(util.LogErrorLev).Infof("%s ValidNPUJob err: %s", tp.GetPluginName(), err.Error())
 			return &api.ValidateResult{
 				Pass:    false,

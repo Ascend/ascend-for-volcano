@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package vnpu is using for HuaWei Ascend pin fault rescheduling.
-
 */
 package vnpu
 
@@ -52,7 +50,7 @@ func CheckVNPUSegmentEnable(ssn *framework.Session) bool {
 }
 
 // CheckNodeNPUByTask todo: deal with fault chips
-func (tp *ComVNPU) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode) error {
+func (tp *VNPU) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode) error {
 	taskResReq, err := plugin.TransferTaskLabelToResReq(task)
 	if err != nil {
 		return fmt.Errorf("%s task<%s> CheckNodeNPUByTask err: %s", tp.GetPluginName(), task.Name, err.Error())
@@ -72,7 +70,7 @@ func (tp *ComVNPU) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode) e
 }
 
 // ScoreBestNPUNodes node with least free resource would be sorted to higher rank
-func (tp *ComVNPU) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo, scoreMap map[string]float64) error {
+func (tp *VNPU) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo, scoreMap map[string]float64) error {
 	// 1. sort nodes with free resource from low to high
 	nodesSorted := tp.orderVNodesByFreeResource(nodes)
 	if len(nodesSorted) == 0 {
@@ -85,7 +83,7 @@ func (tp *ComVNPU) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo, 
 }
 
 // UseAnnotation write task use vnpu to pod annotation
-func (tp *ComVNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
+func (tp *VNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
 	klog.V(util.LogDebugLev).Infof("%s UseAnnotation task<%s> node<%s> resource<%s> Annotation: %#v",
 		tp.GetPluginName(), task.Name, node.Name, tp.GetAnnoName(), node.Annotation)
 	taskResReq, err := plugin.TransferTaskLabelToResReq(task)
@@ -105,7 +103,7 @@ func (tp *ComVNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *plugi
 }
 
 // SetNPUTopologyToPodFn write chip to pod annotation AscendNPUCore
-func (tp *ComVNPU) SetNPUTopologyToPodFn(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource,
+func (tp *VNPU) SetNPUTopologyToPodFn(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource,
 	allocChipID string) {
 	// 1. whole card
 	if node.IsResourceWholeCard(taskResReq) {
@@ -156,7 +154,7 @@ func getDVPPValue(DVPPEnable string, preAnno string) string {
 }
 
 // UpdateNodeInfo update npuNode after allocation
-func (tp *ComVNPU) UpdateNodeInfo(node plugin.NPUNode, allocChipID string, taskResReq util.VResource) *plugin.NPUNode {
+func (tp *VNPU) UpdateNodeInfo(node plugin.NPUNode, allocChipID string, taskResReq util.VResource) *plugin.NPUNode {
 	for chipID, chip := range node.Chips {
 		if strconv.Itoa(chipID) != allocChipID {
 			continue

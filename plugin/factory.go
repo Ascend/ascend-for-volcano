@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package plugin is using for HuaWei Ascend pin affinity schedule.
-
 */
 package plugin
 
@@ -165,7 +163,7 @@ func (sHandle *ScheduleHandler) InitJobsPlugin() {
 	}
 	for _, vcJob := range sHandle.Jobs {
 		if vcJob.handler == nil {
-			klog.V(util.LogErrorLev).Infof("InitJobsPlugin %s's plugin not register.", vcJob.JobName)
+			klog.V(util.LogErrorLev).Infof("InitJobsPlugin %s's plugin not register.", vcJob.Name)
 			continue
 		}
 		if err := vcJob.handler.InitMyJobPlugin(vcJob.SchedulerJobAttr, sHandle.ScheduleEnv); err != nil {

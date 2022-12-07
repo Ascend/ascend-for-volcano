@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
-
 */
 package rescheduling
 
@@ -131,12 +129,12 @@ func (reScheduler *ReScheduler) GetRunningJobs(
 			continue
 		}
 		if schedulerJob.ReqNPUNum == 0 || schedulerJob.ReqNPUName != cardName { // req type is not current card type
-			klog.V(util.LogDebugLev).Infof("job %s requires npu %d name %s: illegal, skip", schedulerJob.JobName,
+			klog.V(util.LogDebugLev).Infof("job %s requires npu %d name %s: illegal, skip", schedulerJob.Name,
 				schedulerJob.ReqNPUNum, schedulerJob.ReqNPUName)
 			continue
 		}
 		if len(schedulerJob.Selector) == 0 {
-			klog.V(util.LogDebugLev).Infof("job %s has no selectors: illegal, skip", schedulerJob.JobName)
+			klog.V(util.LogDebugLev).Infof("job %s has no selectors: illegal, skip", schedulerJob.Name)
 			continue
 		}
 		if cardName != util.NPU910CardName {
@@ -601,11 +599,11 @@ func (reScheduler *ReScheduler) RestartNeedForceDeleteJobs(ssn *framework.Sessio
 	klog.V(util.LogDebugLev).Infof("GetNeedForceDeleteDelayingNPUJobs: %#v", needDeleteNPUJobs)
 	for _, schedulerJob := range needDeleteNPUJobs {
 		for _, faultJob := range reScheduler.FaultJobs {
-			if schedulerJob.JobName != faultJob.JobUID {
+			if schedulerJob.Name != faultJob.JobUID {
 				continue
 			}
 			if deleteErr := faultJob.ForceDeleteJob(ssn, &schedulerJob); deleteErr != nil {
-				klog.V(util.LogErrorLev).Infof("%s ForceDeleteJob: %#v", schedulerJob.JobName, deleteErr)
+				klog.V(util.LogErrorLev).Infof("%s ForceDeleteJob: %#v", schedulerJob.Name, deleteErr)
 			}
 		}
 	}
@@ -649,16 +647,16 @@ func (reScheduler *ReScheduler) RestartFaultJobs(ssn *framework.Session) error {
 		schedulerJob, ok := reScheduler.Jobs[restartFaultJob.JobUID]
 		if !ok {
 			klog.V(util.LogInfoLev).Infof("restartFaultJob %s not in session, has already been deleted",
-				schedulerJob.JobName)
+				schedulerJob.Name)
 			continue
 		}
 		klog.V(util.LogInfoLev).Infof("%s need restart.", restartFaultJob.JobName)
 		if restartErr := restartFaultJob.restartSingleFaultJob(
 			ssn, reScheduler.kubeClient, &schedulerJob, jobRestartReason); restartErr != nil {
-			klog.V(util.LogErrorLev).Infof("RestartJob %s %#v.", schedulerJob.JobName, restartErr)
+			klog.V(util.LogErrorLev).Infof("RestartJob %s %#v.", schedulerJob.Name, restartErr)
 		} else {
 			restartFaultJob.DeleteExecutedFlag = true
-			klog.V(util.LogInfoLev).Infof("RestartJob %s execution success, set flag true", schedulerJob.JobName)
+			klog.V(util.LogInfoLev).Infof("RestartJob %s execution success, set flag true", schedulerJob.Name)
 		}
 		newCacheJobs = append(newCacheJobs, restartFaultJob) // modify restartFlag and put modified fJob into cache
 	}
@@ -914,7 +912,7 @@ func (reScheduler *ReScheduler) checkNodeCurNodeIsFault(vcNode plugin.NPUNode, t
 	}
 	reschKey, ok := schedulerJob.SchedulerJobAttr.Label[JobRescheduleLabelKey]
 	if !ok || reschKey == JobOffRescheduleLabelValue {
-		klog.V(util.LogInfoLev).Infof("job %s rescheduling not enabled, skip check node", schedulerJob.JobName)
+		klog.V(util.LogInfoLev).Infof("job %s rescheduling not enabled, skip check node", schedulerJob.Name)
 		return nil
 	}
 	for _, fNode := range reScheduler.FaultNodes {

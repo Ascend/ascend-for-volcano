@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package plugin is using for HuaWei Ascend pin affinity schedule frame.
-
 */
 package plugin
 
@@ -56,7 +54,7 @@ func (sHandle *ScheduleHandler) releaseAnnotation(task *api.TaskInfo, vcJob Sche
 	}
 	vcTask, ok := vcJob.Tasks[task.Name]
 	if !ok {
-		klog.V(util.LogInfoLev).Infof("task %s not in vcjob %s", vcTask.TaskName, vcJob.JobName)
+		klog.V(util.LogInfoLev).Infof("task %s not in vcjob %s", vcTask.Name, vcJob.Name)
 		return
 	}
 	reqStr, ok := task.Pod.Annotations[util.AscendNPUPodRealUse]
@@ -75,7 +73,7 @@ func (sHandle *ScheduleHandler) releaseAnnotation(task *api.TaskInfo, vcJob Sche
 	if value != "" {
 		// if failed, reset by next session.
 		if isEachStringContainsSameElement(value, reqStr, ",") {
-			annErr := fmt.Errorf("%s:%s has same NPU used %s:%s", vcNode.Name, value, vcTask.TaskName, reqStr)
+			annErr := fmt.Errorf("%s:%s has same NPU used %s:%s", vcNode.Name, value, vcTask.Name, reqStr)
 			klog.V(util.LogErrorLev).Infof("releaseAnnotation %s", annErr)
 			return
 		}

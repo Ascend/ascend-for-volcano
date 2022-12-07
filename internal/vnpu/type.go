@@ -3,15 +3,11 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package vnpu is using for HuaWei Ascend pin fault rescheduling.
-
 */
 package vnpu
 
 import (
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/base"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
@@ -41,24 +37,33 @@ const (
 	VNPUScoreWeight = 64
 	// PreAllocateFailureWaitTime wait time to judge pre-allocation failure
 	PreAllocateFailureWaitTime = 10
+
+	// PodEventMsgAllocateFailed dp pod segment failed msg
+	PodEventMsgAllocateFailed = "NoNPUAffinity"
+	// PodEventReasonAllocateFailed dp pod segment failed reason
+	PodEventReasonAllocateFailed = "UnexpectedAdmissionError"
+	// PodEventTypeAllocateFailed dp pod segment failed type
+	PodEventTypeAllocateFailed = "Warning"
+	podObjectType              = "Pod"
 )
 
-// ComVNPU vnpu struct
-type ComVNPU struct {
-	*ComVNPUHandler
-	// The vNPU chip divide name. Like huawei.com/Ascend910-16c,huawei.com/Ascend910-8c and so on.
-	DivideKinds []string
-	// divide vNPU coefficient for each chip.
-	Coefficients map[string]int
-	// the source of NPU cores in node annotation. like huawei.com/Ascend910-spec.
-	NPUCardCoreKey string
+// VResource resource dimensions
+type VResource struct {
+	Aicore int
+	Aicpu  int
+	Dvpp   string
 }
 
-// ComVNPUHandler vnpu handler
-type ComVNPUHandler struct {
-	*Action
-	vNodes map[string]plugin.VNode
-	base.NPUHandler
+// VTemplate vNPU template
+type VTemplate struct {
+	Data map[string]VResource
+}
+
+// VNPU vnpu struct
+type VNPU struct {
+	VT VTemplate
+	staticVNPU
+	dynamicVNPU
 }
 
 type staticVNPU struct {

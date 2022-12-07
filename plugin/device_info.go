@@ -3,25 +3,18 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package plugin is using for HuaWei Ascend pin affinity schedule.
-
 */
 package plugin
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
-	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	"volcano.sh/volcano/pkg/scheduler/framework"
-
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
@@ -210,66 +203,17 @@ func getDVPPEnable(task *api.TaskInfo) string {
 }
 
 func getAiCpuNum(task *api.TaskInfo, coreNum int) (int, error) {
-	ringControllerType, ok := task.Pod.Labels[util.RingController] // ascend-910/ascend-310P/ascend-310
+	ringControllerType, ok := task.Pod.Labels[util.JobKindKey] // ascend-910/ascend-310P/ascend-310
 	if !ok {
-		return 0, fmt.Errorf("getAiCpuNum get label %s failed", util.RingController)
+		return 0, fmt.Errorf("getAiCpuNum get label %s failed", util.JobKindKey)
 	}
 	vnpuLevel, ok := task.Pod.Labels[AscendVNPULevel]
 	if !ok {
 		vnpuLevel = AscendVNPULevelLow
 	}
-	if ringControllerType == RingController310P && (coreNum == util.NPUIndex2 || coreNum == util.
+	if ringControllerType == util.JobKind310PValue && (coreNum == util.NPUIndex2 || coreNum == util.
 		NPUIndex4) && vnpuLevel == AscendVNPULevelLow {
 		return coreNum - 1, nil // 310P with 4core/2core low
 	}
 	return coreNum, nil
-}
-
-// GetSegmentFailurePod get segmentation failed pod from pod event
-func GetSegmentFailurePod(ssn *framework.Session, namespace string) []*v1.Pod {
-	var faultPods []*v1.Pod
-	events, err := ssn.KubeClient().CoreV1().Events(namespace).List(context.TODO(), metav1.ListOptions{})
-	if err != nil || len(events.Items) < 1 {
-		klog.V(util.LogDebugLev).Infof("GetSegmentFailurePod get error or no event")
-		return faultPods
-	}
-
-	for _, event := range events.Items {
-		if !isEventSegmentFailurePod(event) {
-			continue
-		}
-
-		faultPod := getPodFromKubernetes(ssn, event.InvolvedObject.Name, namespace)
-		if faultPod == nil {
-			continue
-		}
-
-		faultPods = append(faultPods, faultPod)
-	}
-	return faultPods
-}
-
-func isEventSegmentFailurePod(event v1.Event) bool {
-	if event.InvolvedObject.Kind != podObjectType {
-		klog.V(util.LogDebugLev).Infof("GetSegmentFailurePod %s not pod but %s, continue",
-			event.InvolvedObject.Name, event.InvolvedObject.Kind)
-		return false
-	}
-
-	if event.Type != PodEventTypeAllocateFailed || event.Reason != PodEventReasonAllocateFailed ||
-		event.Message != PodEventMsgAllocateFailed {
-		klog.V(util.LogDebugLev).Infof("GetSegmentFailurePod pod event not segmentation error")
-		return false
-	}
-	return true
-}
-
-func getPodFromKubernetes(ssn *framework.Session, name, namespace string) *v1.Pod {
-	faultPod, err := ssn.KubeClient().CoreV1().Pods(namespace).Get(context.TODO(), name, metav1.GetOptions{})
-	if err != nil {
-		klog.V(util.LogDebugLev).Infof("GetSegmentFailurePod get pod<%s> from kubernetes failed", faultPod)
-		return nil
-	}
-	klog.V(util.LogInfoLev).Infof("in getPodEvent pod %s segmentation fault event", name)
-	return faultPod
 }

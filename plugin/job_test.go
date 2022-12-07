@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package plugin is using for HuaWei Ascend pin affinity schedule frame.
-
 */
 package plugin
 
@@ -339,7 +337,7 @@ func buildJobValidTest() []jobValidTest {
 			name: "04-JobValid job no selector test.",
 			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
 				ScheduleEnv: ScheduleEnv{Jobs: map[api.JobID]SchedulerJob{tJob.
-					UID: {SchedulerJobAttr: util.SchedulerJobAttr{ComJob: util.ComJob{JobName: tJob.UID}}}}}},
+					UID: {SchedulerJobAttr: util.SchedulerJobAttr{ComJob: util.ComJob{Name: tJob.UID}}}}}},
 			args: jobValidArgs{obj: tJob},
 			want: &api.ValidateResult{Pass: false, Reason: "Job selector error",
 				Message: fmt.Errorf("%s or vcFrame's selectors nil", tJob.UID).Error()},
@@ -529,7 +527,7 @@ func buildCheckNodeNumTest() []CheckNodeNumTest {
 		{
 			name: "03-CheckNodeNum no node idle test.",
 			fields: schedulerJobFields{SchedulerJobAttr: util.SchedulerJobAttr{NPUJob: &util.
-				NPUJob{Tasks: map[string]util.NPUTask{string(tTasks[0].UID): {TaskName: tTasks[0].Name,
+				NPUJob{Tasks: map[string]util.NPUTask{string(tTasks[0].UID): {Name: tTasks[0].Name,
 				ReqNPUName: util.NPU910CardName, ReqNPUNum: util.NPUIndex8}}}}},
 			args: CheckNodeNumArgs{taskInfo: tTasks[0], vcNode: NPUNode{CommonNode{Name: "testNode1", Idle: nil},
 				VNode{}}},
@@ -538,7 +536,7 @@ func buildCheckNodeNumTest() []CheckNodeNumTest {
 		{
 			name: "04-CheckNodeNum not meet test.",
 			fields: schedulerJobFields{SchedulerJobAttr: util.SchedulerJobAttr{NPUJob: &util.
-				NPUJob{Tasks: map[string]util.NPUTask{string(tTasks[0].UID): {TaskName: tTasks[0].Name,
+				NPUJob{Tasks: map[string]util.NPUTask{string(tTasks[0].UID): {Name: tTasks[0].Name,
 				ReqNPUName: util.NPU910CardName, ReqNPUNum: util.NPUIndex8}}}}},
 			args:    CheckNodeNumArgs{taskInfo: tTasks[0], vcNode: tNode1},
 			wantErr: true,
@@ -546,7 +544,7 @@ func buildCheckNodeNumTest() []CheckNodeNumTest {
 		{
 			name: "05-CheckNodeNum meet test.",
 			fields: schedulerJobFields{SchedulerJobAttr: util.SchedulerJobAttr{NPUJob: &util.
-				NPUJob{Tasks: map[string]util.NPUTask{string(tTasks[0].UID): {TaskName: tTasks[0].Name,
+				NPUJob{Tasks: map[string]util.NPUTask{string(tTasks[0].UID): {Name: tTasks[0].Name,
 				ReqNPUName: util.NPU910CardName, ReqNPUNum: util.NPUIndex8}}}}},
 			args:    CheckNodeNumArgs{taskInfo: tTasks[0], vcNode: tNode2},
 			wantErr: false,
@@ -645,7 +643,7 @@ func buildValidJobSelectorTest() []validJobSelectorTest {
 		{
 			name: "02-ValidJobSelector selector not meet test.",
 			fields: schedulerJobFields{SchedulerJobAttr: util.SchedulerJobAttr{ComJob: util.ComJob{
-				JobName: "haha", Selector: map[string]string{"heihei": "what?"},
+				Name: "haha", Selector: map[string]string{"heihei": "what?"},
 			}}},
 			args: validJobSelectorArgs{vcFrame: VolcanoFrame{Conf: []conf.
 				Configuration{{Arguments: map[string]string{"heihei": "why?"}}}}},
@@ -654,7 +652,7 @@ func buildValidJobSelectorTest() []validJobSelectorTest {
 		{
 			name: "03-ValidJobSelector ok test.",
 			fields: schedulerJobFields{SchedulerJobAttr: util.SchedulerJobAttr{ComJob: util.ComJob{
-				JobName: "haha", Selector: map[string]string{"heihei": "oh"},
+				Name: "haha", Selector: map[string]string{"heihei": "oh"},
 			}}},
 			args: validJobSelectorArgs{vcFrame: VolcanoFrame{Conf: []conf.
 				Configuration{{Arguments: map[string]string{"heihei": "oh"}}}}},

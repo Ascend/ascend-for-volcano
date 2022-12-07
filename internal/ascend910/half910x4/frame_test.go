@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package half910x4 is using for HuaWei A800/9000 Ascend910 pin affinity schedule.
-
 */
 package half910x4
 
@@ -84,12 +82,12 @@ func buildValidNPUJobTestCase02() []itest.ValidNPUJobTestCase {
 	job04 := test.FakeNormalTestJob("job04", util.NPUIndex2)
 	test.SetFakeJobResRequest(job04, util.NPU910CardName, "4")
 	attr4 := itest.FakeSchedulerJobAttrByJob(job04)
-	task1 := util.NPUTask{TaskName: "pod0", ReqNPUNum: npuNum5}
+	task1 := util.NPUTask{Name: "pod0", ReqNPUNum: npuNum5}
 	attr4.Tasks[`"vcjob"-"pod0"`] = task1
 	job05 := test.FakeNormalTestJob("job05", util.NPUIndex2)
 	test.SetFakeJobResRequest(job05, util.NPU910CardName, "4")
 	attr5 := itest.FakeSchedulerJobAttrByJob(job05)
-	task2 := util.NPUTask{TaskName: "pod0", ReqNPUNum: 1}
+	task2 := util.NPUTask{Name: "pod0", ReqNPUNum: 1}
 	attr5.Tasks[`"vcjob"-"pod0"`] = task2
 	job06 := test.FakeNormalTestJob("job06", util.NPUIndex2)
 	test.SetFakeJobResRequest(job06, util.NPU910CardName, "4")
