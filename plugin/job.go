@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package plugin is using for HuaWei Ascend pin affinity schedule frame.
-
 */
 package plugin
 
@@ -158,19 +156,20 @@ func GetVCTaskReqNPUTypeFromTaskInfo(vcTask *api.TaskInfo) (string, int) {
 }
 
 // GetJobNPUTasks get NPUTask from jobInfo.
-func GetJobNPUTasks(vcJob *api.JobInfo) map[string]util.NPUTask {
+func GetJobNPUTasks(vcJob *api.JobInfo) map[api.TaskID]util.NPUTask {
 	if vcJob == nil || len(vcJob.Tasks) == 0 {
 		return nil
 	}
-	resultMap := make(map[string]util.NPUTask, util.MapInitNum)
+	resultMap := make(map[api.TaskID]util.NPUTask, util.MapInitNum)
 	for taskID, taskInf := range vcJob.Tasks {
 		name, num := GetVCTaskReqNPUTypeFromTaskInfo(taskInf)
 		if num == 0 {
-			resultMap[string(taskID)] = util.NPUTask{}
+			resultMap[taskID] = util.NPUTask{}
 			continue
 		}
-		resultMap[string(taskID)] = util.NPUTask{TaskName: taskInf.Name, ReqNPUName: name, ReqNPUNum: num,
-			Selector: GetTaskSelectors(taskInf), Label: GetTaskLabels(taskInf)}
+		resultMap[taskID] = util.NPUTask{Name: taskInf.Name, NameSpace: taskInf.Namespace, ReqNPUName: name,
+			ReqNPUNum: num,
+			Selector:  GetTaskSelectors(taskInf), Label: GetTaskLabels(taskInf)}
 	}
 	return resultMap
 }
@@ -207,7 +206,53 @@ func (sJob *SchedulerJob) Init(vcJob *api.JobInfo, sHandle *ScheduleHandler) err
 		klog.V(util.LogInfoLev).Infof("SchedulerJob_Init: parameter is nil.")
 		return errors.New("parameter is nil")
 	}
-	sJob.ComJob = util.ComJob{JobName: vcJob.UID, NameSpace: vcJob.Namespace,
+	if initErr := sJob.initByJobInfo(vcJob); initErr != nil {
+		klog.V(util.LogDebugLev).Infof("%s initByJobInfo %s", vcJob.UID, initErr)
+		return initErr
+	}
+
+	if !sJob.IsJobSupportByPlugin(sHandle) {
+		klog.V(util.LogInfoLev).Infof("%s IsJobSupportByPlugin not has suitable plugin.", sJob.Name)
+		return fmt.Errorf("%s's plugin not regist", sJob.Name)
+	}
+
+	sJob.InitSelfPluginByJobInfo(sHandle)
+	return nil
+}
+
+// setJobType get job type, used in vJob temporary.
+func (sJob *SchedulerJob) initVTasks(vcJob *api.JobInfo) {
+	for tID, t := range vcJob.Tasks {
+		tmpTask, ok := sJob.Tasks[tID]
+		if !ok {
+			klog.V(util.LogErrorLev).Infof("%s not in frame tasks.", tID)
+			continue
+		}
+
+		if initErr := tmpTask.InitVTask(t); initErr != nil {
+			klog.V(util.LogErrorLev).Infof("Init vTask %s %s.", tID, initErr)
+			continue
+		}
+
+		sJob.Tasks[tID] = tmpTask
+	}
+}
+
+// initVJob get job type, used in vJob temporary.
+func (sJob *SchedulerJob) initVJob(vcJob *api.JobInfo) {
+	if !sJob.IsVJob() {
+		klog.V(util.LogDebugLev).Infof("%s not VJob.", vcJob.Name)
+		return
+	}
+	sJob.VJob = &util.VJob{}
+	sJob.initVTasks(vcJob)
+	sJob.SetVJobType()
+	sJob.SetVJobStatusByInf(vcJob)
+	return
+}
+
+func (sJob *SchedulerJob) initByJobInfo(vcJob *api.JobInfo) error {
+	sJob.ComJob = util.ComJob{Name: vcJob.UID, NameSpace: vcJob.Namespace,
 		Selector: GetJobSelectorFromVcJob(vcJob),
 		Label:    GetJobLabelFromVcJob(vcJob)}
 	sJob.NPUJob = nil
@@ -216,12 +261,8 @@ func (sJob *SchedulerJob) Init(vcJob *api.JobInfo, sHandle *ScheduleHandler) err
 	if err != nil {
 		return err
 	}
-	if !sHandle.IsPluginRegistered(name) {
-		return fmt.Errorf("%s's plugin not regist", name)
-	}
-
 	sJob.NPUJob = &util.NPUJob{ReqNPUName: name, ReqNPUNum: num, Tasks: GetJobNPUTasks(vcJob)}
-	sJob.InitSelfPluginByJobInfo(sHandle)
+	sJob.initVJob(vcJob)
 	return nil
 }
 
@@ -233,14 +274,14 @@ func (sJob SchedulerJob) IsNPUJob() bool {
 // ValidJobSelector validate the job selector.
 func (sJob SchedulerJob) ValidJobSelector(vcFrame VolcanoFrame) error {
 	if len(sJob.Selector) == 0 || len(vcFrame.Conf) == 0 || len(vcFrame.Conf[0].Arguments) == 0 {
-		msg := fmt.Errorf("%s or vcFrame's selectors nil", sJob.JobName)
+		msg := fmt.Errorf("%s or vcFrame's selectors nil", sJob.Name)
 		klog.V(util.LogErrorLev).Infof("%s.", msg.Error())
 		return msg
 	}
 
 	// check the job selector
 	if !util.IsSelectorMeetJob(sJob.Selector, vcFrame.Conf[0].Arguments) {
-		meetErr := fmt.Errorf("job(%s) selector:%#v not meet scheduler conf:%#v", sJob.JobName, sJob.Selector,
+		meetErr := fmt.Errorf("job(%s) selector:%#v not meet scheduler conf:%#v", sJob.Name, sJob.Selector,
 			vcFrame.Conf[0].Arguments)
 		klog.V(util.LogErrorLev).Infof(meetErr.Error())
 		return meetErr
@@ -254,9 +295,13 @@ func (sJob SchedulerJob) preCheckJob(vcFrame VolcanoFrame) error {
 
 // ValidJobFn valid job.
 func (sJob SchedulerJob) ValidJobFn(vcFrame VolcanoFrame) *api.ValidateResult {
+	if sJob.Status == scheduling.PodGroupRunning {
+		klog.V(util.LogDebugLev).Infof("%s %s's pg is running", PluginName, sJob.Name)
+		return nil
+	}
 	// Validate job selector, for all kinds of job.
 	if errPreCheck := sJob.preCheckJob(vcFrame); errPreCheck != nil {
-		klog.V(util.LogErrorLev).Infof("%s %s, err: %#v.", PluginName, sJob.JobName, errPreCheck)
+		klog.V(util.LogErrorLev).Infof("%s %s, err: %#v.", PluginName, sJob.Name, errPreCheck)
 
 		msg := "Job selector error"
 		return &api.ValidateResult{
@@ -270,7 +315,7 @@ func (sJob SchedulerJob) ValidJobFn(vcFrame VolcanoFrame) *api.ValidateResult {
 		return result
 	}
 
-	klog.V(util.LogInfoLev).Infof("check ok, %s, reqNPU(%#v:%#v).", sJob.JobName, sJob.ReqNPUName, sJob.ReqNPUNum)
+	klog.V(util.LogInfoLev).Infof("check ok, %s, reqNPU(%#v:%#v).", sJob.Name, sJob.ReqNPUName, sJob.ReqNPUNum)
 	return nil
 }
 
@@ -409,7 +454,7 @@ func (sJob *SchedulerJob) CheckNodeNum(taskInfo *api.TaskInfo, vcNode NPUNode) e
 	if sJob == nil || taskInfo == nil {
 		return errors.New(objectNilError)
 	}
-	vcTask, ok := sJob.NPUJob.Tasks[string(taskInfo.UID)]
+	vcTask, ok := sJob.NPUJob.Tasks[taskInfo.UID]
 	if !ok {
 		klog.V(util.LogErrorLev).Infof("CheckNodeNum %+v.", sJob.SchedulerJobAttr.NPUJob)
 		return fmt.Errorf("no %s in SchedulerJob", taskInfo.Name)
@@ -419,7 +464,31 @@ func (sJob *SchedulerJob) CheckNodeNum(taskInfo *api.TaskInfo, vcNode NPUNode) e
 		return fmt.Errorf("%s not have %s", vcNode.Name, vcTask.ReqNPUName)
 	}
 	if int(nodeNPUNum/util.NPUHexKilo) < vcTask.ReqNPUNum {
-		return fmt.Errorf("%s not meet %s's %s:%#v", vcNode.Name, vcTask.TaskName, vcTask.ReqNPUName, vcTask.ReqNPUNum)
+		return fmt.Errorf("%s not meet %s's %s:%#v", vcNode.Name, vcTask.Name, vcTask.ReqNPUName, vcTask.ReqNPUNum)
 	}
 	return nil
+}
+
+// IsJobSupportByPlugin judge job whether has it's plugin.
+func (sJob SchedulerJob) IsJobSupportByPlugin(sHandle *ScheduleHandler) bool {
+	name := sJob.ReqNPUName
+	if strings.Contains(name, "npu-core") {
+		label, ok := sJob.Label[util.JobKindKey]
+		if !ok {
+			klog.V(util.LogErrorLev).Infof("%s no has %s label in dyCut mode.", sJob.Name, util.JobKindKey)
+			return false
+		}
+		switch label {
+		case util.JobKind910Value:
+			name = util.NPU910CardName
+		case util.JobKind310Value:
+			name = util.NPU310CardName
+		case util.JobKind310PValue:
+			name = util.NPU310PCardName
+		default:
+			klog.V(util.LogErrorLev).Infof("%s unknown label: %s in dyCut mode.", sJob.Name, label)
+			return false
+		}
+	}
+	return sHandle.IsPluginRegistered(name)
 }

@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
-
 */
 package plugin
 
@@ -138,7 +136,7 @@ type TransferTaskLabelToResReqTests struct {
 
 func FakeVNPUTaskWithPodSpec(name, cardName, vnpuLevel, coreNum, dvpp string) *api.TaskInfo {
 	task := FakeVNPUTestTask(name, "node0", cardName)
-	task.Pod.Labels[util.RingController] = RingController310P
+	task.Pod.Labels[util.JobKindKey] = util.JobKind310PValue
 	task.Pod.Labels[AscendVNPULevel] = vnpuLevel
 	task.Pod.Spec.Containers[0].Resources.Requests[util.AscendNPUCore] = resource.MustParse(coreNum)
 	task.Pod.Labels[AscendVNPUDVPP] = dvpp

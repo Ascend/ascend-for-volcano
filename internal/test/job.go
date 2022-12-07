@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package test is using for HuaWei Ascend testing.
-
 */
 package test
 
@@ -19,7 +17,7 @@ import (
 func FakeSchedulerJobAttrByJob(job *api.JobInfo) util.SchedulerJobAttr {
 	attr := util.SchedulerJobAttr{
 		ComJob: util.ComJob{
-			JobName:   job.UID,
+			Name:      job.UID,
 			NameSpace: job.Namespace,
 			Selector:  nil,
 			Label:     nil,

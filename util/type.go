@@ -3,12 +3,6 @@
 // Package util is using for the total variable.
 package util
 
-import (
-	"k8s.io/api/core/v1"
-	"volcano.sh/apis/pkg/apis/scheduling"
-	"volcano.sh/volcano/pkg/scheduler/api"
-)
-
 const (
 	// LogErrorLev for log error.
 	LogErrorLev = 1
@@ -62,8 +56,6 @@ const (
 	HuaweiArchArm = "huawei-arm"
 	// HuaweiArchX86 for x86.
 	HuaweiArchX86 = "huawei-x86"
-	// RingController ascend-310P/ascend-310/ascend-910
-	RingController = "ring-controller.atlas"
 
 	// Accelerator for custom tag.
 	Accelerator = "accelerator"
@@ -130,36 +122,15 @@ const (
 	NodeNotMeetTopologyWarning = "the npus on this node don't satisfy the schedulable topology"
 	// ArgumentError argument nil error.
 	ArgumentError = "invalid argument"
+	// JobKindKey for define the Job kind:ascend-310P, ascend-910
+	JobKindKey      = "ring-controller.atlas"
+	JobKind910Value = "ascend-910"
+	JobKind310Value = "ascend-310"
+	// JobKind310PValue 310p ring controller name
+	JobKind310PValue = "ascend-310P"
+	// PodAssignKey Records the chip name that the scheduler assigns to the pod.
+	PodAssignKey = "huawei.com/npu-core"
 )
-
-// NPUTask for npu task need.
-type NPUTask struct {
-	TaskName   string
-	ReqNPUName string
-	ReqNPUNum  int
-	// Selector the same as job.
-	Selector map[string]string
-	Label    map[string]string
-}
-
-// ComJob all vcJob has.
-type ComJob struct {
-	JobName   api.JobID
-	NameSpace string
-	Selector  map[string]string
-	Label     map[string]string
-}
-
-// NPUJob only npu vcJob have.
-type NPUJob struct {
-	ReqNPUName string
-	ReqNPUNum  int
-	PGStatus   scheduling.PodGroupPhase
-	TaskStatus []v1.PodPhase
-	CreateTime int64
-	// the mapKey is taskID,not Name.
-	Tasks map[string]NPUTask
-}
 
 // VTemplate for vNode resource
 type VTemplate struct {
@@ -168,12 +139,6 @@ type VTemplate struct {
 	AICore     int
 	AICPU      int
 	DVPPEnable bool
-}
-
-// SchedulerJobAttr vcJob's attribute.
-type SchedulerJobAttr struct {
-	ComJob
-	*NPUJob
 }
 
 // VResource resource dimensions

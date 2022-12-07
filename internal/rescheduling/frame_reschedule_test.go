@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package rescheduling is using for HuaWei Ascend pin fault
-
 */
 package rescheduling
 
@@ -543,7 +541,7 @@ func fakeSchedulerJobEmptyTask(jobName, namespace string) plugin.SchedulerJob {
 	job0 := plugin.SchedulerJob{
 		SchedulerJobAttr: util.SchedulerJobAttr{
 			ComJob: util.ComJob{
-				JobName:   api.JobID(jobName),
+				Name:      api.JobID(jobName),
 				NameSpace: namespace,
 				Selector:  map[string]string{util.AcceleratorType: util.ModuleAcceleratorType},
 				Label: map[string]string{
@@ -553,7 +551,7 @@ func fakeSchedulerJobEmptyTask(jobName, namespace string) plugin.SchedulerJob {
 			NPUJob: &util.NPUJob{
 				ReqNPUName: util.NPU910CardName,
 				ReqNPUNum:  0,
-				Tasks:      make(map[string]util.NPUTask, util.NPUIndex2),
+				Tasks:      make(map[api.TaskID]util.NPUTask, util.NPUIndex2),
 			},
 		},
 	}
@@ -562,12 +560,12 @@ func fakeSchedulerJobEmptyTask(jobName, namespace string) plugin.SchedulerJob {
 
 func fakeSchedulerJobAddTask(sJob *plugin.SchedulerJob, taskName, ns string, reqNPUNum int) {
 	task := util.NPUTask{
-		TaskName:   taskName,
+		Name:       taskName,
 		ReqNPUName: util.NPU910CardName,
 		ReqNPUNum:  reqNPUNum,
 		Selector:   nil,
 	}
-	sJob.Tasks[`"`+ns+`"`+"-"+`"`+taskName+`"`] = task
+	sJob.Tasks[api.TaskID(`"`+ns+`"`+"-"+`"`+taskName+`"`)] = task
 	sJob.ReqNPUNum += reqNPUNum
 }
 
