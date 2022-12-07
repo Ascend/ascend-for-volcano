@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package main is using for HuaWei Ascend pin affinity schedule.
-
 */
 package main
 
@@ -54,7 +52,7 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 	ssn.AddJobValidFn(tp.Name(), func(obj interface{}) *api.ValidateResult {
 		return tp.Scheduler.JobValid(obj)
 	})
-	// if npu no meet the task require,the task will failed.so need to intercept in advance
+	// if node not meet the task require, the task will be failed. so need to intercept in advance
 	ssn.AddPredicateFn(tp.Name(), func(taskInfo *api.TaskInfo, nodeInfo *api.NodeInfo) error {
 		return tp.Scheduler.NodePredicate(taskInfo, nodeInfo)
 	})

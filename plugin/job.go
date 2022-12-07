@@ -16,7 +16,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 	"volcano.sh/apis/pkg/apis/scheduling"
-	"volcano.sh/volcano/pkg/cli/vjobs"
 	"volcano.sh/volcano/pkg/scheduler/api"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
@@ -319,7 +318,15 @@ func (sJob SchedulerJob) ValidJobFn(vcFrame VolcanoFrame) *api.ValidateResult {
 	return nil
 }
 
-func updatePodsPendingReason(job *api.JobInfo, reason string) {
+func updatePodsPendingReason(job *api.JobInfo, tID api.TaskID, reason string) {
+	if tID != "" {
+		if t, ok := job.Tasks[tID]; ok {
+			updatePodPendingReason(t, reason)
+			return
+		}
+		return
+	}
+
 	for _, task := range job.Tasks {
 		updatePodPendingReason(task, reason)
 	}
@@ -336,7 +343,7 @@ func (sHandle *ScheduleHandler) updatePodGroupPendingReason(job *api.JobInfo, re
 	}
 
 	for k, value := range job.PodGroup.Status.Conditions {
-		if value.Message == jc.Message {
+		if strings.Contains(value.Message, reason) {
 			job.PodGroup.Status.Conditions[k].LastTransitionTime = jc.LastTransitionTime
 			job.PodGroup.Status.Conditions[k].TransitionID = jc.TransitionID
 			return
@@ -358,20 +365,22 @@ func (sHandle *ScheduleHandler) SetJobPendingReason(vcJob *api.JobInfo, reason i
 	case string:
 		// job failed
 		vcJob.JobFitErrors = value
+		// for write pending reason into pod
+		updatePodsPendingReason(vcJob, "", reasonTmp)
 		reasonTmp = value
 	case map[api.TaskID]*api.FitErrors:
 		vcJob.NodesFitErrors = value
-		for _, nodeErrors := range value {
+		for tID, nodeErrors := range value {
+			// for write pending reason into pod
+			updatePodsPendingReason(vcJob, tID, nodeErrors.Error())
 			reasonTmp += nodeErrors.Error()
 		}
+		vcJob.JobFitErrors = reasonTmp
 	default:
 		return fmt.Errorf("assert reason(%T) failed", reason)
 	}
-	// for write pending reason into pod
-	updatePodsPendingReason(vcJob, reasonTmp)
 	// for write pending reason into vcjob
 	sHandle.updatePodGroupPendingReason(vcJob, reasonTmp)
-	vcJob.PodGroup.Status.Phase = scheduling.PodGroupPhase(vjobs.Pending)
 	return nil
 }
 
@@ -417,35 +426,13 @@ func (sHandle *ScheduleHandler) JobValid(obj interface{}) *api.ValidateResult {
 
 // SetJobPendReasonByNodesCase In nodes select case, set node failed and add failed reason.
 func (sHandle ScheduleHandler) SetJobPendReasonByNodesCase(job *api.JobInfo) {
-	var msgString string
-	var errorNodeCount int
-
-	for _, task := range job.Tasks {
-		nodeErr, ok := job.NodesFitErrors[task.UID]
-		if !ok {
-			continue
-		}
-
-		msgString = nodeErr.Error()
-		errorNodeCount = 0
-		msgs := strings.Split(msgString, ", ")
-		for _, msg := range msgs {
-			// only error need failed, warning will pending
-			if strings.Contains(msg, nodeNoFitSelectorError) || strings.Contains(msg, nodesNoMeetNPUReqError) {
-				errorNodeCount++
-				klog.V(util.LogInfoLev).Infof("%s %s : %#v", PluginName, task.Name, msg)
-			}
-		}
+	if int32(len(job.Tasks)-len(job.NodesFitErrors)) >= job.MinAvailable {
+		klog.V(util.LogDebugLev).Infof("%s not block by nodes(%d - %d > %d).", job.Name,
+			len(job.Tasks), len(job.NodesFitErrors), job.MinAvailable)
+		return
 	}
-	availableNodes := len(sHandle.Nodes) - errorNodeCount
-	needNodes := len(job.Tasks)
-	klog.V(util.LogDebugLev).Infof("%s %d:%d %#v", job.Name, availableNodes, needNodes, job.NodesFitErrors)
-	if availableNodes < needNodes {
-		klog.V(util.LogErrorLev).Infof("%s %s req (%d)nodes but has (%d)nodes, will be pending.",
-			PluginName, job.Name, needNodes, availableNodes)
-		if setErr := sHandle.SetJobPendingReason(job, job.NodesFitErrors); setErr != nil {
-			klog.V(util.LogErrorLev).Infof("%s setJobFailed err:%#v.", PluginName, setErr)
-		}
+	if setErr := sHandle.SetJobPendingReason(job, job.NodesFitErrors); setErr != nil {
+		klog.V(util.LogErrorLev).Infof("%s setJobFailed err:%s.", PluginName, setErr)
 	}
 }
 
