@@ -20,6 +20,8 @@ const (
 	NPUIndex3 = 3
 	// NPUIndex8 the 8 index.
 	NPUIndex8 = 8
+	// NPUIndex16 the 16 index.
+	NPUIndex16 = 16
 	// NPUIndex7 the 7 index.
 	NPUIndex7 = 7
 	// NPUIndex4 the 4 index.
@@ -97,7 +99,7 @@ const (
 	NPU310PCardNamePre = "Ascend310P-"
 	// AscendNPUPodRealUse for NPU pod real use cards.
 	AscendNPUPodRealUse = "huawei.com/AscendReal"
-	// AscendNPUCore for NPU core num
+	// AscendNPUCore for NPU core num, like 56
 	AscendNPUCore = "huawei.com/npu-core"
 
 	// SegmentEnable for VNPU segment enable flag. Default is "false".
@@ -138,7 +140,7 @@ type VTemplate struct {
 	ChipKind   string
 	AICore     int
 	AICPU      int
-	DVPPEnable bool
+	DVPPEnable string
 }
 
 // VResource resource dimensions

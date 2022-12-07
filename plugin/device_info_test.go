@@ -8,10 +8,10 @@ Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
 package plugin
 
 import (
+	"k8s.io/apimachinery/pkg/api/resource"
 	"reflect"
 	"testing"
 
-	"k8s.io/apimachinery/pkg/api/resource"
 	"volcano.sh/volcano/pkg/scheduler/api"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
@@ -30,14 +30,14 @@ type getResourceFromStrTest struct {
 func buildGetResourceFromStrTests() []getResourceFromStrTest {
 	tests := []getResourceFromStrTest{
 		{
-			name: "01-GetResourceFromStr invalid string",
+			name: "01-GetResourceFromRealStr invalid string",
 			args: getResourceFromStrArgs{
 				vDeviceResourceStr: "44",
 			},
 			want: nil,
 		},
 		{
-			name: "02-GetResourceFromStr only core",
+			name: "02-GetResourceFromRealStr only core",
 			args: getResourceFromStrArgs{
 				vDeviceResourceStr: "4c",
 			},
@@ -48,7 +48,7 @@ func buildGetResourceFromStrTests() []getResourceFromStrTest {
 			},
 		},
 		{
-			name: "03-GetResourceFromStr core and cpu",
+			name: "03-GetResourceFromRealStr core and cpu",
 			args: getResourceFromStrArgs{
 				vDeviceResourceStr: "4c.3cpu",
 			},
@@ -59,7 +59,7 @@ func buildGetResourceFromStrTests() []getResourceFromStrTest {
 			},
 		},
 		{
-			name: "04-GetResourceFromStr core, cpu and dvpp",
+			name: "04-GetResourceFromRealStr core, cpu and dvpp",
 			args: getResourceFromStrArgs{
 				vDeviceResourceStr: "4c.3cpu.ndvpp",
 			},
@@ -77,8 +77,8 @@ func TestGetResourceFromStr(t *testing.T) {
 	tests := buildGetResourceFromStrTests()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetResourceFromStr(tt.args.vDeviceResourceStr); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetResourceFromStr() = %v, want %v", got, tt.want)
+			if got := GetResourceFromRealStr(tt.args.vDeviceResourceStr); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetResourceFromRealStr() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -134,9 +134,9 @@ type TransferTaskLabelToResReqTests struct {
 	wantErr bool
 }
 
-func FakeVNPUTaskWithPodSpec(name, cardName, vnpuLevel, coreNum, dvpp string) *api.TaskInfo {
-	task := FakeVNPUTestTask(name, "node0", cardName)
-	task.Pod.Labels[util.JobKindKey] = util.JobKind310PValue
+func FakeVNPUTaskWithResSetting(name, ringController, vnpuLevel, coreNum, dvpp string) *api.TaskInfo {
+	task := FakeVNPUTestTask(name, "node0", "", "")
+	task.Pod.Labels[util.RingController] = ringController
 	task.Pod.Labels[AscendVNPULevel] = vnpuLevel
 	task.Pod.Spec.Containers[0].Resources.Requests[util.AscendNPUCore] = resource.MustParse(coreNum)
 	task.Pod.Labels[AscendVNPUDVPP] = dvpp
@@ -145,11 +145,24 @@ func FakeVNPUTaskWithPodSpec(name, cardName, vnpuLevel, coreNum, dvpp string) *a
 
 func buildTransferTaskLabelToResReqTestCases() []TransferTaskLabelToResReqTests {
 	tests := []TransferTaskLabelToResReqTests{
+		//{
+		//	name: "01-TransferTaskLabelToResReq-core,aicpu,dvpp",
+		//	args: TransferTaskLabelToResReqArgs{
+		//		task: FakeVNPUTaskWithResSetting("pod0", "ascend-310P", AscendVNPULevelHigh, "16",
+		//			AscendDVPPEnabledOn),
+		//	},
+		//	want: util.VResource{
+		//		Aicore: util.NPUIndex4,
+		//		Aicpu:  util.NPUIndex4,
+		//		DVPP:   AscendDVPPEnabledOn,
+		//	},
+		//	wantErr: false,
+		//},
 		{
-			name: "01-TransferTaskLabelToResReq-core,aicpu,dvpp",
+			name: "02-TransferTaskLabelToResReq-core,aicpu,dvpp",
 			args: TransferTaskLabelToResReqArgs{
-				task: FakeVNPUTaskWithPodSpec("pod0", "Ascend310P-0,Ascend310P-1", AscendVNPULevelHigh,
-					"4", AscendDVPPEnabledOn),
+				task: FakeVNPUTaskWithResSetting("pod1", "ascend-910", AscendVNPULevelLow, "4",
+					AscendDVPPEnabledOn),
 			},
 			want: util.VResource{
 				Aicore: util.NPUIndex4,

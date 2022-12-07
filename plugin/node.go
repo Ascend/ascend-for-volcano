@@ -79,7 +79,8 @@ type VChip struct {
 	Name string
 	// Kind Ascend910/Ascend310/Ascend310P
 	Kind        string
-	isDual      bool
+	IsDual      bool
+	Unstable    bool
 	CoreNum     int
 	SegmentFlag bool
 	TotalRes    util.VResource

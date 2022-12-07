@@ -51,6 +51,10 @@ const (
 	Ascend310P = "Ascend310P"
 	// Ascend910 910 template name
 	Ascend910 = "Ascend910"
+	// RingController310P 310p ring controller name
+	RingController310P = "ascend-310P"
+	// RingController910 910 ring controller name
+	RingController910 = "ascend-910"
 )
 
 // SchedulerJob the plugin define job info
