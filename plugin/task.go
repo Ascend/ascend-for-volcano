@@ -52,7 +52,7 @@ func (sHandle *ScheduleHandler) releaseAnnotation(task *api.TaskInfo, vcJob Sche
 			vcNode.Name, rankIndex)
 		delete(task.Pod.Annotations, podRankIndex)
 	}
-	vcTask, ok := vcJob.Tasks[task.Name]
+	vcTask, ok := vcJob.Tasks[task.UID]
 	if !ok {
 		klog.V(util.LogInfoLev).Infof("task %s not in vcjob %s", vcTask.Name, vcJob.Name)
 		return

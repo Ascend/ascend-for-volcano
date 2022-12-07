@@ -156,18 +156,18 @@ func GetVCTaskReqNPUTypeFromTaskInfo(vcTask *api.TaskInfo) (string, int) {
 }
 
 // GetJobNPUTasks get NPUTask from jobInfo.
-func GetJobNPUTasks(vcJob *api.JobInfo) map[string]util.NPUTask {
+func GetJobNPUTasks(vcJob *api.JobInfo) map[api.TaskID]util.NPUTask {
 	if vcJob == nil || len(vcJob.Tasks) == 0 {
 		return nil
 	}
-	resultMap := make(map[string]util.NPUTask, util.MapInitNum)
+	resultMap := make(map[api.TaskID]util.NPUTask, util.MapInitNum)
 	for taskID, taskInf := range vcJob.Tasks {
 		name, num := GetVCTaskReqNPUTypeFromTaskInfo(taskInf)
 		if num == 0 {
-			resultMap[string(taskID)] = util.NPUTask{}
+			resultMap[taskID] = util.NPUTask{}
 			continue
 		}
-		resultMap[string(taskID)] = util.NPUTask{Name: taskInf.Name, NameSpace: taskInf.Namespace, ReqNPUName: name,
+		resultMap[taskID] = util.NPUTask{Name: taskInf.Name, NameSpace: taskInf.Namespace, ReqNPUName: name,
 			ReqNPUNum: num,
 			Selector:  GetTaskSelectors(taskInf), Label: GetTaskLabels(taskInf)}
 	}
@@ -223,7 +223,7 @@ func (sJob *SchedulerJob) Init(vcJob *api.JobInfo, sHandle *ScheduleHandler) err
 // setJobType get job type, used in vJob temporary.
 func (sJob *SchedulerJob) initVTasks(vcJob *api.JobInfo) {
 	for tID, t := range vcJob.Tasks {
-		tmpTask, ok := sJob.Tasks[string(tID)]
+		tmpTask, ok := sJob.Tasks[tID]
 		if !ok {
 			klog.V(util.LogErrorLev).Infof("%s not in frame tasks.", tID)
 			continue
@@ -234,7 +234,7 @@ func (sJob *SchedulerJob) initVTasks(vcJob *api.JobInfo) {
 			continue
 		}
 
-		sJob.Tasks[string(tID)] = tmpTask
+		sJob.Tasks[tID] = tmpTask
 	}
 }
 
@@ -454,7 +454,7 @@ func (sJob *SchedulerJob) CheckNodeNum(taskInfo *api.TaskInfo, vcNode NPUNode) e
 	if sJob == nil || taskInfo == nil {
 		return errors.New(objectNilError)
 	}
-	vcTask, ok := sJob.NPUJob.Tasks[string(taskInfo.UID)]
+	vcTask, ok := sJob.NPUJob.Tasks[taskInfo.UID]
 	if !ok {
 		klog.V(util.LogErrorLev).Infof("CheckNodeNum %+v.", sJob.SchedulerJobAttr.NPUJob)
 		return fmt.Errorf("no %s in SchedulerJob", taskInfo.Name)

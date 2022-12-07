@@ -139,7 +139,7 @@ func (fJob *FaultJob) GraceDeleteJob(ssn *framework.Session, npuJob *plugin.Sche
 		return fmt.Errorf("schedulerJob does not exist")
 	}
 	for _, fTask := range fJob.FaultTasks {
-		npuTask, ok := npuJob.Tasks[string(fTask.TaskUID)]
+		npuTask, ok := npuJob.Tasks[fTask.TaskUID]
 		if !ok {
 			klog.V(util.LogDebugLev).Infof(
 				"GraceDeleteJob: npuTask %s has been deleted in session.", fTask.TaskName)
