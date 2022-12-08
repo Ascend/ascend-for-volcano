@@ -68,6 +68,7 @@ type StaticVNPU struct {
 
 type DynamicVNPU struct {
 	vnpuHandler
+	Cache map[string][]string // node: taskMap
 }
 
 type vnpuHandler interface {

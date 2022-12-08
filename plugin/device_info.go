@@ -18,7 +18,21 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
-// GetResourceFromCoreStr like vir04_3c_ndvpp
+// GetResourceFromTemplate nodeType like Ascend310P, templateString like "vir04_3c_ndvpp"
+func GetResourceFromTemplate(nodeType string, templateString string) *util.VResource {
+	taskTemplate := getJobTemplate()
+	taskNodeTemplate, ok := taskTemplate[nodeType]
+	if !ok {
+		return nil
+	}
+	taskResource := taskNodeTemplate[templateString]
+	if !ok {
+		return nil
+	}
+	return &taskResource
+}
+
+// GetResourceFromCoreStr like vir04_3c_ndvpp todo: need to be deleted
 func GetResourceFromCoreStr(coreStr string) *util.VResource {
 	resources := strings.Split(coreStr, "_")
 

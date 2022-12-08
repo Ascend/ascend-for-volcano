@@ -21,12 +21,14 @@ import (
 
 // CheckNodeNPUByTask check chip on node has enough resource, fault chips are not in list, unstable excluded
 func (tp *DynamicVNPU) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource) error {
-	if !node.IsNodeTotalResEnough(taskResReq) {
-		return fmt.Errorf("dynamic vnpu task<%s> CheckNodeNPUByTask err: node resource not enough", task.Name)
-	}
-
-	if !node.IsNodeChipResEnough(taskResReq) {
-		return fmt.Errorf("dynamic vnpu task<%s> CheckNodeNPUByTask err: chip resource not enough", task.Name)
+	if !node.IsNodeTotalResEnough(taskResReq) || !node.IsNodeChipResEnough(taskResReq) {
+		// if node resource not enough, reduce task aiCPU
+		if tp.taskAICPUCanBeDowngrade(taskResReq) {
+			tp.Cache[task.Name] = append(tp.Cache[task.Name], node.Name)
+			return tp.CheckNodeNPUByTask(task, node, tp.downgradeTaskAICPU(taskResReq))
+		}
+		return fmt.Errorf("dynamic vnpu task<%s> CheckNodeNPUByTask node %s resource not enough",
+			task.Name, node.Name)
 	}
 
 	return nil
@@ -40,8 +42,28 @@ func (tp *DynamicVNPU) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeIn
 		return fmt.Errorf("dynamic vnpu task<%s> ScoreBestNPUNodes err: sorted nodes len 0", task.Name)
 	}
 
-	// 2. give the first node high score
-	scoreMap[nodesSorted[0].Name] += util.NPUIndex8
+	downgradeNodes, ok := tp.Cache[task.Name]
+	// 2. give the first node high score, none nodes are downgraded
+	if !ok {
+		scoreMap[nodesSorted[0].Name] += util.NPUIndex8
+		return nil
+	}
+
+	// 3. if downgrade nodes exists, skip, util find none-downgraded nodes
+	for _, node := range nodesSorted {
+		downgradeFlag := false
+		for _, dNode := range downgradeNodes {
+			if node.Name == dNode {
+				downgradeFlag = true
+				break
+			}
+		}
+		if !downgradeFlag {
+			scoreMap[node.Name] += util.NPUIndex8
+			return nil
+		}
+	}
+
 	return nil
 }
 
@@ -52,12 +74,48 @@ func (tp *DynamicVNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode, ta
 
 	allocChipID, err := node.VNode.SelectChipFromNode(taskResReq)
 	if err != nil {
+		// if chips cannot be found, reduce aiCPU
+		if tp.taskAICPUCanBeDowngrade(taskResReq) {
+			taskResReqDown := tp.downgradeTaskAICPU(taskResReq)
+			return tp.UseAnnotation(task, node, taskResReqDown)
+		}
 		klog.V(util.LogErrorLev).Infof("dynamic vnpu task<%s> UseAnnotation err: %s", task.Name, err.Error())
 		return nil
 	}
 
 	tp.SetNPUTopologyToPodFn(task, node, taskResReq, allocChipID)
 	return tp.UpdateNodeInfo(node, allocChipID, taskResReq)
+}
+
+// taskAICPUCanBeDowngrade if task label is low, aicpu can be lower
+func (tp *DynamicVNPU) taskAICPUCanBeDowngrade(taskResReq util.VResource) bool {
+	if taskResReq.Aicore == util.NPUIndex2 && taskResReq.Aicpu == util.NPUIndex2 {
+		return true
+	}
+	if taskResReq.Aicore == util.NPUIndex4 && taskResReq.Aicpu == util.NPUIndex4 && taskResReq.DVPP != plugin.
+		AscendDVPPEnabledOn {
+			return true
+	}
+
+	return false
+}
+
+func (tp *DynamicVNPU) downgradeTaskAICPU(taskResReq util.VResource) util.VResource {
+	if taskResReq.Aicore == util.NPUIndex2 {
+		return util.VResource{
+			Aicore: taskResReq.Aicore,
+			Aicpu:  util.NPUIndex1,
+			DVPP:   taskResReq.DVPP,
+		}
+	}
+	if taskResReq.Aicore == util.NPUIndex4 {
+		return util.VResource{
+			Aicore: taskResReq.Aicore,
+			Aicpu:  util.NPUIndex3,
+			DVPP:   taskResReq.DVPP,
+		}
+	}
+	return taskResReq
 }
 
 // SetNPUTopologyToPodFn write chip to pod annotation AscendNPUCore

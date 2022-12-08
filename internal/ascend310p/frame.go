@@ -95,7 +95,7 @@ func (tp *ascend310P) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode
 			return err
 		}
 	case util.JobTypeStCut:
-		if err = tp.vHandle.StaticVNPU.CheckNodeNPUByTask(task, node); err != nil {
+		if err = tp.vHandle.StaticVNPU.CheckNodeNPUByTask(task, node, taskRes); err != nil {
 			return err
 		}
 	case util.JobTypeDyCut:
@@ -159,7 +159,7 @@ func (tp *ascend310P) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *pl
 	case util.JobTypeWhole:
 		return tp.NPUHandler.UseAnnotation(task, node)
 	case util.JobTypeStCut:
-		return tp.vHandle.StaticVNPU.UseAnnotation(task, node)
+		return tp.vHandle.StaticVNPU.UseAnnotation(task, node, taskRes)
 	case util.JobTypeDyCut:
 		return tp.vHandle.DynamicVNPU.UseAnnotation(task, node, taskRes)
 	default:

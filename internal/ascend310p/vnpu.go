@@ -34,7 +34,11 @@ func (tp *ascend310P) GetTemplate() {
 }
 
 func (tp *ascend310P) InitVNPU() {
-	tp.vHandle = &vnpu.VNPU{}
+	tp.vHandle = &vnpu.VNPU{
+		DynamicVNPU: vnpu.DynamicVNPU{
+			Cache: make(map[string][]string, util.MapInitNum),
+		},
+	}
 	tp.GetTemplate()
 }
 

@@ -46,6 +46,27 @@ func initTemplate() []util.VTemplate {
 	return nodeTemplate
 }
 
+func getJobTemplate() map[string]map[string]util.VResource {
+	jobTemplate:= map[string]map[string]util.VResource {
+		Ascend310P: {
+			"vir01":          {Aicore: 1, Aicpu: 1, DVPP: "null"},
+			"vir02":          {Aicore: 2, Aicpu: 2, DVPP: "null"},
+			"vir02_1c":       {Aicore: 2, Aicpu: 1, DVPP: "null"},
+			"vir04":          {Aicore: 4, Aicpu: 4, DVPP: "null"},
+			"vir04_3c":       {Aicore: 4, Aicpu: 3, DVPP: "null"},
+			"vir04_3c_ndvpp": {Aicore: 4, Aicpu: 3, DVPP: "no"},
+			"vir04_4c_dvpp":  {Aicore: 4, Aicpu: 4, DVPP: "yes"},
+		},
+		Ascend910: {
+			"vir02":          {Aicore: 2, Aicpu: 1, DVPP: "null"},
+			"vir04":          {Aicore: 4, Aicpu: 1, DVPP: "null"},
+			"vir08":          {Aicore: 8, Aicpu: 3, DVPP: "null"},
+			"vir16":          {Aicore: 16, Aicpu: 7, DVPP: "null"},
+		},
+	}
+	return jobTemplate
+}
+
 func (n *NPUNode) setNodeVNPUInfo(ni *api.NodeInfo) error {
 	n.VNode = VNode{
 		Chips: make(map[int]*VChip, util.MapInitNum),
@@ -291,7 +312,7 @@ func (vNode *VNode) getPodUsedRes(pod *v1.Pod) *util.VResource {
 		klog.V(util.LogErrorLev).Infof("getPodUsedRes get pod<%s> %s format error", pod.Name, realStr)
 		return nil
 	}
-	return GetResourceFromCoreStr(ascendRealSplit[1])
+	return GetResourceFromTemplate(vNode.ChipKind, ascendRealSplit[1])
 }
 
 // addNPUResourceWholeCard Ascend910-0,Ascend910-1

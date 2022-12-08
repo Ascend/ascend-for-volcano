@@ -17,7 +17,7 @@ import (
 )
 
 // CheckNodeNPUByTask pass for static
-func (tp *StaticVNPU) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode) error {
+func (tp *StaticVNPU) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource) error {
 	klog.V(util.LogInfoLev).Infof("static vnpu task<%s> node<%s> CheckNodeNPUByTask pass", task.Name, node.Name)
 	return nil
 }
@@ -30,7 +30,7 @@ func (tp *StaticVNPU) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInf
 }
 
 // UseAnnotation pass for static
-func (tp *StaticVNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
+func (tp *StaticVNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource) *plugin.NPUNode {
 	klog.V(util.LogInfoLev).Infof("static vnpu task<%s> node<%s> UseAnnotation pass", task.Name, node.Name)
 	return &node
 }
