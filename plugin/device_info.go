@@ -31,31 +31,31 @@ func newTemplate(kind, dvpp string, core, cpu int) util.VTemplate {
 
 func initVJobTemplate() map[string]util.VTemplate {
 	templateMap := make(map[string]util.VTemplate, util.MapInitNum)
-	templateMap[RingController910+"-"+strconv.Itoa(util.NPUIndex2)+"-"+AscendVNPULevelLow] =
+	templateMap[util.JobKind910Value+"-"+strconv.Itoa(util.NPUIndex2)+"-"+AscendVNPULevelLow] =
 		newTemplate(Ascend910, AscendDVPPEnabledNull, util.NPUIndex2, util.NPUIndex1)
-	templateMap[RingController910+"-"+strconv.Itoa(util.NPUIndex4)+"-"+AscendVNPULevelLow] =
+	templateMap[util.JobKind910Value+"-"+strconv.Itoa(util.NPUIndex4)+"-"+AscendVNPULevelLow] =
 		newTemplate(Ascend910, AscendDVPPEnabledNull, util.NPUIndex4, util.NPUIndex1)
-	templateMap[RingController910+"-"+strconv.Itoa(util.NPUIndex8)+"-"+AscendVNPULevelLow] =
+	templateMap[util.JobKind910Value+"-"+strconv.Itoa(util.NPUIndex8)+"-"+AscendVNPULevelLow] =
 		newTemplate(Ascend910, AscendDVPPEnabledNull, util.NPUIndex8, util.NPUIndex3)
-	templateMap[RingController910+"-"+strconv.Itoa(util.NPUIndex16)+"-"+AscendVNPULevelLow] =
+	templateMap[util.JobKind910Value+"-"+strconv.Itoa(util.NPUIndex16)+"-"+AscendVNPULevelLow] =
 		newTemplate(Ascend910, AscendDVPPEnabledNull, util.NPUIndex16, util.NPUIndex7)
-	templateMap[RingController910+"-"+strconv.Itoa(util.CoreNum32)+"-"+AscendVNPULevelLow] =
+	templateMap[util.JobKind910Value+"-"+strconv.Itoa(util.CoreNum32)+"-"+AscendVNPULevelLow] =
 		newTemplate(Ascend910, AscendDVPPEnabledNull, util.CoreNum32, util.CpuNum14)
-	templateMap[RingController910+"-"+strconv.Itoa(util.CoreNum30)+"-"+AscendVNPULevelLow] =
+	templateMap[util.JobKind910Value+"-"+strconv.Itoa(util.CoreNum30)+"-"+AscendVNPULevelLow] =
 		newTemplate(Ascend910, AscendDVPPEnabledNull, util.CoreNum30, util.CpuNum14)
-	templateMap[RingController310P+"-"+strconv.Itoa(util.NPUIndex1)] = newTemplate(Ascend310P, AscendDVPPEnabledNull,
+	templateMap[util.JobKind310PValue+"-"+strconv.Itoa(util.NPUIndex1)] = newTemplate(Ascend310P, AscendDVPPEnabledNull,
 		util.NPUIndex1, util.NPUIndex1)
-	templateMap[RingController310P+"-"+strconv.Itoa(util.NPUIndex2)] = newTemplate(Ascend310P, AscendDVPPEnabledNull,
+	templateMap[util.JobKind310PValue+"-"+strconv.Itoa(util.NPUIndex2)] = newTemplate(Ascend310P, AscendDVPPEnabledNull,
 		util.NPUIndex2, util.NPUIndex2)
-	templateMap[RingController310P+"-"+strconv.Itoa(util.NPUIndex4)] = newTemplate(Ascend310P, AscendDVPPEnabledNull,
+	templateMap[util.JobKind310PValue+"-"+strconv.Itoa(util.NPUIndex4)] = newTemplate(Ascend310P, AscendDVPPEnabledNull,
 		util.NPUIndex4, util.NPUIndex4)
-	templateMap[RingController310P+"-"+strconv.Itoa(util.NPUIndex2)+"-"+AscendVNPULevelLow] = newTemplate(Ascend310P,
+	templateMap[util.JobKind310PValue+"-"+strconv.Itoa(util.NPUIndex2)+"-"+AscendVNPULevelLow] = newTemplate(Ascend310P,
 		AscendDVPPEnabledNull, util.NPUIndex2, util.NPUIndex1)
-	templateMap[RingController310P+"-"+strconv.Itoa(util.NPUIndex4)+"-"+AscendVNPULevelLow] = newTemplate(Ascend310P,
+	templateMap[util.JobKind310PValue+"-"+strconv.Itoa(util.NPUIndex4)+"-"+AscendVNPULevelLow] = newTemplate(Ascend310P,
 		AscendDVPPEnabledNull, util.NPUIndex4, util.NPUIndex3)
-	templateMap[RingController310P+"-"+strconv.Itoa(util.NPUIndex4)+"-"+AscendVNPULevelLow] = newTemplate(Ascend310P,
+	templateMap[util.JobKind310PValue+"-"+strconv.Itoa(util.NPUIndex4)+"-"+AscendVNPULevelLow] = newTemplate(Ascend310P,
 		AscendDVPPEnabledNull, util.NPUIndex4, util.NPUIndex3)
-	templateMap[RingController310P+"-"+strconv.Itoa(util.NPUIndex8)+"-"+AscendVNPULevelLow] = newTemplate(Ascend310P,
+	templateMap[util.JobKind310PValue+"-"+strconv.Itoa(util.NPUIndex8)+"-"+AscendVNPULevelLow] = newTemplate(Ascend310P,
 		AscendDVPPEnabledNull, util.NPUIndex8, util.NPUIndex7)
 	return templateMap
 }
@@ -244,7 +244,7 @@ func getAiCoreNumFromTask(task *api.TaskInfo) (int, error) {
 func (vNode *VNode) getDVPPEnable(task *api.TaskInfo, coreNum int) string {
 	ringController := task.Pod.Labels[util.JobKindKey]
 	dvppVal, ok := task.Pod.Labels[AscendVNPUDVPP]
-	if !ok || ringController != RingController310P || vNode.IsResourceWholeCard(coreNum) {
+	if !ok || ringController != util.JobKind310PValue || vNode.IsResourceWholeCard(coreNum) {
 		return AscendDVPPEnabledNull
 	}
 	return dvppVal
@@ -260,7 +260,7 @@ func (vNode *VNode) getAiCpuNum(task *api.TaskInfo, coreNum int) (int, error) {
 	}
 
 	vnpuLevel, ok := task.Pod.Labels[AscendVNPULevel]
-	if !ok || ringControllerType != RingController310P {
+	if !ok || ringControllerType != util.JobKind310PValue {
 		vnpuLevel = AscendVNPULevelLow
 	}
 	key := fmt.Sprintf("%s-%s", ringControllerType, strconv.Itoa(coreNum))
