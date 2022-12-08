@@ -519,7 +519,7 @@ func buildCheckNodeNumTest() []CheckNodeNumTest {
 		{
 			name: "02-CheckNodeNum no task test.",
 			fields: schedulerJobFields{SchedulerJobAttr: util.SchedulerJobAttr{
-				NPUJob: &util.NPUJob{Tasks: map[string]util.NPUTask{}}}},
+				NPUJob: &util.NPUJob{Tasks: map[api.TaskID]util.NPUTask{}}}},
 			args: CheckNodeNumArgs{taskInfo: tTasks[0], vcNode: NPUNode{CommonNode{Name: "testNode1", Idle: nil},
 				VNode{}}},
 			wantErr: true,
@@ -527,7 +527,7 @@ func buildCheckNodeNumTest() []CheckNodeNumTest {
 		{
 			name: "03-CheckNodeNum no node idle test.",
 			fields: schedulerJobFields{SchedulerJobAttr: util.SchedulerJobAttr{NPUJob: &util.
-				NPUJob{Tasks: map[string]util.NPUTask{string(tTasks[0].UID): {Name: tTasks[0].Name,
+				NPUJob{Tasks: map[api.TaskID]util.NPUTask{tTasks[0].UID: {Name: tTasks[0].Name,
 				ReqNPUName: util.NPU910CardName, ReqNPUNum: util.NPUIndex8}}}}},
 			args: CheckNodeNumArgs{taskInfo: tTasks[0], vcNode: NPUNode{CommonNode{Name: "testNode1", Idle: nil},
 				VNode{}}},
@@ -536,7 +536,7 @@ func buildCheckNodeNumTest() []CheckNodeNumTest {
 		{
 			name: "04-CheckNodeNum not meet test.",
 			fields: schedulerJobFields{SchedulerJobAttr: util.SchedulerJobAttr{NPUJob: &util.
-				NPUJob{Tasks: map[string]util.NPUTask{string(tTasks[0].UID): {Name: tTasks[0].Name,
+				NPUJob{Tasks: map[api.TaskID]util.NPUTask{tTasks[0].UID: {Name: tTasks[0].Name,
 				ReqNPUName: util.NPU910CardName, ReqNPUNum: util.NPUIndex8}}}}},
 			args:    CheckNodeNumArgs{taskInfo: tTasks[0], vcNode: tNode1},
 			wantErr: true,
@@ -544,7 +544,7 @@ func buildCheckNodeNumTest() []CheckNodeNumTest {
 		{
 			name: "05-CheckNodeNum meet test.",
 			fields: schedulerJobFields{SchedulerJobAttr: util.SchedulerJobAttr{NPUJob: &util.
-				NPUJob{Tasks: map[string]util.NPUTask{string(tTasks[0].UID): {Name: tTasks[0].Name,
+				NPUJob{Tasks: map[api.TaskID]util.NPUTask{tTasks[0].UID: {Name: tTasks[0].Name,
 				ReqNPUName: util.NPU910CardName, ReqNPUNum: util.NPUIndex8}}}}},
 			args:    CheckNodeNumArgs{taskInfo: tTasks[0], vcNode: tNode2},
 			wantErr: false,

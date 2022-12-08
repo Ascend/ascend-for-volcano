@@ -389,7 +389,7 @@ func fakeSchedulerJobEmptyTask(jobName, namespace string) plugin.SchedulerJob {
 			NPUJob: &util.NPUJob{
 				ReqNPUName: util.NPU910CardName,
 				ReqNPUNum:  0,
-				Tasks:      make(map[string]util.NPUTask, util.NPUIndex2),
+				Tasks:      make(map[api.TaskID]util.NPUTask, util.NPUIndex2),
 			},
 		},
 	}
@@ -403,7 +403,7 @@ func fakeSchedulerJobAddTask(sJob *plugin.SchedulerJob, taskName, ns string, req
 		ReqNPUNum:  reqNPUNum,
 		Selector:   nil,
 	}
-	sJob.Tasks[`"`+ns+`"`+"-"+`"`+taskName+`"`] = task
+	sJob.Tasks[api.TaskID(`"`+ns+`"`+"-"+`"`+taskName+`"`)] = task
 	sJob.ReqNPUNum += reqNPUNum
 }
 
