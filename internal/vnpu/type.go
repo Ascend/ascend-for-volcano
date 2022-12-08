@@ -3,11 +3,14 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-Package vnpu is using for HuaWei Ascend pin fault rescheduling.
+Package vnpu is using for HuaWei Ascend pin vnpu allocation.
 */
 package vnpu
 
 import (
+	"volcano.sh/volcano/pkg/scheduler/api"
+
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
@@ -47,29 +50,30 @@ const (
 	podObjectType              = "Pod"
 )
 
-// VResource resource dimensions
-type VResource struct {
-	Aicore int
-	Aicpu  int
-	Dvpp   string
-}
-
 // VTemplate vNPU template
 type VTemplate struct {
-	Data map[string]VResource
+	Data map[string]util.VResource
 }
 
 // VNPU vnpu struct
 type VNPU struct {
 	VT VTemplate
-	staticVNPU
-	dynamicVNPU
+	StaticVNPU
+	DynamicVNPU
 }
 
-type staticVNPU struct {
+type StaticVNPU struct {
+	vnpuHandler
 }
 
-type dynamicVNPU struct {
+type DynamicVNPU struct {
+	vnpuHandler
+}
+
+type vnpuHandler interface {
+	CheckNodeNPUByTask(*api.TaskInfo, plugin.NPUNode, util.VResource) error
+	ScoreBestNPUNodes(*api.TaskInfo, []*api.NodeInfo, map[string]float64) error
+	UseAnnotation(*api.TaskInfo, plugin.NPUNode, util.VResource) *plugin.NPUNode
 }
 
 // Action vnpu actions

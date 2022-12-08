@@ -3,7 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-Package vnpu is using for HuaWei Ascend pin vnpu rescheduling.
+Package vnpu is using for HuaWei Ascend pin vnpu allocation.
 */
 package vnpu
 
@@ -16,7 +16,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
-func (tp *VNPU) orderVNodesByFreeResource(nodes []*api.NodeInfo) []*api.NodeInfo {
+func (tp *DynamicVNPU) orderVNodesByFreeResource(nodes []*api.NodeInfo) []*api.NodeInfo {
 	tempVNodes := vNodesList(nodes)
 	sort.Sort(tempVNodes)
 	return tempVNodes
