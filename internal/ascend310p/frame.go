@@ -113,10 +113,14 @@ func (tp *ascend310P) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInf
 
 	switch tp.Type {
 	case util.JobTypeWhole:
-		return tp.NPUHandler.ScoreBestNPUNodes(task, nodes, scoreMap)
+		if err := tp.NPUHandler.ScoreBestNPUNodes(task, nodes, scoreMap); err != nil {
+			return err
+		}
 	case util.JobTypeStCut:
 	case util.JobTypeDyCut:
-		return tp.vHandle.ScoreBestNPUNodes(task, nodes, scoreMap)
+		if err := tp.vHandle.ScoreBestNPUNodes(task, nodes, scoreMap); err != nil {
+			return err
+		}
 	default:
 		err := fmt.Errorf("%s no type %d", tp.Name, tp.Type)
 		klog.V(util.LogDebugLev).Infof("%s ScoreBestNPUNodes %s %s.", tp.GetPluginName(), tp.Name, err)
