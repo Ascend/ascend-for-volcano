@@ -86,10 +86,14 @@ func (tp *ascend310P) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode
 
 	switch tp.Type {
 	case util.JobTypeWhole:
-		return tp.NPUHandler.CheckNodeNPUByTask(task, node)
+		if err := tp.NPUHandler.CheckNodeNPUByTask(task, node); err != nil {
+			return err
+		}
 	case util.JobTypeStCut:
 	case util.JobTypeDyCut:
-		return tp.vHandle.CheckNodeNPUByTask(task, node)
+		if err := tp.vHandle.CheckNodeNPUByTask(task, node); err != nil {
+			return err
+		}
 	default:
 		err := fmt.Errorf("%s no type %d", tp.Name, tp.Type)
 		klog.V(util.LogDebugLev).Infof("%s CheckNodeNPUByTask %s %s.", tp.GetPluginName(), tp.Name, err)
