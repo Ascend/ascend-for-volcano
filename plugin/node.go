@@ -65,6 +65,8 @@ type VNode struct {
 	ServerType string
 	// TotalChipNum num of total chips, get from capacity
 	TotalChipNum int
+	// AiCorePerChip num of aicore on each chip
+	AiCorePerChip int
 	// FreeChipNum num of free chips get from device-info
 	FreeChipNum int
 	// TotalRes total resource on node

@@ -124,6 +124,12 @@ func (n *NPUNode) setTotalResAndChipNumByTemplates() error {
 	}
 	n.VNode.TotalRes.Aicore = int(totalCore)
 
+	numCorePerChip, err := n.getVChipCoreNum()
+	if err != nil {
+		return fmt.Errorf("getTotalChipNum error: %v", err)
+	}
+	n.AiCorePerChip = numCorePerChip
+
 	// 2.2 get totalChipNum use totalChipNum = totalCoreNum / coreNumPerChip
 	totalChipNum, err := n.getTotalChipNum()
 	if err != nil {
@@ -167,7 +173,7 @@ func (n *NPUNode) initVChips(ni *api.NodeInfo) error {
 	} // 3. create new VChip by freeCardID whole card
 
 	for _, ti := range ni.Tasks {
-		n.VNode.addNPUResource(ti.Pod, chipCoreNum, chipTotalRes)
+		n.VNode.addNPUResource(ti.Pod, chipTotalRes)
 	} // 4. update VChips and create VChips for chips being occupied
 
 	return nil
@@ -179,14 +185,14 @@ func (n NPUNode) initFreeWholeVChips(chipCoreNum int, chipTotalRes util.VResourc
 		return fmt.Errorf("vNode %s getFreeCardIDsFromDeviceInfo failed", n.Name)
 	}
 	for _, freeCardID := range freeCardIDs {
-		n.VNode.Chips[freeCardID] = n.VNode.NewVChip(freeCardID, chipCoreNum, chipTotalRes)
+		n.VNode.Chips[freeCardID] = n.VNode.NewVChip(freeCardID, chipTotalRes)
 	}
 	return nil
 }
 
 func (n *NPUNode) getFreeCardIDsFromDeviceInfo() []int {
 	var freeCardIDs []int
-	freeChipStr, ok := n.Annotation[util.HwPreName+n.ChipKind] // Ascend910-0,Ascend910-1
+	freeChipStr, ok := n.Annotation[util.HwPreName+n.ChipKind] // like Ascend910-0,Ascend910-1
 	if !ok {
 		return freeCardIDs
 	}
@@ -202,13 +208,10 @@ func (n *NPUNode) getFreeCardIDsFromDeviceInfo() []int {
 	return freeCardIDs
 }
 
+// getTotalChipNum used after aicorePerChip set
 func (vNode *VNode) getTotalChipNum() (int, error) {
-	numCorePerChip, err := vNode.getVChipCoreNum()
-	if err != nil {
-		return 0, fmt.Errorf("getTotalChipNum error: %v", err)
-	}
-	totalChipNum := vNode.TotalRes.Aicore / numCorePerChip
-	if vNode.TotalRes.Aicore%numCorePerChip != 0 {
+	totalChipNum := vNode.TotalRes.Aicore / vNode.AiCorePerChip
+	if vNode.TotalRes.Aicore%vNode.AiCorePerChip != 0 {
 		return 0, errors.New("getTotalChipNum error: total resource cannot be divided by coreNumPerChip")
 	}
 	if totalChipNum == 0 {
@@ -218,13 +221,13 @@ func (vNode *VNode) getTotalChipNum() (int, error) {
 }
 
 // NewVChip create new vChip
-func (vNode *VNode) NewVChip(id int, coreNum int, totalRes util.VResource) *VChip {
+func (vNode *VNode) NewVChip(id int, totalRes util.VResource) *VChip {
 	chipName := vNode.ChipKind + "-" + strconv.Itoa(id)
 	vChip := VChip{
 		PodMap:   make(map[string]*v1.Pod, util.MapInitNum),
 		Name:     chipName,
 		Kind:     vNode.ChipKind,
-		CoreNum:  coreNum,
+		CoreNum:  vNode.AiCorePerChip,
 		TotalRes: totalRes,
 		FreeRes:  totalRes,
 	}
@@ -240,7 +243,7 @@ func (vNode *VNode) NewVChip(id int, coreNum int, totalRes util.VResource) *VChi
 }
 
 // addNPUResource update all pod resource to node
-func (vNode *VNode) addNPUResource(pod *v1.Pod, chipCoreNum int, chipTotalRes util.VResource) {
+func (vNode *VNode) addNPUResource(pod *v1.Pod, chipTotalRes util.VResource) {
 	coreNameStr, ok := pod.Annotations[util.AscendNPUCore]
 	if !ok {
 		klog.V(util.LogErrorLev).Infof("addNPUResource pod %s %s no value", pod.Name, util.AscendNPUCore)
@@ -248,10 +251,10 @@ func (vNode *VNode) addNPUResource(pod *v1.Pod, chipCoreNum int, chipTotalRes ut
 	}
 
 	if IsPodWholeCardFromAscendCore(coreNameStr) {
-		vNode.addNPUResourceWholeCard(pod, chipCoreNum)
+		vNode.addNPUResourceWholeCard(pod)
 		return
 	}
-	vNode.addNPUResourceVNPUCard(pod, chipCoreNum, chipTotalRes)
+	vNode.addNPUResourceVNPUCard(pod, chipTotalRes)
 }
 
 func (vNode *VNode) getVChipCoreNum() (int, error) {
@@ -292,7 +295,7 @@ func (vNode *VNode) getPodUsedRes(pod *v1.Pod) *util.VResource {
 }
 
 // addNPUResourceWholeCard Ascend910-0,Ascend910-1
-func (vNode *VNode) addNPUResourceWholeCard(pod *v1.Pod, chipCoreNum int) {
+func (vNode *VNode) addNPUResourceWholeCard(pod *v1.Pod) {
 	physicsID, err := GetCardPhysicsIDFromAscendCore(pod, true)
 	if err != nil || len(physicsID) == 0 {
 		return
@@ -304,7 +307,7 @@ func (vNode *VNode) addNPUResourceWholeCard(pod *v1.Pod, chipCoreNum int) {
 		// 2. get chip id
 		curVChip, ok := vNode.Chips[id]
 		if !ok {
-			curVChip = vNode.NewVChip(id, chipCoreNum, podVResource)
+			curVChip = vNode.NewVChip(id, podVResource)
 			vNode.Chips[id] = curVChip
 		}
 
@@ -318,7 +321,7 @@ func (vNode *VNode) addNPUResourceWholeCard(pod *v1.Pod, chipCoreNum int) {
 }
 
 // addNPUResourceVNPUCard ascendStr Ascend310P-4c.3cpu.ndvpp-100(VNPUID)-1(physic ID)_1（vgroupID）
-func (vNode *VNode) addNPUResourceVNPUCard(pod *v1.Pod, coreNum int, chipTotalRes util.VResource) {
+func (vNode *VNode) addNPUResourceVNPUCard(pod *v1.Pod, chipTotalRes util.VResource) {
 	// 1. get physics id
 	physicsID, err := GetCardPhysicsIDFromAscendCore(pod, false)
 	if err != nil || len(physicsID) != util.NPUIndex1 {
@@ -329,7 +332,7 @@ func (vNode *VNode) addNPUResourceVNPUCard(pod *v1.Pod, coreNum int, chipTotalRe
 	// 2. add chip to node
 	curVChip, ok := vNode.Chips[physicsID[0]]
 	if !ok {
-		curVChip = vNode.NewVChip(physicsID[0], coreNum, chipTotalRes)
+		curVChip = vNode.NewVChip(physicsID[0], chipTotalRes)
 		vNode.Chips[physicsID[0]] = curVChip
 	}
 	curVChip.Unstable = curVChip.IsPodResUnstable(pod) || curVChip.Unstable
@@ -346,7 +349,7 @@ func (vNode *VNode) addNPUResourceVNPUCard(pod *v1.Pod, coreNum int, chipTotalRe
 	// 4. update node properties
 	curVChip.UsedRes.Add(*podVResource)
 	curVChip.FreeRes.Sub(*podVResource)
-	curVChip.updateDVPP(podVResource.DVPP)
+	curVChip.UpdateDVPP(podVResource.DVPP)
 }
 
 // IsPodResUnstable return true if chip stable
@@ -374,7 +377,8 @@ func (vChip *VChip) addPodToPodMap(pod *v1.Pod) {
 	vChip.PodMap[string(pod.UID)] = pod
 }
 
-func (vChip *VChip) updateDVPP(podResDVPP string) {
+// UpdateDVPP update dvpp according to pod resource
+func (vChip *VChip) UpdateDVPP(podResDVPP string) {
 	if podResDVPP == AscendDVPPEnabledOn {
 		vChip.UsedRes.DVPP = AscendDVPPEnabledOn
 		vChip.FreeRes.DVPP = AscendDVPPEnabledOff
@@ -393,6 +397,9 @@ func (vChip *VChip) updateDVPP(podResDVPP string) {
 func (n NPUNode) IsNodeTotalResEnough(vRes util.VResource) bool {
 	var nodeResFree util.VResource
 	for _, chip := range n.VNode.Chips {
+		if chip.Unstable {
+			klog.V(util.LogDebugLev).Infof("chip <%s> unstable, resource exempted", chip.Name)
+		}
 		nodeResFree.Add(chip.FreeRes)
 	}
 	return nodeResFree.BeGreater(vRes)
@@ -400,6 +407,9 @@ func (n NPUNode) IsNodeTotalResEnough(vRes util.VResource) bool {
 
 // IsNodeChipResEnough judge if chip on node can be allocated to job
 func (n NPUNode) IsNodeChipResEnough(vRes util.VResource) bool {
+	if n.IsResourceWholeCard(vRes.Aicore) {
+		return n.VNode.isNodeChipResEnoughWholeCard(vRes)
+	}
 	for _, vChip := range n.Chips {
 		if !vChip.IsChipMeetResReq(vRes) || vChip.Unstable {
 			klog.V(util.LogDebugLev).Infof("vChip %s does not meet resource requirements", vChip.Name)
@@ -408,6 +418,17 @@ func (n NPUNode) IsNodeChipResEnough(vRes util.VResource) bool {
 		return true
 	}
 	return false
+}
+
+func (vNode VNode) isNodeChipResEnoughWholeCard(vRes util.VResource) bool {
+	freeWholeCard := 0
+	for _, vChip := range vNode.Chips {
+		if vChip.SegmentFlag {
+			continue
+		}
+		freeWholeCard += 1
+	}
+	return vRes.Aicore/vNode.AiCorePerChip <= freeWholeCard
 }
 
 // IsChipMeetResReq check chip resource can be allocated as the task requires
@@ -508,36 +529,67 @@ func (vNode *VNode) SelectChipFromNode(vRes util.VResource) (string, error) {
 	tempVChips := vChipsList(Chips)
 	sort.Sort(tempVChips)
 	if len(tempVChips) == 0 {
-		klog.V(util.LogErrorLev).Info("SelectChipFromNode sorted chips len 0")
+		return "", fmt.Errorf("SelectChipFromNode sorted chips len 0")
 	}
 
-	var allocChip *VChip
-	for _, chip := range tempVChips {
+	if vNode.IsResourceWholeCard(vRes.Aicore) {
+		return vNode.selectChipFromNodeWhole(tempVChips, vRes)
+	}
+	return vNode.selectChipFromNodeSegment(tempVChips, vRes)
+}
+
+func (vNode *VNode) selectChipFromNodeSegment(vChip []*VChip, vRes util.VResource) (string, error) {
+	for _, chip := range vChip {
 		if !chip.IsChipMeetResReq(vRes) || chip.Unstable {
 			klog.V(util.LogDebugLev).Infof("chip %s does not meet resource requirements", chip.Name)
 			continue
 		}
-		allocChip = chip
-		break
+		chipID, err := GetWholeCardIDFromAscendReal(chip.Name)
+		if err != nil {
+			return "", fmt.Errorf("selectChipFromNodeSegment chip name <%s> err: %s", chip.Name, err)
+		}
+		return strconv.Itoa(chipID), nil
 	}
-	if allocChip == nil {
-		return "", errors.New("chip is nil")
+
+	return "", fmt.Errorf("selectChipFromNodeSegment available chip not found for req <%d>", vRes.Aicore)
+}
+
+func (vNode *VNode) selectChipFromNodeWhole(vChips []*VChip, vRes util.VResource) (string, error) {
+	reqCardNum := vRes.Aicore / vNode.AiCorePerChip
+	allocCardNum := 0
+	vResChip := util.VResource{
+		Aicore: vRes.Aicore / reqCardNum,
+		Aicpu:  vRes.Aicpu / reqCardNum,
+		DVPP:   AscendDVPPEnabledNull,
 	}
-	allocChipSplit := strings.Split(allocChip.Name, "-")
-	if len(allocChipSplit) < util.NPUIndex2 {
-		return "", errors.New("chip name format error")
+	var cardNames []string
+	for _, chip := range vChips {
+		if !chip.IsChipMeetResReq(vResChip) || chip.SegmentFlag {
+			klog.V(util.LogDebugLev).Infof("chip %s does not meet whole card resource requirements", chip.Name)
+			continue
+		}
+		chipID, err := GetWholeCardIDFromAscendReal(chip.Name)
+		if err != nil {
+			return "", fmt.Errorf("selectChipFromNodeWhole chip name <%s> err: %s", chip.Name, err)
+		}
+		cardNames = append(cardNames, strconv.Itoa(chipID))
+		allocCardNum += 1
+		if allocCardNum == reqCardNum {
+			return strings.Join(cardNames, ","), nil
+		}
 	}
-	return allocChipSplit[util.NPUIndex1], nil
+	return "", fmt.Errorf("selectChipFromNodeWhole free whole chip <%d> not enough for req <%d>", allocCardNum,
+		reqCardNum)
 }
 
 // IsResourceWholeCard judge if resource is whole card by node total resource
-func (vNode *VNode) IsResourceWholeCard(vRes util.VResource) bool {
+func (vNode *VNode) IsResourceWholeCard(aiCore int) bool {
 	chipCoreNum, err := vNode.getVChipCoreNum()
 	if err != nil {
 		klog.V(util.LogWarningLev).Infof("IsResourceWholeCard get chipCoreNum failed")
 		return false
 	}
-	return vRes.Aicore%chipCoreNum == 0
+	return aiCore%chipCoreNum == 0
 }
 
 type vChipsList []*VChip

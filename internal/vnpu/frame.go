@@ -10,6 +10,7 @@ package vnpu
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -49,21 +50,19 @@ func CheckVNPUSegmentEnable(ssn *framework.Session) bool {
 	return CheckVNPUSegmentEnableByConfig(ssn.Configurations)
 }
 
-// CheckNodeNPUByTask todo: deal with fault chips
+// CheckNodeNPUByTask check chip on node has enough resource, fault chips are not in list, unstable excluded
 func (tp *VNPU) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode) error {
-	taskResReq, err := plugin.TransferTaskLabelToResReq(task)
+	taskResReq, err := node.TransferTaskLabelToResReq(task)
 	if err != nil {
-		return fmt.Errorf("%s task<%s> CheckNodeNPUByTask err: %s", tp.GetPluginName(), task.Name, err.Error())
+		return fmt.Errorf("dynamic vnpu task<%s> CheckNodeNPUByTask err: %s", task.Name, err.Error())
 	}
 
 	if !node.IsNodeTotalResEnough(taskResReq) {
-		return fmt.Errorf("%s task<%s> CheckNodeNPUByTask err: node resource not enough", tp.GetPluginName(),
-			task.Name)
+		return fmt.Errorf("dynamic vnpu task<%s> CheckNodeNPUByTask err: node resource not enough", task.Name)
 	}
 
 	if !node.IsNodeChipResEnough(taskResReq) {
-		return fmt.Errorf("%s task<%s> CheckNodeNPUByTask err: chip resource not enough", tp.GetPluginName(),
-			task.Name)
+		return fmt.Errorf("dynamic vnpu task<%s> CheckNodeNPUByTask err: chip resource not enough", task.Name)
 	}
 
 	return nil
@@ -74,7 +73,7 @@ func (tp *VNPU) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo, sco
 	// 1. sort nodes with free resource from low to high
 	nodesSorted := tp.orderVNodesByFreeResource(nodes)
 	if len(nodesSorted) == 0 {
-		return fmt.Errorf("%s task<%s> ScoreBestNPUNodes err: sorted nodes len 0", tp.GetPluginName(), task.Name)
+		return fmt.Errorf("dynamic vnpu task<%s> ScoreBestNPUNodes err: sorted nodes len 0", task.Name)
 	}
 
 	// 2. give the first node high score
@@ -84,17 +83,17 @@ func (tp *VNPU) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo, sco
 
 // UseAnnotation write task use vnpu to pod annotation
 func (tp *VNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
-	klog.V(util.LogDebugLev).Infof("%s UseAnnotation task<%s> node<%s> resource<%s> Annotation: %#v",
-		tp.GetPluginName(), task.Name, node.Name, tp.GetAnnoName(), node.Annotation)
-	taskResReq, err := plugin.TransferTaskLabelToResReq(task)
+	klog.V(util.LogDebugLev).Infof("dynamic vnpu UseAnnotation task<%s> node<%s> Annotation: %#v", task.Name,
+		node.Name, node.Annotation)
+	taskResReq, err := node.TransferTaskLabelToResReq(task)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s task<%s> UseAnnotation err: %s", tp.GetPluginName(), task.Name, err.Error())
+		klog.V(util.LogErrorLev).Infof("dynamic vnpu task<%s> UseAnnotation err: %s", task.Name, err.Error())
 		return nil
 	}
 
 	allocChipID, err := node.VNode.SelectChipFromNode(taskResReq)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s task<%s> UseAnnotation err: %s", tp.GetPluginName(), task.Name, err.Error())
+		klog.V(util.LogErrorLev).Infof("dynamic vnpu task<%s> UseAnnotation err: %s", task.Name, err.Error())
 		return nil
 	}
 
@@ -106,10 +105,9 @@ func (tp *VNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *plugin.N
 func (tp *VNPU) SetNPUTopologyToPodFn(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource,
 	allocChipID string) {
 	// 1. whole card
-	if node.IsResourceWholeCard(taskResReq) {
+	if node.IsResourceWholeCard(taskResReq.Aicore) {
 		task.Pod.Annotations[util.AscendNPUCore] = allocChipID
-		klog.V(util.LogInfoLev).Infof("%s setNPUTopologyToPod %s top:%s.", tp.GetPluginName(),
-			task.Name, allocChipID)
+		klog.V(util.LogInfoLev).Infof("dynamic vnpu setNPUTopologyToPod %s top:%s.", task.Name, allocChipID)
 		return
 	}
 
@@ -117,8 +115,7 @@ func (tp *VNPU) SetNPUTopologyToPodFn(task *api.TaskInfo, node plugin.NPUNode, t
 	segmentAnnotation := fmt.Sprintf("%s-%s", allocChipID, getAiCoreNumStr(taskResReq.Aicore))
 	if node.ChipKind != plugin.Ascend310P || taskResReq.Aicore == taskResReq.Aicpu {
 		task.Pod.Annotations[util.AscendNPUCore] = segmentAnnotation
-		klog.V(util.LogInfoLev).Infof("%s setNPUTopologyToPod %s top:%s.", tp.GetPluginName(),
-			task.Name, segmentAnnotation)
+		klog.V(util.LogInfoLev).Infof("dynamic vnpu setNPUTopologyToPod %s top:%s.", task.Name, segmentAnnotation)
 		return
 	}
 
@@ -127,8 +124,7 @@ func (tp *VNPU) SetNPUTopologyToPodFn(task *api.TaskInfo, node plugin.NPUNode, t
 
 	// 2.3 like vir04_3c_ndvpp
 	task.Pod.Annotations[util.AscendNPUCore] = getDVPPValue(taskResReq.DVPP, segmentAnnotation)
-	klog.V(util.LogInfoLev).Infof("%s setNPUTopologyToPod %s top:%s.", tp.GetPluginName(),
-		task.Name, segmentAnnotation)
+	klog.V(util.LogInfoLev).Infof("dynamic vnpu setNPUTopologyToPod %s top:%s.", task.Name, segmentAnnotation)
 	return
 }
 
@@ -153,19 +149,49 @@ func getDVPPValue(DVPPEnable string, preAnno string) string {
 	return ""
 }
 
-// UpdateNodeInfo update npuNode after allocation
+// UpdateNodeInfo vnpu update npuNode after allocation
 func (tp *VNPU) UpdateNodeInfo(node plugin.NPUNode, allocChipID string, taskResReq util.VResource) *plugin.NPUNode {
+	if node.IsResourceWholeCard(taskResReq.Aicore) {
+		return tp.UpdateNodeInfoWhole(node, allocChipID)
+	}
+	return tp.UpdateNodeInfoSegment(node, allocChipID, taskResReq)
+}
+
+// UpdateNodeInfoSegment vnpu update npuNode after allocation for segmentation tasks
+func (tp *VNPU) UpdateNodeInfoSegment(node plugin.NPUNode, allocChipID string,
+	taskResReq util.VResource) *plugin.NPUNode {
 	for chipID, chip := range node.Chips {
 		if strconv.Itoa(chipID) != allocChipID {
 			continue
 		}
 		chip.UsedRes.Add(taskResReq)
 		chip.FreeRes.Sub(taskResReq)
-		if !node.IsResourceWholeCard(taskResReq) {
+		if !node.IsResourceWholeCard(taskResReq.Aicore) {
 			chip.SegmentFlag = true
 		}
+		chip.UpdateDVPP(taskResReq.DVPP)
 	}
-	klog.V(util.LogInfoLev).Infof("%s UpdateNodeInfo node <%s> chip resource updated", tp.GetPluginName(),
-		node.Name)
+	klog.V(util.LogInfoLev).Infof("dynamic vnpu UpdateNodeInfo node <%s> chip resource updated", node.Name)
+	return &node
+}
+
+// UpdateNodeInfoWhole vnpu update npuNode after allocation for whole card tasks
+func (tp *VNPU) UpdateNodeInfoWhole(node plugin.NPUNode, allocChipIDs string) *plugin.NPUNode {
+	chipRes := util.VResource{
+		Aicore: node.AiCorePerChip,
+		Aicpu:  node.TotalRes.Aicpu / node.TotalChipNum,
+		DVPP:   plugin.AscendDVPPEnabledNull,
+	}
+	allocChipIDList := strings.Split(allocChipIDs, ",")
+	for _, allocChipID := range allocChipIDList {
+		for chipID, chip := range node.Chips {
+			if strconv.Itoa(chipID) != allocChipID {
+				continue
+			}
+			chip.UsedRes.Add(chipRes)
+			chip.FreeRes.Sub(chipRes)
+			chip.UpdateDVPP(chipRes.DVPP)
+		}
+	}
 	return &node
 }

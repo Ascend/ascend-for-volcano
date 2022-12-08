@@ -79,3 +79,68 @@ func (tp *ascend310P) ValidNPUJob() *api.ValidateResult {
 
 	return &api.ValidateResult{Pass: false, Reason: err.Error(), Message: err.Error()}
 }
+
+// CheckNodeNPUByTask check nod npu meet task req
+func (tp *ascend310P) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode) error {
+	klog.V(util.LogDebugLev).Infof("%s CheckNodeNPUByTask job(%s).", tp.GetPluginName(), tp.Name)
+
+	switch tp.Type {
+	case util.JobTypeWhole:
+		return tp.NPUHandler.CheckNodeNPUByTask(task, node)
+	case util.JobTypeStCut:
+	case util.JobTypeDyCut:
+		return tp.vHandle.CheckNodeNPUByTask(task, node)
+	default:
+		err := fmt.Errorf("%s no type %d", tp.Name, tp.Type)
+		klog.V(util.LogDebugLev).Infof("%s CheckNodeNPUByTask %s %s.", tp.GetPluginName(), tp.Name, err)
+	}
+	if tp.reHandle == nil {
+		return nil
+	}
+	if reErr := tp.reHandle.CheckNodeNPUByTask(task, node); reErr != nil {
+		return fmt.Errorf("rescheduling CheckNodeNPUByTask %s", reErr.Error())
+	}
+	return nil
+}
+
+// ScoreBestNPUNodes score node by calculate task req npu num and node npu top
+func (tp *ascend310P) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo, scoreMap map[string]float64) error {
+	klog.V(util.LogDebugLev).Infof("%s ScoreBestNPUNodes job(%s).", tp.GetPluginName(), tp.Name)
+
+	switch tp.Type {
+	case util.JobTypeWhole:
+		return tp.NPUHandler.ScoreBestNPUNodes(task, nodes, scoreMap)
+	case util.JobTypeStCut:
+	case util.JobTypeDyCut:
+		return tp.vHandle.ScoreBestNPUNodes(task, nodes, scoreMap)
+	default:
+		err := fmt.Errorf("%s no type %d", tp.Name, tp.Type)
+		klog.V(util.LogDebugLev).Infof("%s ScoreBestNPUNodes %s %s.", tp.GetPluginName(), tp.Name, err)
+	}
+
+	reErr := tp.reHandle.ScoreBestNPUNodes(task, scoreMap)
+	if reErr != nil {
+		klog.V(util.LogErrorLev).Infof(
+			"%s rescheduling ScoreBestNPUNodes failed :%s.", tp.GetPluginName(), reErr.Error())
+	}
+	klog.V(util.LogInfoLev).Infof("%s ScoreBestNPUNodes task<%s> scoreMap<%v>", tp.GetPluginName(),
+		task.Name, scoreMap)
+	return nil
+}
+
+// UseAnnotation select npu for task from node
+func (tp *ascend310P) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
+	klog.V(util.LogDebugLev).Infof("%s UseAnnotation job(%s).", tp.GetPluginName(), tp.Name)
+
+	switch tp.Type {
+	case util.JobTypeWhole:
+		return tp.NPUHandler.UseAnnotation(task, node)
+	case util.JobTypeStCut:
+	case util.JobTypeDyCut:
+		return tp.vHandle.UseAnnotation(task, node)
+	default:
+		err := fmt.Errorf("%s no type %d", tp.Name, tp.Type)
+		klog.V(util.LogDebugLev).Infof("%s CheckNodeNPUByTask %s %s.", tp.GetPluginName(), tp.Name, err)
+	}
+	return nil
+}

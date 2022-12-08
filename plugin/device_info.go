@@ -10,12 +10,13 @@ package plugin
 import (
 	"errors"
 	"fmt"
-	v1 "k8s.io/api/core/v1"
 	"strconv"
 	"strings"
 
+	"k8s.io/api/core/v1"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
+
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
@@ -38,6 +39,10 @@ func initVJobTemplate() map[string]util.VTemplate {
 		newTemplate(Ascend910, AscendDVPPEnabledNull, util.NPUIndex8, util.NPUIndex3)
 	templateMap[RingController910+"-"+strconv.Itoa(util.NPUIndex16)+"-"+AscendVNPULevelLow] =
 		newTemplate(Ascend910, AscendDVPPEnabledNull, util.NPUIndex16, util.NPUIndex7)
+	templateMap[RingController910+"-"+strconv.Itoa(util.CoreNum32)+"-"+AscendVNPULevelLow] =
+		newTemplate(Ascend910, AscendDVPPEnabledNull, util.CoreNum32, util.CpuNum14)
+	templateMap[RingController910+"-"+strconv.Itoa(util.CoreNum30)+"-"+AscendVNPULevelLow] =
+		newTemplate(Ascend910, AscendDVPPEnabledNull, util.CoreNum30, util.CpuNum14)
 	templateMap[RingController310P+"-"+strconv.Itoa(util.NPUIndex1)] = newTemplate(Ascend310P, AscendDVPPEnabledNull,
 		util.NPUIndex1, util.NPUIndex1)
 	templateMap[RingController310P+"-"+strconv.Itoa(util.NPUIndex2)] = newTemplate(Ascend310P, AscendDVPPEnabledNull,
@@ -50,6 +55,8 @@ func initVJobTemplate() map[string]util.VTemplate {
 		AscendDVPPEnabledNull, util.NPUIndex4, util.NPUIndex3)
 	templateMap[RingController310P+"-"+strconv.Itoa(util.NPUIndex4)+"-"+AscendVNPULevelLow] = newTemplate(Ascend310P,
 		AscendDVPPEnabledNull, util.NPUIndex4, util.NPUIndex3)
+	templateMap[RingController310P+"-"+strconv.Itoa(util.NPUIndex8)+"-"+AscendVNPULevelLow] = newTemplate(Ascend310P,
+		AscendDVPPEnabledNull, util.NPUIndex8, util.NPUIndex7)
 	return templateMap
 }
 
@@ -190,18 +197,7 @@ func getAiCpuFromCoreStr(resources []string, aicoreNum int) int {
 	return aicpuNum
 }
 
-// IsPodWholeCard judge if card is whole card 0,1/Ascend910-4c-100-1-1
-func IsPodWholeCard(realCardName string) bool {
-	temp := strings.Split(realCardName, ",")
-	for _, cardName := range temp {
-		singleCardTemp := strings.Split(cardName, "-")
-		if len(singleCardTemp) != util.NPUIndex2 {
-			return false
-		}
-	}
-	return true
-}
-
+// IsPodWholeCardFromAscendCore judge if card is whole card 0,1/0-vir04
 func IsPodWholeCardFromAscendCore(coreCardName string) bool {
 	temp := strings.Split(coreCardName, ",")
 	for _, cardName := range temp {
@@ -226,7 +222,7 @@ func GetWholeCardIDFromAscendReal(cardNameStr string) (int, error) {
 	return id, nil
 }
 
-
+// GetCardPhysicsIDFromAscendCore get card physics id from 0,1/0-vir04
 func GetCardPhysicsIDFromAscendCore(pod *v1.Pod, isWholeCard bool) ([]int, error) {
 	var physicsIDs []int
 	coreNameStr, ok := pod.Annotations[util.AscendNPUCore]
@@ -269,7 +265,7 @@ func getVNPUCardIDFromAscendCore(coreNameStr string) (int, error) {
 }
 
 // TransferTaskLabelToResReq transfer 4c.3cpu.ndvpp to resource
-func TransferTaskLabelToResReq(task *api.TaskInfo) (util.VResource, error) {
+func (vNode *VNode) TransferTaskLabelToResReq(task *api.TaskInfo) (util.VResource, error) {
 	resReq := util.VResource{
 		DVPP: AscendDVPPEnabledNull,
 	}
@@ -278,12 +274,12 @@ func TransferTaskLabelToResReq(task *api.TaskInfo) (util.VResource, error) {
 		return resReq, fmt.Errorf("task %s AscendNPUCore read failed", task.Name)
 	}
 
-	cpuNum, err := getAiCpuNum(task, coreNum)
+	cpuNum, err := vNode.getAiCpuNum(task, coreNum)
 	if err != nil {
 		return resReq, fmt.Errorf("task %s AscendCPUNum get failed", task.Name)
 	}
 
-	dvppVal := getDVPPEnable(task)
+	dvppVal := vNode.getDVPPEnable(task, coreNum)
 
 	resReq = util.VResource{
 		Aicore: coreNum,
@@ -305,23 +301,26 @@ func getAiCoreNumFromTask(task *api.TaskInfo) (int, error) {
 	return 0, fmt.Errorf("getAiCoreNumFromTask get resource requests failed")
 }
 
-func getDVPPEnable(task *api.TaskInfo) string {
-	ringController := task.Pod.Labels[util.RingController]
+func (vNode *VNode) getDVPPEnable(task *api.TaskInfo, coreNum int) string {
+	ringController := task.Pod.Labels[util.JobKindKey]
 	dvppVal, ok := task.Pod.Labels[AscendVNPUDVPP]
-	if !ok || ringController != RingController310P {
+	if !ok || ringController != RingController310P || vNode.IsResourceWholeCard(coreNum) {
 		return AscendDVPPEnabledNull
 	}
 	return dvppVal
 }
 
-func getAiCpuNum(task *api.TaskInfo, coreNum int) (int, error) {
+func (vNode *VNode) getAiCpuNum(task *api.TaskInfo, coreNum int) (int, error) {
+	if vNode.IsResourceWholeCard(coreNum) {
+		return coreNum * vNode.TotalRes.Aicpu / vNode.TotalRes.Aicore, nil
+	}
 	ringControllerType, ok := task.Pod.Labels[util.JobKindKey] // ascend-910/ascend-310P/ascend-310
 	if !ok {
-		return util.ErrorInt, fmt.Errorf("getAiCpuNum get label %s failed", util.RingController)
+		return util.ErrorInt, fmt.Errorf("getAiCpuNum get label %s failed", util.JobKindKey)
 	}
 
 	vnpuLevel, ok := task.Pod.Labels[AscendVNPULevel]
-	if !ok {
+	if !ok || ringControllerType != RingController310P {
 		vnpuLevel = AscendVNPULevelLow
 	}
 	key := fmt.Sprintf("%s-%s", ringControllerType, strconv.Itoa(coreNum))
