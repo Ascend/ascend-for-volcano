@@ -51,7 +51,7 @@ func buildGetResourceFromStrTests() []getResourceFromStrTest {
 		{
 			name: "02-GetResourceFromRealStr only core",
 			args: getResourceFromStrArgs{
-				vDeviceResourceStr: "4c",
+				vDeviceResourceStr: "vir04",
 			},
 			want: &util.VResource{
 				Aicore: util.NPUIndex4,
@@ -62,7 +62,7 @@ func buildGetResourceFromStrTests() []getResourceFromStrTest {
 		{
 			name: "03-GetResourceFromRealStr core and cpu",
 			args: getResourceFromStrArgs{
-				vDeviceResourceStr: "4c.3cpu",
+				vDeviceResourceStr: "vir04_3c",
 			},
 			want: &util.VResource{
 				Aicore: util.NPUIndex4,
@@ -73,7 +73,7 @@ func buildGetResourceFromStrTests() []getResourceFromStrTest {
 		{
 			name: "04-GetResourceFromRealStr core, cpu and dvpp",
 			args: getResourceFromStrArgs{
-				vDeviceResourceStr: "4c.3cpu.ndvpp",
+				vDeviceResourceStr: "vir04_3c_ndvpp",
 			},
 			want: &util.VResource{
 				Aicore: util.NPUIndex4,
@@ -85,11 +85,11 @@ func buildGetResourceFromStrTests() []getResourceFromStrTest {
 	return tests
 }
 
-func TestGetResourceFromStr(t *testing.T) {
+func TestGetResourceFromCoreStr(t *testing.T) {
 	tests := buildGetResourceFromStrTests()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetResourceFromRealStr(tt.args.vDeviceResourceStr); !reflect.DeepEqual(got, tt.want) {
+			if got := GetResourceFromCoreStr(tt.args.vDeviceResourceStr); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetResourceFromRealStr() = %v, want %v", got, tt.want)
 			}
 		})

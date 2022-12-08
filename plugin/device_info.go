@@ -60,84 +60,6 @@ func initVJobTemplate() map[string]util.VTemplate {
 	return templateMap
 }
 
-// GetResourceFromRealStr vDeviceResourceStr like 4c.3cpu.ndvpp
-func GetResourceFromRealStr(vDeviceResourceStr string) *util.VResource {
-	klog.V(util.LogInfoLev).Infof("GetResourceFromRealStr parsing resource")
-	resources := strings.Split(vDeviceResourceStr, ".") // like 4c.3cpu.ndvpp/2c.1cpu/8c
-
-	// 1. get coreNum from template
-	aicoreNum := getAicoreFromRealStr(resources) // like 4c
-	if aicoreNum == util.ErrorInt {
-		klog.V(util.LogErrorLev).Infof("%s aicore %s", vDeviceResourceStr, FormatIncorrectError)
-		return nil
-	}
-
-	// 2. get aicpu from template
-	aicpuNum := getAicpuFromRealStr(resources, aicoreNum) // like 4c.3cpu
-	if aicpuNum == util.ErrorInt {
-		klog.V(util.LogDebugLev).Infof("%s aicpu %s", vDeviceResourceStr, FormatIncorrectError)
-		return nil
-	}
-
-	dvppValue := getDvppFromRealOrCoreStr(resources)
-	return &util.VResource{
-		Aicore: aicoreNum,
-		Aicpu:  aicpuNum,
-		DVPP:   dvppValue,
-	}
-}
-
-func getAicoreFromRealStr(resources []string) int {
-	if len(resources) < 1 {
-		klog.V(util.LogErrorLev).Infof("%v resource %s", resources, FormatIncorrectError)
-		return util.ErrorInt
-	}
-
-	if !strings.HasSuffix(resources[0], "c") {
-		klog.V(util.LogErrorLev).Infof("%s aicore %s", resources[0], FormatIncorrectError)
-		return util.ErrorInt
-	}
-
-	aicoreNum, err := strconv.Atoi(strings.TrimSuffix(resources[0], "c")) // like 4c
-	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s aicore %s", resources[0], FormatIncorrectError)
-		return util.ErrorInt
-	}
-	return aicoreNum
-}
-
-func getAicpuFromRealStr(resources []string, aicoreNum int) int {
-	if len(resources) < util.NPUIndex2 { // 2.1 cpu==core
-		klog.V(util.LogDebugLev).Infof("high cpu requirements")
-		return aicoreNum
-	}
-	aicpuNum, err := strconv.Atoi(strings.TrimSuffix(resources[1], util.AICPU)) // 2.2 cpu<core
-	if err != nil {
-		klog.V(util.LogDebugLev).Infof("aicpu format error")
-		return util.ErrorInt
-	}
-
-	return aicpuNum
-}
-
-func getDvppFromRealOrCoreStr(resources []string) string {
-	if len(resources) < util.NPUIndex3 {
-		return AscendDVPPEnabledNull
-	}
-
-	// 3. get dvpp from template
-	var dvppValue string
-	switch resources[util.NPUIndex2] {
-	case AscendDVPPValue:
-		dvppValue = AscendDVPPEnabledOn
-	case AscendNDVPPValue:
-		dvppValue = AscendDVPPEnabledOff
-	default:
-		dvppValue = AscendDVPPEnabledNull
-	}
-	return dvppValue
-}
-
 // GetResourceFromCoreStr like vir04_3c_ndvpp
 func GetResourceFromCoreStr(coreStr string) *util.VResource {
 	resources := strings.Split(coreStr, "_")
@@ -195,6 +117,24 @@ func getAiCpuFromCoreStr(resources []string, aicoreNum int) int {
 	}
 
 	return aicpuNum
+}
+
+func getDvppFromRealOrCoreStr(resources []string) string {
+	if len(resources) < util.NPUIndex3 {
+		return AscendDVPPEnabledNull
+	}
+
+	// 3. get dvpp from template
+	var dvppValue string
+	switch resources[util.NPUIndex2] {
+	case AscendDVPPValue:
+		dvppValue = AscendDVPPEnabledOn
+	case AscendNDVPPValue:
+		dvppValue = AscendDVPPEnabledOff
+	default:
+		dvppValue = AscendDVPPEnabledNull
+	}
+	return dvppValue
 }
 
 // IsPodWholeCardFromAscendCore judge if card is whole card 0,1/0-vir04
