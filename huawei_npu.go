@@ -38,7 +38,7 @@ func New(arguments framework.Arguments) framework.Plugin {
 
 // OnSessionOpen HuaWei NPU Action's init session for frame.
 func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
-	klog.V(util.LogInfoLev).Infof("enter %s OnSessionOpen %#v.", PluginName, tp.Scheduler.NPUPlugins)
+	klog.V(util.LogInfoLev).Infof("enter %s OnSessionOpen.", PluginName)
 	defer klog.V(util.LogInfoLev).Infof("leave %s OnSessionOpen.", PluginName)
 	if tp == nil || ssn == nil {
 		klog.V(util.LogInfoLev).Infof("OnSessionOpen : %s.", util.ArgumentError)

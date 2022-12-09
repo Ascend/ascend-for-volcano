@@ -24,12 +24,12 @@ import (
 
 // for task status
 const (
-	TASK_STAUS_UNKNOWN = -1
-	TASK_STAUS_INIT    = iota
-	TASK_STAUS_ALLOCATE
-	TASK_STAUS_WR_Back
-	TASK_STAUS_RUNNING
-	TASK_STAUS_FAILD
+	TaskStatusUnknown = -1
+	TaskStatusInit    = iota
+	TaskStatusAllocate
+	TaskStatusWrBack
+	TaskStatusRunning
+	TaskStatusFailed
 )
 
 type TaskAllocated struct {
@@ -276,7 +276,7 @@ func (vt *VTask) setVTaskUseCardIDs() {
 
 func (asTask *NPUTask) setVTaskAllocated(taskInf *api.TaskInfo) {
 	switch asTask.Status {
-	case TASK_STAUS_RUNNING, TASK_STAUS_WR_Back, TASK_STAUS_FAILD:
+	case TaskStatusRunning, TaskStatusWrBack, TaskStatusFailed:
 		asTask.VTask.Allocated.NodeName = taskInf.NodeName
 		asTask.VTask.Allocated.PhysicsName = getVTaskUsePhysicsNamesByInfo(taskInf)
 		asTask.VTask.setVTaskUseCardIDs()
@@ -289,22 +289,22 @@ func (asTask *NPUTask) setVTaskAllocated(taskInf *api.TaskInfo) {
 
 func (asTask *NPUTask) setVTaskStatusFromInfo(taskInf *api.TaskInfo) error {
 	if _, ok := taskInf.Pod.Annotations[PodAssignKey]; !ok {
-		asTask.Status = TASK_STAUS_INIT
+		asTask.Status = TaskStatusInit
 		return nil
 	}
 	if _, ok := taskInf.Pod.Annotations[AscendNPUPodRealUse]; !ok {
-		asTask.Status = TASK_STAUS_ALLOCATE
+		asTask.Status = TaskStatusAllocate
 		return nil
 	}
 	if taskInf.Status == api.Running {
-		asTask.Status = TASK_STAUS_RUNNING
+		asTask.Status = TaskStatusRunning
 		return nil
 	}
 	if taskInf.Status == api.Failed || taskInf.Status == api.Releasing {
-		asTask.Status = TASK_STAUS_FAILD
+		asTask.Status = TaskStatusFailed
 		return nil
 	}
-	asTask.Status = TASK_STAUS_UNKNOWN
+	asTask.Status = TaskStatusUnknown
 	return fmt.Errorf("unkown %s status: %s", taskInf.Name, taskInf.Status)
 }
 
