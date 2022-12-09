@@ -8,6 +8,7 @@ Package vnpu is using for HuaWei Ascend pin vnpu allocation.
 package vnpu
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -21,21 +22,28 @@ import (
 
 // CheckNodeNPUByTask check chip on node has enough resource, fault chips are not in list, unstable excluded
 func (tp *DynamicVNPU) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource) error {
+	klog.V(util.LogInfoLev).Infof("dynamic vnpu task<%s> node<%s> CheckNodeNPUByTask", task.Name, node.Name)
+	if !node.ValidVNode {
+		klog.V(util.LogInfoLev).Infof("dynamic vnpu node<%s> not valid vNode", node.Name)
+		return errors.New("CheckNodeNPUByTask invalid VNode")
+	}
 	if !node.IsNodeTotalResEnough(taskResReq) || !node.IsNodeChipResEnough(taskResReq) {
 		// if node resource not enough, reduce task aiCPU
 		if tp.taskAICPUCanBeDowngrade(taskResReq) {
+			klog.V(util.LogInfoLev).Infof("dynamic vnpu task<%s> resource not enough, downgrade cpu", task.Name)
 			tp.Cache[task.Name] = append(tp.Cache[task.Name], node.Name)
 			return tp.CheckNodeNPUByTask(task, node, tp.downgradeTaskAICPU(taskResReq))
 		}
 		return fmt.Errorf("dynamic vnpu task<%s> CheckNodeNPUByTask node %s resource not enough",
 			task.Name, node.Name)
 	}
-
+	klog.V(util.LogInfoLev).Infof("dynamic vnpu task<%s> CheckNodeNPUByTask node<%s> ok", task.Name, node.Name)
 	return nil
 }
 
 // ScoreBestNPUNodes node with least free resource would be sorted to higher rank
 func (tp *DynamicVNPU) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo, scoreMap map[string]float64) error {
+	klog.V(util.LogInfoLev).Infof("dynamic vnpu task<%s> ScoreBestNPUNodes", task.Name)
 	// 1. sort nodes with free resource from low to high
 	nodesSorted := tp.orderVNodesByFreeResource(nodes)
 	if len(nodesSorted) == 0 {
@@ -49,7 +57,7 @@ func (tp *DynamicVNPU) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeIn
 		return nil
 	}
 
-	// 3. if downgrade nodes exists, skip, util find none-downgraded nodes
+	// 3. if downgrade nodes exists, skip, util find none-downgraded nodes and add score
 	for _, node := range nodesSorted {
 		downgradeFlag := false
 		for _, dNode := range downgradeNodes {

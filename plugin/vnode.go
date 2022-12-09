@@ -91,6 +91,7 @@ func (n *NPUNode) setNodeVNPUInfo(ni *api.NodeInfo) error {
 		return fmt.Errorf("setNodeVNPUInfo node %s: %v", n.Name, err)
 	}
 
+	n.ValidVNode = true
 	return nil
 }
 
