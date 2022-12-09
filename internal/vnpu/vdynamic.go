@@ -102,7 +102,7 @@ func (tp *DynamicVNPU) taskAICPUCanBeDowngrade(taskResReq util.VResource) bool {
 	}
 	if taskResReq.Aicore == util.NPUIndex4 && taskResReq.Aicpu == util.NPUIndex4 && taskResReq.DVPP != plugin.
 		AscendDVPPEnabledOn {
-			return true
+		return true
 	}
 
 	return false

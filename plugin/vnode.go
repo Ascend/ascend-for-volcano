@@ -47,7 +47,7 @@ func initTemplate() []util.VTemplate {
 }
 
 func getJobTemplate() map[string]map[string]util.VResource {
-	jobTemplate:= map[string]map[string]util.VResource {
+	jobTemplate := map[string]map[string]util.VResource{
 		Ascend310P: {
 			"vir01":          {Aicore: 1, Aicpu: 1, DVPP: "null"},
 			"vir02":          {Aicore: 2, Aicpu: 2, DVPP: "null"},
@@ -58,10 +58,10 @@ func getJobTemplate() map[string]map[string]util.VResource {
 			"vir04_4c_dvpp":  {Aicore: 4, Aicpu: 4, DVPP: "yes"},
 		},
 		Ascend910: {
-			"vir02":          {Aicore: 2, Aicpu: 1, DVPP: "null"},
-			"vir04":          {Aicore: 4, Aicpu: 1, DVPP: "null"},
-			"vir08":          {Aicore: 8, Aicpu: 3, DVPP: "null"},
-			"vir16":          {Aicore: 16, Aicpu: 7, DVPP: "null"},
+			"vir02": {Aicore: 2, Aicpu: 1, DVPP: "null"},
+			"vir04": {Aicore: 4, Aicpu: 1, DVPP: "null"},
+			"vir08": {Aicore: 8, Aicpu: 3, DVPP: "null"},
+			"vir16": {Aicore: 16, Aicpu: 7, DVPP: "null"},
 		},
 	}
 	return jobTemplate
