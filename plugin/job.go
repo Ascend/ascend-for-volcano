@@ -128,8 +128,8 @@ func GetVCJobReqNPUTypeFromJobInfo(vcJob *api.JobInfo) (string, int, error) {
 	}
 
 	for k, v := range vcJob.TotalRequest.ScalarResources {
-		// must contains "huawei.com/Ascend"
-		if strings.Contains(string(k), util.NPUCardPreName) {
+		// must contain "huawei.com/"
+		if strings.Contains(string(k), util.HwPreName) {
 			return string(k), int(v / util.NPUHexKilo), nil
 		}
 	}
@@ -144,8 +144,8 @@ func GetVCTaskReqNPUTypeFromTaskInfo(vcTask *api.TaskInfo) (string, int) {
 		return "", 0
 	}
 	for k, v := range vcTask.Resreq.ScalarResources {
-		// must contains "huawei.com/Ascend"
-		if strings.Contains(string(k), util.NPUCardPreName) {
+		// must contain "huawei.com/"
+		if strings.Contains(string(k), util.HwPreName) {
 			return string(k), int(v / util.NPUHexKilo)
 		}
 		continue
@@ -168,7 +168,7 @@ func GetJobNPUTasks(vcJob *api.JobInfo) map[api.TaskID]util.NPUTask {
 		}
 		resultMap[taskID] = util.NPUTask{Name: taskInf.Name, NameSpace: taskInf.Namespace, ReqNPUName: name,
 			ReqNPUNum: num,
-			Selector:  GetTaskSelectors(taskInf), Label: GetTaskLabels(taskInf)}
+			Selector:  GetTaskSelectors(taskInf), Label: GetTaskLabels(taskInf), VTask: &util.VTask{}}
 	}
 	return resultMap
 }
@@ -178,14 +178,17 @@ func (sJob *SchedulerJob) InitSelfPluginByJobInfo(sHandle *ScheduleHandler) {
 	if sJob == nil {
 		return
 	}
-	pluginNames := strings.Split(sJob.ReqNPUName, "-")
-	if len(pluginNames) == 0 {
+
+	pluginName := sJob.getPluginNameByReq()
+	if pluginName == "" {
 		return
 	}
-	plugin, ok := sHandle.NPUPlugins[pluginNames[0]]
+
+	plugin, ok := sHandle.NPUPlugins[pluginName]
 	if !ok {
 		return
 	}
+
 	sJob.handler = plugin
 }
 
@@ -314,7 +317,7 @@ func (sJob SchedulerJob) ValidJobFn(vcFrame VolcanoFrame) *api.ValidateResult {
 		return result
 	}
 
-	klog.V(util.LogInfoLev).Infof("check ok, %s, reqNPU(%#v:%#v).", sJob.Name, sJob.ReqNPUName, sJob.ReqNPUNum)
+	klog.V(util.LogInfoLev).Infof("%s valid ok.", sJob.Name)
 	return nil
 }
 
@@ -427,7 +430,7 @@ func (sHandle *ScheduleHandler) JobValid(obj interface{}) *api.ValidateResult {
 // SetJobPendReasonByNodesCase In nodes select case, set node failed and add failed reason.
 func (sHandle ScheduleHandler) SetJobPendReasonByNodesCase(job *api.JobInfo) {
 	if int32(len(job.Tasks)-len(job.NodesFitErrors)) >= job.MinAvailable {
-		klog.V(util.LogDebugLev).Infof("%s not block by nodes(%d - %d > %d).", job.Name,
+		klog.V(util.LogDebugLev).Infof("%s block by nodes(%d - %d > %d).", job.Name,
 			len(job.Tasks), len(job.NodesFitErrors), job.MinAvailable)
 		return
 	}
@@ -456,14 +459,13 @@ func (sJob *SchedulerJob) CheckNodeNum(taskInfo *api.TaskInfo, vcNode NPUNode) e
 	return nil
 }
 
-// IsJobSupportByPlugin judge job whether has it's plugin.
-func (sJob SchedulerJob) IsJobSupportByPlugin(sHandle *ScheduleHandler) bool {
+func (sJob SchedulerJob) getPluginNameByReq() string {
 	name := sJob.ReqNPUName
 	if strings.Contains(name, "npu-core") {
 		label, ok := sJob.Label[util.JobKindKey]
 		if !ok {
 			klog.V(util.LogErrorLev).Infof("%s no has %s label in dyCut mode.", sJob.Name, util.JobKindKey)
-			return false
+			return ""
 		}
 		switch label {
 		case util.JobKind910Value:
@@ -474,8 +476,31 @@ func (sJob SchedulerJob) IsJobSupportByPlugin(sHandle *ScheduleHandler) bool {
 			name = util.NPU310PCardName
 		default:
 			klog.V(util.LogErrorLev).Infof("%s unknown label: %s in dyCut mode.", sJob.Name, label)
-			return false
+			return ""
 		}
 	}
+	return name
+}
+
+// IsJobSupportByPlugin judge job whether has it's plugin.
+func (sJob SchedulerJob) IsJobSupportByPlugin(sHandle *ScheduleHandler) bool {
+	name := sJob.getPluginNameByReq()
+	if name == "" {
+		return false
+	}
 	return sHandle.IsPluginRegistered(name)
+}
+
+// GetAnnoName get job AnnoName, include vNPU job.
+func (sJob SchedulerJob) GetAnnoName() (string, error) {
+	name := sJob.ReqNPUName
+	if strings.Contains(name, "npu-core") {
+		_, ok := sJob.Label[util.JobKindKey]
+		if !ok {
+			klog.V(util.LogErrorLev).Infof("%s no has %s label in dyCut mode.", sJob.Name, util.JobKindKey)
+			return "", fmt.Errorf("no %s label in dyCut mode", util.JobKindKey)
+		}
+		return util.PodAssignKey, nil
+	}
+	return sJob.handler.GetAnnoName(), nil
 }

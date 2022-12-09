@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package util is using for HuaWei infer common Ascend pin affinity schedule.
-
 */
 package util
 

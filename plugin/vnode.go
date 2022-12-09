@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package plugin is using for HuaWei Ascend pin affinity schedule.
-
 */
 package plugin
 
@@ -195,6 +193,9 @@ func (n *NPUNode) initVChips(ni *api.NodeInfo) error {
 	} // 3. create new VChip by freeCardID whole card
 
 	for _, ti := range ni.Tasks {
+		if !IsNPUTask(ti) {
+			continue
+		}
 		n.VNode.addNPUResource(ti.Pod, chipTotalRes)
 	} // 4. update VChips and create VChips for chips being occupied
 
@@ -268,7 +269,7 @@ func (vNode *VNode) NewVChip(id int, totalRes util.VResource) *VChip {
 func (vNode *VNode) addNPUResource(pod *v1.Pod, chipTotalRes util.VResource) {
 	coreNameStr, ok := pod.Annotations[util.AscendNPUCore]
 	if !ok {
-		klog.V(util.LogErrorLev).Infof("addNPUResource pod %s %s no value", pod.Name, util.AscendNPUCore)
+		klog.V(util.LogDebugLev).Infof("addNPUResource pod %s %s no value", pod.Name, util.AscendNPUCore)
 		return
 	}
 
