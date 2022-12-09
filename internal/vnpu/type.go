@@ -74,7 +74,7 @@ type DynamicVNPU struct {
 type vnpuHandler interface {
 	CheckNodeNPUByTask(*api.TaskInfo, plugin.NPUNode, util.VResource) error
 	ScoreBestNPUNodes(*api.TaskInfo, []*api.NodeInfo, map[string]float64) error
-	UseAnnotation(*api.TaskInfo, plugin.NPUNode, util.VResource) *plugin.NPUNode
+	UseAnnotation(*api.TaskInfo, plugin.NPUNode, util.VResource, VTemplate) *plugin.NPUNode
 }
 
 // Action vnpu actions

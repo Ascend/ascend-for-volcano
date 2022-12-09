@@ -14,7 +14,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/agiledragon/gomonkey/v2"
 	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -249,33 +248,33 @@ func buildInitNPUNodeByNodeInfTest() []initNPUNodeByNodeInfTest {
 	return tests
 }
 
-// TestInitNPUNodeByNodeInf test InitNPUNodeByNodeInf
-func TestInitNPUNodeByNodeInf(t *testing.T) {
-	tests := buildInitNPUNodeByNodeInfTest()
-	tmpPatch := gomonkey.ApplyFunc(util.GetConfigMapWithRetry, func(
-		_ kubernetes.Interface, _, _ string) (*v1.ConfigMap, error) {
-		return &v1.ConfigMap{Data: map[string]string{"DeviceInfoCfg": `{"DeviceInfo":{"DeviceList":" 
-			"{"huawei.com/Ascend910":"Ascend910-0"}, "UpdateTime":1664190162}, "CheckCode":""}`}}, nil
-	})
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			n := &NPUNode{
-				CommonNode: CommonNode{
-					Name:       tt.fields.Name,
-					Capability: tt.fields.Capability,
-					Allocate:   tt.fields.Allocate,
-					Idle:       tt.fields.Idle,
-					Annotation: tt.fields.Annotation,
-					Label:      tt.fields.Label,
-				},
-			}
-			if err := n.InitNPUNodeByNodeInf(tt.args.npuNode, tt.args.kubeClient); (err != nil) != tt.wantErr {
-				t.Errorf("InitNPUNodeByNodeInf() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-	tmpPatch.Reset()
-}
+//// TestInitNPUNodeByNodeInf test InitNPUNodeByNodeInf
+//func TestInitNPUNodeByNodeInf(t *testing.T) {
+//	tests := buildInitNPUNodeByNodeInfTest()
+//	tmpPatch := gomonkey.ApplyFunc(util.GetConfigMapWithRetry, func(
+//		_ kubernetes.Interface, _, _ string) (*v1.ConfigMap, error) {
+//		return &v1.ConfigMap{Data: map[string]string{"DeviceInfoCfg": `{"DeviceInfo":{"DeviceList":"
+//			"{"huawei.com/Ascend910":"Ascend910-0"}, "UpdateTime":1664190162}, "CheckCode":""}`}}, nil
+//	})
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			n := &NPUNode{
+//				CommonNode: CommonNode{
+//					Name:       tt.fields.Name,
+//					Capability: tt.fields.Capability,
+//					Allocate:   tt.fields.Allocate,
+//					Idle:       tt.fields.Idle,
+//					Annotation: tt.fields.Annotation,
+//					Label:      tt.fields.Label,
+//				},
+//			}
+//			if err := n.InitNPUNodeByNodeInf(tt.args.npuNode, tt.args.kubeClient); (err != nil) != tt.wantErr {
+//				t.Errorf("InitNPUNodeByNodeInf() error = %v, wantErr %v", err, tt.wantErr)
+//			}
+//		})
+//	}
+//	tmpPatch.Reset()
+//}
 
 type checkNPUResourceStableReSchedulingArgs struct {
 	vcJob SchedulerJob

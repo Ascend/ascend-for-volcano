@@ -76,7 +76,8 @@ func (tp *DynamicVNPU) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeIn
 }
 
 // UseAnnotation write task use vnpu to pod annotation
-func (tp *DynamicVNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource) *plugin.NPUNode {
+func (tp *DynamicVNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource,
+	chipVTemplate VTemplate) *plugin.NPUNode {
 	klog.V(util.LogDebugLev).Infof("dynamic vnpu UseAnnotation task<%s> node<%s> Annotation: %#v", task.Name,
 		node.Name, node.Annotation)
 
@@ -84,15 +85,45 @@ func (tp *DynamicVNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode, ta
 	if err != nil {
 		// if chips cannot be found, reduce aiCPU
 		if tp.taskAICPUCanBeDowngrade(taskResReq) {
-			taskResReqDown := tp.downgradeTaskAICPU(taskResReq)
-			return tp.UseAnnotation(task, node, taskResReqDown)
+			return tp.UseAnnotation(task, node, tp.downgradeTaskAICPU(taskResReq), chipVTemplate)
 		}
 		klog.V(util.LogErrorLev).Infof("dynamic vnpu task<%s> UseAnnotation err: %s", task.Name, err.Error())
 		return nil
 	}
 
-	tp.SetNPUTopologyToPodFn(task, node, taskResReq, allocChipID)
+	tp.SetNPUTopologyToPodFn(task, node, taskResReq, allocChipID, chipVTemplate)
 	return tp.UpdateNodeInfo(node, allocChipID, taskResReq)
+}
+
+func (tp *DynamicVNPU) GetTaskResource(task *api.TaskInfo, node plugin.NPUNode,
+	chipVTemplate map[string]util.VResource) (util.VResource,
+	error) {
+	coreNum, err := getAiCoreNumFromTask(task)
+	if err != nil {
+		return util.VResource{}, fmt.Errorf("task %s AscendNPUCore read failed", task.Name)
+	}
+
+	if node.IsResourceWholeCard(coreNum) {
+		res := util.VResource{
+			Aicore: coreNum,
+			Aicpu:  coreNum * node.TotalRes.Aicpu / node.TotalRes.Aicore,
+			DVPP:   plugin.AscendDVPPEnabledNull,
+		}
+		return res, nil
+	}
+
+	cpuLevel, ok := task.Pod.Labels[plugin.AscendVNPULevel]
+	if !ok {
+		cpuLevel = plugin.AscendVNPULevelLow
+	}
+
+	dvpp, ok := task.Pod.Labels[plugin.AscendVNPUDVPP]
+	if !ok {
+		dvpp = plugin.AscendDVPPEnabledNull
+	}
+
+	virTemplate := getResTemplateFromTaskSetting(coreNum, cpuLevel, dvpp)
+	return chipVTemplate[virTemplate], nil
 }
 
 // taskAICPUCanBeDowngrade if task label is low, aicpu can be lower
@@ -128,7 +159,7 @@ func (tp *DynamicVNPU) downgradeTaskAICPU(taskResReq util.VResource) util.VResou
 
 // SetNPUTopologyToPodFn write chip to pod annotation AscendNPUCore
 func (tp *DynamicVNPU) SetNPUTopologyToPodFn(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource,
-	allocChipID string) {
+	allocChipID string, chipVTemplate VTemplate) {
 	// 1. whole card
 	if node.IsResourceWholeCard(taskResReq.Aicore) {
 		task.Pod.Annotations[util.AscendNPUCore] = allocChipID
@@ -136,19 +167,15 @@ func (tp *DynamicVNPU) SetNPUTopologyToPodFn(task *api.TaskInfo, node plugin.NPU
 		return
 	}
 
-	// 2.1 like vir04
-	segmentAnnotation := fmt.Sprintf("%s-%s", allocChipID, getAiCoreNumStr(taskResReq.Aicore))
-	if node.ChipKind != plugin.Ascend310P || taskResReq.Aicore == taskResReq.Aicpu {
-		task.Pod.Annotations[util.AscendNPUCore] = segmentAnnotation
-		klog.V(util.LogInfoLev).Infof("dynamic vnpu setNPUTopologyToPod %s top:%s.", task.Name, segmentAnnotation)
-		return
+	var segmentAnnotation string
+	for curTemplate, jobVResource := range chipVTemplate.Data {
+		if taskResReq != jobVResource {
+			continue
+		}
+		segmentAnnotation = curTemplate
 	}
 
-	// 2.2 like vir04_3c
-	segmentAnnotation = fmt.Sprintf("%s_%sc", segmentAnnotation, strconv.Itoa(taskResReq.Aicpu))
-
-	// 2.3 like vir04_3c_ndvpp
-	task.Pod.Annotations[util.AscendNPUCore] = getDVPPValue(taskResReq.DVPP, segmentAnnotation)
+	task.Pod.Annotations[util.AscendNPUCore] = segmentAnnotation
 	klog.V(util.LogInfoLev).Infof("dynamic vnpu setNPUTopologyToPod %s top:%s.", task.Name, segmentAnnotation)
 	return
 }

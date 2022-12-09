@@ -141,6 +141,28 @@ func addConf(configs, value string) string {
 	return configs
 }
 
+// GetJobTemplate get template of all possible segmentation jobs
+func (sHandle *ScheduleHandler) GetJobTemplate() map[string]map[string]util.VResource {
+	jobTemplate := map[string]map[string]util.VResource{
+		Ascend310P: {
+			"vir01":          {Aicore: 1, Aicpu: 1, DVPP: "null"},
+			"vir02":          {Aicore: 2, Aicpu: 2, DVPP: "null"},
+			"vir02_1c":       {Aicore: 2, Aicpu: 1, DVPP: "null"},
+			"vir04":          {Aicore: 4, Aicpu: 4, DVPP: "null"},
+			"vir04_3c":       {Aicore: 4, Aicpu: 3, DVPP: "null"},
+			"vir04_3c_ndvpp": {Aicore: 4, Aicpu: 3, DVPP: "no"},
+			"vir04_4c_dvpp":  {Aicore: 4, Aicpu: 4, DVPP: "yes"},
+		},
+		Ascend910: {
+			"vir02": {Aicore: 2, Aicpu: 1, DVPP: "null"},
+			"vir04": {Aicore: 4, Aicpu: 1, DVPP: "null"},
+			"vir08": {Aicore: 8, Aicpu: 3, DVPP: "null"},
+			"vir16": {Aicore: 16, Aicpu: 7, DVPP: "null"},
+		},
+	}
+	return jobTemplate
+}
+
 // InitVolcanoFrameFromSsn init frame parameter from ssn.
 func (sHandle *ScheduleHandler) InitVolcanoFrameFromSsn(ssn *framework.Session) {
 	if sHandle == nil || ssn == nil {
@@ -148,9 +170,10 @@ func (sHandle *ScheduleHandler) InitVolcanoFrameFromSsn(ssn *framework.Session) 
 		return
 	}
 	sHandle.FrameAttr = VolcanoFrame{
-		UID:        ssn.UID,
-		Conf:       ssn.Configurations,
-		KubeClient: ssn.KubeClient(),
+		UID:          ssn.UID,
+		Conf:         ssn.Configurations,
+		KubeClient:   ssn.KubeClient(),
+		VJobTemplate: sHandle.GetJobTemplate(),
 	}
 	sHandle.FrameAttr.AddDefaultSchedulerSelectorConfig()
 }

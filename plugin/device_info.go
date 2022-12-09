@@ -13,14 +13,11 @@ import (
 	"strings"
 
 	"k8s.io/api/core/v1"
-	"k8s.io/klog"
-
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
 // GetResourceFromTemplate nodeType like Ascend310P, templateString like "vir04_3c_ndvpp"
-func GetResourceFromTemplate(nodeType string, templateString string) *util.VResource {
-	taskTemplate := getJobTemplate()
+func GetResourceFromTemplate(nodeType string, templateString string, taskTemplate map[string]map[string]util.VResource) *util.VResource {
 	taskNodeTemplate, ok := taskTemplate[nodeType]
 	if !ok {
 		return nil
@@ -30,83 +27,6 @@ func GetResourceFromTemplate(nodeType string, templateString string) *util.VReso
 		return nil
 	}
 	return &taskResource
-}
-
-// GetResourceFromCoreStr like vir04_3c_ndvpp todo: need to be deleted
-func GetResourceFromCoreStr(coreStr string) *util.VResource {
-	resources := strings.Split(coreStr, "_")
-
-	// 1. get coreNum from template
-	aicoreNum := getAiCoreFromCoreStr(resources) // like vir04
-	if aicoreNum == util.ErrorInt {
-		klog.V(util.LogErrorLev).Infof("%s aicore %s", coreStr, FormatIncorrectError)
-		return nil
-	}
-
-	// 2. get aicpu from template
-	aicpuNum := getAiCpuFromCoreStr(resources, aicoreNum) // like vir04_3c
-	if aicpuNum == util.ErrorInt {
-		klog.V(util.LogDebugLev).Infof("%s aicpu %s", coreStr, FormatIncorrectError)
-		return nil
-	}
-
-	dvppValue := getDvppFromRealOrCoreStr(resources) // like vir04_3c_ndvpp
-	return &util.VResource{
-		Aicore: aicoreNum,
-		Aicpu:  aicpuNum,
-		DVPP:   dvppValue,
-	}
-}
-
-func getAiCoreFromCoreStr(resources []string) int {
-	if len(resources) < 1 {
-		klog.V(util.LogErrorLev).Infof("%v resource %s", resources, FormatIncorrectError)
-		return util.ErrorInt
-	}
-
-	if !strings.HasPrefix(resources[0], AscendVNPUPrefix) {
-		klog.V(util.LogErrorLev).Infof("%s aicore %s", resources[0], FormatIncorrectError)
-		return util.ErrorInt
-	}
-
-	aicoreNum, err := strconv.Atoi(strings.TrimPrefix(resources[0], AscendVNPUPrefix)) // like 4c
-	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s aicore %s", resources[0], FormatIncorrectError)
-		return util.ErrorInt
-	}
-	return aicoreNum
-}
-
-func getAiCpuFromCoreStr(resources []string, aicoreNum int) int {
-	if len(resources) < util.NPUIndex2 { // 2.1 cpu==core
-		klog.V(util.LogDebugLev).Infof("high cpu requirements")
-		return aicoreNum
-	}
-	aicpuNum, err := strconv.Atoi(strings.TrimSuffix(resources[1], "c")) // 2.2 cpu<core
-	if err != nil {
-		klog.V(util.LogDebugLev).Infof("aicpu format error")
-		return util.ErrorInt
-	}
-
-	return aicpuNum
-}
-
-func getDvppFromRealOrCoreStr(resources []string) string {
-	if len(resources) < util.NPUIndex3 {
-		return AscendDVPPEnabledNull
-	}
-
-	// 3. get dvpp from template
-	var dvppValue string
-	switch resources[util.NPUIndex2] {
-	case AscendDVPPValue:
-		dvppValue = AscendDVPPEnabledOn
-	case AscendNDVPPValue:
-		dvppValue = AscendDVPPEnabledOff
-	default:
-		dvppValue = AscendDVPPEnabledNull
-	}
-	return dvppValue
 }
 
 // IsPodWholeCardFromAscendCore judge if card is whole card 0,1/0-vir04

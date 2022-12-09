@@ -46,28 +46,7 @@ func initTemplate() []util.VTemplate {
 	return nodeTemplate
 }
 
-func getJobTemplate() map[string]map[string]util.VResource {
-	jobTemplate := map[string]map[string]util.VResource{
-		Ascend310P: {
-			"vir01":          {Aicore: 1, Aicpu: 1, DVPP: "null"},
-			"vir02":          {Aicore: 2, Aicpu: 2, DVPP: "null"},
-			"vir02_1c":       {Aicore: 2, Aicpu: 1, DVPP: "null"},
-			"vir04":          {Aicore: 4, Aicpu: 4, DVPP: "null"},
-			"vir04_3c":       {Aicore: 4, Aicpu: 3, DVPP: "null"},
-			"vir04_3c_ndvpp": {Aicore: 4, Aicpu: 3, DVPP: "no"},
-			"vir04_4c_dvpp":  {Aicore: 4, Aicpu: 4, DVPP: "yes"},
-		},
-		Ascend910: {
-			"vir02": {Aicore: 2, Aicpu: 1, DVPP: "null"},
-			"vir04": {Aicore: 4, Aicpu: 1, DVPP: "null"},
-			"vir08": {Aicore: 8, Aicpu: 3, DVPP: "null"},
-			"vir16": {Aicore: 16, Aicpu: 7, DVPP: "null"},
-		},
-	}
-	return jobTemplate
-}
-
-func (n *NPUNode) setNodeVNPUInfo(ni *api.NodeInfo) error {
+func (n *NPUNode) setNodeVNPUInfo(ni *api.NodeInfo, jobTemplate map[string]map[string]util.VResource) error {
 	n.VNode = VNode{
 		Chips: make(map[int]*VChip, util.MapInitNum),
 	}
@@ -87,7 +66,7 @@ func (n *NPUNode) setNodeVNPUInfo(ni *api.NodeInfo) error {
 	}
 
 	// 3. create vChips on node and update vChip resource
-	if err := n.initVChips(ni); err != nil {
+	if err := n.initVChips(ni, jobTemplate); err != nil {
 		return fmt.Errorf("setNodeVNPUInfo node %s: %v", n.Name, err)
 	}
 
@@ -182,7 +161,7 @@ func (n NPUNode) getCpuNumPerChip(templates []util.VTemplate) int {
 	return cpuPerChip
 }
 
-func (n *NPUNode) initVChips(ni *api.NodeInfo) error {
+func (n *NPUNode) initVChips(ni *api.NodeInfo, taskTemplate map[string]map[string]util.VResource) error {
 	chipCoreNum, err := n.VNode.getVChipCoreNum()
 	if err != nil {
 		return fmt.Errorf("vNode %s get vChip coreNum failed: %v", n.Name, err)
@@ -195,7 +174,7 @@ func (n *NPUNode) initVChips(ni *api.NodeInfo) error {
 	} // 3. create new VChip by freeCardID whole card
 
 	for _, ti := range ni.Tasks {
-		n.VNode.addNPUResource(ti.Pod, chipTotalRes)
+		n.VNode.addNPUResource(ti.Pod, chipTotalRes, taskTemplate)
 	} // 4. update VChips and create VChips for chips being occupied
 
 	return nil
@@ -265,7 +244,7 @@ func (vNode *VNode) NewVChip(id int, totalRes util.VResource) *VChip {
 }
 
 // addNPUResource update all pod resource to node
-func (vNode *VNode) addNPUResource(pod *v1.Pod, chipTotalRes util.VResource) {
+func (vNode *VNode) addNPUResource(pod *v1.Pod, chipTotalRes util.VResource, taskTemplate map[string]map[string]util.VResource) {
 	coreNameStr, ok := pod.Annotations[util.AscendNPUCore]
 	if !ok {
 		klog.V(util.LogErrorLev).Infof("addNPUResource pod %s %s no value", pod.Name, util.AscendNPUCore)
@@ -276,7 +255,7 @@ func (vNode *VNode) addNPUResource(pod *v1.Pod, chipTotalRes util.VResource) {
 		vNode.addNPUResourceWholeCard(pod)
 		return
 	}
-	vNode.addNPUResourceVNPUCard(pod, chipTotalRes)
+	vNode.addNPUResourceVNPUCard(pod, chipTotalRes, taskTemplate)
 }
 
 func (vNode *VNode) getVChipCoreNum() (int, error) {
@@ -301,7 +280,7 @@ func (vNode *VNode) getVChipTotalRes() util.VResource {
 	}
 }
 
-func (vNode *VNode) getPodUsedRes(pod *v1.Pod) *util.VResource {
+func (vNode *VNode) getPodUsedRes(pod *v1.Pod, taskTemplate map[string]map[string]util.VResource) *util.VResource {
 	realStr, ok := pod.Annotations[util.AscendNPUCore]
 	if !ok {
 		klog.V(util.LogErrorLev).Infof("getPodUsedRes get pod<%s> %s value failed", pod.Name,
@@ -313,7 +292,7 @@ func (vNode *VNode) getPodUsedRes(pod *v1.Pod) *util.VResource {
 		klog.V(util.LogErrorLev).Infof("getPodUsedRes get pod<%s> %s format error", pod.Name, realStr)
 		return nil
 	}
-	return GetResourceFromTemplate(vNode.ChipKind, ascendRealSplit[1])
+	return GetResourceFromTemplate(vNode.ChipKind, ascendRealSplit[1], taskTemplate)
 }
 
 // addNPUResourceWholeCard Ascend910-0,Ascend910-1
@@ -343,7 +322,8 @@ func (vNode *VNode) addNPUResourceWholeCard(pod *v1.Pod) {
 }
 
 // addNPUResourceVNPUCard ascendStr Ascend310P-4c.3cpu.ndvpp-100(VNPUID)-1(physic ID)_1（vgroupID）
-func (vNode *VNode) addNPUResourceVNPUCard(pod *v1.Pod, chipTotalRes util.VResource) {
+func (vNode *VNode) addNPUResourceVNPUCard(pod *v1.Pod, chipTotalRes util.VResource,
+	taskTemplate map[string]map[string]util.VResource) {
 	// 1. get physics id
 	physicsID, err := GetCardPhysicsIDFromAscendCore(pod, false)
 	if err != nil || len(physicsID) != util.NPUIndex1 {
@@ -363,7 +343,7 @@ func (vNode *VNode) addNPUResourceVNPUCard(pod *v1.Pod, chipTotalRes util.VResou
 	curVChip.setSegmentFlag(true)
 
 	// 3. get resource of pod
-	podVResource := vNode.getPodUsedRes(pod)
+	podVResource := vNode.getPodUsedRes(pod, taskTemplate)
 	if podVResource == nil {
 		klog.V(util.LogErrorLev).Infof("addNPUResource resolving pod<%s> resource failed", pod.Name)
 		return
