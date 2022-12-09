@@ -9,7 +9,6 @@ package plugin
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 
 	"k8s.io/api/core/v1"
@@ -113,9 +112,20 @@ func updatePodPendingReason(task *api.TaskInfo, reasonTmp string) {
 		Message: reasonTmp,
 	}
 	for _, tmp := range task.Pod.Status.Conditions {
-		if reflect.DeepEqual(tmp, condition) {
+		if strings.Contains(tmp.Message, reasonTmp) {
+			klog.V(util.LogDebugLev).Infof("%s has record the reason:%s ,skip.", task.Name, reasonTmp)
 			return
 		}
 	}
 	task.Pod.Status.Conditions = append(task.Pod.Status.Conditions, condition)
+}
+
+func IsNPUTask(nT *api.TaskInfo) bool {
+	for k := range nT.Resreq.ScalarResources {
+		// must contain "huawei.com/Ascend"
+		if strings.Contains(string(k), util.NPUCardPreName) {
+			return true
+		}
+	}
+	return false
 }

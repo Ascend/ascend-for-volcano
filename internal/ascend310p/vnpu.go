@@ -19,7 +19,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
-func (tp *ascend310P) GetTemplate() {
+func (tp *ascend310P) GetVNPUTemplate() {
 	tp.vHandle.VT = vnpu.VTemplate{
 		Data: tp.FrameAttr.VJobTemplate[plugin.Ascend310P],
 	}
@@ -31,7 +31,26 @@ func (tp *ascend310P) InitVNPU() {
 			Cache: make(map[string][]string, util.MapInitNum),
 		},
 	}
-	tp.GetTemplate()
+	tp.GetVNPUTemplate()
+}
+
+func (tp *ascend310P) checkStVJobReq() error {
+	for _, vT := range tp.Tasks {
+		if _, ok := tp.vHandle.VT.Data[vT.ReqNPUName]; !ok {
+			return fmt.Errorf("%s req %s not in template", vT.Name, vT.ReqNPUName)
+		}
+		if vT.ReqNPUNum != 1 {
+			return fmt.Errorf("%s req %d not 1", vT.Name, vT.ReqNPUNum)
+		}
+	}
+	return nil
+}
+
+func (tp *ascend310P) validStVNPUJob() *api.ValidateResult {
+	if reqErr := tp.checkStVJobReq(); reqErr != nil {
+		return &api.ValidateResult{Pass: false, Reason: reqErr.Error(), Message: reqErr.Error()}
+	}
+	return nil
 }
 
 func (tp *ascend310P) checkDyVJobReq() error {
@@ -66,7 +85,7 @@ func getFailedDyTasksFromJobs(vJobs map[api.JobID]plugin.SchedulerJob) map[api.T
 	vTasks := make(map[api.TaskID]util.NPUTask, util.MapInitNum)
 	for _, vJob := range vJobs {
 		for tID, vTask := range vJob.Tasks {
-			if vTask.Status == util.TASK_STAUS_FAILD {
+			if vTask.Status == util.TaskStatusFailed {
 				vTasks[tID] = vTask
 			}
 		}
@@ -85,7 +104,11 @@ func getDyFailedNamespaces(vT map[api.TaskID]util.NPUTask) map[string]struct{} {
 func getAllDyFailedTasks(ssn *framework.Session, nsMap map[string]struct{}) []api.TaskID {
 	tIDs := make([]api.TaskID, util.MapInitNum)
 	for ns := range nsMap {
-		tIDs = append(tIDs, vnpu.GetSegmentFailureTaskIDs(ssn, ns)...)
+		tmp := vnpu.GetSegmentFailureTaskIDs(ssn, ns)
+		if len(tmp) == 0 {
+			continue
+		}
+		tIDs = append(tIDs, tmp...)
 	}
 	return tIDs
 }
@@ -103,6 +126,9 @@ func getDyFailedTaskIDsInFaileds(allIDS []api.TaskID, vT map[api.TaskID]util.NPU
 }
 
 func getDyFailedTasksFromFailed(ssn *framework.Session, vT map[api.TaskID]util.NPUTask) []api.TaskID {
+	if len(vT) == 0 {
+		return nil
+	}
 	nsMap := getDyFailedNamespaces(vT)
 
 	allIDS := getAllDyFailedTasks(ssn, nsMap)

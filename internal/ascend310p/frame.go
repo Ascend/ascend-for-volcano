@@ -39,8 +39,13 @@ func (tp *ascend310P) PreStartAction(ssn *framework.Session) error {
 	if tp == nil || ssn == nil || tp.FrameAttr.KubeClient == nil {
 		return fmt.Errorf("%s handler not enabled or ssn is nil: %s", util.NPU310PCardName, util.ArgumentError)
 	}
+
 	reErr := tp.preStartRescheduling(ssn)
 	vErr := tp.preStartVNPU(ssn)
+	if reErr == nil && vErr == nil {
+		return nil
+	}
+
 	return fmt.Errorf("%s %s", reErr, vErr)
 }
 
@@ -70,6 +75,7 @@ func (tp *ascend310P) ValidNPUJob() *api.ValidateResult {
 	case util.JobTypeWhole:
 		return tp.NPUHandler.ValidNPUJob()
 	case util.JobTypeStCut:
+		return tp.validStVNPUJob()
 	case util.JobTypeDyCut:
 		return tp.validDyVNPUJob()
 	default:

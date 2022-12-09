@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package vnpu is using for HuaWei Ascend pin vnpu allocation.
-
 */
 package vnpu
 

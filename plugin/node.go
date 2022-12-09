@@ -234,9 +234,12 @@ func (n *NPUNode) GetNewNPUNodeAnnotation(usedTop []int, resourceName, resourceN
 
 // CheckNPUResourceStable check resource stabilize.
 func (n NPUNode) CheckNPUResourceStable(vcJob SchedulerJob) error {
-	k := vcJob.handler.GetAnnoName()
+	k, err := vcJob.GetAnnoName()
+	if err != nil {
+		return err
+	}
 	iNum, iOK := n.Idle[v1.ResourceName(k)]
-	nodeA, aOK := n.Annotation[k]
+	nodeA, aOK := n.Annotation[k] //todo
 	if iOK != true || aOK != true {
 		return fmt.Errorf("%s not has(or not same) %s", n.Name, k)
 	}

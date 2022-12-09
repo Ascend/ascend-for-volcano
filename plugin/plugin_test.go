@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package test is using for HuaWei Ascend pin scheduling test.
-
 */
 package plugin
 

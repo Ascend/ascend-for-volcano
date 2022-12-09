@@ -216,6 +216,9 @@ func (sHandle *ScheduleHandler) PreStartPlugin(ssn *framework.Session) {
 	}
 	for name, plugin := range sHandle.NPUPlugins {
 		if err := plugin.PreStartAction(ssn); err != nil {
+			if strings.Contains(err.Error(), util.ArgumentError) {
+				continue
+			}
 			klog.V(util.LogErrorLev).Infof("PreStartPlugin %s %#v.", name, err)
 		}
 	}
@@ -255,8 +258,10 @@ func (sHandle *ScheduleHandler) BeforeCloseHandler() {
 	}
 	for name, plugin := range sHandle.NPUPlugins {
 		if err := plugin.PreStopAction(&sHandle.ScheduleEnv); err != nil {
+			if strings.Contains(err.Error(), util.ArgumentError) {
+				continue
+			}
 			klog.V(util.LogErrorLev).Infof("PreStopPlugin %s %#v.", name, err)
-			continue
 		}
 	}
 	sHandle.saveCacheToCm()
