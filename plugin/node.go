@@ -71,6 +71,8 @@ type VNode struct {
 	FreeChipNum int
 	// TotalRes total resource on node
 	TotalRes util.VResource
+	// ValidVNode node init success
+	ValidVNode bool
 }
 
 // VChip vnpu chip class

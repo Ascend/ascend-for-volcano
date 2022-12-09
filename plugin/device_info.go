@@ -8,59 +8,31 @@ Package plugin is using for HuaWei Ascend pin affinity schedule.
 package plugin
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/klog"
-	"volcano.sh/volcano/pkg/scheduler/api"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
-func newTemplate(kind, dvpp string, core, cpu int) util.VTemplate {
-	return util.VTemplate{
-		ChipKind:   kind,
-		AICore:     core,
-		AICPU:      cpu,
-		DVPPEnable: dvpp,
+// GetResourceFromTemplate nodeType like Ascend310P, templateString like "vir04_3c_ndvpp"
+func GetResourceFromTemplate(nodeType string, templateString string) *util.VResource {
+	taskTemplate := getJobTemplate()
+	taskNodeTemplate, ok := taskTemplate[nodeType]
+	if !ok {
+		return nil
 	}
+	taskResource := taskNodeTemplate[templateString]
+	if !ok {
+		return nil
+	}
+	return &taskResource
 }
 
-func initVJobTemplate() map[string]util.VTemplate {
-	templateMap := make(map[string]util.VTemplate, util.MapInitNum)
-	templateMap[util.JobKind910Value+"-"+strconv.Itoa(util.NPUIndex2)+"-"+AscendVNPULevelLow] =
-		newTemplate(Ascend910, AscendDVPPEnabledNull, util.NPUIndex2, util.NPUIndex1)
-	templateMap[util.JobKind910Value+"-"+strconv.Itoa(util.NPUIndex4)+"-"+AscendVNPULevelLow] =
-		newTemplate(Ascend910, AscendDVPPEnabledNull, util.NPUIndex4, util.NPUIndex1)
-	templateMap[util.JobKind910Value+"-"+strconv.Itoa(util.NPUIndex8)+"-"+AscendVNPULevelLow] =
-		newTemplate(Ascend910, AscendDVPPEnabledNull, util.NPUIndex8, util.NPUIndex3)
-	templateMap[util.JobKind910Value+"-"+strconv.Itoa(util.NPUIndex16)+"-"+AscendVNPULevelLow] =
-		newTemplate(Ascend910, AscendDVPPEnabledNull, util.NPUIndex16, util.NPUIndex7)
-	templateMap[util.JobKind910Value+"-"+strconv.Itoa(util.CoreNum32)+"-"+AscendVNPULevelLow] =
-		newTemplate(Ascend910, AscendDVPPEnabledNull, util.CoreNum32, util.CpuNum14)
-	templateMap[util.JobKind910Value+"-"+strconv.Itoa(util.CoreNum30)+"-"+AscendVNPULevelLow] =
-		newTemplate(Ascend910, AscendDVPPEnabledNull, util.CoreNum30, util.CpuNum14)
-	templateMap[util.JobKind310PValue+"-"+strconv.Itoa(util.NPUIndex1)] = newTemplate(Ascend310P, AscendDVPPEnabledNull,
-		util.NPUIndex1, util.NPUIndex1)
-	templateMap[util.JobKind310PValue+"-"+strconv.Itoa(util.NPUIndex2)] = newTemplate(Ascend310P, AscendDVPPEnabledNull,
-		util.NPUIndex2, util.NPUIndex2)
-	templateMap[util.JobKind310PValue+"-"+strconv.Itoa(util.NPUIndex4)] = newTemplate(Ascend310P, AscendDVPPEnabledNull,
-		util.NPUIndex4, util.NPUIndex4)
-	templateMap[util.JobKind310PValue+"-"+strconv.Itoa(util.NPUIndex2)+"-"+AscendVNPULevelLow] = newTemplate(Ascend310P,
-		AscendDVPPEnabledNull, util.NPUIndex2, util.NPUIndex1)
-	templateMap[util.JobKind310PValue+"-"+strconv.Itoa(util.NPUIndex4)+"-"+AscendVNPULevelLow] = newTemplate(Ascend310P,
-		AscendDVPPEnabledNull, util.NPUIndex4, util.NPUIndex3)
-	templateMap[util.JobKind310PValue+"-"+strconv.Itoa(util.NPUIndex4)+"-"+AscendVNPULevelLow] = newTemplate(Ascend310P,
-		AscendDVPPEnabledNull, util.NPUIndex4, util.NPUIndex3)
-	templateMap[util.JobKind310PValue+"-"+strconv.Itoa(util.NPUIndex8)+"-"+AscendVNPULevelLow] = newTemplate(Ascend310P,
-		AscendDVPPEnabledNull, util.NPUIndex8, util.NPUIndex7)
-	return templateMap
-}
-
-// GetResourceFromCoreStr like vir04_3c_ndvpp
+// GetResourceFromCoreStr like vir04_3c_ndvpp todo: need to be deleted
 func GetResourceFromCoreStr(coreStr string) *util.VResource {
 	resources := strings.Split(coreStr, "_")
 
@@ -202,75 +174,4 @@ func getVNPUCardIDFromAscendCore(coreNameStr string) (int, error) {
 		return 0, fmt.Errorf("getVNPUCardIDFromAscendCore vnpu device <%s> get physics id failed", coreNameStr)
 	}
 	return phyCardID, nil
-}
-
-// TransferTaskLabelToResReq transfer 4c.3cpu.ndvpp to resource
-func (vNode *VNode) TransferTaskLabelToResReq(task *api.TaskInfo) (util.VResource, error) {
-	resReq := util.VResource{
-		DVPP: AscendDVPPEnabledNull,
-	}
-	coreNum, err := getAiCoreNumFromTask(task)
-	if err != nil {
-		return resReq, fmt.Errorf("task %s AscendNPUCore read failed", task.Name)
-	}
-
-	cpuNum, err := vNode.getAiCpuNum(task, coreNum)
-	if err != nil {
-		return resReq, fmt.Errorf("task %s AscendCPUNum get failed", task.Name)
-	}
-
-	dvppVal := vNode.getDVPPEnable(task, coreNum)
-
-	resReq = util.VResource{
-		Aicore: coreNum,
-		Aicpu:  cpuNum,
-		DVPP:   dvppVal,
-	}
-
-	return resReq, nil
-}
-
-func getAiCoreNumFromTask(task *api.TaskInfo) (int, error) {
-	for _, container := range task.Pod.Spec.Containers {
-		coreNum, ok := container.Resources.Requests[util.AscendNPUCore]
-		if !ok {
-			return 0, errors.New("getAiCoreNumFromTask get resource requests failed")
-		}
-		return int(coreNum.Value()), nil
-	}
-	return 0, fmt.Errorf("getAiCoreNumFromTask get resource requests failed")
-}
-
-func (vNode *VNode) getDVPPEnable(task *api.TaskInfo, coreNum int) string {
-	ringController := task.Pod.Labels[util.JobKindKey]
-	dvppVal, ok := task.Pod.Labels[AscendVNPUDVPP]
-	if !ok || ringController != util.JobKind310PValue || vNode.IsResourceWholeCard(coreNum) {
-		return AscendDVPPEnabledNull
-	}
-	return dvppVal
-}
-
-func (vNode *VNode) getAiCpuNum(task *api.TaskInfo, coreNum int) (int, error) {
-	if vNode.IsResourceWholeCard(coreNum) {
-		return coreNum * vNode.TotalRes.Aicpu / vNode.TotalRes.Aicore, nil
-	}
-	ringControllerType, ok := task.Pod.Labels[util.JobKindKey] // ascend-910/ascend-310P/ascend-310
-	if !ok {
-		return util.ErrorInt, fmt.Errorf("getAiCpuNum get label %s failed", util.JobKindKey)
-	}
-
-	vnpuLevel, ok := task.Pod.Labels[AscendVNPULevel]
-	if !ok || ringControllerType != util.JobKind310PValue {
-		vnpuLevel = AscendVNPULevelLow
-	}
-	key := fmt.Sprintf("%s-%s", ringControllerType, strconv.Itoa(coreNum))
-	if vnpuLevel == AscendVNPULevelLow {
-		key = fmt.Sprintf("%s-%s", key, vnpuLevel)
-	}
-	vJobTemplate := initVJobTemplate()
-	vTemplate, ok := vJobTemplate[key]
-	if !ok {
-		return util.ErrorInt, fmt.Errorf("getAiCpuNum get %s from vJob template failed", key)
-	}
-	return vTemplate.AICPU, nil
 }
