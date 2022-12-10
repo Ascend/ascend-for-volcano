@@ -22,9 +22,9 @@ import (
 
 // CheckNodeNPUByTask check chip on node has enough resource, fault chips are not in list, unstable excluded
 func (tp *DynamicVNPU) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource) error {
-	klog.V(util.LogInfoLev).Infof("dynamic vnpu task<%s> node<%s> CheckNodeNPUByTask", task.Name, node.Name)
+	klog.V(util.LogDebugLev).Infof("check dynamic vNPU %s on %s", task.Name, node.Name)
 	if !node.ValidVNode {
-		klog.V(util.LogInfoLev).Infof("dynamic vnpu node<%s> not valid vNode", node.Name)
+		klog.V(util.LogInfoLev).Infof("dynamic vNPU node<%s> not valid vNode", node.Name)
 		return errors.New("CheckNodeNPUByTask invalid VNode")
 	}
 	if !node.IsNodeTotalResEnough(taskResReq) || !node.IsNodeChipResEnough(taskResReq) {

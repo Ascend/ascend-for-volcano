@@ -430,7 +430,7 @@ func (sHandle *ScheduleHandler) JobValid(obj interface{}) *api.ValidateResult {
 // SetJobPendReasonByNodesCase In nodes select case, set node failed and add failed reason.
 func (sHandle ScheduleHandler) SetJobPendReasonByNodesCase(job *api.JobInfo) {
 	if int32(len(job.Tasks)-len(job.NodesFitErrors)) >= job.MinAvailable {
-		klog.V(util.LogDebugLev).Infof("%s block by nodes(%d - %d > %d).", job.Name,
+		klog.V(util.LogDebugLev).Infof("%s not block by nodes(task:%d - nodeErr:%d > jobMin:%d).", job.Name,
 			len(job.Tasks), len(job.NodesFitErrors), job.MinAvailable)
 		return
 	}

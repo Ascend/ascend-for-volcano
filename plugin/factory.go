@@ -219,7 +219,7 @@ func (sHandle *ScheduleHandler) PreStartPlugin(ssn *framework.Session) {
 			if strings.Contains(err.Error(), util.ArgumentError) {
 				continue
 			}
-			klog.V(util.LogErrorLev).Infof("PreStartPlugin %s %#v.", name, err)
+			klog.V(util.LogErrorLev).Infof("PreStartPlugin %s %s.", name, err)
 		}
 	}
 }

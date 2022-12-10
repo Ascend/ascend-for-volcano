@@ -122,8 +122,8 @@ func updatePodPendingReason(task *api.TaskInfo, reasonTmp string) {
 
 func IsNPUTask(nT *api.TaskInfo) bool {
 	for k := range nT.Resreq.ScalarResources {
-		// must contain "huawei.com/Ascend"
-		if strings.Contains(string(k), util.NPUCardPreName) {
+		// must contain "huawei.com/"
+		if strings.Contains(string(k), util.HwPreName) {
 			return true
 		}
 	}

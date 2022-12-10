@@ -49,8 +49,8 @@ func (n *NPUNode) setNodeVNPUInfo(ni *api.NodeInfo, jobTemplate map[string]map[s
 		Chips: make(map[int]*VChip, util.MapInitNum),
 	}
 
-	if !n.checkNodeResourceInitialized() {
-		return fmt.Errorf("setNodeVNPUInfo %s: npuNode resource not initialized", n.Name)
+	if !n.checkDyVNodeResourceInitialized() {
+		return fmt.Errorf("setNodeVNPUInfo %s: DyVNode resource not initialized", n.Name)
 	}
 
 	// 1. get chipKind like Ascend910, chipLabel like Ascend310P-8
@@ -72,7 +72,7 @@ func (n *NPUNode) setNodeVNPUInfo(ni *api.NodeInfo, jobTemplate map[string]map[s
 	return nil
 }
 
-func (n *NPUNode) checkNodeResourceInitialized() bool {
+func (n *NPUNode) checkDyVNodeResourceInitialized() bool {
 	return n.Capability[util.AscendNPUCore] > 0
 }
 
@@ -168,7 +168,7 @@ func (n *NPUNode) initVChips(ni *api.NodeInfo, taskTemplate map[string]map[strin
 	chipTotalRes := n.VNode.getVChipTotalRes()
 
 	if err := n.initFreeWholeVChips(chipCoreNum, chipTotalRes); err != nil {
-		return fmt.Errorf("vNode %s initFreeWholeVChips failed", n.Name)
+		klog.V(util.LogDebugLev).Infof("vNode %s %s.", n.Name, err)
 	} // 3. create new VChip by freeCardID whole card
 
 	for _, ti := range ni.Tasks {
