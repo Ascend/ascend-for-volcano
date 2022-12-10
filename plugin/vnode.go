@@ -209,7 +209,7 @@ func (n *NPUNode) getHealthyCardIDsFromNodeAndDeviceInfo() []int {
 	unhealthyChips := strings.Split(unhealthyChipsStr, ",")
 
 	// 2. get vChip ID list and exclude fault chips
-	for i:=0; i<allocatableChipNum; i++ {
+	for i := 0; i < allocatableChipNum; i++ {
 		unhealthyFlag := false
 		for _, unhealthyChip := range unhealthyChips {
 			if fmt.Sprintf("%s-%d", n.VNode.ChipKind, i) == unhealthyChip {
@@ -217,7 +217,7 @@ func (n *NPUNode) getHealthyCardIDsFromNodeAndDeviceInfo() []int {
 				break
 			}
 		}
-		if !unhealthyFlag{
+		if !unhealthyFlag {
 			freeCardIDs = append(freeCardIDs, i)
 		}
 	}
