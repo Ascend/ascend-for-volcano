@@ -234,6 +234,11 @@ func (n *NPUNode) GetNewNPUNodeAnnotation(usedTop []int, resourceName, resourceN
 
 // CheckNPUResourceStable check resource stabilize.
 func (n NPUNode) CheckNPUResourceStable(vcJob SchedulerJob) error {
+	if vcJob.IsVJob() {
+		klog.V(util.LogDebugLev).Infof("%s is vNPU job no need check %s stable in frame.", vcJob.Name, n.Name)
+		return nil
+	}
+
 	k, err := vcJob.GetAnnoName()
 	if err != nil {
 		return err

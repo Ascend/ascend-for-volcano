@@ -34,8 +34,8 @@ func New(npuName string) plugin.ISchedulerPlugin {
 
 // PreStartAction pre-processing actions for rescheduling
 func (tp *ascend310P) PreStartAction(ssn *framework.Session) error {
-	klog.V(util.LogInfoLev).Infof("Entering PreStartAction of %s", util.NPU310PCardName)
-	defer klog.V(util.LogInfoLev).Infof("Leaving PreStartAction of %s", util.NPU310PCardName)
+	klog.V(util.LogDebugLev).Infof("Entering PreStartAction of %s", util.NPU310PCardName)
+	defer klog.V(util.LogDebugLev).Infof("Leaving PreStartAction of %s", util.NPU310PCardName)
 	if tp == nil || ssn == nil || tp.FrameAttr.KubeClient == nil {
 		return fmt.Errorf("%s handler not enabled or ssn is nil: %s", util.NPU310PCardName, util.ArgumentError)
 	}
@@ -51,8 +51,8 @@ func (tp *ascend310P) PreStartAction(ssn *framework.Session) error {
 
 // PreStopAction post-processing actions for re-scheduling
 func (tp *ascend310P) PreStopAction(env *plugin.ScheduleEnv) error {
-	klog.V(util.LogInfoLev).Infof("enter PreStopAction of %s...", util.NPU310PCardName)
-	defer klog.V(util.LogInfoLev).Infof("leave PreStopAction of %s...", util.NPU310PCardName)
+	klog.V(util.LogDebugLev).Infof("enter PreStopAction of %s...", util.NPU310PCardName)
+	defer klog.V(util.LogDebugLev).Infof("leave PreStopAction of %s...", util.NPU310PCardName)
 	if tp == nil || tp.reHandle == nil || env == nil {
 		return fmt.Errorf("%s reSchedule not enabled or nil env: %s", util.NPU310PCardName, util.ArgumentError)
 	}

@@ -622,6 +622,9 @@ func (reScheduler *ReScheduler) RestartFaultJobs(ssn *framework.Session) error {
 	// 1. Get fault jobs, only faultJobs that haven't been evicted yet should be put into list
 	realFaultJobs, err := reScheduler.getRealFaultJobs()
 	if err != nil {
+		if err.Error() == NoFaultJobsErr {
+			return nil
+		}
 		return fmt.Errorf("restartFaultJobs: %#v", err)
 	}
 

@@ -8,7 +8,6 @@ Package ascend310p is using for HuaWei 310P Ascend pin affinity schedule.
 package ascend310p
 
 import (
-	"fmt"
 	"k8s.io/klog"
 
 	"volcano.sh/volcano/pkg/scheduler/framework"
@@ -20,7 +19,9 @@ import (
 func (tp *ascend310P) preStartRescheduling(ssn *framework.Session) error {
 	tp.reHandle = rescheduling.New(&tp.ScheduleEnv, rescheduling.CmFaultJob310PKind)
 	if tp.reHandle == nil {
-		return fmt.Errorf("%s reSchedule not enabled: %s", util.NPU310PCardName, util.ArgumentError)
+		klog.V(util.LogDebugLev).Infof("%s reSchedule not enabled: %s", tp.Name,
+			util.ArgumentError)
+		return nil
 	}
 	tp.reHandle.NewCommonReScheduler(rescheduling.CmFaultJob310PKind)
 	tp.reHandle.SynCacheFaultNodeWithSession(util.NPU310PCardName)
