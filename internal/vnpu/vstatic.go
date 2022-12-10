@@ -28,7 +28,8 @@ func (tp *StaticVNPU) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInf
 }
 
 // UseAnnotation pass for static
-func (tp *StaticVNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource) *plugin.NPUNode {
+func (tp *StaticVNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource,
+	chipVTemplate VTemplate) *plugin.NPUNode {
 	klog.V(util.LogInfoLev).Infof("static vnpu task<%s> node<%s> UseAnnotation pass", task.Name, node.Name)
 	return &node
 }

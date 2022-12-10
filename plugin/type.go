@@ -61,9 +61,10 @@ type SchedulerJob struct {
 
 // VolcanoFrame passed in by the volcano frame.
 type VolcanoFrame struct {
-	UID        types.UID
-	Conf       []conf.Configuration
-	KubeClient kubernetes.Interface
+	UID          types.UID
+	Conf         []conf.Configuration
+	KubeClient   kubernetes.Interface
+	VJobTemplate map[string]map[string]util.VResource
 }
 
 // ScheduleCache the plugin defined caches saving cm data

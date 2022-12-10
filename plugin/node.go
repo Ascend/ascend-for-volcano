@@ -159,7 +159,8 @@ func getNodeDeviceInfoFromCM(kubeClient kubernetes.Interface, node *api.NodeInfo
 }
 
 // InitNPUNodeByNodeInf init NPU node from node info and cm.
-func (n *NPUNode) InitNPUNodeByNodeInf(npuNode *api.NodeInfo, kubeClient kubernetes.Interface) error {
+func (n *NPUNode) InitNPUNodeByNodeInf(npuNode *api.NodeInfo, kubeClient kubernetes.Interface,
+	vJobTemplate map[string]map[string]util.VResource) error {
 	if n == nil || npuNode == nil {
 		klog.V(util.LogInfoLev).Infof("InitNPUNodeByNodeInf failed: %s.", util.ArgumentError)
 		return errors.New(util.ArgumentError)
@@ -186,7 +187,7 @@ func (n *NPUNode) InitNPUNodeByNodeInf(npuNode *api.NodeInfo, kubeClient kuberne
 	for k, v := range data.DeviceList {
 		n.Annotation[k] = v
 	}
-	if setVNPUErr := n.setNodeVNPUInfo(npuNode); setVNPUErr != nil {
+	if setVNPUErr := n.setNodeVNPUInfo(npuNode, vJobTemplate); setVNPUErr != nil {
 		klog.V(util.LogDebugLev).Infof("setNodeVNPUInfo %s %v", npuNode.Name, setVNPUErr)
 	}
 	return nil
@@ -283,7 +284,7 @@ func (sHandle *ScheduleHandler) InitNodesFromSsn(ssn *framework.Session) {
 	sHandle.Nodes = make(map[string]NPUNode, util.MapInitNum)
 	for nodeName, nodeInf := range ssn.Nodes {
 		npuNode := NPUNode{}
-		if err := npuNode.InitNPUNodeByNodeInf(nodeInf, sHandle.FrameAttr.KubeClient); err != nil {
+		if err := npuNode.InitNPUNodeByNodeInf(nodeInf, sHandle.FrameAttr.KubeClient, sHandle.FrameAttr.VJobTemplate); err != nil {
 			continue
 		}
 		sHandle.Nodes[nodeName] = npuNode

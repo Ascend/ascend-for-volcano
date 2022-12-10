@@ -165,9 +165,9 @@ func (tp *ascend310P) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *pl
 	case util.JobTypeWhole:
 		return tp.NPUHandler.UseAnnotation(task, node)
 	case util.JobTypeStCut:
-		return tp.vHandle.StaticVNPU.UseAnnotation(task, node, taskRes)
+		return tp.vHandle.StaticVNPU.UseAnnotation(task, node, taskRes, tp.vHandle.VT)
 	case util.JobTypeDyCut:
-		return tp.vHandle.DynamicVNPU.UseAnnotation(task, node, taskRes)
+		return tp.vHandle.DynamicVNPU.UseAnnotation(task, node, taskRes, tp.vHandle.VT)
 	default:
 		err = fmt.Errorf("%s no type %d", tp.Name, tp.Type)
 		klog.V(util.LogDebugLev).Infof("%s CheckNodeNPUByTask %s %s.", tp.GetPluginName(), tp.Name, err)
