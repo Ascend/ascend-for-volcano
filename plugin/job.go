@@ -504,3 +504,12 @@ func (sJob SchedulerJob) GetAnnoName() (string, error) {
 	}
 	return sJob.handler.GetAnnoName(), nil
 }
+
+func (sJob SchedulerJob) GetReqCardNameFromRingController() string {
+	ringType := sJob.Label[util.JobKindKey]
+	ringTypeSplit := strings.Split(ringType, "-")
+	if len(ringTypeSplit) < 2 {
+		return ""
+	}
+	return util.NPUCardPreName + ringTypeSplit[util.NPUIndex1]
+}

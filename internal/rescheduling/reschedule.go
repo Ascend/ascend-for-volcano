@@ -95,6 +95,7 @@ func (reScheduler *ReScheduler) createFaultTaskHandler(job *api.JobInfo, cardNam
 			klog.V(util.LogInfoLev).Infof("getUseCardName %s %#v", task.Name, getErr)
 		}
 		faultTask.setUseCardName(tmpUseCardName)
+		klog.V(util.LogDebugLev).Infof("task %s used card name %#v", task.Name, tmpUseCardName) // todo: delete
 		isFaultTask, nodeHealthState := reScheduler.getTaskHealthState(&faultTask)
 		klog.V(util.LogInfoLev).Infof("task %s is fault task: %v, health state: %s", task.Name, isFaultTask,
 			nodeHealthState)
@@ -128,9 +129,9 @@ func (reScheduler *ReScheduler) GetRunningJobs(
 			klog.V(util.LogDebugLev).Infof("job %s not in session, skip", jobInfo.UID)
 			continue
 		}
-		if schedulerJob.ReqNPUNum == 0 || schedulerJob.ReqNPUName != cardName { // req type is not current card type
+		if schedulerJob.ReqNPUNum == 0 || schedulerJob.GetReqCardNameFromRingController() != cardName { // req type is not current card type
 			klog.V(util.LogDebugLev).Infof("job %s requires npu %d name %s: illegal, skip", schedulerJob.Name,
-				schedulerJob.ReqNPUNum, schedulerJob.ReqNPUName)
+				schedulerJob.ReqNPUNum, schedulerJob.GetReqCardNameFromRingController())
 			continue
 		}
 		if len(schedulerJob.Selector) == 0 {
@@ -919,15 +920,10 @@ func (reScheduler *ReScheduler) checkNodeCurNodeIsFault(vcNode plugin.NPUNode, t
 		return nil
 	}
 	for _, fNode := range reScheduler.FaultNodes {
-		if vcNode.Name == fNode.NodeName && fNode.IsFaultNode {
-			if len(schedulerJob.Tasks) > 1 {
-				return fmt.Errorf("task %s cannot be assigned to node %s because it's in faultNode list",
-					task.Name, vcNode.Name)
-			}
-			if fNode.NodeHealthState == NodeUnhealthy { // none distributed job, npu fault considered in previous ops
-				return fmt.Errorf("task %s cannot be assigned to %s node %s", task.Name, NodeUnhealthy,
-					vcNode.Name)
-			}
+		if vcNode.Name == fNode.NodeName && fNode.IsFaultNode && fNode.NodeHealthState == NodeUnhealthy {
+			// none distributed job, npu fault considered in previous ops
+			return fmt.Errorf("task %s cannot be assigned to %s node %s", task.Name, NodeUnhealthy,
+				vcNode.Name)
 		}
 	}
 	klog.V(util.LogInfoLev).Infof("node %s is not fault node, check success", vcNode.Name)
@@ -1047,8 +1043,10 @@ func (reScheduler ReScheduler) getLastNodeHeartUpdateTimeByNodeNameFromCache(nod
 // getTaskHealthState return true when unhealthy
 func (reScheduler ReScheduler) getTaskHealthState(fTask *FaultTask) (bool, string) {
 	klog.V(util.LogDebugLev).Infof("task %s getTaskHealthState", fTask.TaskName)
+	klog.V(util.LogDebugLev).Infof("task %s used node: %s", fTask.TaskName, fTask.NodeName) // todo: delete
 	var nodeUseCardHealthState []string
 	realFaultNode := reScheduler.getRealFaultNodes()
+	klog.V(util.LogDebugLev).Infof("real fault node: %#v", realFaultNode) // todo: delete
 	if fTask.NodeName == "" {
 		return false, NodeHealthy // tasks has not yet been scheduled
 	}
@@ -1064,7 +1062,8 @@ func (reScheduler ReScheduler) getTaskHealthState(fTask *FaultTask) (bool, strin
 					NodeUnhealthy, fNode.NodeName, NodeUnhealthy)
 				return true, NodeUnhealthy
 			}
-			nodeUseCardHealthState = fTask.getTaskUseFaultCardHealthState(&fNode) // get fault NPUs on task used node
+			nodeUseCardHealthState = fTask.getTaskUseFaultCardHealthState(&fNode)                // get fault NPUs on task used node
+			klog.V(util.LogDebugLev).Infof("nodeUseCardHealthState %#v", nodeUseCardHealthState) // todo: delete
 		}
 	}
 	if util.IsSliceContain(NodeCardUnhealthy, nodeUseCardHealthState) { // if has unhealthy npu, return in advance

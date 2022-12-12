@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
@@ -46,7 +47,15 @@ func (fTask *FaultTask) getUseCardName(task *api.TaskInfo, cardName string) ([]s
 		return nil, fmt.Errorf("%s has no NPU from %s", task.Name, cardName)
 	}
 	taskNPUs := strings.Split(strNpu, ",")
-	return taskNPUs, nil
+	var taskPhysicsNPUs []string
+	for _, taskNPU := range taskNPUs {
+		taskNPU = plugin.GetPhysicCardNameFromVChip(taskNPU) // transfer vnpu like Ascend310P-1c-400-1_0
+		if util.IsSliceContain(taskNPU, taskPhysicsNPUs) {
+			continue
+		}
+		taskPhysicsNPUs = append(taskPhysicsNPUs, taskNPU)
+	}
+	return taskPhysicsNPUs, nil
 }
 
 // DeleteRealPodByTask delete pod from kubernetes of tasks
@@ -70,6 +79,7 @@ func (fTask *FaultTask) DeleteRealPodByTask(ssn *framework.Session, waitTime int
 func (fTask *FaultTask) getTaskUseFaultCardHealthState(fNode *FaultNode) []string {
 	var nodeUseCardHealthState []string
 	for _, taskUseCard := range fTask.UseCardName {
+		//taskUseCard = plugin.GetPhysicCardNameFromVChip(taskUseCard) // transfer vnpu like Ascend310P-1c-400-3_0
 		if util.IsSliceContain(taskUseCard, fNode.UnhealthyNPU) {
 			nodeUseCardHealthState = append(nodeUseCardHealthState, NodeCardUnhealthy)
 			continue
