@@ -259,7 +259,7 @@ func (vt *VTask) setVTaskUseCardIDs() {
 	for _, value := range vt.Allocated.PhysicsName {
 		// value like Ascend310P-2c-100-1_1
 		tmps := strings.Split(value, "-")
-		realV := strings.Split(tmps[len(tmps)], "_")
+		realV := strings.Split(tmps[len(tmps)-1], "_")
 		if len(realV) == 0 {
 			klog.V(LogErrorLev).Infof("get card id from %s==>%#v error.", value, tmps)
 			continue

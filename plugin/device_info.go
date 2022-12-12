@@ -13,6 +13,8 @@ import (
 	"strings"
 
 	"k8s.io/api/core/v1"
+	"k8s.io/klog"
+
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
@@ -34,11 +36,40 @@ func IsPodWholeCardFromAscendCore(coreCardName string) bool {
 	temp := strings.Split(coreCardName, ",")
 	for _, cardName := range temp {
 		singleCardTemp := strings.Split(cardName, "-")
-		if len(singleCardTemp) == 1 {
+		if len(singleCardTemp) == util.NPUIndex1 {
 			return true
 		}
 	}
 	return false
+}
+
+// IsPodWholeCardFromAscendReal judge if card is whole card Ascend310P-0/Ascend310P-1c-400-3_0
+func IsPodWholeCardFromAscendReal(realCardName string) bool {
+	temp := strings.Split(realCardName, "-")
+	if len(temp) == util.NPUIndex2 {
+		return true
+	}
+	return false
+}
+
+// GetPhysicCardNameFromVChip get cardName from whole Ascend310P-0/Ascend310P-1c-400-3_0
+func GetPhysicCardNameFromVChip(realCardName string) string {
+	if IsPodWholeCardFromAscendReal(realCardName) {
+		return realCardName
+	}
+	temp := strings.Split(realCardName, "-")
+	if len(temp) < util.NPUIndex4 {
+		return ""
+	}
+	cardType := temp[0]               // like Ascend310P
+	cardIDStr := temp[util.NPUIndex3] // like 3_0
+	cardIDSplit := strings.Split(cardIDStr, "_")
+	if len(cardIDSplit) < util.NPUIndex2 {
+		return ""
+	}
+	cardID := cardIDSplit[0]
+	klog.V(util.LogDebugLev).Infof("GetPhysicCardNameFromVChip %s", fmt.Sprintf("%s-%s", cardType, cardID))
+	return fmt.Sprintf("%s-%s", cardType, cardID)
 }
 
 // GetWholeCardIDFromAscendReal get card physics id from Ascend910-0

@@ -19,6 +19,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
@@ -46,7 +47,15 @@ func (fTask *FaultTask) getUseCardName(task *api.TaskInfo, cardName string) ([]s
 		return nil, fmt.Errorf("%s has no NPU from %s", task.Name, cardName)
 	}
 	taskNPUs := strings.Split(strNpu, ",")
-	return taskNPUs, nil
+	var taskPhysicsNPUs []string
+	for _, taskNPU := range taskNPUs {
+		taskNPU = plugin.GetPhysicCardNameFromVChip(taskNPU) // transfer vnpu like Ascend310P-1c-400-1_0
+		if util.IsSliceContain(taskNPU, taskPhysicsNPUs) {
+			continue
+		}
+		taskPhysicsNPUs = append(taskPhysicsNPUs, taskNPU)
+	}
+	return taskPhysicsNPUs, nil
 }
 
 // DeleteRealPodByTask delete pod from kubernetes of tasks
