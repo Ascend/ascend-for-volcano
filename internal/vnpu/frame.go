@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 
+	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
@@ -18,10 +19,12 @@ import (
 )
 
 func (tp *VNPU) GetTaskResource(task *api.TaskInfo, node plugin.NPUNode) (util.VResource, error) {
+	klog.V(util.LogDebugLev).Infof("enter task<%s> GetTaskResource", task.Name)
 	coreNum, err := getAiCoreNumFromTask(task)
 	if err != nil {
 		return util.VResource{}, fmt.Errorf("task %s AscendNPUCore read failed", task.Name)
 	}
+	klog.V(util.LogDebugLev).Infof("get coreNum %d", coreNum)
 
 	if node.IsResourceWholeCard(coreNum) {
 		res := util.VResource{
@@ -43,7 +46,9 @@ func (tp *VNPU) GetTaskResource(task *api.TaskInfo, node plugin.NPUNode) (util.V
 	}
 
 	virTemplate := getResTemplateFromTaskSetting(coreNum, cpuLevel, dvpp)
-	return tp.VT.Data[virTemplate], nil
+	klog.V(util.LogDebugLev).Infof("vnpu template string for cur task:<%s>", virTemplate)
+	taskReqRes := tp.VT.Data[virTemplate]
+	return taskReqRes, nil
 }
 
 func getAiCoreNumFromTask(task *api.TaskInfo) (int, error) {

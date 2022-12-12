@@ -78,8 +78,8 @@ func (tp *DynamicVNPU) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeIn
 // UseAnnotation write task use vnpu to pod annotation
 func (tp *DynamicVNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource,
 	chipVTemplate VTemplate) *plugin.NPUNode {
-	klog.V(util.LogDebugLev).Infof("dynamic vnpu UseAnnotation task<%s> node<%s> Annotation: %#v", task.Name,
-		node.Name, node.Annotation)
+	klog.V(util.LogDebugLev).Infof("dynamic vnpu UseAnnotation node<%s> task<%s> Labels: %#v\n",
+		node.Name, task.Name, task.Pod.Labels)
 
 	allocChipID, err := node.VNode.SelectChipFromNode(taskResReq)
 	if err != nil {
@@ -90,6 +90,7 @@ func (tp *DynamicVNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode, ta
 		klog.V(util.LogErrorLev).Infof("dynamic vnpu task<%s> UseAnnotation err: %s", task.Name, err.Error())
 		return nil
 	}
+	klog.V(util.LogDebugLev).Infof("dynamic vnpu UseAnnotation allocChipID:<%s>", allocChipID)
 
 	tp.SetNPUTopologyToPodFn(task, node, taskResReq, allocChipID, chipVTemplate)
 	return tp.UpdateNodeInfo(node, allocChipID, taskResReq)
@@ -175,8 +176,10 @@ func (tp *DynamicVNPU) SetNPUTopologyToPodFn(task *api.TaskInfo, node plugin.NPU
 		segmentAnnotation = curTemplate
 	}
 
-	task.Pod.Annotations[util.AscendNPUCore] = segmentAnnotation
-	klog.V(util.LogInfoLev).Infof("dynamic vnpu setNPUTopologyToPod %s top:%s.", task.Name, segmentAnnotation)
+	task.Pod.Annotations[util.AscendNPUCore] = fmt.Sprintf("%s-%s", allocChipID,
+		segmentAnnotation)
+	klog.V(util.LogInfoLev).Infof("dynamic vnpu setNPUTopologyToPod %s top:%s.", task.Name,
+		task.Pod.Annotations[util.AscendNPUCore])
 	return
 }
 

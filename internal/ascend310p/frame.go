@@ -157,6 +157,7 @@ func (tp *ascend310P) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *pl
 	klog.V(util.LogDebugLev).Infof("%s UseAnnotation job(%s).", tp.GetPluginName(), tp.Name)
 	var err error
 	taskRes, err := tp.vHandle.GetTaskResource(task, node)
+	klog.V(util.LogDebugLev).Infof("task<%s> require resource<%#v>", task.Name, taskRes)
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("%s UseAnnotation job(%s) get require task resource failed: %s",
 			tp.GetPluginName(), tp.Name, err)

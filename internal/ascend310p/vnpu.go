@@ -31,7 +31,6 @@ func (tp *ascend310P) InitVNPU() {
 			Cache: make(map[string][]string, util.MapInitNum),
 		},
 	}
-	tp.GetVNPUTemplate()
 }
 
 func (tp *ascend310P) checkStVJobReq() error {
@@ -178,5 +177,6 @@ func (tp *ascend310P) preStartDyVNPU(ssn *framework.Session) error {
 }
 
 func (tp *ascend310P) preStartVNPU(ssn *framework.Session) error {
+	tp.GetVNPUTemplate()
 	return tp.preStartDyVNPU(ssn)
 }

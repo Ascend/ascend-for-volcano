@@ -69,6 +69,7 @@ func (n *NPUNode) setNodeVNPUInfo(ni *api.NodeInfo, jobTemplate map[string]map[s
 	}
 
 	n.ValidVNode = true
+	klog.V(util.LogDebugLev).Infof("vNode<%s> initialisation success:<%#v>", n.Name, n.VNode)
 	return nil
 }
 
@@ -121,7 +122,7 @@ func (n *NPUNode) setTotalResAndChipNumByTemplates() error {
 	if !ok {
 		return fmt.Errorf("getTotalResFromNpuNode no resource <%s>", util.AscendNPUCore)
 	}
-	n.VNode.TotalRes.Aicore = int(totalCore)
+	n.VNode.TotalRes.Aicore = int(totalCore / util.NPUHexKilo)
 
 	numCorePerChip, err := n.getVChipCoreNum()
 	if err != nil {
@@ -167,7 +168,7 @@ func (n *NPUNode) initVChips(ni *api.NodeInfo, taskTemplate map[string]map[strin
 
 	chipTotalRes := n.VNode.getVChipTotalRes()
 
-	if err := n.initFreeWholeVChips(chipCoreNum, chipTotalRes); err != nil {
+	if err := n.createNodeNewVChips(chipCoreNum, chipTotalRes); err != nil {
 		klog.V(util.LogDebugLev).Infof("vNode %s %s.", n.Name, err)
 	} // 3. create new VChip by freeCardID whole card
 
@@ -181,31 +182,44 @@ func (n *NPUNode) initVChips(ni *api.NodeInfo, taskTemplate map[string]map[strin
 	return nil
 }
 
-func (n NPUNode) initFreeWholeVChips(chipCoreNum int, chipTotalRes util.VResource) error {
-	freeCardIDs := n.getFreeCardIDsFromDeviceInfo()
-	if len(freeCardIDs) == 0 {
+func (n NPUNode) createNodeNewVChips(chipCoreNum int, chipTotalRes util.VResource) error {
+	healthyCardIDs := n.getHealthyCardIDsFromNodeAndDeviceInfo()
+	klog.V(util.LogDebugLev).Infof("createNodeNewVChips healthy chips: <%#v>", healthyCardIDs)
+	if len(healthyCardIDs) == 0 {
 		return fmt.Errorf("vNode %s getFreeCardIDsFromDeviceInfo failed", n.Name)
 	}
-	for _, freeCardID := range freeCardIDs {
+	for _, freeCardID := range healthyCardIDs {
 		n.VNode.Chips[freeCardID] = n.VNode.NewVChip(freeCardID, chipTotalRes)
 	}
 	return nil
 }
 
-func (n *NPUNode) getFreeCardIDsFromDeviceInfo() []int {
+func (n *NPUNode) getHealthyCardIDsFromNodeAndDeviceInfo() []int {
 	var freeCardIDs []int
-	freeChipStr, ok := n.Annotation[util.HwPreName+n.ChipKind] // like Ascend910-0,Ascend910-1
+	allocatableCoreNum := n.Allocate[util.AscendNPUCore] / util.NPUHexKilo
+	allocatableChipNum := int(allocatableCoreNum) / n.VNode.AiCorePerChip
+
+	// 1. get fault chips
+	unhealthyChipsStr, ok := n.Annotation[util.HwPreName+n.VNode.ChipKind+"-Unhealthy"]
 	if !ok {
+		klog.V(util.LogDebugLev).Infof("getHealthyCardIDsFromNodeAndDeviceInfo node<%s> get unhealthy string failed",
+			n.Name)
 		return freeCardIDs
 	}
-	freeChips := strings.Split(freeChipStr, ",")
-	for _, freeChip := range freeChips {
-		id, err := GetWholeCardIDFromAscendReal(freeChip)
-		if err != nil {
-			klog.V(util.LogWarningLev).Infof("GetWholeCardIDFromAscendReal error: %v", err)
-			continue
+	unhealthyChips := strings.Split(unhealthyChipsStr, ",")
+
+	// 2. get vChip ID list and exclude fault chips
+	for i := 0; i < allocatableChipNum; i++ {
+		unhealthyFlag := false
+		for _, unhealthyChip := range unhealthyChips {
+			if fmt.Sprintf("%s-%d", n.VNode.ChipKind, i) == unhealthyChip {
+				unhealthyFlag = true
+				break
+			}
 		}
-		freeCardIDs = append(freeCardIDs, id)
+		if !unhealthyFlag {
+			freeCardIDs = append(freeCardIDs, i)
+		}
 	}
 	return freeCardIDs
 }
@@ -560,6 +574,9 @@ func (vNode *VNode) selectChipFromNodeSegment(vChip []*VChip, vRes util.VResourc
 func (vNode *VNode) selectChipFromNodeWhole(vChips []*VChip, vRes util.VResource) (string, error) {
 	reqCardNum := vRes.Aicore / vNode.AiCorePerChip
 	allocCardNum := 0
+	if reqCardNum == 0 {
+		return "", errors.New("task require card number 0")
+	}
 	vResChip := util.VResource{
 		Aicore: vRes.Aicore / reqCardNum,
 		Aicpu:  vRes.Aicpu / reqCardNum,
