@@ -87,7 +87,7 @@ func (tp *DynamicVNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode, ta
 		if tp.taskAICPUCanBeDowngrade(taskResReq) {
 			return tp.UseAnnotation(task, node, tp.downgradeTaskAICPU(taskResReq), chipVTemplate)
 		}
-		klog.V(util.LogErrorLev).Infof("dynamic vnpu task<%s> UseAnnotation err: %s", task.Name, err.Error())
+		klog.V(util.LogErrorLev).Infof("UseAnnotation dynamic %s on %s err: %s", task.Name, node.Name, err)
 		return nil
 	}
 	klog.V(util.LogDebugLev).Infof("dynamic vnpu UseAnnotation allocChipID:<%s>", allocChipID)

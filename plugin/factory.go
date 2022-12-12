@@ -145,19 +145,19 @@ func addConf(configs, value string) string {
 func (sHandle *ScheduleHandler) GetJobTemplate() map[string]map[string]util.VResource {
 	jobTemplate := map[string]map[string]util.VResource{
 		Ascend310P: {
-			"vir01":          {Aicore: 1, Aicpu: 1, DVPP: "null"},
-			"vir02":          {Aicore: 2, Aicpu: 2, DVPP: "null"},
-			"vir02_1c":       {Aicore: 2, Aicpu: 1, DVPP: "null"},
-			"vir04":          {Aicore: 4, Aicpu: 4, DVPP: "null"},
-			"vir04_3c":       {Aicore: 4, Aicpu: 3, DVPP: "null"},
-			"vir04_3c_ndvpp": {Aicore: 4, Aicpu: 3, DVPP: "no"},
-			"vir04_4c_dvpp":  {Aicore: 4, Aicpu: 4, DVPP: "yes"},
+			VNPUTempVir01:        {Aicore: 1, Aicpu: 1, DVPP: AscendDVPPEnabledNull},
+			VNPUTempVir02:        {Aicore: util.NPUIndex2, Aicpu: util.NPUIndex2, DVPP: AscendDVPPEnabledNull},
+			VNPUTempVir02C1:      {Aicore: util.NPUIndex2, Aicpu: 1, DVPP: AscendDVPPEnabledNull},
+			VNPUTempVir04:        {Aicore: util.NPUIndex4, Aicpu: util.NPUIndex4, DVPP: AscendDVPPEnabledNull},
+			VNPUTempVir04C3:      {Aicore: util.NPUIndex4, Aicpu: util.NPUIndex3, DVPP: AscendDVPPEnabledNull},
+			VNPUTempVir04C3NDVPP: {Aicore: util.NPUIndex4, Aicpu: util.NPUIndex3, DVPP: AscendDVPPEnabledOff},
+			VNPUTempVir04C4cDVPP: {Aicore: util.NPUIndex4, Aicpu: util.NPUIndex4, DVPP: AscendDVPPEnabledOn},
 		},
 		Ascend910: {
-			"vir02": {Aicore: 2, Aicpu: 1, DVPP: "null"},
-			"vir04": {Aicore: 4, Aicpu: 1, DVPP: "null"},
-			"vir08": {Aicore: 8, Aicpu: 3, DVPP: "null"},
-			"vir16": {Aicore: 16, Aicpu: 7, DVPP: "null"},
+			VNPUTempVir02: {Aicore: util.NPUIndex2, Aicpu: 1, DVPP: AscendDVPPEnabledNull},
+			VNPUTempVir04: {Aicore: util.NPUIndex4, Aicpu: 1, DVPP: AscendDVPPEnabledNull},
+			VNPUTempVir08: {Aicore: util.NPUIndex8, Aicpu: util.NPUIndex3, DVPP: AscendDVPPEnabledNull},
+			VNPUTempVir16: {Aicore: util.NPUIndex16, Aicpu: util.NPUIndex7, DVPP: AscendDVPPEnabledNull},
 		},
 	}
 	return jobTemplate

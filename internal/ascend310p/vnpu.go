@@ -8,6 +8,7 @@ Package ascend310p is using for HuaWei 310P Ascend pin affinity schedule.
 package ascend310p
 
 import (
+	"errors"
 	"fmt"
 
 	"k8s.io/klog"
@@ -53,6 +54,9 @@ func (tp *ascend310P) validStVNPUJob() *api.ValidateResult {
 }
 
 func (tp *ascend310P) checkDyVJobReq() error {
+	if !tp.IsVJob() {
+		return fmt.Errorf("%s not VNPU job", tp.Name)
+	}
 	for _, vT := range tp.Tasks {
 		if vT.ReqNPUNum == 1 || vT.ReqNPUNum == util.NPUIndex2 || vT.ReqNPUNum == util.NPUIndex4 ||
 			vT.ReqNPUNum%util.NPUIndex8 == 0 {
@@ -63,9 +67,49 @@ func (tp *ascend310P) checkDyVJobReq() error {
 	return nil
 }
 
+func (tp *ascend310P) validDyVNPUTaskDVPPLabel(vT util.NPUTask) error {
+	if !vT.IsVNPUTask() {
+		return errors.New("not vNPU task")
+	}
+
+	dvppValue := GetVNPUTaskDVPP(vT)
+
+	switch vT.ReqNPUNum {
+	case 1, util.NPUIndex2:
+		if dvppValue != plugin.AscendDVPPEnabledNull {
+			return fmt.Errorf("%s dvpp label err:%s", vT.Name, dvppValue)
+		}
+	case util.NPUIndex4:
+		return nil
+	default:
+		return fmt.Errorf("err require number:%d", vT.ReqNPUNum)
+	}
+	return nil
+}
+
+// 310P vNPU tasks, must abide by the following conventions:
+// 1.vir01: no vpu-dvpp, if has error; vpu-level ignore.
+// 2.vir02: no vpu-dvpp, if has error; vpu-level ignore.
+// 3.vir04: ignore vpu-level and vpu-dvpp.
+// 4.every task must be vNPU Task.
+func (tp *ascend310P) validDyVNPUJobLabel() error {
+	if !tp.IsVJob() {
+		return fmt.Errorf("%s not VNPU job", tp.Name)
+	}
+	for _, vT := range tp.Tasks {
+		if tErr := tp.validDyVNPUTaskDVPPLabel(vT); tErr != nil {
+			return tErr
+		}
+	}
+	return nil
+}
+
 func (tp *ascend310P) validDyVNPUJob() *api.ValidateResult {
 	if reqErr := tp.checkDyVJobReq(); reqErr != nil {
 		return &api.ValidateResult{Pass: false, Reason: reqErr.Error(), Message: reqErr.Error()}
+	}
+	if labelErr := tp.validDyVNPUJobLabel(); labelErr != nil {
+		return &api.ValidateResult{Pass: false, Reason: labelErr.Error(), Message: labelErr.Error()}
 	}
 	return nil
 }
@@ -179,4 +223,13 @@ func (tp *ascend310P) preStartDyVNPU(ssn *framework.Session) error {
 func (tp *ascend310P) preStartVNPU(ssn *framework.Session) error {
 	tp.GetVNPUTemplate()
 	return tp.preStartDyVNPU(ssn)
+}
+
+// GetVNPUTaskDVPP dvpp default is null
+func GetVNPUTaskDVPP(asTask util.NPUTask) string {
+	value, ok := asTask.Label[plugin.AscendVNPUDVPP]
+	if !ok {
+		value = plugin.AscendDVPPEnabledNull
+	}
+	return value
 }
