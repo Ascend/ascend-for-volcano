@@ -13,13 +13,13 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
