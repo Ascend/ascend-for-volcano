@@ -59,7 +59,10 @@ const (
 	VNPUTempVir04C3NDVPP = "vir04_3c_ndvpp"
 	// VNPUTempVir04C4cDVPP vir04_4c_dvpp
 	VNPUTempVir04C4cDVPP = "vir04_4c_dvpp"
-
+	// VNPUTempVir08  vir08 only 910
+	VNPUTempVir08 = "vir08"
+	// VNPUTempVir16  vir16 only 910
+	VNPUTempVir16 = "vir16"
 	// Ascend310P 310P template name
 	Ascend310P = "Ascend310P"
 	// Ascend910 910 template name
