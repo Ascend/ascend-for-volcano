@@ -69,7 +69,7 @@ func (n *NPUNode) setNodeVNPUInfo(ni *api.NodeInfo, jobTemplate map[string]map[s
 	}
 
 	n.ValidVNode = true
-	klog.V(util.LogDebugLev).Infof("vNode<%s> initialisation success:<%#v>", n.Name, n.VNode)
+	klog.V(util.LogDebugLev).Infof("setNodeVNPUInfo %s initialisation success:<%#v>", n.Name, n.VNode)
 	return nil
 }
 
@@ -109,8 +109,8 @@ func (n NPUNode) getChipKindFromNpuNode() (string, error) {
 	}
 	chipKind := strings.Split(tempVal, "-")
 	if len(chipKind) < util.NPUIndex2 {
-		return "", fmt.Errorf("getChipKindFromNpuNode label %s value %s format incorrect", util.Accelerator,
-			chipKind)
+		return "", fmt.Errorf("getChipKindFromNpuNode label %s value %s %s", util.Accelerator,
+			chipKind, FormatIncorrectError)
 	}
 	return chipKind[1], nil
 }
@@ -161,14 +161,8 @@ func (n NPUNode) getCpuNumPerChip(templates []util.VTemplate) int {
 }
 
 func (n *NPUNode) initVChips(ni *api.NodeInfo, taskTemplate map[string]map[string]util.VResource) error {
-	chipCoreNum, err := n.VNode.getVChipCoreNum()
-	if err != nil {
-		return fmt.Errorf("vNode %s get vChip coreNum failed: %v", n.Name, err)
-	} // 1. get core number on each chip
-
 	chipTotalRes := n.VNode.getVChipTotalRes()
-
-	if err := n.createNodeNewVChips(chipCoreNum, chipTotalRes); err != nil {
+	if err := n.createNodeNewVChips(chipTotalRes); err != nil {
 		klog.V(util.LogDebugLev).Infof("vNode %s %s.", n.Name, err)
 	} // 3. create new VChip by freeCardID whole card
 
@@ -182,11 +176,11 @@ func (n *NPUNode) initVChips(ni *api.NodeInfo, taskTemplate map[string]map[strin
 	return nil
 }
 
-func (n NPUNode) createNodeNewVChips(chipCoreNum int, chipTotalRes util.VResource) error {
-	healthyCardIDs := n.getHealthyCardIDsFromNodeAndDeviceInfo()
+func (n NPUNode) createNodeNewVChips(chipTotalRes util.VResource) error {
+	healthyCardIDs, getErr := n.getHealthyCardIDsFromNodeAndDeviceInfo()
 	klog.V(util.LogDebugLev).Infof("createNodeNewVChips healthy chips: <%#v>", healthyCardIDs)
-	if len(healthyCardIDs) == 0 {
-		return fmt.Errorf("vNode %s getFreeCardIDsFromDeviceInfo failed", n.Name)
+	if getErr != nil {
+		return fmt.Errorf("getFreeCardIDsFromDeviceInfo %s", getErr)
 	}
 	for _, freeCardID := range healthyCardIDs {
 		n.VNode.Chips[freeCardID] = n.VNode.NewVChip(freeCardID, chipTotalRes)
@@ -194,7 +188,7 @@ func (n NPUNode) createNodeNewVChips(chipCoreNum int, chipTotalRes util.VResourc
 	return nil
 }
 
-func (n *NPUNode) getHealthyCardIDsFromNodeAndDeviceInfo() []int {
+func (n *NPUNode) getHealthyCardIDsFromNodeAndDeviceInfo() ([]int, error) {
 	var freeCardIDs []int
 	allocatableCoreNum := n.Allocate[util.AscendNPUCore] / util.NPUHexKilo
 	allocatableChipNum := int(allocatableCoreNum) / n.VNode.AiCorePerChip
@@ -204,8 +198,9 @@ func (n *NPUNode) getHealthyCardIDsFromNodeAndDeviceInfo() []int {
 	if !ok {
 		klog.V(util.LogDebugLev).Infof("getHealthyCardIDsFromNodeAndDeviceInfo node<%s> get unhealthy string failed",
 			n.Name)
-		return freeCardIDs
+		return nil, fmt.Errorf("no key: %s", util.HwPreName+n.VNode.ChipKind+"-Unhealthy")
 	}
+
 	unhealthyChips := strings.Split(unhealthyChipsStr, ",")
 
 	// 2. get vChip ID list and exclude fault chips
@@ -221,7 +216,7 @@ func (n *NPUNode) getHealthyCardIDsFromNodeAndDeviceInfo() []int {
 			freeCardIDs = append(freeCardIDs, i)
 		}
 	}
-	return freeCardIDs
+	return freeCardIDs, nil
 }
 
 // getTotalChipNum used after aicorePerChip set
@@ -538,12 +533,12 @@ func (vChip *VChip) isChipDVPPValid(vRes util.VResource) bool {
 
 // SelectChipFromNode get chip with least resource that meets vRes requirements
 func (vNode *VNode) SelectChipFromNode(vRes util.VResource) (string, error) {
-	var Chips []*VChip
+	var vChipSlice []*VChip
 	for _, Chip := range vNode.Chips {
-		Chips = append(Chips, Chip)
+		vChipSlice = append(vChipSlice, Chip)
 	}
 
-	tempVChips := vChipsList(Chips)
+	tempVChips := vChipsList(vChipSlice)
 	sort.Sort(tempVChips)
 	if len(tempVChips) == 0 {
 		return "", fmt.Errorf("SelectChipFromNode sorted chips len 0")

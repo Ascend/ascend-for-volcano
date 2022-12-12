@@ -76,7 +76,7 @@ func GetPhysicCardNameFromVChip(realCardName string) string {
 func GetWholeCardIDFromAscendReal(cardNameStr string) (int, error) {
 	idStr := strings.Split(cardNameStr, "-")
 	if len(idStr) < util.NPUIndex2 {
-		return util.ErrorInt, fmt.Errorf("getCardIDFromCardNameStr %s format incorrect", cardNameStr)
+		return util.ErrorInt, fmt.Errorf("getCardIDFromCardNameStr %s %s", cardNameStr, FormatIncorrectError)
 	}
 	id, err := strconv.Atoi(idStr[util.NPUIndex1])
 	if err != nil {

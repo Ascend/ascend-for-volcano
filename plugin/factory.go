@@ -145,13 +145,13 @@ func addConf(configs, value string) string {
 func (sHandle *ScheduleHandler) GetJobTemplate() map[string]map[string]util.VResource {
 	jobTemplate := map[string]map[string]util.VResource{
 		Ascend310P: {
-			"vir01":          {Aicore: 1, Aicpu: 1, DVPP: "null"},
-			"vir02":          {Aicore: 2, Aicpu: 2, DVPP: "null"},
-			"vir02_1c":       {Aicore: 2, Aicpu: 1, DVPP: "null"},
-			"vir04":          {Aicore: 4, Aicpu: 4, DVPP: "null"},
-			"vir04_3c":       {Aicore: 4, Aicpu: 3, DVPP: "null"},
-			"vir04_3c_ndvpp": {Aicore: 4, Aicpu: 3, DVPP: "no"},
-			"vir04_4c_dvpp":  {Aicore: 4, Aicpu: 4, DVPP: "yes"},
+			VNPUTempVir01:        {Aicore: 1, Aicpu: 1, DVPP: "null"},
+			VNPUTempVir02:        {Aicore: 2, Aicpu: 2, DVPP: "null"},
+			VNPUTempVir02C1:      {Aicore: 2, Aicpu: 1, DVPP: "null"},
+			VNPUTempVir04:        {Aicore: 4, Aicpu: 4, DVPP: "null"},
+			VNPUTempVir04C3:      {Aicore: 4, Aicpu: 3, DVPP: "null"},
+			VNPUTempVir04C3NDVPP: {Aicore: 4, Aicpu: 3, DVPP: "no"},
+			VNPUTempVir04C4cDVPP: {Aicore: 4, Aicpu: 4, DVPP: "yes"},
 		},
 		Ascend910: {
 			"vir02": {Aicore: 2, Aicpu: 1, DVPP: "null"},

@@ -281,7 +281,7 @@ func (asTask *NPUTask) setVTaskAllocated(taskInf *api.TaskInfo) {
 		asTask.VTask.Allocated.PhysicsName = getVTaskUsePhysicsNamesByInfo(taskInf)
 		asTask.VTask.setVTaskUseCardIDs()
 	default:
-		klog.V(LogErrorLev).Infof("%s status %v.", asTask.Name, asTask.Status)
+		klog.V(LogErrorLev).Infof("setVTaskAllocated %s status %v.", asTask.Name, asTask.Status)
 		return
 	}
 	return
@@ -315,4 +315,18 @@ func (asTask *NPUTask) InitVTask(taskInf *api.TaskInfo) error {
 	}
 	asTask.setVTaskAllocated(taskInf)
 	return nil
+}
+
+// IsVNPUTask Determine whether is the NPU virtual task.
+// Dynamic segmentation: huawei.com/npu-core.
+// static segmentation: huawei.com/Ascend910-Y.
+// no segmentation: huawei.com/Ascend910.
+func (asTask *NPUTask) IsVNPUTask() bool {
+	if asTask == nil {
+		return false
+	}
+	if len(strings.Split(asTask.ReqNPUName, "-")) > 1 {
+		return true
+	}
+	return false
 }
