@@ -128,9 +128,9 @@ func (reScheduler *ReScheduler) GetRunningJobs(
 			klog.V(util.LogDebugLev).Infof("job %s not in session, skip", jobInfo.UID)
 			continue
 		}
-		if schedulerJob.ReqNPUNum == 0 || schedulerJob.ReqNPUName != cardName { // req type is not current card type
+		if schedulerJob.ReqNPUNum == 0 || schedulerJob.GetReqCardNameFromRingController() != cardName { // req type is not current card type
 			klog.V(util.LogDebugLev).Infof("job %s requires npu %d name %s: illegal, skip", schedulerJob.Name,
-				schedulerJob.ReqNPUNum, schedulerJob.ReqNPUName)
+				schedulerJob.ReqNPUNum, schedulerJob.GetReqCardNameFromRingController())
 			continue
 		}
 		if len(schedulerJob.Selector) == 0 {
@@ -919,15 +919,10 @@ func (reScheduler *ReScheduler) checkNodeCurNodeIsFault(vcNode plugin.NPUNode, t
 		return nil
 	}
 	for _, fNode := range reScheduler.FaultNodes {
-		if vcNode.Name == fNode.NodeName && fNode.IsFaultNode {
-			if len(schedulerJob.Tasks) > 1 {
-				return fmt.Errorf("task %s cannot be assigned to node %s because it's in faultNode list",
-					task.Name, vcNode.Name)
-			}
-			if fNode.NodeHealthState == NodeUnhealthy { // none distributed job, npu fault considered in previous ops
-				return fmt.Errorf("task %s cannot be assigned to %s node %s", task.Name, NodeUnhealthy,
-					vcNode.Name)
-			}
+		if vcNode.Name == fNode.NodeName && fNode.IsFaultNode && fNode.NodeHealthState == NodeUnhealthy {
+			// none distributed job, npu fault considered in previous ops
+			return fmt.Errorf("task %s cannot be assigned to %s node %s", task.Name, NodeUnhealthy,
+				vcNode.Name)
 		}
 	}
 	klog.V(util.LogInfoLev).Infof("node %s is not fault node, check success", vcNode.Name)
