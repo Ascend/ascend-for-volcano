@@ -79,7 +79,6 @@ func (fTask *FaultTask) DeleteRealPodByTask(ssn *framework.Session, waitTime int
 func (fTask *FaultTask) getTaskUseFaultCardHealthState(fNode *FaultNode) []string {
 	var nodeUseCardHealthState []string
 	for _, taskUseCard := range fTask.UseCardName {
-		//taskUseCard = plugin.GetPhysicCardNameFromVChip(taskUseCard) // transfer vnpu like Ascend310P-1c-400-3_0
 		if util.IsSliceContain(taskUseCard, fNode.UnhealthyNPU) {
 			nodeUseCardHealthState = append(nodeUseCardHealthState, NodeCardUnhealthy)
 			continue

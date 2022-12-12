@@ -1059,7 +1059,7 @@ func (reScheduler ReScheduler) getTaskHealthState(fTask *FaultTask) (bool, strin
 					NodeUnhealthy, fNode.NodeName, NodeUnhealthy)
 				return true, NodeUnhealthy
 			}
-			nodeUseCardHealthState = fTask.getTaskUseFaultCardHealthState(&fNode)                // get fault NPUs on task used node
+			nodeUseCardHealthState = fTask.getTaskUseFaultCardHealthState(&fNode) // get fault NPUs on task used node
 		}
 	}
 	if util.IsSliceContain(NodeCardUnhealthy, nodeUseCardHealthState) { // if has unhealthy npu, return in advance
