@@ -147,7 +147,7 @@ func (fJob *FaultJob) GraceDeleteJob(ssn *framework.Session, npuJob *plugin.Sche
 		}
 		if delErr := npuTask.ForceDeletePodByTaskInf(ssn); delErr != nil {
 			klog.V(util.LogErrorLev).Infof("ForceDeletePodByTaskInf %s: %s.", npuTask.Name, delErr)
-			continue
+			//continue // todo: 合入代码
 		}
 		if err := npuTask.EvictJobByTask(ssn, reason, fTask.TaskName); err != nil {
 			return err

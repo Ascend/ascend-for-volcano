@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -161,6 +162,8 @@ func (tp *DynamicVNPU) downgradeTaskAICPU(taskResReq util.VResource) util.VResou
 // SetNPUTopologyToPodFn write chip to pod annotation AscendNPUCore
 func (tp *DynamicVNPU) SetNPUTopologyToPodFn(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource,
 	allocChipID string, chipVTemplate VTemplate) {
+	tmp := strconv.FormatInt(time.Now().UnixNano(), util.Base10)
+	task.Pod.Annotations[util.PodPredicateTime] = tmp
 	// 1. whole card
 	if node.IsResourceWholeCard(taskResReq.Aicore) {
 		task.Pod.Annotations[util.AscendNPUCore] = allocChipID

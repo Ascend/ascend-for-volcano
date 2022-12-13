@@ -121,6 +121,7 @@ func (asTask *NPUTask) DeleteRealPodByTask(ssn *framework.Session, waitTime int6
 
 // EvictJobByTask generally used by grace deletion
 func (asTask *NPUTask) EvictJobByTask(ssn *framework.Session, reason string, taskName string) error {
+	klog.V(LogDebugLev).Infof("enter EvictJobByTask...")
 	if asTask == nil {
 		klog.V(LogErrorLev).Infof("EvictJobByTask failed: %s.", ArgumentError)
 		return fmt.Errorf(ArgumentError)
@@ -202,7 +203,7 @@ func (asTask *NPUTask) ForceDeletePodByTaskInf(ssn *framework.Session) error {
 		}
 		return deleteErr
 	}
-	return fmt.Errorf("%s not in %s", asTask.Name, asTask.VTask.Allocated.NodeName)
+	return fmt.Errorf("%s is in %s, do not force delete", asTask.Name, asTask.VTask.Allocated.NodeName)
 }
 
 // IsTaskInItsNode check if task is on the node
@@ -218,7 +219,9 @@ func (asTask *NPUTask) IsTaskInItsNode(ssn *framework.Session) bool {
 		return false
 	}
 	_, taskOK := nodeInf.Tasks[api.TaskID(asTask.Name)]
-	if !taskOK {
+	_, taskFullNameOK := nodeInf.Tasks[api.TaskID(asTask.NameSpace+"/"+asTask.Name)]
+	klog.V(LogDebugLev).Infof("node %s has tasks: %#v", nodeInf.Name, nodeInf.Tasks)
+	if !taskOK && !taskFullNameOK{
 		klog.V(LogErrorLev).Infof("node %s has no task %s.", nodeInf.Name, asTask.Name)
 		return false
 	}
