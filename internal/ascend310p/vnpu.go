@@ -212,9 +212,8 @@ func (tp *ascend310P) preStartDyVNPU(ssn *framework.Session) error {
 		return nil
 	}
 	for _, nT := range nTasks {
-		if delErr := nT.ForceDeletePodByTaskInf(ssn); delErr != nil {
+		if delErr := nT.ForceDeletePodByTaskInf(ssn, vnpu.DyCutFailedError); delErr != nil {
 			klog.V(util.LogErrorLev).Infof("ForceDeletePodByTaskInf %s: %s.", nT.Name, delErr)
-			continue
 		}
 	}
 	return nil

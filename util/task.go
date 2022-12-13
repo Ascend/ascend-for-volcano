@@ -192,7 +192,7 @@ func GetTaskInfoByNameFromSSN(ssn *framework.Session, taskName string) (*api.Tas
 	return nil, fmt.Errorf("did not find task %s in session", taskName)
 }
 
-func (asTask *NPUTask) ForceDeletePodByTaskInf(ssn *framework.Session) error {
+func (asTask *NPUTask) ForceDeletePodByTaskInf(ssn *framework.Session, reason string) error {
 	if !asTask.IsTaskInItsNode(ssn) {
 		klog.V(LogErrorLev).Infof("%s not in %s, need force delete.", asTask.Name,
 			asTask.VTask.Allocated.NodeName)
@@ -202,7 +202,10 @@ func (asTask *NPUTask) ForceDeletePodByTaskInf(ssn *framework.Session) error {
 		}
 		return deleteErr
 	}
-	return fmt.Errorf("%s not in %s", asTask.Name, asTask.VTask.Allocated.NodeName)
+	if err := asTask.EvictJobByTask(ssn, reason, asTask.Name); err != nil {
+		return err
+	}
+	return nil
 }
 
 // IsTaskInItsNode check if task is on the node

@@ -336,6 +336,8 @@ func updatePodsPendingReason(job *api.JobInfo, tID api.TaskID, reason string) {
 }
 
 func (sHandle *ScheduleHandler) updatePodGroupPendingReason(job *api.JobInfo, reason string) {
+	job.JobFitErrors = reason
+
 	jc := scheduling.PodGroupCondition{
 		Type:               scheduling.PodGroupUnschedulableType,
 		Status:             v1.ConditionTrue,
@@ -378,7 +380,6 @@ func (sHandle *ScheduleHandler) SetJobPendingReason(vcJob *api.JobInfo, reason i
 			updatePodsPendingReason(vcJob, tID, nodeErrors.Error())
 			reasonTmp += nodeErrors.Error()
 		}
-		vcJob.JobFitErrors = reasonTmp
 	default:
 		return fmt.Errorf("assert reason(%T) failed", reason)
 	}
