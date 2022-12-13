@@ -10,7 +10,6 @@ package base
 import (
 	"errors"
 	"fmt"
-
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
@@ -56,6 +55,25 @@ func (tp *NPUHandler) ValidNPUJob() *api.ValidateResult {
 		}
 	}
 	return nil
+}
+
+// CheckVNPUSegmentEnableByConfig Check VNPU segmentEnable by init plugin parameters, return true if dynamic
+func (tp *NPUHandler) CheckVNPUSegmentEnableByConfig() bool {
+	configuration, err := util.GetConfigFromSchedulerConfigMap(util.CMInitParamKey, tp.FrameAttr.Conf)
+	if err != nil {
+		klog.V(util.LogDebugLev).Info("cannot get configuration, segmentEnable.")
+		return false
+	}
+	// get segmentEnable by user configuration
+	segmentEnable, ok := configuration.Arguments[util.SegmentEnable]
+	if !ok {
+		klog.V(util.LogDebugLev).Info("checkVNPUSegmentEnable doesn't exist presetVirtualDevice.")
+		return false
+	}
+	if segmentEnable == "false" {
+		return true
+	}
+	return false
 }
 
 // CheckNodeNPUByTask check nod npu meet task req

@@ -33,7 +33,8 @@ type VTemplate struct {
 
 // VNPU vnpu struct
 type VNPU struct {
-	VT VTemplate
+	DynamicByConf bool
+	VT            VTemplate
 	StaticVNPU
 	DynamicVNPU
 }
@@ -44,7 +45,7 @@ type StaticVNPU struct {
 
 type DynamicVNPU struct {
 	vnpuHandler
-	Cache map[string][]string // node: taskMap
+	DowngradeCache map[string][]string // taskName: nodes
 }
 
 type vnpuHandler interface {

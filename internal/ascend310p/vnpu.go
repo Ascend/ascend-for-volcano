@@ -10,7 +10,6 @@ package ascend310p
 import (
 	"errors"
 	"fmt"
-
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
@@ -26,15 +25,22 @@ func (tp *ascend310P) GetVNPUTemplate() {
 	}
 }
 
+func (tp *ascend310P) GetPresetVirtualDevices() {
+	tp.vHandle.DynamicByConf = tp.CheckVNPUSegmentEnableByConfig()
+}
+
 func (tp *ascend310P) InitVNPU() {
 	tp.vHandle = &vnpu.VNPU{
 		DynamicVNPU: vnpu.DynamicVNPU{
-			Cache: make(map[string][]string, util.MapInitNum),
+			DowngradeCache: make(map[string][]string, util.MapInitNum),
 		},
 	}
 }
 
 func (tp *ascend310P) checkStVJobReq() error {
+	if tp.vHandle.DynamicByConf {
+		return fmt.Errorf("volcano configuration %s false, only support dynamic vnpu", util.SegmentEnable)
+	}
 	for _, vT := range tp.Tasks {
 		if _, ok := tp.vHandle.VT.Data[vT.ReqNPUName]; !ok {
 			return fmt.Errorf("%s req %s not in template", vT.Name, vT.ReqNPUName)
@@ -56,6 +62,9 @@ func (tp *ascend310P) validStVNPUJob() *api.ValidateResult {
 func (tp *ascend310P) checkDyVJobReq() error {
 	if !tp.IsVJob() {
 		return fmt.Errorf("%s not VNPU job", tp.Name)
+	}
+	if !tp.vHandle.DynamicByConf {
+		return fmt.Errorf("volcano configuration %s true, only support static vnpu", util.SegmentEnable)
 	}
 	for _, vT := range tp.Tasks {
 		if vT.ReqNPUNum == 1 || vT.ReqNPUNum == util.NPUIndex2 || vT.ReqNPUNum == util.NPUIndex4 ||
@@ -221,6 +230,8 @@ func (tp *ascend310P) preStartDyVNPU(ssn *framework.Session) error {
 
 func (tp *ascend310P) preStartVNPU(ssn *framework.Session) error {
 	tp.GetVNPUTemplate()
+	tp.GetPresetVirtualDevices()
+	tp.vHandle.DowngradeCache = make(map[string][]string, util.MapInitNum)
 	return tp.preStartDyVNPU(ssn)
 }
 
