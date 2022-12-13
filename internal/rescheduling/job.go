@@ -145,12 +145,9 @@ func (fJob *FaultJob) GraceDeleteJob(ssn *framework.Session, npuJob *plugin.Sche
 				"GraceDeleteJob: npuTask %s has been deleted in session.", fTask.TaskName)
 			return fmt.Errorf("npuTask %s not in session", fTask.TaskName)
 		}
-		if delErr := npuTask.ForceDeletePodByTaskInf(ssn); delErr != nil {
+		if delErr := npuTask.ForceDeletePodByTaskInf(ssn, reason); delErr != nil {
 			klog.V(util.LogErrorLev).Infof("ForceDeletePodByTaskInf %s: %s.", npuTask.Name, delErr)
 			//continue // todo: 合入代码
-		}
-		if err := npuTask.EvictJobByTask(ssn, reason, fTask.TaskName); err != nil {
-			return err
 		}
 	}
 	return nil

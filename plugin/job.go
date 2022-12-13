@@ -336,6 +336,8 @@ func updatePodsPendingReason(job *api.JobInfo, tID api.TaskID, reason string) {
 }
 
 func (sHandle *ScheduleHandler) updatePodGroupPendingReason(job *api.JobInfo, reason string) {
+	job.JobFitErrors = reason
+
 	jc := scheduling.PodGroupCondition{
 		Type:               scheduling.PodGroupUnschedulableType,
 		Status:             v1.ConditionTrue,
@@ -368,9 +370,9 @@ func (sHandle *ScheduleHandler) SetJobPendingReason(vcJob *api.JobInfo, reason i
 	case string:
 		// job failed
 		vcJob.JobFitErrors = value
+		reasonTmp = value
 		// for write pending reason into pod
 		updatePodsPendingReason(vcJob, "", reasonTmp)
-		reasonTmp = value
 	case map[api.TaskID]*api.FitErrors:
 		vcJob.NodesFitErrors = value
 		for tID, nodeErrors := range value {
@@ -378,7 +380,6 @@ func (sHandle *ScheduleHandler) SetJobPendingReason(vcJob *api.JobInfo, reason i
 			updatePodsPendingReason(vcJob, tID, nodeErrors.Error())
 			reasonTmp += nodeErrors.Error()
 		}
-		vcJob.JobFitErrors = reasonTmp
 	default:
 		return fmt.Errorf("assert reason(%T) failed", reason)
 	}
@@ -430,8 +431,8 @@ func (sHandle *ScheduleHandler) JobValid(obj interface{}) *api.ValidateResult {
 // SetJobPendReasonByNodesCase In nodes select case, set node failed and add failed reason.
 func (sHandle ScheduleHandler) SetJobPendReasonByNodesCase(job *api.JobInfo) {
 	if int32(len(job.Tasks)-len(job.NodesFitErrors)) >= job.MinAvailable {
-		klog.V(util.LogDebugLev).Infof("%s not block by nodes(task:%d - nodeErr:%d > jobMin:%d).", job.Name,
-			len(job.Tasks), len(job.NodesFitErrors), job.MinAvailable)
+		klog.V(util.LogDebugLev).Infof("%s not block by nodes(tasks:%d -> jobMin:%d -> nodeErrs:%d).", job.Name,
+			len(job.Tasks), job.MinAvailable, len(job.NodesFitErrors))
 		return
 	}
 	if setErr := sHandle.SetJobPendingReason(job, job.NodesFitErrors); setErr != nil {

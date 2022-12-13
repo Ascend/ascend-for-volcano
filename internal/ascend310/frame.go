@@ -89,8 +89,8 @@ func (tp *asend310) ValidNPUJob() *api.ValidateResult {
 
 // PreStartAction pre-processing actions for rescheduling
 func (tp *asend310) PreStartAction(ssn *framework.Session) error {
-	klog.V(util.LogInfoLev).Infof("Entering PreStartAction of %s", util.NPU310CardName)
-	defer klog.V(util.LogInfoLev).Infof("Leaving PreStartAction of %s", util.NPU310CardName)
+	klog.V(util.LogDebugLev).Infof("Entering PreStartAction of %s", util.NPU310CardName)
+	defer klog.V(util.LogDebugLev).Infof("Leaving PreStartAction of %s", util.NPU310CardName)
 	if tp == nil || ssn == nil || tp.FrameAttr.KubeClient == nil {
 		return fmt.Errorf("%s handler not enabled or ssn is nil: %s", util.NPU310CardName, util.ArgumentError)
 	}

@@ -193,7 +193,7 @@ func GetTaskInfoByNameFromSSN(ssn *framework.Session, taskName string) (*api.Tas
 	return nil, fmt.Errorf("did not find task %s in session", taskName)
 }
 
-func (asTask *NPUTask) ForceDeletePodByTaskInf(ssn *framework.Session) error {
+func (asTask *NPUTask) ForceDeletePodByTaskInf(ssn *framework.Session, reason string) error {
 	if !asTask.IsTaskInItsNode(ssn) {
 		klog.V(LogErrorLev).Infof("%s not in %s, need force delete.", asTask.Name,
 			asTask.VTask.Allocated.NodeName)
@@ -203,7 +203,10 @@ func (asTask *NPUTask) ForceDeletePodByTaskInf(ssn *framework.Session) error {
 		}
 		return deleteErr
 	}
-	return fmt.Errorf("%s is in %s, do not force delete", asTask.Name, asTask.VTask.Allocated.NodeName)
+	if err := asTask.EvictJobByTask(ssn, reason, asTask.Name); err != nil {
+		return err
+	}
+	return nil
 }
 
 // IsTaskInItsNode check if task is on the node
@@ -284,7 +287,7 @@ func (asTask *NPUTask) setVTaskAllocated(taskInf *api.TaskInfo) {
 		asTask.VTask.Allocated.PhysicsName = getVTaskUsePhysicsNamesByInfo(taskInf)
 		asTask.VTask.setVTaskUseCardIDs()
 	default:
-		klog.V(LogErrorLev).Infof("%s status %v.", asTask.Name, asTask.Status)
+		klog.V(LogErrorLev).Infof("setVTaskAllocated %s status %v.", asTask.Name, asTask.Status)
 		return
 	}
 	return
@@ -318,4 +321,18 @@ func (asTask *NPUTask) InitVTask(taskInf *api.TaskInfo) error {
 	}
 	asTask.setVTaskAllocated(taskInf)
 	return nil
+}
+
+// IsVNPUTask Determine whether is the NPU virtual task.
+// Dynamic segmentation: huawei.com/npu-core.
+// static segmentation: huawei.com/Ascend910-Y.
+// no segmentation: huawei.com/Ascend910.
+func (asTask *NPUTask) IsVNPUTask() bool {
+	if asTask == nil {
+		return false
+	}
+	if len(strings.Split(asTask.ReqNPUName, "-")) > 1 {
+		return true
+	}
+	return false
 }

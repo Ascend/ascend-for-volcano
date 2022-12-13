@@ -137,7 +137,7 @@ func marshalData(data interface{}) []byte {
 func getNodeDeviceInfoFromCM(kubeClient kubernetes.Interface, node *api.NodeInfo) (*NodeDeviceInfo, error) {
 	cmData, getErr := util.GetConfigMapWithRetry(kubeClient, util.DevInfoNameSpace, util.DevInfoPreName+node.Name)
 	if getErr != nil {
-		klog.V(util.LogErrorLev).Infof("getNodeDeviceInfoFromCM :%#v.", getErr)
+		klog.V(util.LogErrorLev).Infof("GetConfigMapWithRetry :%#v.", getErr)
 		return nil, getErr
 	}
 
@@ -188,7 +188,7 @@ func (n *NPUNode) InitNPUNodeByNodeInf(npuNode *api.NodeInfo, kubeClient kuberne
 		n.Annotation[k] = v
 	}
 	if setVNPUErr := n.setNodeVNPUInfo(npuNode, vJobTemplate); setVNPUErr != nil {
-		klog.V(util.LogDebugLev).Infof("setNodeVNPUInfo %s %v", npuNode.Name, setVNPUErr)
+		klog.V(util.LogDebugLev).Infof("setNodeVNPUInfo %s %s", npuNode.Name, setVNPUErr)
 	}
 	return nil
 }

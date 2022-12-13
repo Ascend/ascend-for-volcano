@@ -432,16 +432,16 @@ func (reScheduler *ReScheduler) NewCommonReScheduler(jobType string) {
 
 // SynCacheFaultNodeWithSession Synchronise FaultNodes in cache by updating the information using current session
 func (reScheduler *ReScheduler) SynCacheFaultNodeWithSession(cardName string) {
-	klog.V(util.LogInfoLev).Infof("enter SynCacheFaultNodeWithSession ...")
-	defer klog.V(util.LogInfoLev).Infof("leave SynCacheFaultNodeWithSession ...")
-	klog.V(util.LogInfoLev).Infof("ReSchedulerCache fault nodes before sync: %#v", reScheduler.FaultNodes)
+	klog.V(util.LogDebugLev).Infof("enter SynCacheFaultNodeWithSession ...")
+	defer klog.V(util.LogDebugLev).Infof("leave SynCacheFaultNodeWithSession ...")
+	klog.V(util.LogDebugLev).Infof("ReSchedulerCache fault nodes before sync: %#v", reScheduler.FaultNodes)
 	if reScheduler == nil {
 		klog.V(util.LogErrorLev).Infof("SynCacheFaultNodeWithSession: %s, nil reScheduler", util.ArgumentError)
 		return
 	}
 	var updatedFaultNodes []FaultNode
 	for _, faultNode := range reScheduler.FaultNodes {
-		klog.V(util.LogInfoLev).Infof("Updating fault node %s recorded cache", faultNode.NodeName)
+		klog.V(util.LogDebugLev).Infof("Updating fault node %s recorded cache", faultNode.NodeName)
 		// 1. nodes not in session should be kept in cache
 		if !faultNode.isNodeInSessionByNpuNodes(reScheduler.Nodes) {
 			klog.V(util.LogInfoLev).Infof("node %s in cache is not in session, keep without updating.",
