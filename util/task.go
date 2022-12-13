@@ -223,7 +223,6 @@ func (asTask *NPUTask) IsTaskInItsNode(ssn *framework.Session) bool {
 	}
 	_, taskOK := nodeInf.Tasks[api.TaskID(asTask.Name)]
 	_, taskFullNameOK := nodeInf.Tasks[api.TaskID(asTask.NameSpace+"/"+asTask.Name)]
-	klog.V(LogDebugLev).Infof("node %s has tasks: %#v", nodeInf.Name, nodeInf.Tasks)
 	if !taskOK && !taskFullNameOK {
 		klog.V(LogErrorLev).Infof("node %s has no task %s.", nodeInf.Name, asTask.Name)
 		return false
