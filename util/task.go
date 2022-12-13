@@ -205,7 +205,7 @@ func (asTask *NPUTask) ForceDeletePodByTaskInf(ssn *framework.Session, reason st
 	if err := asTask.EvictJobByTask(ssn, reason, asTask.Name); err != nil {
 		return err
 	}
-	return fmt.Errorf("%s not in %s", asTask.Name, asTask.VTask.Allocated.NodeName)
+	return nil
 }
 
 // IsTaskInItsNode check if task is on the node
