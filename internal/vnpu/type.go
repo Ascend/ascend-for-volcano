@@ -46,6 +46,9 @@ type StaticVNPU struct {
 type DynamicVNPU struct {
 	vnpuHandler
 	DowngradeCache map[string][]string // taskName: nodes
+	// for Concurrent task. not same core request task only has one on a node in same time.
+	// nodeName: templateName:taskUID
+	ConCache map[string]map[string]map[api.TaskID]struct{}
 }
 
 type vnpuHandler interface {

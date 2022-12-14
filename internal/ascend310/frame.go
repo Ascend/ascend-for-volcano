@@ -181,3 +181,7 @@ func (tp *asend310) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *plug
 	klog.V(util.LogDebugLev).Infof("%s UseAnnotation handle is nil", PluginName)
 	return nil
 }
+
+func (tp *asend310) ReleaseAnnotation(_ *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
+	return &node
+}

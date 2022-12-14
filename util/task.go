@@ -211,8 +211,8 @@ func (asTask *NPUTask) ForceDeletePodByTaskInf(ssn *framework.Session, reason st
 
 // IsTaskInItsNode check if task is on the node
 func (asTask *NPUTask) IsTaskInItsNode(ssn *framework.Session) bool {
-	if ssn == nil {
-		klog.V(LogErrorLev).Infof("isTaskInItsNode has no node.")
+	if ssn == nil || asTask.VTask == nil {
+		klog.V(LogErrorLev).Infof("isTaskInItsNode %s.", ArgumentError)
 		return false
 	}
 	nodeName := asTask.VTask.Allocated.NodeName
@@ -255,6 +255,20 @@ func getVTaskUsePhysicsNamesByInfo(taskInf *api.TaskInfo) []string {
 	return strings.Split(value, ",")
 }
 
+// GetVTaskUseTemplate the format is : 0-vir04-3c_ndvpp,0-vir0
+func GetVTaskUseTemplate(taskInf *api.TaskInfo) (string, error) {
+	value, ok := taskInf.Pod.Annotations[AscendNPUCore]
+	if !ok {
+		return "", fmt.Errorf("%s's anno has no %s", taskInf.Name, AscendNPUCore)
+	}
+	if !strings.Contains(value, "vir") {
+		return "", fmt.Errorf("not dyCut job :%s", value)
+	}
+
+	temps := strings.Split(value, "-")
+	return strings.Join(temps[1:], "-"), nil
+}
+
 func (vt *VTask) setVTaskUseCardIDs() {
 	if len(vt.Allocated.PhysicsName) == 0 {
 		klog.V(LogErrorLev).Infof("%#v nil PhysicsName.", vt.Allocated)
@@ -293,7 +307,7 @@ func (asTask *NPUTask) setVTaskAllocated(taskInf *api.TaskInfo) {
 }
 
 func (asTask *NPUTask) setVTaskStatusFromInfo(taskInf *api.TaskInfo) error {
-	if _, ok := taskInf.Pod.Annotations[PodAssignKey]; !ok {
+	if _, ok := taskInf.Pod.Annotations[AscendNPUCore]; !ok {
 		asTask.Status = TaskStatusInit
 		return nil
 	}

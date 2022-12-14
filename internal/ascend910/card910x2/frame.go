@@ -213,3 +213,7 @@ func (tp *card910x2) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo
 	}
 	return nil
 }
+
+func (tp *card910x2) ReleaseAnnotation(_ *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
+	return &node
+}

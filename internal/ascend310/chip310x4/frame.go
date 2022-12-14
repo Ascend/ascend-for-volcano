@@ -99,3 +99,7 @@ func (tp *chip310x4) SelectNPUFromNode(task *api.TaskInfo, node plugin.NPUNode) 
 	klog.V(util.LogErrorLev).Infof("%s selectNPUFromNode err: %s", tp.GetPluginName(), err.Error())
 	return nil, err
 }
+
+func (tp *chip310x4) ReleaseAnnotation(_ *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
+	return &node
+}

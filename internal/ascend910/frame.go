@@ -167,3 +167,7 @@ func (tp *ascend910) PreStopAction(env *plugin.ScheduleEnv) error {
 	}
 	return nil
 }
+
+func (tp *ascend910) ReleaseAnnotation(_ *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
+	return &node
+}

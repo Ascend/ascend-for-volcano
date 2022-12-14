@@ -255,3 +255,7 @@ func (tp *half910x4) selectNPUFromNode(task *api.TaskInfo, node plugin.NPUNode) 
 	}
 	return nodeTop[:taskNPUNum], nil
 }
+
+func (tp *half910x4) ReleaseAnnotation(_ *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
+	return &node
+}
