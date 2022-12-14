@@ -193,8 +193,8 @@ func GetTaskInfoByNameFromSSN(ssn *framework.Session, taskName string) (*api.Tas
 	return nil, fmt.Errorf("did not find task %s in session", taskName)
 }
 
-func (asTask *NPUTask) ForceDeletePodByTaskInf(ssn *framework.Session, reason string) error {
-	if !asTask.IsTaskInItsNode(ssn) {
+func (asTask *NPUTask) ForceDeletePodByTaskInf(ssn *framework.Session, reason string, nodeName string) error {
+	if !asTask.IsTaskInItsNode(ssn, nodeName) {
 		klog.V(LogErrorLev).Infof("%s not in %s, need force delete.", asTask.Name,
 			asTask.VTask.Allocated.NodeName)
 		deleteErr := asTask.DeleteRealPodByTask(ssn, 0)
@@ -210,20 +210,20 @@ func (asTask *NPUTask) ForceDeletePodByTaskInf(ssn *framework.Session, reason st
 }
 
 // IsTaskInItsNode check if task is on the node
-func (asTask *NPUTask) IsTaskInItsNode(ssn *framework.Session) bool {
+func (asTask *NPUTask) IsTaskInItsNode(ssn *framework.Session, nodeName string) bool {
 	if ssn == nil {
 		klog.V(LogErrorLev).Infof("isTaskInItsNode has no node.")
 		return false
 	}
-	nodeName := asTask.VTask.Allocated.NodeName
 	nodeInf, ok := ssn.Nodes[nodeName]
+
 	if !ok {
 		klog.V(LogErrorLev).Infof("session has no node %v.", nodeName)
 		return false
 	}
-	_, taskOK := nodeInf.Tasks[api.TaskID(asTask.Name)]
+
 	_, taskFullNameOK := nodeInf.Tasks[api.TaskID(asTask.NameSpace+"/"+asTask.Name)]
-	if !taskOK && !taskFullNameOK {
+	if !taskFullNameOK {
 		klog.V(LogErrorLev).Infof("node %s has no task %s.", nodeInf.Name, asTask.Name)
 		return false
 	}

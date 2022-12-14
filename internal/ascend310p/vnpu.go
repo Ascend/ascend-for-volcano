@@ -10,6 +10,7 @@ package ascend310p
 import (
 	"errors"
 	"fmt"
+	"volcano.sh/apis/pkg/apis/scheduling"
 
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -84,6 +85,9 @@ func (tp *ascend310P) validDyVNPUTaskDVPPLabel(vT util.NPUTask) error {
 
 	dvppValue := GetVNPUTaskDVPP(vT)
 
+	if vT.ReqNPUNum > 0 && vT.ReqNPUNum % util.NPUIndex8 == 0 {
+		return nil
+	}
 	switch vT.ReqNPUNum {
 	case 1, util.NPUIndex2:
 		if dvppValue != plugin.AscendDVPPEnabledNull {
@@ -115,6 +119,10 @@ func (tp *ascend310P) validDyVNPUJobLabel() error {
 }
 
 func (tp *ascend310P) validDyVNPUJob() *api.ValidateResult {
+	if tp.Status == scheduling.PodGroupRunning { // todo: uncomment
+		klog.V(util.LogDebugLev).Infof("%s %s's pg is running", PluginName, tp.ComJob.Name)
+		return nil
+	}
 	if reqErr := tp.checkDyVJobReq(); reqErr != nil {
 		return &api.ValidateResult{Pass: false, Reason: reqErr.Error(), Message: reqErr.Error()}
 	}
@@ -222,7 +230,7 @@ func (tp *ascend310P) preStartDyVNPU(ssn *framework.Session) error {
 		return nil
 	}
 	for _, nT := range nTasks {
-		if delErr := nT.ForceDeletePodByTaskInf(ssn, vnpu.DyCutFailedError); delErr != nil {
+		if delErr := nT.ForceDeletePodByTaskInf(ssn, vnpu.DyCutFailedError, nT.VTask.Allocated.NodeName); delErr != nil {
 			klog.V(util.LogErrorLev).Infof("ForceDeletePodByTaskInf %s: %s.", nT.Name, delErr)
 		}
 	}
