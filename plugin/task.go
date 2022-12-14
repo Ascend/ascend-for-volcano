@@ -81,6 +81,11 @@ func (sHandle *ScheduleHandler) releaseAnnotation(task *api.TaskInfo, vcJob Sche
 	sHandle.Nodes[vcNode.Name] = vcNode
 	klog.V(util.LogDebugLev).Infof("%s releaseAnnotation %s's %s on %s,new top:[%s].", PluginName, task.Name,
 		reqStr, vcNode.Name, reqStr+","+value)
+	tmpNode := vcJob.handler.ReleaseAnnotation(task, vcNode)
+	if tmpNode != nil {
+		// update node.
+		sHandle.Nodes[vcNode.Name] = *tmpNode
+	}
 }
 
 // NPUDeallocateFunc Free assigned npu, if allocate failed by volcano frame.

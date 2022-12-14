@@ -501,7 +501,7 @@ func (sJob SchedulerJob) GetAnnoName() (string, error) {
 			klog.V(util.LogErrorLev).Infof("%s no has %s label in dyCut mode.", sJob.Name, util.JobKindKey)
 			return "", fmt.Errorf("no %s label in dyCut mode", util.JobKindKey)
 		}
-		return util.PodAssignKey, nil
+		return util.AscendNPUCore, nil
 	}
 	return sJob.handler.GetAnnoName(), nil
 }
