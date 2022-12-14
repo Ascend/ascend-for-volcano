@@ -21,6 +21,23 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
+// IsNodeHasDifferentUnFinishedTask judge the node wither has the different template unfinished job.
+func (tp *DynamicVNPU) IsNodeHasDifferentUnFinishedTask(taskInfo *api.TaskInfo, nodeInf plugin.NPUNode) error {
+	template, getErr := util.GetVTaskUseTemplate(taskInfo)
+	if getErr != nil {
+		return nil
+	}
+	nodeTempMap, ok := tp.ConCache[nodeInf.Name]
+	if !ok {
+		return nil
+	}
+	tID, tOK := nodeTempMap[template]
+	if !tOK {
+		return nil
+	}
+	return fmt.Errorf("%s is using %s, and not rewrite", tID, nodeInf.Name)
+}
+
 // CheckNodeNPUByTask check chip on node has enough resource, fault chips are not in list, unstable excluded
 func (tp *DynamicVNPU) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource) error {
 	klog.V(util.LogDebugLev).Infof("check dynamic vNPU %s on %s", task.Name, node.Name)
@@ -28,7 +45,7 @@ func (tp *DynamicVNPU) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNod
 		klog.V(util.LogInfoLev).Infof("dynamic vNPU node<%s> not valid vNode", node.Name)
 		return errors.New("CheckNodeNPUByTask invalid VNode")
 	}
-	if !node.IsNodeTotalResEnough(taskResReq) || !node.IsNodeChipResEnough(taskResReq) {
+	if node.IsNodeMeetRes(taskResReq) {
 		// if node resource not enough, reduce task aiCPU
 		if tp.taskAICPUCanBeDowngrade(taskResReq) {
 			klog.V(util.LogInfoLev).Infof("dynamic vnpu task<%s> resource not enough, downgrade cpu", task.Name)
@@ -37,6 +54,9 @@ func (tp *DynamicVNPU) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNod
 		}
 		return fmt.Errorf("dynamic vnpu task<%s> CheckNodeNPUByTask node %s resource not enough",
 			task.Name, node.Name)
+	}
+	if diffErr := tp.IsNodeHasDifferentUnFinishedTask(task, node); diffErr != nil {
+		return diffErr
 	}
 	klog.V(util.LogInfoLev).Infof("dynamic vnpu task<%s> CheckNodeNPUByTask node<%s> ok", task.Name, node.Name)
 	return nil
@@ -76,6 +96,68 @@ func (tp *DynamicVNPU) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeIn
 	return nil
 }
 
+func (tp *DynamicVNPU) releaseTaskInConCache(task *api.TaskInfo, node plugin.NPUNode) error {
+	template, getErr := util.GetVTaskUseTemplate(task)
+	if getErr != nil {
+		return getErr
+	}
+	temp, ok := tp.ConCache[node.Name]
+	if !ok {
+		return fmt.Errorf("node %s not in ConCache", node.Name)
+	}
+	tIDs, ok := temp[template]
+	if !ok {
+		return fmt.Errorf("template %s not in %s ConCache", template, node.Name)
+	}
+	if _, ok := tIDs[task.UID]; !ok {
+		return fmt.Errorf("tID %s not in %s %s ConCache", task.UID, template, node.Name)
+	}
+	delete(tIDs, task.UID)
+	if len(tIDs) == 0 {
+		delete(temp, template)
+		if len(temp) == 0 {
+			delete(tp.ConCache, node.Name)
+			return nil
+		}
+		tp.ConCache[node.Name] = temp
+		return nil
+	}
+	temp[template] = tIDs
+	tp.ConCache[node.Name] = temp
+	return nil
+}
+
+// ReleaseAnnotation release Annotation, in dy is release ConCache.
+func (tp *DynamicVNPU) ReleaseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
+	if releaseERR := tp.releaseTaskInConCache(task, node); releaseERR != nil {
+		klog.V(util.LogErrorLev).Infof("dynamic %s UseAnnotation UpdateNodeInfo:%s.", task.Name, releaseERR)
+	}
+	return &node
+}
+
+func (tp *DynamicVNPU) addTaskInConCache(task *api.TaskInfo, node plugin.NPUNode) error {
+	template, getErr := util.GetVTaskUseTemplate(task)
+	if getErr != nil {
+		return getErr
+	}
+	date, ok := tp.ConCache[node.Name]
+	if !ok {
+		date = make(map[string]map[api.TaskID]struct{}, util.MapInitNum)
+	}
+	temp, ok := date[template]
+	if !ok {
+		temp = make(map[api.TaskID]struct{}, util.MapInitNum)
+	}
+	_, ok = temp[task.UID]
+	if ok {
+		return nil
+	}
+	temp[task.UID] = struct{}{}
+	date[template] = temp
+	tp.ConCache[node.Name] = date
+	return nil
+}
+
 // UseAnnotation write task use vnpu to pod annotation
 func (tp *DynamicVNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource,
 	chipVTemplate VTemplate) *plugin.NPUNode {
@@ -91,12 +173,16 @@ func (tp *DynamicVNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode, ta
 
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("UseAnnotation dynamic %s on %s err: %s", task.Name, node.Name, err)
-		return nil
+		return &node
 	}
 	klog.V(util.LogDebugLev).Infof("dynamic vnpu UseAnnotation allocChipID:<%s>", allocChipID)
 
 	tp.SetNPUTopologyToPodFn(task, node, taskResReq, allocChipID, chipVTemplate)
-	return tp.UpdateNodeInfo(node, allocChipID, taskResReq)
+	upNode := tp.UpdateNodeInfo(node, allocChipID, taskResReq)
+	if addErr := tp.addTaskInConCache(task, *upNode); addErr != nil {
+		klog.V(util.LogErrorLev).Infof("dynamic vnpu %s UseAnnotation addTaskInConCache:%s", task.Name, addErr)
+	}
+	return upNode
 }
 
 func (tp *DynamicVNPU) GetTaskResource(task *api.TaskInfo, node plugin.NPUNode,

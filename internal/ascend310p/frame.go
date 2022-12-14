@@ -176,3 +176,20 @@ func (tp *ascend310P) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *pl
 
 	return nil
 }
+
+// ReleaseAnnotation release select npu for task to node
+func (tp *ascend310P) ReleaseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
+	klog.V(util.LogDebugLev).Infof("%s UseAnnotation job(%s).", tp.GetPluginName(), tp.Name)
+	var err error
+	switch tp.Type {
+	case util.JobTypeWhole, util.JobTypeStCut:
+		return &node
+	case util.JobTypeDyCut:
+		return tp.vHandle.DynamicVNPU.ReleaseAnnotation(task, node)
+	default:
+		err = fmt.Errorf("%s no type %d", tp.Name, tp.Type)
+		klog.V(util.LogDebugLev).Infof("%s CheckNodeNPUByTask %s %s.", tp.GetPluginName(), tp.Name, err)
+	}
+
+	return &node
+}

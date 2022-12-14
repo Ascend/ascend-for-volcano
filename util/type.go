@@ -99,7 +99,7 @@ const (
 	NPU310PCardNamePre = "Ascend310P-"
 	// AscendNPUPodRealUse for NPU pod real use cards.
 	AscendNPUPodRealUse = "huawei.com/AscendReal"
-	// AscendNPUCore for NPU core num, like 56
+	// AscendNPUCore for NPU core num, like 56; Records the chip name that the scheduler assigns to the pod.
 	AscendNPUCore = "huawei.com/npu-core"
 
 	// SegmentEnable for VNPU segment enable flag. Default is "false".
@@ -130,8 +130,6 @@ const (
 	JobKind310Value = "ascend-310"
 	// JobKind310PValue 310p ring controller name
 	JobKind310PValue = "ascend-310P"
-	// PodAssignKey Records the chip name that the scheduler assigns to the pod.
-	PodAssignKey = "huawei.com/npu-core"
 )
 
 // VTemplate for vNode resource
