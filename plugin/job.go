@@ -297,11 +297,6 @@ func (sJob SchedulerJob) preCheckJob(vcFrame VolcanoFrame) error {
 
 // ValidJobFn valid job.
 func (sJob SchedulerJob) ValidJobFn(vcFrame VolcanoFrame) *api.ValidateResult {
-	if sJob.Status == scheduling.PodGroupRunning {
-		klog.V(util.LogDebugLev).Infof("%s %s's pg is running", PluginName, sJob.Name)
-		return nil
-	}
-	// Validate job selector, for all kinds of job.
 	if errPreCheck := sJob.preCheckJob(vcFrame); errPreCheck != nil {
 		klog.V(util.LogErrorLev).Infof("%s %s, err: %#v.", PluginName, sJob.Name, errPreCheck)
 
