@@ -1047,7 +1047,6 @@ func (reScheduler ReScheduler) getTaskHealthState(fTask *FaultTask) (bool, strin
 	if fTask.NodeName == "" {
 		return false, NodeHealthy // tasks has not yet been scheduled
 	}
-	klog.V(util.LogDebugLev).Infof("real fault nodes are: %#v", realFaultNode)
 	for _, fNode := range realFaultNode {
 		if fNode.NodeName == fTask.NodeName {
 			if !fNode.IsFaultNode { // if task used node isFaultNode is false, return healthy
@@ -1063,7 +1062,6 @@ func (reScheduler ReScheduler) getTaskHealthState(fTask *FaultTask) (bool, strin
 			nodeUseCardHealthState = fTask.getTaskUseFaultCardHealthState(&fNode) // get fault NPUs on task used node
 		}
 	}
-	klog.V(util.LogDebugLev).Infof("node use card health state %#v", nodeUseCardHealthState)
 	if util.IsSliceContain(NodeCardUnhealthy, nodeUseCardHealthState) { // if has unhealthy npu, return in advance
 		klog.V(util.LogInfoLev).Infof("task %s use %s node, thus task sets %s", fTask.TaskName,
 			NodeCardUnhealthy, NodeCardUnhealthy)

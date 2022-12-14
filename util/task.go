@@ -212,7 +212,7 @@ func (asTask *NPUTask) ForceDeletePodByTaskInf(ssn *framework.Session, reason st
 // IsTaskInItsNode check if task is on the node
 func (asTask *NPUTask) IsTaskInItsNode(ssn *framework.Session, nodeName string) bool {
 	if ssn == nil || asTask.VTask == nil {
-		klog.V(LogErrorLev).Infof("isTaskInItsNode has no node.")
+		klog.V(LogErrorLev).Infof("isTaskInItsNode %s.", ArgumentError)
 		return false
 	}
 	nodeInf, ok := ssn.Nodes[nodeName]

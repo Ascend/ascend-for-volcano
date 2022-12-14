@@ -10,9 +10,9 @@ package ascend310p
 import (
 	"errors"
 	"fmt"
-	"volcano.sh/apis/pkg/apis/scheduling"
 
 	"k8s.io/klog"
+	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
