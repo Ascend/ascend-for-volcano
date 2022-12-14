@@ -236,7 +236,7 @@ func (asTask *NPUTask) setVTaskType() {
 	if len(names) == 1 {
 		taskType = JobTypeWhole
 	}
-	if strings.Contains(asTask.ReqNPUName, "vir") {
+	if strings.HasSuffix(asTask.ReqNPUName, "c") {
 		taskType = JobTypeStCut
 	}
 	if strings.Contains(asTask.ReqNPUName, "npu-core") {
