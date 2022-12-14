@@ -71,7 +71,7 @@ func getResTemplateFromTaskSetting(coreNum int, cpuLevel, dvpp string) string {
 	case util.NPUIndex2:
 		virTemplate = plugin.VNPUTempVir02
 		if cpuLevel == plugin.AscendVNPULevelLow {
-			virTemplate = virTemplate + "_c"
+			virTemplate = virTemplate + "_1c"
 		}
 	case util.NPUIndex4:
 		switch dvpp {
