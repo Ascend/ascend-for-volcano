@@ -85,7 +85,7 @@ func (tp *ascend310P) validDyVNPUTaskDVPPLabel(vT util.NPUTask) error {
 
 	dvppValue := GetVNPUTaskDVPP(vT)
 
-	if vT.ReqNPUNum > 0 && vT.ReqNPUNum % util.NPUIndex8 == 0 {
+	if vT.ReqNPUNum > 0 && vT.ReqNPUNum%util.NPUIndex8 == 0 {
 		return nil
 	}
 	switch vT.ReqNPUNum {
