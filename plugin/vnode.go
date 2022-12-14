@@ -405,6 +405,11 @@ func (vChip *VChip) UpdateDVPP(podResDVPP string) {
 	}
 }
 
+// IsNodeMeetRes judge the node meet resource or not.
+func (n NPUNode) IsNodeMeetRes(taskResReq util.VResource) bool {
+	return !n.IsNodeTotalResEnough(taskResReq) || !n.IsNodeChipResEnough(taskResReq)
+}
+
 // IsNodeTotalResEnough judge node total resource enough
 func (n NPUNode) IsNodeTotalResEnough(vRes util.VResource) bool {
 	var nodeResFree util.VResource

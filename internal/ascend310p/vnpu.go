@@ -224,7 +224,7 @@ func (tp *ascend310P) getAllNeedRestartDyTasks(ssn *framework.Session) []util.NP
 	return tp.getRestartDyTasksFromJobs(vJobs, ssn)
 }
 
-func (tp *ascend310P) preStartDyVNPU(ssn *framework.Session) error {
+func (tp *ascend310P) deleteDyCutErrTasks(ssn *framework.Session) error {
 	nTasks := tp.getAllNeedRestartDyTasks(ssn)
 	if len(nTasks) == 0 {
 		return nil
@@ -235,6 +235,71 @@ func (tp *ascend310P) preStartDyVNPU(ssn *framework.Session) error {
 		}
 	}
 	return nil
+}
+
+func initDyCutConCacheByJobInfo(nodes map[string]map[string]map[api.TaskID]struct{}, jobInf *api.JobInfo,
+	vJob plugin.SchedulerJob) error {
+	if jobInf == nil {
+		return fmt.Errorf("initDyCutConCacheByJobInfo :%s", util.ArgumentError)
+	}
+	for taskID, vT := range vJob.Tasks {
+		if vT.Status == util.TaskStatusAllocate {
+			taskInfo, taskOK := jobInf.Tasks[taskID]
+			if !taskOK {
+				klog.V(util.LogErrorLev).Infof("initConCache %s not in job.", vT.Name)
+				continue
+			}
+			template, getErr := util.GetVTaskUseTemplate(taskInfo)
+			if getErr != nil {
+				continue
+			}
+			if vT.Allocated.NodeName != "" {
+				templates, ok := nodes[vT.Allocated.NodeName]
+				if !ok {
+					templates = make(map[string]map[api.TaskID]struct{}, util.MapInitNum)
+				}
+				tasks, ok := templates[template]
+				if !ok {
+					tasks = make(map[api.TaskID]struct{}, util.MapInitNum)
+				}
+				tasks[taskID] = struct{}{}
+				templates[template] = tasks
+				nodes[vT.Allocated.NodeName] = templates
+			}
+		}
+	}
+	return nil
+}
+
+// ConCache format nodeName: templateName:taskUID
+func (tp *ascend310P) initConCache(ssn *framework.Session) error {
+	if tp.vHandle == nil {
+		return fmt.Errorf("initConCache : %s's vHandle not init", tp.GetPluginName())
+	}
+
+	nodes := make(map[string]map[string]map[api.TaskID]struct{}, util.MapInitNum)
+	for jobID, vJob := range tp.Jobs {
+		jobInf, jobOk := ssn.Jobs[jobID]
+		if !jobOk {
+			klog.V(util.LogErrorLev).Infof("initConCache %s not in ssn.", jobID)
+			continue
+		}
+		if initErr := initDyCutConCacheByJobInfo(nodes, jobInf, vJob); initErr != nil {
+			continue
+		}
+	}
+	tp.vHandle.DynamicVNPU.ConCache = nodes
+	klog.V(util.LogErrorLev).Infof("hahaha===== %+v.", tp.vHandle.DynamicVNPU.ConCache)
+	return nil
+}
+
+func (tp *ascend310P) preStartDyVNPU(ssn *framework.Session) error {
+	var reErrors []error
+
+	reErrors = append(reErrors, tp.initConCache(ssn))
+	reErrors = append(reErrors, tp.deleteDyCutErrTasks(ssn))
+
+	return util.ConvertErrSliceToError(reErrors)
 }
 
 func (tp *ascend310P) preStartVNPU(ssn *framework.Session) error {

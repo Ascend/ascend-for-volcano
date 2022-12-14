@@ -199,3 +199,18 @@ func (vResource *VResource) Sub(resource VResource) {
 func (vResource VResource) BeGreater(resource VResource) bool {
 	return vResource.Aicore >= resource.Aicore && vResource.Aicpu >= resource.Aicpu
 }
+
+// ConvertErrSliceToError convert []error to one error.
+func ConvertErrSliceToError(reErrors []error) error {
+	var reE error
+
+	for _, value := range reErrors {
+		if reE == nil {
+			reE = value
+			continue
+		}
+		reE = fmt.Errorf("%s %s", reE, value)
+	}
+
+	return reE
+}
