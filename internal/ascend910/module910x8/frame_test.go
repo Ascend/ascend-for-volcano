@@ -135,7 +135,7 @@ func TestValidNPUJob(t *testing.T) {
 func buildCheckNodeNPUByTaskTestCases01() []itest.CheckNodeNPUByTaskTestCase {
 	return []itest.CheckNodeNPUByTaskTestCase{
 		{
-			Name: "01-CheckNodeNPUByDyTask return nil when node npu meet task req",
+			Name: "01-CheckNodeNPUByTask return nil when node npu meet task req",
 			Task: test.FakeTaskWithResReq("pod0", util.NPU910CardName, util.NPUIndex4),
 			Node: plugin.NPUNode{
 				CommonNode: plugin.CommonNode{
@@ -148,7 +148,7 @@ func buildCheckNodeNPUByTaskTestCases01() []itest.CheckNodeNPUByTaskTestCase {
 			WantErr: nil,
 		},
 		{
-			Name: "02-CheckNodeNPUByDyTask return err when task is not npu task",
+			Name: "02-CheckNodeNPUByTask return err when task is not npu task",
 			Task: test.FakeTaskWithResReq("pod1", util.NPU910CardName, util.NPUIndex4),
 			Node: plugin.NPUNode{
 				CommonNode: plugin.CommonNode{
@@ -159,7 +159,7 @@ func buildCheckNodeNPUByTaskTestCases01() []itest.CheckNodeNPUByTaskTestCase {
 			WantErr: errors.New("task<pod1> is not npu task"),
 		},
 		{
-			Name: "03-CheckNodeNPUByDyTask return err when node has no req npu",
+			Name: "03-CheckNodeNPUByTask return err when node has no req npu",
 			Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex4),
 			Node: plugin.NPUNode{
 				CommonNode: plugin.CommonNode{
@@ -176,7 +176,7 @@ func buildCheckNodeNPUByTaskTestCases01() []itest.CheckNodeNPUByTaskTestCase {
 func buildCheckNodeNPUByTaskTestCases02() []itest.CheckNodeNPUByTaskTestCase {
 	return []itest.CheckNodeNPUByTaskTestCase{
 		{
-			Name: "04-CheckNodeNPUByDyTask return err when node has no req npu",
+			Name: "04-CheckNodeNPUByTask return err when node has no req npu",
 			Task: test.FakeTaskWithResReq("pod0", util.NPU910CardName, util.NPUIndex4),
 			Node: plugin.NPUNode{
 				CommonNode: plugin.CommonNode{
@@ -188,7 +188,7 @@ func buildCheckNodeNPUByTaskTestCases02() []itest.CheckNodeNPUByTaskTestCase {
 				"err: [] not meet req npu(4)"),
 		},
 		{
-			Name: "05-CheckNodeNPUByDyTask return err when node has no req npu",
+			Name: "05-CheckNodeNPUByTask return err when node has no req npu",
 			Task: test.FakeTaskWithResReq("pod0", util.NPU910CardName, util.NPUIndex4),
 			Node: plugin.NPUNode{
 				CommonNode: plugin.CommonNode{
@@ -202,7 +202,7 @@ func buildCheckNodeNPUByTaskTestCases02() []itest.CheckNodeNPUByTaskTestCase {
 				"err: [0 1 4] not meet req npu(4)"),
 		},
 		{
-			Name: "06-CheckNodeNPUByDyTask return err when node has no req npu",
+			Name: "06-CheckNodeNPUByTask return err when node has no req npu",
 			Task: test.FakeTaskWithResReq("pod0", util.NPU910CardName, util.NPUIndex4),
 			Node: plugin.NPUNode{
 				CommonNode: plugin.CommonNode{
@@ -222,7 +222,7 @@ func buildCheckNodeNPUByTaskTestCases02() []itest.CheckNodeNPUByTaskTestCase {
 func buildCheckNodeNPUByTaskTestCases03() []itest.CheckNodeNPUByTaskTestCase {
 	return []itest.CheckNodeNPUByTaskTestCase{
 		{
-			Name: "01-CheckNodeNPUByDyTask return err when task is nil",
+			Name: "01-CheckNodeNPUByTask return err when task is nil",
 			Task: nil,
 			Node: plugin.NPUNode{
 				CommonNode: plugin.CommonNode{
@@ -233,7 +233,7 @@ func buildCheckNodeNPUByTaskTestCases03() []itest.CheckNodeNPUByTaskTestCase {
 			WantErr: errors.New(util.ArgumentError),
 		},
 		{
-			Name: "02-CheckNodeNPUByDyTask return err when node annotation is nil",
+			Name: "02-CheckNodeNPUByTask return err when node annotation is nil",
 			Task: test.FakeTaskWithResReq("pod1", util.NPU310PCardName, util.NPUIndex2),
 			Node: plugin.NPUNode{
 				CommonNode: plugin.CommonNode{

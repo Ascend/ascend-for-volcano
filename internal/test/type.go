@@ -28,7 +28,7 @@ type ValidNPUJobTestCase struct {
 	Attr    util.SchedulerJobAttr
 }
 
-// CheckNodeNPUByTaskTestCase CheckNodeNPUByDyTask test case
+// CheckNodeNPUByTaskTestCase CheckNodeNPUByTask test case
 type CheckNodeNPUByTaskTestCase struct {
 	Task    *api.TaskInfo
 	Name    string

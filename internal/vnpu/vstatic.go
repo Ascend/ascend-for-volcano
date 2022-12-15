@@ -15,21 +15,21 @@ import (
 )
 
 // CheckNodeNPUByTask pass for static
-func (tp *StaticVNPU) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource) error {
-	klog.V(util.LogInfoLev).Infof("static vnpu task<%s> node<%s> CheckNodeNPUByDyTask pass", task.Name, node.Name)
+func (tp *StaticVNPU) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode, _ util.VResource) error {
+	klog.V(util.LogInfoLev).Infof("static vnpu task<%s> node<%s> CheckNodeNPUByTask pass", task.Name, node.Name)
 	return nil
 }
 
 // ScoreBestNPUNodes pass for static
-func (tp *StaticVNPU) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo, scoreMap map[string]float64) error {
+func (tp *StaticVNPU) ScoreBestNPUNodes(task *api.TaskInfo, _ []*api.NodeInfo, scoreMap map[string]float64) error {
 	klog.V(util.LogInfoLev).Infof("static vnpu task<%s> scoreMap<%#v> ScoreBestNPUNodes pass",
 		task.Name, scoreMap)
 	return nil
 }
 
 // UseAnnotation pass for static
-func (tp *StaticVNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource,
-	chipVTemplate VTemplate) *plugin.NPUNode {
+func (tp *StaticVNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode, _ util.VResource,
+	_ VTemplate) *plugin.NPUNode {
 	klog.V(util.LogInfoLev).Infof("static vnpu task<%s> node<%s> UseAnnotation pass", task.Name, node.Name)
 	return &node
 }
