@@ -258,22 +258,30 @@ func initDyCutConCacheByJobInfo(nodes map[string]map[string]map[api.TaskID]struc
 				klog.V(util.LogErrorLev).Infof("GetVTaskUseTemplate %s %s.", vT.Name, getErr)
 				continue
 			}
-			if vT.Allocated.NodeName != "" {
-				templates, ok := nodes[vT.Allocated.NodeName]
-				if !ok {
-					templates = make(map[string]map[api.TaskID]struct{}, util.MapInitNum)
-				}
-				tasks, ok := templates[template]
-				if !ok {
-					tasks = make(map[api.TaskID]struct{}, util.MapInitNum)
-				}
-				tasks[taskID] = struct{}{}
-				templates[template] = tasks
-				nodes[vT.Allocated.NodeName] = templates
-			}
+			initConcacheByTemplate(nodes, vT, template, taskID)
 		}
 	}
 	return nil
+}
+
+func initConcacheByTemplate(nodes map[string]map[string]map[api.TaskID]struct{}, vT util.NPUTask,
+	template string, taskID api.TaskID) {
+	if nodes == nil {
+		return
+	}
+	if vT.Allocated.NodeName != "" {
+		templates, nodeOk := nodes[vT.Allocated.NodeName]
+		if !nodeOk {
+			templates = make(map[string]map[api.TaskID]struct{}, util.MapInitNum)
+		}
+		tasks, ok := templates[template]
+		if !ok {
+			tasks = make(map[api.TaskID]struct{}, util.MapInitNum)
+		}
+		tasks[taskID] = struct{}{}
+		templates[template] = tasks
+		nodes[vT.Allocated.NodeName] = templates
+	}
 }
 
 // ConCache format nodeName: templateName:taskUID

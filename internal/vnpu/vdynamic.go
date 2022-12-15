@@ -96,6 +96,9 @@ func (tp *VirtualNPU) CheckNodeNPUByDyTask(task *api.TaskInfo, node plugin.NPUNo
 // ScoreBestNPUNodes node with the least free resource would be sorted to higher rank
 func (tp *DynamicVNPU) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo, scoreMap map[string]float64) error {
 	klog.V(util.LogInfoLev).Infof("dynamic vnpu task<%s> ScoreBestNPUNodes", task.Name)
+	if len(scoreMap) == 0 {
+		return errors.New(util.ArgumentError)
+	}
 	// 1. sort nodes with free resource from low to high
 	nodesSorted := tp.orderVNodesByFreeResource(nodes)
 	if len(nodesSorted) == 0 {
