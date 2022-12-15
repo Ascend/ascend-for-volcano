@@ -113,7 +113,7 @@ func TestValidNPUJob(t *testing.T) {
 
 func buildCheckNodeNPUByTaskTestCase1() itest.CheckNodeNPUByTaskTestCase {
 	return itest.CheckNodeNPUByTaskTestCase{
-		Name: "01-CheckNodeNPUByTask when return nil node npu meet task req",
+		Name: "01-CheckNodeNPUByDyTask when return nil node npu meet task req",
 		Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex2),
 		Node: plugin.NPUNode{
 			CommonNode: plugin.CommonNode{
@@ -127,7 +127,7 @@ func buildCheckNodeNPUByTaskTestCase1() itest.CheckNodeNPUByTaskTestCase {
 
 func buildCheckNodeNPUByTaskTestCase2() itest.CheckNodeNPUByTaskTestCase {
 	return itest.CheckNodeNPUByTaskTestCase{
-		Name: "02-CheckNodeNPUByTask return err when task is not npu task",
+		Name: "02-CheckNodeNPUByDyTask return err when task is not npu task",
 		Task: test.FakeTaskWithResReq("pod1", util.NPU310PCardName, util.NPUIndex2),
 		Node: plugin.NPUNode{
 			CommonNode: plugin.CommonNode{
@@ -141,7 +141,7 @@ func buildCheckNodeNPUByTaskTestCase2() itest.CheckNodeNPUByTaskTestCase {
 
 func buildCheckNodeNPUByTaskTestCase3() itest.CheckNodeNPUByTaskTestCase {
 	return itest.CheckNodeNPUByTaskTestCase{
-		Name: "03-CheckNodeNPUByTask return err when node has no req npu",
+		Name: "03-CheckNodeNPUByDyTask return err when node has no req npu",
 		Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex2),
 		Node: plugin.NPUNode{
 			CommonNode: plugin.CommonNode{
@@ -155,7 +155,7 @@ func buildCheckNodeNPUByTaskTestCase3() itest.CheckNodeNPUByTaskTestCase {
 
 func buildCheckNodeNPUByTaskTestCase4() itest.CheckNodeNPUByTaskTestCase {
 	return itest.CheckNodeNPUByTaskTestCase{
-		Name: "04-CheckNodeNPUByTask return err when node has no req npu",
+		Name: "04-CheckNodeNPUByDyTask return err when node has no req npu",
 		Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex2),
 		Node: plugin.NPUNode{
 			CommonNode: plugin.CommonNode{
@@ -170,7 +170,7 @@ func buildCheckNodeNPUByTaskTestCase4() itest.CheckNodeNPUByTaskTestCase {
 
 func buildCheckNodeNPUByTaskTestCase5() itest.CheckNodeNPUByTaskTestCase {
 	return itest.CheckNodeNPUByTaskTestCase{
-		Name: "05-CheckNodeNPUByTask return err when node has no enough npu",
+		Name: "05-CheckNodeNPUByDyTask return err when node has no enough npu",
 		Task: test.FakeTaskWithResReq("pod0", util.NPU310PCardName, util.NPUIndex2),
 		Node: plugin.NPUNode{
 			CommonNode: plugin.CommonNode{
@@ -207,7 +207,7 @@ func TestCheckNodeNPUByTask(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.Name, func(t *testing.T) {
 			if err := npu.CheckNodeNPUByTask(tt.Task, tt.Node); !reflect.DeepEqual(err, tt.WantErr) {
-				t.Errorf("CheckNodeNPUByTask() error = %v, wantErr %v", err, tt.WantErr)
+				t.Errorf("CheckNodeNPUByDyTask() error = %v, wantErr %v", err, tt.WantErr)
 			}
 		})
 	}

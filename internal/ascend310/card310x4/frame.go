@@ -72,23 +72,23 @@ func (tp *card310x4) ValidNPUJob() *api.ValidateResult {
 func (tp *card310x4) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode) error {
 	if tp == nil || task == nil || len(node.Annotation) == 0 {
 		err := errors.New(util.ArgumentError)
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask %s.", SchedulerName, err.Error())
+		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByDyTask %s.", SchedulerName, err.Error())
 		return err
 	}
 	taskNPUNum, err := tp.GetTaskReqNPUNum(task)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
+		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByDyTask err: %s", tp.GetPluginName(), err.Error())
 		return err
 	}
 
 	nodeTop, err := tp.GetUsableTopFromNode(node)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
+		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByDyTask err: %s", tp.GetPluginName(), err.Error())
 		return err
 	}
 
 	if err = tp.JudgeNodeAndTaskNPU(taskNPUNum, nodeTop); err != nil {
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
+		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByDyTask err: %s", tp.GetPluginName(), err.Error())
 		return fmt.Errorf("checkNodeNPUByTask %s : %v", util.NodeNotMeetTopologyWarning, err)
 	}
 

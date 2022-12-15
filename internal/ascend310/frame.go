@@ -142,7 +142,7 @@ func (tp *asend310) PreStopAction(env *plugin.ScheduleEnv) error {
 func (tp *asend310) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode) error {
 	if tp == nil || task == nil || len(node.Annotation) == 0 {
 		err := errors.New(util.ArgumentError)
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", PluginName, err.Error())
+		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByDyTask err: %s", PluginName, err.Error())
 		return err
 	}
 	if tp.handle != nil {
@@ -150,7 +150,7 @@ func (tp *asend310) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode) 
 			return err
 		}
 	}
-	klog.V(util.LogDebugLev).Infof("%s CheckNodeNPUByTask handle is nil", PluginName)
+	klog.V(util.LogDebugLev).Infof("%s CheckNodeNPUByDyTask handle is nil", PluginName)
 	return nil
 }
 

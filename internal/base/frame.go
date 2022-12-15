@@ -81,25 +81,25 @@ func (tp *NPUHandler) CheckVNPUSegmentEnableByConfig() bool {
 func (tp *NPUHandler) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode) error {
 	if tp == nil || task == nil || len(node.Annotation) == 0 {
 		err := errors.New(util.ArgumentError)
-		klog.V(util.LogErrorLev).Infof("CheckNodeNPUByTask err: %s.", err.Error())
+		klog.V(util.LogErrorLev).Infof("CheckNodeNPUByDyTask err: %s.", err.Error())
 		return err
 	}
-	klog.V(util.LogDebugLev).Infof("%s CheckNodeNPUByTask task<%s> node<%s>.",
+	klog.V(util.LogDebugLev).Infof("%s CheckNodeNPUByDyTask task<%s> node<%s>.",
 		tp.GetPluginName(), task.Name, node.Name)
 	taskNPUNum, err := tp.GetTaskReqNPUNum(task)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
+		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByDyTask err: %s", tp.GetPluginName(), err.Error())
 		return err
 	}
 
 	nodeTop, err := tp.GetUsableTopFromNode(node)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
+		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByDyTask err: %s", tp.GetPluginName(), err.Error())
 		return err
 	}
 
 	if err := tp.JudgeNodeAndTaskNPU(taskNPUNum, nodeTop); err != nil {
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
+		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByDyTask err: %s", tp.GetPluginName(), err.Error())
 		return err
 	}
 

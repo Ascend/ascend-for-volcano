@@ -131,29 +131,29 @@ func (tp *half910x4) PreStopAction(env *plugin.ScheduleEnv) error {
 func (tp *half910x4) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode) error {
 	if len(node.Annotation) == 0 {
 		err := fmt.Errorf("node<%s> annotation is empty", node.Name)
-		klog.V(util.LogErrorLev).Infof("CheckNodeNPUByTask err: %s", err)
+		klog.V(util.LogErrorLev).Infof("CheckNodeNPUByDyTask err: %s", err)
 		return err
 	}
 	taskNPUNum, err := tp.GetTaskReqNPUNum(task)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err)
+		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByDyTask err: %s", tp.GetPluginName(), err)
 		return err
 	}
 
 	nodeTop, err := tp.getUsableTopFromNode(node, len(tp.Tasks) > 1)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err)
+		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByDyTask err: %s", tp.GetPluginName(), err)
 		return err
 	}
 
 	if err = tp.judgeNodeAndTaskNPU(taskNPUNum, nodeTop); err != nil {
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err)
+		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByDyTask err: %s", tp.GetPluginName(), err)
 		return fmt.Errorf("checkNodeNPUByTask %s err: %s", util.NodeNotMeetTopologyWarning, err)
 	}
 
 	if tp.reHandle != nil {
 		if reErr := tp.reHandle.CheckNodeNPUByTask(task, node); reErr != nil {
-			return fmt.Errorf("rescheduling CheckNodeNPUByTask %s", reErr)
+			return fmt.Errorf("rescheduling CheckNodeNPUByDyTask %s", reErr)
 		}
 	}
 	return nil

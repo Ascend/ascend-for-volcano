@@ -87,7 +87,7 @@ func TestInitMyJobPlugin(t *testing.T) {
 func buildCheckNodeNPUByTaskTestCases() []itest.CheckNodeNPUByTaskTestCase {
 	return []itest.CheckNodeNPUByTaskTestCase{
 		{
-			Name: "01-CheckNodeNPUByTask return err when task is nil",
+			Name: "01-CheckNodeNPUByDyTask return err when task is nil",
 			Task: nil,
 			Node: plugin.NPUNode{
 				CommonNode: plugin.CommonNode{
@@ -98,7 +98,7 @@ func buildCheckNodeNPUByTaskTestCases() []itest.CheckNodeNPUByTaskTestCase {
 			WantErr: errors.New(util.ArgumentError),
 		},
 		{
-			Name: "02-CheckNodeNPUByTask return err when node annotation is nil",
+			Name: "02-CheckNodeNPUByDyTask return err when node annotation is nil",
 			Task: test.FakeTaskWithResReq("pod1", util.NPU310PCardName, util.NPUIndex2),
 			Node: plugin.NPUNode{
 				CommonNode: plugin.CommonNode{
@@ -118,7 +118,7 @@ func TestCheckNodeNPUByTask(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.Name, func(t *testing.T) {
 			if err := npu.CheckNodeNPUByTask(tt.Task, tt.Node); !reflect.DeepEqual(err, tt.WantErr) {
-				t.Errorf("CheckNodeNPUByTask() error = %v, wantErr %v", err, tt.WantErr)
+				t.Errorf("CheckNodeNPUByDyTask() error = %v, wantErr %v", err, tt.WantErr)
 			}
 		})
 	}
@@ -160,7 +160,7 @@ func TestScoreBestNPUNodes(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.Name, func(t *testing.T) {
 			if err := npu.ScoreBestNPUNodes(tt.Task, tt.Nodes, tt.ScoreMap); !reflect.DeepEqual(err, tt.WantErr) {
-				t.Errorf("CheckNodeNPUByTask() error = %v, wantErr %v", err, tt.WantErr)
+				t.Errorf("CheckNodeNPUByDyTask() error = %v, wantErr %v", err, tt.WantErr)
 			}
 		})
 	}
@@ -198,7 +198,7 @@ func TestUseAnnotation(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.Name, func(t *testing.T) {
 			if err := npu.UseAnnotation(tt.Task, tt.Node); !reflect.DeepEqual(err, tt.WantNode) {
-				t.Errorf("CheckNodeNPUByTask() error = %v, wantErr %v", err, tt.WantNode)
+				t.Errorf("CheckNodeNPUByDyTask() error = %v, wantErr %v", err, tt.WantNode)
 			}
 		})
 	}
