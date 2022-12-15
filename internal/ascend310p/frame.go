@@ -115,7 +115,7 @@ func (tp *ascend310P) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode
 	}
 
 	if reErr := tp.reHandle.CheckNodeNPUByTask(task, node); reErr != nil {
-		return fmt.Errorf("rescheduling CheckNodeNPUByDyTask %s", reErr.Error())
+		return fmt.Errorf("rescheduling CheckNodeNPUByTask %s", reErr.Error())
 	}
 	return nil
 }

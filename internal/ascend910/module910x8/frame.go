@@ -137,39 +137,39 @@ func (tp *module910x8) PreStopAction(env *plugin.ScheduleEnv) error {
 func (tp *module910x8) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode) error {
 	if tp == nil || task == nil || len(node.Annotation) == 0 {
 		err := errors.New(util.ArgumentError)
-		klog.V(util.LogErrorLev).Infof("CheckNodeNPUByDyTask err: %s", err.Error())
+		klog.V(util.LogErrorLev).Infof("CheckNodeNPUByTask err: %s", err.Error())
 		return err
 	}
 	taskNPUNum, err := tp.GetTaskReqNPUNum(task)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByDyTask err: %s", tp.GetPluginName(), err.Error())
+		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
 		return err
 	}
 	job, ok := tp.Jobs[task.Job]
 	if !ok {
 		err = fmt.Errorf("task<%s> is not npu task", task.Name)
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByDyTask err: %s", tp.GetPluginName(), err.Error())
+		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
 		return err
 	}
 	if taskNPUNum < tp.MaxNodeNPUNum && len(job.Tasks) > 1 {
 		err = fmt.Errorf("distribute task<%s> req num<%d> is invalid", task.Name, taskNPUNum)
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByDyTask err: %s", tp.GetPluginName(), err.Error())
+		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
 		return err
 	}
 	nodeTop, err := tp.getUsableTopFromNode(node, len(tp.Tasks) > 1)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByDyTask err: %s", tp.GetPluginName(), err.Error())
+		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
 		return err
 	}
 
 	if err = tp.judgeNodeAndTaskNPU(taskNPUNum, nodeTop); err != nil {
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByDyTask err: %s", tp.GetPluginName(), err.Error())
+		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
 		return fmt.Errorf("checkNodeNPUByTask %s err: %s", util.NodeNotMeetTopologyWarning, err.Error())
 	}
 
 	if tp.reHandle != nil {
 		if reErr := tp.reHandle.CheckNodeNPUByTask(task, node); reErr != nil {
-			return fmt.Errorf("rescheduling CheckNodeNPUByDyTask %s", reErr.Error())
+			return fmt.Errorf("rescheduling CheckNodeNPUByTask %s", reErr.Error())
 		}
 	}
 	return nil
