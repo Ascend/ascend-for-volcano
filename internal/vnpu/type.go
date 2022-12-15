@@ -31,18 +31,20 @@ type VTemplate struct {
 	Data map[string]util.VResource
 }
 
-// VNPU vnpu struct
-type VNPU struct {
+// VirtualNPU vnpu struct
+type VirtualNPU struct {
 	DynamicByConf bool
 	VT            VTemplate
 	StaticVNPU
 	DynamicVNPU
 }
 
+// StaticVNPU Static VNPU struct.
 type StaticVNPU struct {
 	vnpuHandler
 }
 
+// DynamicVNPU dynamic VNPU struct.
 type DynamicVNPU struct {
 	vnpuHandler
 	DowngradeCache map[string][]string // taskName: nodes

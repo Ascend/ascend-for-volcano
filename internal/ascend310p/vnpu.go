@@ -32,7 +32,7 @@ func (tp *ascend310P) GetPresetVirtualDevices() {
 }
 
 func (tp *ascend310P) InitVNPU() {
-	tp.vHandle = &vnpu.VNPU{
+	tp.vHandle = &vnpu.VirtualNPU{
 		DynamicVNPU: vnpu.DynamicVNPU{
 			DowngradeCache: make(map[string][]string, util.MapInitNum),
 		},
@@ -63,7 +63,7 @@ func (tp *ascend310P) validStVNPUJob() *api.ValidateResult {
 
 func (tp *ascend310P) checkDyVJobReq() error {
 	if !tp.IsVJob() {
-		return fmt.Errorf("%s not VNPU job", tp.Name)
+		return fmt.Errorf("%s not VirtualNPU job", tp.Name)
 	}
 	if !tp.vHandle.DynamicByConf {
 		return fmt.Errorf("volcano configuration %s true, only support static vnpu", util.SegmentEnable)
@@ -108,7 +108,7 @@ func (tp *ascend310P) validDyVNPUTaskDVPPLabel(vT util.NPUTask) error {
 // 4.every task must be vNPU Task.
 func (tp *ascend310P) validDyVNPUJobLabel() error {
 	if !tp.IsVJob() {
-		return fmt.Errorf("%s not VNPU job", tp.Name)
+		return fmt.Errorf("%s not VirtualNPU job", tp.Name)
 	}
 	for _, vT := range tp.Tasks {
 		if tErr := tp.validDyVNPUTaskDVPPLabel(vT); tErr != nil {

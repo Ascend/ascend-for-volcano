@@ -244,7 +244,7 @@ func (n NPUNode) CheckNPUResourceStable(vcJob SchedulerJob) error {
 		return err
 	}
 	iNum, iOK := n.Idle[v1.ResourceName(k)]
-	nodeA, aOK := n.Annotation[k] //todo
+	nodeA, aOK := n.Annotation[k]
 	if iOK != true || aOK != true {
 		return fmt.Errorf("%s not has(or not same) %s", n.Name, k)
 	}
@@ -289,7 +289,8 @@ func (sHandle *ScheduleHandler) InitNodesFromSsn(ssn *framework.Session) {
 	sHandle.Nodes = make(map[string]NPUNode, util.MapInitNum)
 	for nodeName, nodeInf := range ssn.Nodes {
 		npuNode := NPUNode{}
-		if err := npuNode.InitNPUNodeByNodeInf(nodeInf, sHandle.FrameAttr.KubeClient, sHandle.FrameAttr.VJobTemplate); err != nil {
+		err := npuNode.InitNPUNodeByNodeInf(nodeInf, sHandle.FrameAttr.KubeClient, sHandle.FrameAttr.VJobTemplate)
+		if err != nil {
 			continue
 		}
 		sHandle.Nodes[nodeName] = npuNode

@@ -254,7 +254,8 @@ func (vNode *VNode) NewVChip(id int, totalRes util.VResource) *VChip {
 }
 
 // addNPUResource update all pod resource to node
-func (vNode *VNode) addNPUResource(pod *v1.Pod, chipTotalRes util.VResource, taskTemplate map[string]map[string]util.VResource) {
+func (vNode *VNode) addNPUResource(pod *v1.Pod, chipTotalRes util.VResource,
+	taskTemplate map[string]map[string]util.VResource) {
 	coreNameStr, ok := pod.Annotations[util.AscendNPUCore]
 	if !ok {
 		klog.V(util.LogDebugLev).Infof("addNPUResource pod %s %s no value", pod.Name, util.AscendNPUCore)
@@ -546,7 +547,7 @@ func (vNode *VNode) SelectChipFromNode(vRes util.VResource) (string, error) {
 	tempVChips := vChipsList(vChipSlice)
 	sort.Sort(tempVChips)
 	if len(tempVChips) == 0 {
-		return "", fmt.Errorf("SelectChipFromNode sorted chips len 0")
+		return "", fmt.Errorf("selectChipFromNode sorted chips len 0")
 	}
 
 	if vNode.IsResourceWholeCard(vRes.Aicore) {

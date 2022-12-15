@@ -21,6 +21,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
+// GetTemplateByResReq get template by resource request.
 func (tp *DynamicVNPU) GetTemplateByResReq(taskResReq util.VResource, vt VTemplate) (string, error) {
 	name := ""
 	for tName, value := range vt.Data {
@@ -42,7 +43,7 @@ func (tp *DynamicVNPU) GetTemplateByResReq(taskResReq util.VResource, vt VTempla
 }
 
 // IsNodeHasDifferentUnFinishedTask judge the node wither has the different template unfinished job.
-func (tp *VNPU) IsNodeHasDifferentUnFinishedTask(taskInfo *api.TaskInfo, nodeInf plugin.NPUNode,
+func (tp *VirtualNPU) IsNodeHasDifferentUnFinishedTask(taskInfo *api.TaskInfo, nodeInf plugin.NPUNode,
 	taskResReq util.VResource) error {
 	klog.V(util.LogDebugLev).Infof("%s IsNodeHasDifferentUnFinishedTask cache :%#v", taskInfo.Name, tp.ConCache)
 	nodeTempMap, ok := tp.ConCache[nodeInf.Name]
@@ -69,11 +70,11 @@ func (tp *VNPU) IsNodeHasDifferentUnFinishedTask(taskInfo *api.TaskInfo, nodeInf
 }
 
 // CheckNodeNPUByDyTask check chip on node has enough resource, fault chips are not in list, unstable excluded
-func (tp *VNPU) CheckNodeNPUByDyTask(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource) error {
+func (tp *VirtualNPU) CheckNodeNPUByDyTask(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource) error {
 	klog.V(util.LogDebugLev).Infof("check dynamic vNPU %s on %s", task.Name, node.Name)
 	if !node.ValidVNode {
 		klog.V(util.LogInfoLev).Infof("dynamic vNPU node<%s> not valid vNode", node.Name)
-		return errors.New("CheckNodeNPUByDyTask invalid VNode")
+		return errors.New("checkNodeNPUByDyTask invalid VNode")
 	}
 	if node.IsNodeMeetRes(taskResReq) {
 		// if node resource not enough, reduce task aiCPU
@@ -104,7 +105,11 @@ func (tp *DynamicVNPU) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeIn
 	downgradeNodes, ok := tp.DowngradeCache[task.Name]
 	// 2. give the first node high score, none nodes are downgraded
 	if !ok {
-		scoreMap[nodesSorted[0].Name] += util.NPUIndex8
+		value, sOK := scoreMap[nodesSorted[0].Name]
+		if !sOK {
+			scoreMap[nodesSorted[0].Name] = value
+		}
+		scoreMap[nodesSorted[0].Name] = value + util.NPUIndex8
 		return nil
 	}
 
@@ -217,6 +222,7 @@ func (tp *DynamicVNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode, ta
 	return upNode
 }
 
+// GetTaskResource get task resource.
 func (tp *DynamicVNPU) GetTaskResource(task *api.TaskInfo, node plugin.NPUNode,
 	chipVTemplate map[string]util.VResource) (util.VResource,
 	error) {
@@ -306,29 +312,9 @@ func (tp *DynamicVNPU) SetNPUTopologyToPodFn(task *api.TaskInfo, node plugin.NPU
 	return
 }
 
-func getAiCoreNumStr(AiCoreNum int) string {
-	coreNumStr := strconv.Itoa(AiCoreNum)
-	if len(coreNumStr) < util.NPUIndex2 {
-		coreNumStr = "0" + coreNumStr
-	}
-	return plugin.AscendVNPUPrefix + coreNumStr
-}
-
-func getDVPPValue(DVPPEnable string, preAnno string) string {
-	switch DVPPEnable {
-	case plugin.AscendDVPPEnabledNull:
-		klog.V(util.LogDebugLev).Infof("null dvpp")
-		return ""
-	case plugin.AscendDVPPEnabledOff:
-		return fmt.Sprintf("%s_%s", preAnno, plugin.AscendNDVPPValue)
-	case plugin.AscendDVPPEnabledOn:
-		return fmt.Sprintf("%s_%s", preAnno, plugin.AscendDVPPValue)
-	}
-	return ""
-}
-
 // UpdateNodeInfo vnpu update npuNode after allocation
-func (tp *DynamicVNPU) UpdateNodeInfo(node plugin.NPUNode, allocChipID string, taskResReq util.VResource) *plugin.NPUNode {
+func (tp *DynamicVNPU) UpdateNodeInfo(node plugin.NPUNode, allocChipID string,
+	taskResReq util.VResource) *plugin.NPUNode {
 	if node.IsResourceWholeCard(taskResReq.Aicore) {
 		return tp.UpdateNodeInfoWhole(node, allocChipID)
 	}

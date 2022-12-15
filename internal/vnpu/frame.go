@@ -18,7 +18,8 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
-func (tp *VNPU) GetTaskResource(task *api.TaskInfo, node plugin.NPUNode) (util.VResource, error) {
+// GetTaskResource get vTask used resource.
+func (tp *VirtualNPU) GetTaskResource(task *api.TaskInfo, node plugin.NPUNode) (util.VResource, error) {
 	klog.V(util.LogDebugLev).Infof("enter task<%s> GetTaskResource", task.Name)
 	coreNum, err := getAiCoreNumFromTask(task)
 	if err != nil {
@@ -85,6 +86,9 @@ func getResTemplateFromTaskSetting(coreNum int, cpuLevel, dvpp string) string {
 				virTemplate = virTemplate + "_3c"
 			}
 		}
+	default:
+		klog.V(util.LogErrorLev).Infof("wrong number %d", coreNum)
+		return ""
 	}
 	return virTemplate
 }

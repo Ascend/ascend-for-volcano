@@ -128,7 +128,8 @@ func (reScheduler *ReScheduler) GetRunningJobs(
 			klog.V(util.LogDebugLev).Infof("job %s not in session, skip", jobInfo.UID)
 			continue
 		}
-		if schedulerJob.ReqNPUNum == 0 || schedulerJob.GetReqCardNameFromRingController() != cardName { // req type is not current card type
+		// req type is not current card type
+		if schedulerJob.ReqNPUNum == 0 || schedulerJob.GetReqCardNameFromRingController() != cardName {
 			klog.V(util.LogDebugLev).Infof("job %s requires npu %d name %s: illegal, skip", schedulerJob.Name,
 				schedulerJob.ReqNPUNum, schedulerJob.GetReqCardNameFromRingController())
 			continue

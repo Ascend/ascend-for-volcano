@@ -125,6 +125,7 @@ func updatePodPendingReason(task *api.TaskInfo, reasonTmp string) {
 	task.Pod.Status.Conditions = append(task.Pod.Status.Conditions, condition)
 }
 
+// IsNPUTask to judge the task either is NPU task or not.
 func IsNPUTask(nT *api.TaskInfo) bool {
 	for k := range nT.Resreq.ScalarResources {
 		// must contain "huawei.com/"

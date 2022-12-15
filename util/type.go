@@ -125,8 +125,10 @@ const (
 	// ArgumentError argument nil error.
 	ArgumentError = "invalid argument"
 	// JobKindKey for define the Job kind:ascend-310P, ascend-910
-	JobKindKey      = "ring-controller.atlas"
+	JobKindKey = "ring-controller.atlas"
+	// JobKind910Value in ring-controller.atlas.
 	JobKind910Value = "ascend-910"
+	// JobKind310Value in ring-controller.atlas.
 	JobKind310Value = "ascend-310"
 	// JobKind310PValue 310p ring controller name
 	JobKind310PValue = "ascend-310P"

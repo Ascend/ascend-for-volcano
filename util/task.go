@@ -32,6 +32,7 @@ const (
 	TaskStatusFailed
 )
 
+// TaskAllocated Task allocated struct.
 type TaskAllocated struct {
 	// like ubuntu
 	NodeName string
@@ -41,6 +42,7 @@ type TaskAllocated struct {
 	PhysicsName []string
 }
 
+// VTask virtual NPU task struct.
 type VTask struct {
 	// TASK_STATUS_INIT...
 	Status int
@@ -193,6 +195,7 @@ func GetTaskInfoByNameFromSSN(ssn *framework.Session, taskName string) (*api.Tas
 	return nil, fmt.Errorf("did not find task %s in session", taskName)
 }
 
+// ForceDeletePodByTaskInf Force delete pod by taskInf.
 func (asTask *NPUTask) ForceDeletePodByTaskInf(ssn *framework.Session, reason string, nodeName string) error {
 	if !asTask.IsTaskInItsNode(ssn, nodeName) {
 		klog.V(LogErrorLev).Infof("%s not in %s, need force delete.", asTask.Name,
@@ -329,6 +332,7 @@ func (asTask *NPUTask) setVTaskStatusFromInfo(taskInf *api.TaskInfo) error {
 	return nil
 }
 
+// InitVTask init vNPU task.
 func (asTask *NPUTask) InitVTask(taskInf *api.TaskInfo) error {
 	asTask.setVTaskType()
 	if setErr := asTask.setVTaskStatusFromInfo(taskInf); setErr != nil {

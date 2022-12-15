@@ -111,6 +111,7 @@ func (nJob *NPUJob) SetVJobType() {
 	nJob.setVJobType()
 }
 
+// SetVJobStatusByInf set vJob status by podGroup.
 func (nJob *NPUJob) SetVJobStatusByInf(vcJob *api.JobInfo) {
 	if nJob == nil {
 		return

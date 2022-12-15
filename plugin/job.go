@@ -501,6 +501,7 @@ func (sJob SchedulerJob) GetAnnoName() (string, error) {
 	return sJob.handler.GetAnnoName(), nil
 }
 
+// GetReqCardNameFromRingController Get request card name from RingController.
 func (sJob SchedulerJob) GetReqCardNameFromRingController() string {
 	ringType, ok := sJob.Label[util.JobKindKey]
 	if !ok {

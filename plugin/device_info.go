@@ -19,7 +19,8 @@ import (
 )
 
 // GetResourceFromTemplate nodeType like Ascend310P, templateString like "vir04_3c_ndvpp"
-func GetResourceFromTemplate(nodeType string, templateString string, taskTemplate map[string]map[string]util.VResource) *util.VResource {
+func GetResourceFromTemplate(nodeType string, templateString string,
+	taskTemplate map[string]map[string]util.VResource) *util.VResource {
 	taskNodeTemplate, ok := taskTemplate[nodeType]
 	if !ok {
 		return nil
@@ -90,14 +91,14 @@ func GetCardPhysicsIDFromAscendCore(pod *v1.Pod, isWholeCard bool) ([]int, error
 	var physicsIDs []int
 	coreNameStr, ok := pod.Annotations[util.AscendNPUCore]
 	if !ok {
-		return physicsIDs, fmt.Errorf("GetCardPhysicsIDFromAscendCore vnpu device <%s> get %s value failed",
+		return physicsIDs, fmt.Errorf("getCardPhysicsIDFromAscendCore vnpu device <%s> get %s value failed",
 			pod.Name, util.AscendNPUCore)
 	}
 
 	if !isWholeCard {
 		phyCardID, err := getVNPUCardIDFromAscendCore(coreNameStr)
 		if err != nil {
-			return physicsIDs, fmt.Errorf("GetCardPhysicsIDFromAscendCore vnpu device <%s> get id failed",
+			return physicsIDs, fmt.Errorf("getCardPhysicsIDFromAscendCore vnpu device <%s> get id failed",
 				coreNameStr)
 		}
 		physicsIDs = append(physicsIDs, phyCardID)
@@ -107,7 +108,7 @@ func GetCardPhysicsIDFromAscendCore(pod *v1.Pod, isWholeCard bool) ([]int, error
 	for _, id := range coreNameSplit {
 		phyCardID, err := strconv.Atoi(id)
 		if err != nil {
-			return physicsIDs, fmt.Errorf("GetCardPhysicsIDFromAscendCore device <%s> get physics id failed",
+			return physicsIDs, fmt.Errorf("getCardPhysicsIDFromAscendCore device <%s> get physics id failed",
 				coreNameStr)
 		}
 		physicsIDs = append(physicsIDs, phyCardID)

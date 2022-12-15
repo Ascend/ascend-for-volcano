@@ -18,7 +18,7 @@ type ascend310P struct {
 	// base event handler
 	base.NPUHandler
 	reHandle *rescheduling.ReScheduler
-	vHandle  *vnpu.VNPU
+	vHandle  *vnpu.VirtualNPU
 }
 
 const (
