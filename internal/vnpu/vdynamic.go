@@ -48,7 +48,7 @@ func (tp *VirtualNPU) IsNodeHasDifferentUnFinishedTask(taskInfo *api.TaskInfo, n
 	klog.V(util.LogDebugLev).Infof("%s IsNodeHasDifferentUnFinishedTask cache :%#v", taskInfo.Name, tp.ConCache)
 	nodeTempMap, ok := tp.ConCache[nodeInf.Name]
 	if !ok {
-		klog.V(util.LogDebugLev).Infof("%s IsNodeHasDifferentUnFinishedTask cache no node %d, ok.",
+		klog.V(util.LogDebugLev).Infof("%s IsNodeHasDifferentUnFinishedTask cache no node %s, ok.",
 			taskInfo.Name, nodeInf.Name)
 		return nil
 	}

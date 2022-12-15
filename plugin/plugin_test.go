@@ -95,6 +95,10 @@ func (tp *ascendTest) UseAnnotation(task *api.TaskInfo, node NPUNode) *NPUNode {
 	return nil
 }
 
+func (tp *ascendTest) ReleaseAnnotation(task *api.TaskInfo, node NPUNode) *NPUNode {
+	return nil
+}
+
 func (tp *ascendTest) PreStartAction(ssn *framework.Session) error {
 	if tp == nil {
 		return fmt.Errorf(util.ArgumentError)

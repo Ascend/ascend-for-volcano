@@ -40,7 +40,10 @@ type checkNPUResourceStableTest struct {
 }
 
 func buildVCheckNPUResourceStableTest() []checkNPUResourceStableTest {
-	tJob := SchedulerJob{handler: New(testPluginName)}
+	tJob := SchedulerJob{handler: New(testPluginName), SchedulerJobAttr: util.SchedulerJobAttr{NPUJob: &util.
+		NPUJob{ReqNPUName: util.NPU310PCardName}}}
+	vJob := SchedulerJob{handler: New(testPluginName), SchedulerJobAttr: util.SchedulerJobAttr{NPUJob: &util.
+		NPUJob{ReqNPUName: util.AscendNPUCore}}}
 	tests := []checkNPUResourceStableTest{
 		{
 			name:    "01-CheckNPUResourceStable no annotation test",
@@ -54,6 +57,13 @@ func buildVCheckNPUResourceStableTest() []checkNPUResourceStableTest {
 				Annotation: map[string]string{testCardName: "haha"}},
 			args:    checkNPUResourceStableArgs{vcJob: tJob},
 			wantErr: true,
+		},
+		{
+			name: "03-CheckNPUResourceStable vNPU ok test.",
+			fields: nodeFields{Name: "haha", Idle: map[v1.ResourceName]float64{testCardName: 1},
+				Annotation: map[string]string{testCardName: "haha"}},
+			args:    checkNPUResourceStableArgs{vcJob: vJob},
+			wantErr: false,
 		},
 	}
 	return tests

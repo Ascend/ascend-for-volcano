@@ -53,7 +53,7 @@ type getJobNPUTasksArgs struct {
 type getJobNPUTasksTest struct {
 	name string
 	args getJobNPUTasksArgs
-	want map[string]util.NPUTask
+	want map[api.TaskID]util.NPUTask
 }
 
 func buildGetJobNPUTasksTest() []getJobNPUTasksTest {
@@ -69,7 +69,7 @@ func buildGetJobNPUTasksTest() []getJobNPUTasksTest {
 		{
 			name: "02-GetJobNPUTasks ok test.",
 			args: getJobNPUTasksArgs{vcJob: tJob1},
-			want: map[string]util.NPUTask{string(tasks.UID): {Selector: nil}},
+			want: map[api.TaskID]util.NPUTask{tasks.UID: {Selector: nil}},
 		},
 	}
 	return tests
@@ -80,7 +80,7 @@ func TestGetJobNPUTasks(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := GetJobNPUTasks(tt.args.vcJob); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetJobNPUTasks() = %v, want %v", got, tt.want)
+				t.Errorf("GetJobNPUTasks() =%+v, want %+v", got, tt.want)
 			}
 		})
 	}
