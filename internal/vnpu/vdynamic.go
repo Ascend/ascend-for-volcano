@@ -21,48 +21,78 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
-// IsNodeHasDifferentUnFinishedTask judge the node wither has the different template unfinished job.
-func (tp *DynamicVNPU) IsNodeHasDifferentUnFinishedTask(taskInfo *api.TaskInfo, nodeInf plugin.NPUNode) error {
-	template, getErr := util.GetVTaskUseTemplate(taskInfo)
-	if getErr != nil {
-		return nil
+func (tp *DynamicVNPU) GetTemplateByResReq(taskResReq util.VResource, vt VTemplate) (string, error) {
+	name := ""
+	for tName, value := range vt.Data {
+		if value.Aicore != taskResReq.Aicore {
+			continue
+		}
+		if value.Aicpu != taskResReq.Aicpu {
+			continue
+		}
+		if value.DVPP != taskResReq.DVPP {
+			continue
+		}
+		name = tName
 	}
-	nodeTempMap, ok := tp.ConCache[nodeInf.Name]
-	if !ok {
-		return nil
+	if name == "" {
+		return "", fmt.Errorf("%#v not get template", taskResReq)
 	}
-	tID, tOK := nodeTempMap[template]
-	if !tOK {
-		return nil
-	}
-	return fmt.Errorf("%s is using %s, and not rewrite", tID, nodeInf.Name)
+	return name, nil
 }
 
-// CheckNodeNPUByTask check chip on node has enough resource, fault chips are not in list, unstable excluded
-func (tp *DynamicVNPU) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource) error {
+// IsNodeHasDifferentUnFinishedTask judge the node wither has the different template unfinished job.
+func (tp *VNPU) IsNodeHasDifferentUnFinishedTask(taskInfo *api.TaskInfo, nodeInf plugin.NPUNode,
+	taskResReq util.VResource) error {
+	klog.V(util.LogDebugLev).Infof("%s IsNodeHasDifferentUnFinishedTask cache :%#v", taskInfo.Name, tp.ConCache)
+	nodeTempMap, ok := tp.ConCache[nodeInf.Name]
+	if !ok {
+		klog.V(util.LogDebugLev).Infof("%s IsNodeHasDifferentUnFinishedTask cache no node %d, ok.",
+			taskInfo.Name, nodeInf.Name)
+		return nil
+	}
+	template, getErr := tp.GetTemplateByResReq(taskResReq, tp.VT)
+	if getErr != nil {
+		klog.V(util.LogDebugLev).Infof("IsNodeHasDifferentUnFinishedTask %s", getErr)
+		return getErr
+	}
+	if len(nodeTempMap) == 1 {
+		_, tOK := nodeTempMap[template]
+		if tOK {
+			klog.V(util.LogDebugLev).Infof("%s IsNodeHasDifferentUnFinishedTask cache no template:%s, ok.",
+				taskInfo.Name, template)
+			return nil
+		}
+	}
+
+	return fmt.Errorf("%s is using %s, and not rewrite", taskInfo.Name, nodeInf.Name)
+}
+
+// CheckNodeNPUByDyTask check chip on node has enough resource, fault chips are not in list, unstable excluded
+func (tp *VNPU) CheckNodeNPUByDyTask(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource) error {
 	klog.V(util.LogDebugLev).Infof("check dynamic vNPU %s on %s", task.Name, node.Name)
 	if !node.ValidVNode {
 		klog.V(util.LogInfoLev).Infof("dynamic vNPU node<%s> not valid vNode", node.Name)
-		return errors.New("CheckNodeNPUByTask invalid VNode")
+		return errors.New("CheckNodeNPUByDyTask invalid VNode")
 	}
 	if node.IsNodeMeetRes(taskResReq) {
 		// if node resource not enough, reduce task aiCPU
 		if tp.taskAICPUCanBeDowngrade(taskResReq) {
 			klog.V(util.LogInfoLev).Infof("dynamic vnpu task<%s> resource not enough, downgrade cpu", task.Name)
 			tp.DowngradeCache[task.Name] = append(tp.DowngradeCache[task.Name], node.Name)
-			return tp.CheckNodeNPUByTask(task, node, tp.downgradeTaskAICPU(taskResReq))
+			return tp.CheckNodeNPUByDyTask(task, node, tp.downgradeTaskAICPU(taskResReq))
 		}
-		return fmt.Errorf("dynamic vnpu task<%s> CheckNodeNPUByTask node %s resource not enough",
+		return fmt.Errorf("dynamic vnpu task<%s> CheckNodeNPUByDyTask node %s resource not enough",
 			task.Name, node.Name)
 	}
-	if diffErr := tp.IsNodeHasDifferentUnFinishedTask(task, node); diffErr != nil {
+	if diffErr := tp.IsNodeHasDifferentUnFinishedTask(task, node, taskResReq); diffErr != nil {
 		return diffErr
 	}
-	klog.V(util.LogInfoLev).Infof("dynamic vnpu task<%s> CheckNodeNPUByTask node<%s> ok", task.Name, node.Name)
+	klog.V(util.LogInfoLev).Infof("dynamic vnpu task<%s> CheckNodeNPUByDyTask node<%s> ok", task.Name, node.Name)
 	return nil
 }
 
-// ScoreBestNPUNodes node with least free resource would be sorted to higher rank
+// ScoreBestNPUNodes node with the least free resource would be sorted to higher rank
 func (tp *DynamicVNPU) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo, scoreMap map[string]float64) error {
 	klog.V(util.LogInfoLev).Infof("dynamic vnpu task<%s> ScoreBestNPUNodes", task.Name)
 	// 1. sort nodes with free resource from low to high
@@ -135,9 +165,11 @@ func (tp *DynamicVNPU) ReleaseAnnotation(task *api.TaskInfo, node plugin.NPUNode
 	return &node
 }
 
-func (tp *DynamicVNPU) addTaskInConCache(task *api.TaskInfo, node plugin.NPUNode) error {
-	template, getErr := util.GetVTaskUseTemplate(task)
+func (tp *DynamicVNPU) addTaskInConCache(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource,
+	chipVTemplate VTemplate) error {
+	template, getErr := tp.GetTemplateByResReq(taskResReq, chipVTemplate)
 	if getErr != nil {
+		klog.V(util.LogDebugLev).Infof("IsNodeHasDifferentUnFinishedTask %s", getErr)
 		return getErr
 	}
 	date, ok := tp.ConCache[node.Name]
@@ -155,6 +187,7 @@ func (tp *DynamicVNPU) addTaskInConCache(task *api.TaskInfo, node plugin.NPUNode
 	temp[task.UID] = struct{}{}
 	date[template] = temp
 	tp.ConCache[node.Name] = date
+	klog.V(util.LogDebugLev).Infof("addTaskInConCache %s %s ConCache: %#v", node.Name, task.Name, tp.ConCache)
 	return nil
 }
 
@@ -170,7 +203,6 @@ func (tp *DynamicVNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode, ta
 	}
 
 	allocChipID, err := node.VNode.SelectChipFromNode(taskResReq)
-
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("UseAnnotation dynamic %s on %s err: %s", task.Name, node.Name, err)
 		return &node
@@ -179,7 +211,7 @@ func (tp *DynamicVNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode, ta
 
 	tp.SetNPUTopologyToPodFn(task, node, taskResReq, allocChipID, chipVTemplate)
 	upNode := tp.UpdateNodeInfo(node, allocChipID, taskResReq)
-	if addErr := tp.addTaskInConCache(task, *upNode); addErr != nil {
+	if addErr := tp.addTaskInConCache(task, *upNode, taskResReq, chipVTemplate); addErr != nil {
 		klog.V(util.LogErrorLev).Infof("dynamic vnpu %s UseAnnotation addTaskInConCache:%s", task.Name, addErr)
 	}
 	return upNode

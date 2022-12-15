@@ -575,6 +575,8 @@ func (vNode *VNode) selectChipFromNodeWhole(vChips []*VChip, vRes util.VResource
 	reqCardNum := vRes.Aicore / vNode.AiCorePerChip
 	allocCardNum := 0
 	if reqCardNum == 0 {
+		klog.V(util.LogDebugLev).Infof("selectChipFromNodeWhole aiCore:%d perCard:%d", vRes.Aicore,
+			vNode.AiCorePerChip)
 		return "", errors.New("task require card number 0")
 	}
 	vResChip := util.VResource{

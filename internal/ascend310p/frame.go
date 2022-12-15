@@ -105,7 +105,7 @@ func (tp *ascend310P) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode
 			return err
 		}
 	case util.JobTypeDyCut:
-		if err = tp.vHandle.DynamicVNPU.CheckNodeNPUByTask(task, node, taskRes); err != nil {
+		if err = tp.vHandle.CheckNodeNPUByDyTask(task, node, taskRes); err != nil {
 			return err
 		}
 	default:
@@ -115,7 +115,7 @@ func (tp *ascend310P) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode
 	}
 
 	if reErr := tp.reHandle.CheckNodeNPUByTask(task, node); reErr != nil {
-		return fmt.Errorf("rescheduling CheckNodeNPUByTask %s", reErr.Error())
+		return fmt.Errorf("rescheduling CheckNodeNPUByDyTask %s", reErr.Error())
 	}
 	return nil
 }
@@ -161,6 +161,7 @@ func (tp *ascend310P) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *pl
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("%s UseAnnotation job(%s) get require task resource failed: %s",
 			tp.GetPluginName(), tp.Name, err)
+		return &node
 	}
 	switch tp.Type {
 	case util.JobTypeWhole:
@@ -171,10 +172,10 @@ func (tp *ascend310P) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *pl
 		return tp.vHandle.DynamicVNPU.UseAnnotation(task, node, taskRes, tp.vHandle.VT)
 	default:
 		err = fmt.Errorf("%s no type %d", tp.Name, tp.Type)
-		klog.V(util.LogDebugLev).Infof("%s CheckNodeNPUByTask %s %s.", tp.GetPluginName(), tp.Name, err)
+		klog.V(util.LogDebugLev).Infof("%s UseAnnotation %s %s.", tp.GetPluginName(), tp.Name, err)
 	}
 
-	return nil
+	return &node
 }
 
 // ReleaseAnnotation release select npu for task to node
@@ -188,7 +189,7 @@ func (tp *ascend310P) ReleaseAnnotation(task *api.TaskInfo, node plugin.NPUNode)
 		return tp.vHandle.DynamicVNPU.ReleaseAnnotation(task, node)
 	default:
 		err = fmt.Errorf("%s no type %d", tp.Name, tp.Type)
-		klog.V(util.LogDebugLev).Infof("%s CheckNodeNPUByTask %s %s.", tp.GetPluginName(), tp.Name, err)
+		klog.V(util.LogDebugLev).Infof("%s ReleaseAnnotation %s %s.", tp.GetPluginName(), tp.Name, err)
 	}
 
 	return &node
