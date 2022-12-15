@@ -94,13 +94,13 @@ func (tp *ascend910) ValidNPUJob() *api.ValidateResult {
 func (tp *ascend910) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode) error {
 	if tp == nil || task == nil || len(node.Annotation) == 0 {
 		err := errors.New(util.ArgumentError)
-		klog.V(util.LogErrorLev).Infof("CheckNodeNPUByTask err: %s", err.Error())
+		klog.V(util.LogErrorLev).Infof("CheckNodeNPUByDyTask err: %s", err.Error())
 		return err
 	}
 	if tp.handle != nil {
 		return tp.handle.CheckNodeNPUByTask(task, node)
 	}
-	klog.V(util.LogDebugLev).Infof("%s CheckNodeNPUByTask handle is nil", tp.GetPluginName())
+	klog.V(util.LogDebugLev).Infof("%s CheckNodeNPUByDyTask handle is nil", tp.GetPluginName())
 	return nil
 }
 

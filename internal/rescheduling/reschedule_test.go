@@ -946,7 +946,7 @@ func TestReSchedulerCheckNodeNPUByTask(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			reScheduler := fakeTestTTReScheduler(tt.fields)
 			if err := reScheduler.CheckNodeNPUByTask(tt.args.task, tt.args.vcNode); (err != nil) != tt.wantErr {
-				t.Errorf("CheckNodeNPUByTask() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("CheckNodeNPUByDyTask() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

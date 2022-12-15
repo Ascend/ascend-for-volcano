@@ -832,12 +832,12 @@ func (reScheduler *ReScheduler) GenerateNodeRankIndexTaskMap() {
 // CheckNodeNPUByTask used in the predicate process of task and node
 func (reScheduler *ReScheduler) CheckNodeNPUByTask(task *api.TaskInfo, vcNode plugin.NPUNode) error {
 	if reScheduler == nil || task == nil || len(vcNode.Name) == 0 {
-		klog.V(util.LogErrorLev).Infof("CheckNodeNPUByTask failed: %s, nil reScheduler or task or node",
+		klog.V(util.LogErrorLev).Infof("CheckNodeNPUByDyTask failed: %s, nil reScheduler or task or node",
 			util.ArgumentError)
 		return errors.New(util.ArgumentError)
 	}
-	klog.V(util.LogDebugLev).Infof("enter rescheduling CheckNodeNPUByTask ...(%s, %s)", task.Name, vcNode.Name)
-	defer klog.V(util.LogDebugLev).Infof("leave rescheduling CheckNodeNPUByTask ...(%s, %s)",
+	klog.V(util.LogDebugLev).Infof("enter rescheduling CheckNodeNPUByDyTask ...(%s, %s)", task.Name, vcNode.Name)
+	defer klog.V(util.LogDebugLev).Infof("leave rescheduling CheckNodeNPUByDyTask ...(%s, %s)",
 		task.Name, vcNode.Name)
 	// 3. non faultJobs should not occupy normal nodes previously used by distributional
 	if err := reScheduler.checkNodeNewJobUseFJobNormNode(vcNode, task); err != nil {
@@ -858,7 +858,7 @@ func (reScheduler *ReScheduler) CheckNodeNPUByTask(task *api.TaskInfo, vcNode pl
 		return fmt.Errorf("task %s does not have corresponding job in cache", task.Name)
 	}
 	if !curFJob.IsFaultJob || curFJob.ReScheduleKey == JobOffRescheduleLabelValue {
-		klog.V(util.LogDebugLev).Infof("CheckNodeNPUByTask job %s is not fault job, node %s check over",
+		klog.V(util.LogDebugLev).Infof("CheckNodeNPUByDyTask job %s is not fault job, node %s check over",
 			curFJob.JobName, vcNode.Name)
 		return nil
 	}
@@ -871,7 +871,7 @@ func (reScheduler *ReScheduler) CheckNodeNPUByTask(task *api.TaskInfo, vcNode pl
 	if err := reScheduler.checkFJobFNodeRankIndexAllAllocated(curFJob, vcNode); err != nil {
 		return err
 	}
-	klog.V(util.LogDebugLev).Infof("CheckNodeNPUByTask node %s passed rescheduling predicate for task %s",
+	klog.V(util.LogDebugLev).Infof("CheckNodeNPUByDyTask node %s passed rescheduling predicate for task %s",
 		vcNode.Name, task.Name)
 	return nil
 }

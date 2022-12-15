@@ -262,7 +262,7 @@ func GetVTaskUseTemplate(taskInf *api.TaskInfo) (string, error) {
 		return "", fmt.Errorf("%s's anno has no %s", taskInf.Name, AscendNPUCore)
 	}
 	if !strings.Contains(value, "vir") {
-		return "", fmt.Errorf("not dyCut job :%s", value)
+		return "", fmt.Errorf("%s not dyCut task :%s", taskInf.Name, value)
 	}
 
 	temps := strings.Split(value, "-")
@@ -299,6 +299,8 @@ func (asTask *NPUTask) setVTaskAllocated(taskInf *api.TaskInfo) {
 		asTask.VTask.Allocated.NodeName = taskInf.NodeName
 		asTask.VTask.Allocated.PhysicsName = getVTaskUsePhysicsNamesByInfo(taskInf)
 		asTask.VTask.setVTaskUseCardIDs()
+	case TaskStatusAllocate:
+		asTask.VTask.Allocated.NodeName = taskInf.NodeName
 	default:
 		klog.V(LogErrorLev).Infof("setVTaskAllocated %s status %v.", asTask.Name, asTask.Status)
 		return
@@ -311,10 +313,11 @@ func (asTask *NPUTask) setVTaskStatusFromInfo(taskInf *api.TaskInfo) error {
 		asTask.Status = TaskStatusInit
 		return nil
 	}
+	asTask.Status = TaskStatusAllocate
 	if _, ok := taskInf.Pod.Annotations[AscendNPUPodRealUse]; !ok {
-		asTask.Status = TaskStatusAllocate
 		return nil
 	}
+	asTask.Status = TaskStatusWrBack
 	if taskInf.Status == api.Running {
 		asTask.Status = TaskStatusRunning
 		return nil
@@ -323,8 +326,7 @@ func (asTask *NPUTask) setVTaskStatusFromInfo(taskInf *api.TaskInfo) error {
 		asTask.Status = TaskStatusFailed
 		return nil
 	}
-	asTask.Status = TaskStatusUnknown
-	return fmt.Errorf("unkown %s status: %s", taskInf.Name, taskInf.Status)
+	return nil
 }
 
 func (asTask *NPUTask) InitVTask(taskInf *api.TaskInfo) error {

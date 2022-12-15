@@ -16,7 +16,7 @@ import (
 
 // CheckNodeNPUByTask pass for static
 func (tp *StaticVNPU) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource) error {
-	klog.V(util.LogInfoLev).Infof("static vnpu task<%s> node<%s> CheckNodeNPUByTask pass", task.Name, node.Name)
+	klog.V(util.LogInfoLev).Infof("static vnpu task<%s> node<%s> CheckNodeNPUByDyTask pass", task.Name, node.Name)
 	return nil
 }
 

@@ -134,31 +134,31 @@ func (tp *card910x2) PreStopAction(env *plugin.ScheduleEnv) error {
 
 // CheckNodeNPUByTask check nod npu meet task req
 func (tp *card910x2) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode) error {
-	klog.V(util.LogDebugLev).Infof("CheckNodeNPUByTask %v.", tp.GetPluginName())
+	klog.V(util.LogDebugLev).Infof("CheckNodeNPUByDyTask %v.", tp.GetPluginName())
 	if tp == nil || task == nil || len(node.Annotation) == 0 {
 		err := errors.New(util.ArgumentError)
-		klog.V(util.LogErrorLev).Infof("CheckNodeNPUByTask err: %s", err.Error())
+		klog.V(util.LogErrorLev).Infof("CheckNodeNPUByDyTask err: %s", err.Error())
 		return err
 	}
 	taskNPUNum, err := tp.GetTaskReqNPUNum(task)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
+		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByDyTask err: %s", tp.GetPluginName(), err.Error())
 		return err
 	}
 	job, ok := tp.Jobs[task.Job]
 	if !ok {
 		err = fmt.Errorf("task<%s> is not npu task", task.Name)
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
+		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByDyTask err: %s", tp.GetPluginName(), err.Error())
 		return err
 	}
 	if taskNPUNum < tp.MaxNodeNPUNum && len(job.Tasks) > 1 {
 		err = fmt.Errorf("distribute task<%s> req num<%d> is invalid", task.Name, taskNPUNum)
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
+		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByDyTask err: %s", tp.GetPluginName(), err.Error())
 		return err
 	}
 	nodeTop, err := tp.GetUsableTopFromNode(node)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
+		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByDyTask err: %s", tp.GetPluginName(), err.Error())
 		return err
 	}
 
@@ -178,7 +178,7 @@ func (tp *card910x2) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo
 	}
 	taskNPUNum, err := tp.GetTaskReqNPUNum(task)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
+		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByDyTask err: %s", tp.GetPluginName(), err.Error())
 		return err
 	}
 	if taskNPUNum < 1 || taskNPUNum > tp.MaxNodeNPUNum {
@@ -193,7 +193,7 @@ func (tp *card910x2) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo
 		}
 		nodeTop, err := tp.GetUsableTopFromNode(nNode)
 		if err != nil {
-			klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
+			klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByDyTask err: %s", tp.GetPluginName(), err.Error())
 			continue
 		}
 		if len(nodeTop) > tp.MaxNodeNPUNum {

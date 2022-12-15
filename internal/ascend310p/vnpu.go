@@ -230,6 +230,10 @@ func (tp *ascend310P) deleteDyCutErrTasks(ssn *framework.Session) error {
 		return nil
 	}
 	for _, nT := range nTasks {
+		if nT.VTask == nil {
+			klog.V(util.LogErrorLev).Infof("deleteDyCutErrTasks vTask %s is nil.", nT.Name)
+			continue
+		}
 		if delErr := nT.ForceDeletePodByTaskInf(ssn, vnpu.DyCutFailedError, nT.VTask.Allocated.NodeName); delErr != nil {
 			klog.V(util.LogErrorLev).Infof("ForceDeletePodByTaskInf %s: %s.", nT.Name, delErr)
 		}
@@ -251,6 +255,7 @@ func initDyCutConCacheByJobInfo(nodes map[string]map[string]map[api.TaskID]struc
 			}
 			template, getErr := util.GetVTaskUseTemplate(taskInfo)
 			if getErr != nil {
+				klog.V(util.LogErrorLev).Infof("GetVTaskUseTemplate %s %s.", vT.Name, getErr)
 				continue
 			}
 			if vT.Allocated.NodeName != "" {
@@ -289,7 +294,6 @@ func (tp *ascend310P) initConCache(ssn *framework.Session) error {
 		}
 	}
 	tp.vHandle.DynamicVNPU.ConCache = nodes
-	klog.V(util.LogErrorLev).Infof("hahaha===== %+v.", tp.vHandle.DynamicVNPU.ConCache)
 	return nil
 }
 
