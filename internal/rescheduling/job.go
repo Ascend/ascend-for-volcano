@@ -1,11 +1,21 @@
 /*
 Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 */
 
 /*
-
 Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
-
 */
 package rescheduling
 
@@ -33,10 +43,10 @@ func (fJob *FaultJob) GetJobFaultRescheduleLabel(job *plugin.SchedulerJob) strin
 	value, ok := job.SchedulerJobAttr.Label[JobRescheduleLabelKey]
 	if !ok {
 		klog.V(util.LogInfoLev).Infof(
-			"GetJobFaultRescheduleLabel %s. %s no job reschedule label", value, job.JobName)
+			"GetJobFaultRescheduleLabel %s. %s no job reschedule label", value, job.Name)
 		return JobOffRescheduleLabelValue
 	}
-	klog.V(util.LogInfoLev).Infof("GetJobFaultRescheduleLabel job: %s, label: %s", job.JobName, value)
+	klog.V(util.LogInfoLev).Infof("GetJobFaultRescheduleLabel job: %s, label: %s", job.Name, value)
 	return value
 }
 
@@ -50,10 +60,10 @@ func (fJob *FaultJob) GetJobElasticSchedulingLabel(job *plugin.SchedulerJob) str
 	value, ok := job.SchedulerJobAttr.Label[ElasticSchedulingKey]
 	if !ok {
 		klog.V(util.LogErrorLev).Infof(
-			"GetJobElasticSchedulingLabel %s. %s no job reschedule label", value, job.JobName)
+			"GetJobElasticSchedulingLabel %s. %s no job reschedule label", value, job.Name)
 		return JobOffRescheduleLabelValue
 	}
-	klog.V(util.LogInfoLev).Infof("GetJobElasticSchedulingLabel job: %s, label: %s", job.JobName, value)
+	klog.V(util.LogInfoLev).Infof("GetJobElasticSchedulingLabel job: %s, label: %s", job.Name, value)
 	return value
 }
 
@@ -140,31 +150,15 @@ func (fJob *FaultJob) GraceDeleteJob(ssn *framework.Session, npuJob *plugin.Sche
 	if npuJob == nil {
 		return fmt.Errorf("schedulerJob does not exist")
 	}
-	ssnJob, ok := ssn.Jobs[fJob.JobUID]
-	if !ok {
-		return fmt.Errorf("fault job %s not in session", fJob.JobName)
-	}
 	for _, fTask := range fJob.FaultTasks {
-		npuTask, ok := npuJob.Tasks[string(fTask.TaskUID)]
+		npuTask, ok := npuJob.Tasks[fTask.TaskUID]
 		if !ok {
 			klog.V(util.LogDebugLev).Infof(
 				"GraceDeleteJob: npuTask %s has been deleted in session.", fTask.TaskName)
 			return fmt.Errorf("npuTask %s not in session", fTask.TaskName)
 		}
-		ssnTask, ok := ssnJob.Tasks[fTask.TaskUID]
-		if !ok {
-			return fmt.Errorf("task %s not in session", fTask.TaskName)
-		}
-		if !npuTask.IsTaskInItsNode(ssn, ssnTask) {
-			klog.V(util.LogErrorLev).Infof("%s not in %s, need force delete.", npuTask.TaskName, ssnTask.NodeName)
-			deleteErr := npuTask.DeleteRealPodByTask(ssn, 0)
-			if deleteErr != nil {
-				klog.V(util.LogErrorLev).Infof("GraceDeleteFaultJob %s: %#v.", npuTask.TaskName, deleteErr)
-			}
-			continue
-		}
-		if err := npuTask.EvictJobByTask(ssn, reason, fTask.TaskName); err != nil {
-			return err
+		if delErr := npuTask.ForceDeletePodByTaskInf(ssn, reason, fTask.NodeName); delErr != nil {
+			klog.V(util.LogErrorLev).Infof("ForceDeletePodByTaskInf %s: %s.", npuTask.Name, delErr)
 		}
 	}
 	return nil

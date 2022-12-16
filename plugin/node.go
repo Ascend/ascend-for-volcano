@@ -1,11 +1,21 @@
 /*
 Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 */
 
 /*
-
 Package plugin is using for HuaWei Ascend pin affinity schedule frame.
-
 */
 package plugin
 
@@ -59,31 +69,39 @@ type CommonNode struct {
 
 // VNode vnpu node class
 type VNode struct {
-	nodeName string
+	// Chips map chipID to VChip class
+	Chips map[int]*VChip
 	// ChipKind Ascend910/310/310p
 	ChipKind string
 	// ServerType Ascend310p-10-dual cardType-cardCoreNum-duo
 	ServerType string
-	// AccType module/half/card only for 910, default module
-	AccType string
-	// TotalChipNum num of total chips
+	// TotalChipNum num of total chips, get from capacity
 	TotalChipNum int
+	// AiCorePerChip num of aicore on each chip
+	AiCorePerChip int
 	// FreeChipNum num of free chips get from device-info
 	FreeChipNum int
-	// Chips map chipID to VChip class
-	Chips map[int]*VChip
+	// TotalRes total resource on node
+	TotalRes util.VResource
+	// ValidVNode node init success
+	ValidVNode bool
 }
 
 // VChip vnpu chip class
 type VChip struct {
+	PodMap map[string]*v1.Pod
+	ID     []string
+	// Name Ascend910-0
 	Name string
 	// Kind Ascend910/Ascend310/Ascend310P
 	Kind        string
-	isDual      bool
+	IsDual      bool
+	Unstable    bool
 	CoreNum     int
-	ID          []string
-	PodMap      map[string]*v1.Pod
 	SegmentFlag bool
+	TotalRes    util.VResource
+	UsedRes     util.VResource
+	FreeRes     util.VResource
 }
 
 // checkNodeDeviceInfo will be add more later
@@ -131,7 +149,7 @@ func marshalData(data interface{}) []byte {
 func getNodeDeviceInfoFromCM(kubeClient kubernetes.Interface, node *api.NodeInfo) (*NodeDeviceInfo, error) {
 	cmData, getErr := util.GetConfigMapWithRetry(kubeClient, util.DevInfoNameSpace, util.DevInfoPreName+node.Name)
 	if getErr != nil {
-		klog.V(util.LogErrorLev).Infof("getNodeDeviceInfoFromCM :%#v.", getErr)
+		klog.V(util.LogErrorLev).Infof("GetConfigMapWithRetry :%#v.", getErr)
 		return nil, getErr
 	}
 
@@ -153,7 +171,8 @@ func getNodeDeviceInfoFromCM(kubeClient kubernetes.Interface, node *api.NodeInfo
 }
 
 // InitNPUNodeByNodeInf init NPU node from node info and cm.
-func (n *NPUNode) InitNPUNodeByNodeInf(npuNode *api.NodeInfo, kubeClient kubernetes.Interface) error {
+func (n *NPUNode) InitNPUNodeByNodeInf(npuNode *api.NodeInfo, kubeClient kubernetes.Interface,
+	vJobTemplate map[string]map[string]util.VResource) error {
 	if n == nil || npuNode == nil {
 		klog.V(util.LogInfoLev).Infof("InitNPUNodeByNodeInf failed: %s.", util.ArgumentError)
 		return errors.New(util.ArgumentError)
@@ -179,6 +198,9 @@ func (n *NPUNode) InitNPUNodeByNodeInf(npuNode *api.NodeInfo, kubeClient kuberne
 	}
 	for k, v := range data.DeviceList {
 		n.Annotation[k] = v
+	}
+	if setVNPUErr := n.setNodeVNPUInfo(npuNode, vJobTemplate); setVNPUErr != nil {
+		klog.V(util.LogDebugLev).Infof("setNodeVNPUInfo %s %s", npuNode.Name, setVNPUErr)
 	}
 	return nil
 }
@@ -224,7 +246,15 @@ func (n *NPUNode) GetNewNPUNodeAnnotation(usedTop []int, resourceName, resourceN
 
 // CheckNPUResourceStable check resource stabilize.
 func (n NPUNode) CheckNPUResourceStable(vcJob SchedulerJob) error {
-	k := vcJob.handler.GetAnnoName()
+	if vcJob.IsVJob() {
+		klog.V(util.LogDebugLev).Infof("%s is vNPU job no need check %s stable in frame.", vcJob.Name, n.Name)
+		return nil
+	}
+
+	k, err := vcJob.GetAnnoName()
+	if err != nil {
+		return err
+	}
 	iNum, iOK := n.Idle[v1.ResourceName(k)]
 	nodeA, aOK := n.Annotation[k]
 	if iOK != true || aOK != true {
@@ -271,7 +301,8 @@ func (sHandle *ScheduleHandler) InitNodesFromSsn(ssn *framework.Session) {
 	sHandle.Nodes = make(map[string]NPUNode, util.MapInitNum)
 	for nodeName, nodeInf := range ssn.Nodes {
 		npuNode := NPUNode{}
-		if err := npuNode.InitNPUNodeByNodeInf(nodeInf, sHandle.FrameAttr.KubeClient); err != nil {
+		err := npuNode.InitNPUNodeByNodeInf(nodeInf, sHandle.FrameAttr.KubeClient, sHandle.FrameAttr.VJobTemplate)
+		if err != nil {
 			continue
 		}
 		sHandle.Nodes[nodeName] = npuNode
@@ -305,7 +336,7 @@ func (sHandle *ScheduleHandler) NodePredicate(taskInfo *api.TaskInfo, nodeInfo *
 	}
 	// task and frame conf has check before in job valid.
 	if !util.IsSelectorMeetJob(vcJob.Selector, vcNode.Label) {
-		meetErr := fmt.Errorf("job(%s) selector:%#v not meet node<%s> label or selector:%#v", vcJob.JobName,
+		meetErr := fmt.Errorf("job(%s) selector:%#v not meet node<%s> label or selector:%#v", vcJob.Name,
 			vcJob.Selector, vcNode.Name, vcNode.Label)
 		klog.V(util.LogErrorLev).Infof(meetErr.Error())
 		return meetErr

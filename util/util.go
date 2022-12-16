@@ -1,5 +1,17 @@
 /*
 Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 */
 
 // Package util is using for the total variable.
@@ -48,7 +60,7 @@ func ChangeTopToIntArray(topStr string, npuCardPreName string) []int {
 // IsMapHasNPUResource Determines whether a target string exists in the map.
 func IsMapHasNPUResource(resMap map[v1.ResourceName]float64, npuName string) bool {
 	for k := range resMap {
-		// must contains "huawei.com/Ascend"
+		// must contain "huawei.com/Ascend"
 		if strings.Contains(string(k), npuName) {
 			return true
 		}
@@ -181,4 +193,36 @@ func RemoveCommonElement(s1, s2 []int) []int {
 		}
 	}
 	return res
+}
+
+// Add add resource
+func (vResource *VResource) Add(resource VResource) {
+	vResource.Aicore += resource.Aicore
+	vResource.Aicpu += resource.Aicpu
+}
+
+// Sub sub resource
+func (vResource *VResource) Sub(resource VResource) {
+	vResource.Aicore -= resource.Aicore
+	vResource.Aicpu -= resource.Aicpu
+}
+
+// BeGreater judge resource greater or equal to
+func (vResource VResource) BeGreater(resource VResource) bool {
+	return vResource.Aicore >= resource.Aicore && vResource.Aicpu >= resource.Aicpu
+}
+
+// ConvertErrSliceToError convert []error to one error.
+func ConvertErrSliceToError(reErrors []error) error {
+	var reE error
+
+	for _, value := range reErrors {
+		if reE == nil {
+			reE = value
+			continue
+		}
+		reE = fmt.Errorf("%s %s", reE, value)
+	}
+
+	return reE
 }

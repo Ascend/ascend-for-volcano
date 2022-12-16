@@ -1,11 +1,21 @@
 /*
 Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 */
 
 /*
-
 Package test is using for HuaWei Ascend pin scheduling test.
-
 */
 package test
 
@@ -19,6 +29,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 	"volcano.sh/volcano/pkg/scheduler/api"
+
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
 func makePodSpec(pod NPUPod) v1.PodSpec {
@@ -81,6 +93,7 @@ func buildNPUResourceList(CCpu string, CMemory string, npuResourceType v1.Resour
 func FakeNormalTestTask(name string, nodename string, groupname string) *api.TaskInfo {
 	pod := NPUPod{
 		Namespace: "vcjob", Name: name, NodeName: nodename, GroupName: groupname, Phase: v1.PodRunning,
+		Labels:    make(map[string]string, util.MapInitNum),
 		ReqSource: buildNPUResourceList("1", "1000", NPU910CardName, strconv.Itoa(NPUIndex8)),
 	}
 	task := api.NewTaskInfo(BuildNPUPod(pod))

@@ -1,11 +1,21 @@
 /*
 Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 */
 
 /*
-
 Package main is using for HuaWei Ascend pin affinity schedule.
-
 */
 package main
 
@@ -40,7 +50,7 @@ func New(arguments framework.Arguments) framework.Plugin {
 
 // OnSessionOpen HuaWei NPU Action's init session for frame.
 func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
-	klog.V(util.LogInfoLev).Infof("enter %s OnSessionOpen %#v.", PluginName, tp.Scheduler.NPUPlugins)
+	klog.V(util.LogInfoLev).Infof("enter %s OnSessionOpen.", PluginName)
 	defer klog.V(util.LogInfoLev).Infof("leave %s OnSessionOpen.", PluginName)
 	if tp == nil || ssn == nil {
 		klog.V(util.LogInfoLev).Infof("OnSessionOpen : %s.", util.ArgumentError)
@@ -54,7 +64,7 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 	ssn.AddJobValidFn(tp.Name(), func(obj interface{}) *api.ValidateResult {
 		return tp.Scheduler.JobValid(obj)
 	})
-	// if npu no meet the task require,the task will failed.so need to intercept in advance
+	// if node not meet the task require, the task will be failed. so need to intercept in advance
 	ssn.AddPredicateFn(tp.Name(), func(taskInfo *api.TaskInfo, nodeInfo *api.NodeInfo) error {
 		return tp.Scheduler.NodePredicate(taskInfo, nodeInfo)
 	})
