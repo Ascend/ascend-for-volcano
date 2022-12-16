@@ -1,11 +1,21 @@
 /*
 Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 */
 
 /*
-
 Package rescheduling is using for HuaWei Ascend pin affinity schedule utilities.
-
 */
 package rescheduling
 
@@ -92,7 +102,8 @@ const (
 	NodeCardUnhealthy = "CardUnhealthy"
 	// NodeCardNetworkUnhealthy represents node is unhealthy because of card is network unhealthy
 	NodeCardNetworkUnhealthy = "CardNetworkUnhealthy"
-
+	// NoFaultJobsErr none fault jobs
+	NoFaultJobsErr   = "none fault jobs to be restarted in cache"
 	jobRestartReason = "restart for NPU malfunction"
 	// JobFaultRankIDCMPre the job cm name prefix, for retraining
 	JobFaultRankIDCMPre = "fault-config-"

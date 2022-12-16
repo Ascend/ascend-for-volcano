@@ -1,18 +1,30 @@
 /*
 Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 */
 
 /*
-
 Package ascend310p is using for HuaWei 310P Ascend pin affinity schedule.
-
 */
 package ascend310p
 
 import (
+	"errors"
 	"fmt"
 
 	"k8s.io/klog"
+	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/rescheduling"
@@ -28,52 +40,31 @@ func New(npuName string) plugin.ISchedulerPlugin {
 	npuPlugin.SetAnnoPreVal(util.NPU310PCardNamePre)
 	npuPlugin.SetDefaultJobSchedulerConfig(nil)
 	npuPlugin.SetMaxNodeNPUNum(maxNodeNPUNum)
-
+	npuPlugin.InitVNPU()
 	return npuPlugin
 }
 
 // PreStartAction pre-processing actions for rescheduling
 func (tp *ascend310P) PreStartAction(ssn *framework.Session) error {
-	klog.V(util.LogInfoLev).Infof("Entering PreStartAction of %s", util.NPU310PCardName)
-	defer klog.V(util.LogInfoLev).Infof("Leaving PreStartAction of %s", util.NPU310PCardName)
+	klog.V(util.LogDebugLev).Infof("Entering PreStartAction of %s", util.NPU310PCardName)
+	defer klog.V(util.LogDebugLev).Infof("Leaving PreStartAction of %s", util.NPU310PCardName)
 	if tp == nil || ssn == nil || tp.FrameAttr.KubeClient == nil {
 		return fmt.Errorf("%s handler not enabled or ssn is nil: %s", util.NPU310PCardName, util.ArgumentError)
 	}
-	tp.reHandle = rescheduling.New(&tp.ScheduleEnv, rescheduling.CmFaultJob310PKind)
-	if tp.reHandle == nil {
-		return fmt.Errorf("%s reSchedule not enabled: %s", util.NPU310PCardName, util.ArgumentError)
+
+	reErr := tp.preStartRescheduling(ssn)
+	vErr := tp.preStartVNPU(ssn)
+	if reErr == nil && vErr == nil {
+		return nil
 	}
-	tp.reHandle.NewCommonReScheduler(rescheduling.CmFaultJob310PKind)
-	tp.reHandle.SynCacheFaultNodeWithSession(util.NPU310PCardName)
-	tp.reHandle.AddFaultNodeWithSession(util.NPU310PCardName)
-	tp.reHandle.SynCacheFaultJobWithSession(ssn, util.NPU310PCardName, util.NPU310PCardNamePre)
-	// 1. restart Fault Jobs that are recorded in cache
-	if restartErr := tp.reHandle.RestartNeedForceDeleteJobs(ssn); restartErr != nil {
-		klog.V(util.LogInfoLev).Infof("%s RestartNeedForceDeleteJobs: %s",
-			util.NPU310PCardName, restartErr.Error())
-	}
-	// 2. get all the new 310P jobs in session
-	runningJobs, getRunErr := tp.reHandle.GetRunningJobs(ssn, util.NPU310PCardName, util.ChipAcceleratorType)
-	if getRunErr != nil {
-		klog.V(util.LogInfoLev).Infof("%s GetRunningJobs: %s", util.NPU310PCardName, getRunErr.Error())
-	}
-	// 3. get nodes of session and fault jobs of 310P
-	err := tp.reHandle.AddFaultJobWithSession(runningJobs, util.NPU310PCardName, util.NPU310PCardNamePre)
-	if err != nil {
-		klog.V(util.LogInfoLev).Infof("%s AddFaultJobWithSession", util.NPU310PCardName)
-	}
-	// 4. restart the fault jobs
-	if restartErr := tp.reHandle.RestartFaultJobs(ssn); restartErr != nil {
-		klog.V(util.LogInfoLev).Infof("%s RestartFaultJobs: %s", util.NPU310PCardName, restartErr.Error())
-		return restartErr
-	}
-	return nil
+
+	return fmt.Errorf("%s %s", reErr, vErr)
 }
 
 // PreStopAction post-processing actions for re-scheduling
 func (tp *ascend310P) PreStopAction(env *plugin.ScheduleEnv) error {
-	klog.V(util.LogInfoLev).Infof("enter PreStopAction of %s...", util.NPU310PCardName)
-	defer klog.V(util.LogInfoLev).Infof("leave PreStopAction of %s...", util.NPU310PCardName)
+	klog.V(util.LogDebugLev).Infof("enter PreStopAction of %s...", util.NPU310PCardName)
+	defer klog.V(util.LogDebugLev).Infof("leave PreStopAction of %s...", util.NPU310PCardName)
 	if tp == nil || tp.reHandle == nil || env == nil {
 		return fmt.Errorf("%s reSchedule not enabled or nil env: %s", util.NPU310PCardName, util.ArgumentError)
 	}
@@ -81,4 +72,161 @@ func (tp *ascend310P) PreStopAction(env *plugin.ScheduleEnv) error {
 		return err
 	}
 	return nil
+}
+
+// ValidNPUJob check job req npu num and mode
+func (tp *ascend310P) ValidNPUJob() *api.ValidateResult {
+	var err error
+	if tp == nil {
+		err := errors.New(util.ArgumentError)
+		return &api.ValidateResult{Pass: false, Reason: err.Error(), Message: err.Error()}
+	}
+	klog.V(util.LogDebugLev).Infof("%s ValidNPUJob job(%s).", tp.GetPluginName(), tp.Name)
+	if tp.VJob == nil {
+		// this is the old whole card.
+		return tp.NPUHandler.ValidNPUJob()
+	}
+	switch tp.Type {
+	case util.JobTypeWhole:
+		return tp.NPUHandler.ValidNPUJob()
+	case util.JobTypeStCut:
+		return tp.validStVNPUJob()
+	case util.JobTypeDyCut:
+		return tp.validDyVNPUJob()
+	default:
+		err = fmt.Errorf("%s no type %d", tp.Name, tp.Type)
+		klog.V(util.LogDebugLev).Infof("%s ValidNPUJob %s %s.", tp.GetPluginName(), tp.Name, err)
+	}
+
+	return &api.ValidateResult{Pass: false, Reason: err.Error(), Message: err.Error()}
+}
+
+// CheckNodeNPUByTask check nod npu meet task req
+func (tp *ascend310P) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode) error {
+	klog.V(util.LogDebugLev).Infof("%s CheckNodeNPUByTask job(%s).", tp.GetPluginName(), tp.Name)
+	var err error
+	if tp.VJob == nil {
+		// this is the old whole card.
+		if err = tp.NPUHandler.CheckNodeNPUByTask(task, node); err != nil {
+			return err
+		}
+		return nil
+	}
+	switch tp.Type {
+	case util.JobTypeWhole:
+		if err = tp.NPUHandler.CheckNodeNPUByTask(task, node); err != nil {
+			return err
+		}
+	case util.JobTypeStCut:
+		if err = tp.vHandle.StaticVNPU.CheckNodeNPUByTask(task, node, util.VResource{}); err != nil {
+			return err
+		}
+	case util.JobTypeDyCut:
+		taskRes, err := tp.vHandle.GetTaskResource(task, node)
+		if err != nil {
+			return err
+		}
+		if err = tp.vHandle.CheckNodeNPUByDyTask(task, node, taskRes); err != nil {
+			return err
+		}
+	default:
+		err = fmt.Errorf("%s no type %d", tp.Name, tp.Type)
+		klog.V(util.LogDebugLev).Infof("%s CheckNodeNPUByTask %s %s.", tp.GetPluginName(), tp.Name, err)
+		return err
+	}
+
+	if reErr := tp.reHandle.CheckNodeNPUByTask(task, node); reErr != nil {
+		return fmt.Errorf("rescheduling CheckNodeNPUByTask %s", reErr.Error())
+	}
+	return nil
+}
+
+// ScoreBestNPUNodes score node by calculate task req npu num and node npu top
+func (tp *ascend310P) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo, scoreMap map[string]float64) error {
+	klog.V(util.LogDebugLev).Infof("%s ScoreBestNPUNodes job(%s).", tp.GetPluginName(), tp.Name)
+	if tp.VJob == nil {
+		// this is the old whole card.
+		if err := tp.NPUHandler.ScoreBestNPUNodes(task, nodes, scoreMap); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	switch tp.Type {
+	case util.JobTypeWhole:
+		if err := tp.NPUHandler.ScoreBestNPUNodes(task, nodes, scoreMap); err != nil {
+			return err
+		}
+	case util.JobTypeStCut:
+		if err := tp.vHandle.StaticVNPU.ScoreBestNPUNodes(task, nodes, scoreMap); err != nil {
+			return err
+		}
+	case util.JobTypeDyCut:
+		if err := tp.vHandle.DynamicVNPU.ScoreBestNPUNodes(task, nodes, scoreMap); err != nil {
+			return err
+		}
+	default:
+		err := fmt.Errorf("%s no type %d", tp.Name, tp.Type)
+		klog.V(util.LogDebugLev).Infof("%s ScoreBestNPUNodes %s %s.", tp.GetPluginName(), tp.Name, err)
+		return err
+	}
+
+	if reErr := tp.reHandle.ScoreBestNPUNodes(task, scoreMap); reErr != nil {
+		klog.V(util.LogErrorLev).Infof("%s rescheduling ScoreBestNPUNodes failed :%s.",
+			tp.GetPluginName(), reErr.Error())
+	}
+	klog.V(util.LogInfoLev).Infof("%s ScoreBestNPUNodes task<%s> scoreMap<%v>", tp.GetPluginName(),
+		task.Name, scoreMap)
+	return nil
+}
+
+// UseAnnotation select npu for task from node
+func (tp *ascend310P) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
+	klog.V(util.LogDebugLev).Infof("%s UseAnnotation job(%s).", tp.GetPluginName(), tp.Name)
+	var err error
+	if tp.VJob == nil {
+		// this is the old whole card.
+		return tp.NPUHandler.UseAnnotation(task, node)
+	}
+	switch tp.Type {
+	case util.JobTypeWhole:
+		return tp.NPUHandler.UseAnnotation(task, node)
+	case util.JobTypeStCut:
+		return tp.vHandle.StaticVNPU.UseAnnotation(task, node, util.VResource{}, tp.vHandle.VT)
+	case util.JobTypeDyCut:
+		taskRes, err := tp.vHandle.GetTaskResource(task, node)
+		klog.V(util.LogDebugLev).Infof("task<%s> require resource<%#v>", task.Name, taskRes)
+		if err != nil {
+			klog.V(util.LogErrorLev).Infof("%s UseAnnotation job(%s) get require task resource failed: %s",
+				tp.GetPluginName(), tp.Name, err)
+		}
+		return tp.vHandle.DynamicVNPU.UseAnnotation(task, node, taskRes, tp.vHandle.VT)
+	default:
+		err = fmt.Errorf("%s no type %d", tp.Name, tp.Type)
+		klog.V(util.LogDebugLev).Infof("%s UseAnnotation %s %s.", tp.GetPluginName(), tp.Name, err)
+	}
+
+	return &node
+}
+
+// ReleaseAnnotation release select npu for task to node
+func (tp *ascend310P) ReleaseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
+	klog.V(util.LogDebugLev).Infof("%s UseAnnotation job(%s).", tp.GetPluginName(), tp.Name)
+	if tp.VJob == nil {
+		// this is the old whole card.
+		return &node
+	}
+
+	var err error
+	switch tp.Type {
+	case util.JobTypeWhole, util.JobTypeStCut:
+		return &node
+	case util.JobTypeDyCut:
+		return tp.vHandle.DynamicVNPU.ReleaseAnnotation(task, node)
+	default:
+		err = fmt.Errorf("%s no type %d", tp.Name, tp.Type)
+		klog.V(util.LogDebugLev).Infof("%s ReleaseAnnotation %s %s.", tp.GetPluginName(), tp.Name, err)
+	}
+
+	return &node
 }

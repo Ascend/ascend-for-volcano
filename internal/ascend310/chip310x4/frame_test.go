@@ -1,11 +1,21 @@
 /*
 Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 */
 
 /*
-
 Package chip310x4 is using for HuaWei Ascend pin affinity schedule.
-
 */
 package chip310x4
 
@@ -38,13 +48,13 @@ func buildValidNPUJobTestCase01() []validNPUJobTestCase {
 	test.SetFakeJobResRequest(job01, util.NPU310CardName, "0")
 	attr1 := itest.FakeSchedulerJobAttrByJob(job01)
 	for _, task := range attr1.Tasks {
-		fmt.Println(task.TaskName)
+		fmt.Println(task.Name)
 	}
 	job02 := test.FakeNormalTestJob("job02", 1)
 	test.SetFakeJobResRequest(job02, util.NPU310CardName, "65")
 	attr2 := itest.FakeSchedulerJobAttrByJob(job02)
 	for _, task := range attr1.Tasks {
-		fmt.Println(task.TaskName)
+		fmt.Println(task.Name)
 	}
 	job03 := test.FakeNormalTestJob("job02", 1)
 	test.SetFakeJobResRequest(job03, util.NPU310CardName, "2")

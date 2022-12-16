@@ -1,17 +1,28 @@
 /*
 Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 */
 
 /*
-
 Package ascend910 is using for HuaWei Ascend pin affinity schedule.
-
 */
 package ascend910
 
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -58,7 +69,9 @@ func (tp *ascend910) InitMyJobPlugin(attr util.SchedulerJobAttr, env plugin.Sche
 	if !ok {
 		v = Module910AcceleratorValue
 	}
-	value, ok := tp.Kind[attr.ReqNPUName+v]
+	cardNameSplit := strings.Split(attr.ReqNPUName, "-")
+	cardName := cardNameSplit[0]
+	value, ok := tp.Kind[cardName+v]
 	if !ok {
 		err := fmt.Errorf("not support %s", attr.ReqNPUName+v)
 		klog.V(util.LogErrorLev).Infof("%s InitMyJobPlugin err: %s", tp.GetPluginName(), err.Error())
@@ -168,4 +181,9 @@ func (tp *ascend910) PreStopAction(env *plugin.ScheduleEnv) error {
 		}
 	}
 	return nil
+}
+
+// ReleaseAnnotation Release used resource.
+func (tp *ascend910) ReleaseAnnotation(_ *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
+	return &node
 }

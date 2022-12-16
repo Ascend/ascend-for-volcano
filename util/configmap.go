@@ -1,17 +1,26 @@
 /*
 Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 */
 
 /*
-
 Package util is using for HuaWei infer common Ascend pin affinity schedule.
-
 */
 package util
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"reflect"
 
@@ -92,41 +101,4 @@ func UpdateConfigmapIncrementally(kubeClient kubernetes.Interface, ns, name stri
 		}
 	}
 	return newData, nil
-}
-
-// ReadCMFromKubernetes readCMFromKubernetes
-func (comCM *ComConfigMap) ReadCMFromKubernetes(client kubernetes.Interface) {
-	cm, err := GetConfigMapWithRetry(client, comCM.Namespace, comCM.Name)
-	if err != nil {
-		klog.V(LogErrorLev).Infof("ReadCMFromKubernetes: %s.", err.Error())
-		return
-	}
-	comCM.Name = cm.Name
-	comCM.Namespace = cm.Namespace
-	comCM.Data = cm.Data
-}
-
-// UpdateCMToKubernetes updateCMToKubernetes
-func (comCM *ComConfigMap) UpdateCMToKubernetes(client kubernetes.Interface) {
-	cm := &v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      comCM.Name,
-			Namespace: comCM.Namespace,
-		},
-		Data: comCM.Data,
-	}
-	err := CreateOrUpdateConfigMap(client, cm, cm.Name, cm.Namespace)
-	if err != nil {
-		klog.V(LogErrorLev).Infof("getNodeDeviceInfoFromCM: %s.", err.Error())
-	}
-}
-
-// MarshalCacheDataToString marshalCacheDataToString
-func (comCM *ComConfigMap) MarshalCacheDataToString(data interface{}) (string, error) {
-	dataBuffer, err := json.Marshal(data)
-	if err != nil {
-		klog.V(LogErrorLev).Infof("MarshalCacheDataToString err: %#v", err)
-		return "", err
-	}
-	return string(dataBuffer), nil
 }

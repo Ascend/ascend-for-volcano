@@ -1,11 +1,21 @@
 /*
 Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 */
 
 /*
-
 Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
-
 */
 package rescheduling
 
@@ -471,7 +481,7 @@ func reAddFaultJobWithSessionModifyJobInfo(jobInfos map[api.JobID]*api.JobInfo) 
 
 func reCreateNPUTask910(name, namespace string, reqResourceNum int) util.NPUTask {
 	return util.NPUTask{
-		TaskName:   namespace + "/" + name,
+		Name:       namespace + "/" + name,
 		ReqNPUName: "huawei.com/Ascend910",
 		ReqNPUNum:  reqResourceNum,
 		Selector:   nil,
@@ -480,7 +490,7 @@ func reCreateNPUTask910(name, namespace string, reqResourceNum int) util.NPUTask
 
 func addNPUTaskToNPUJob(npuJob plugin.SchedulerJob, taskName, taskNamespace string, reqNPUNum int) plugin.SchedulerJob {
 	task := reCreateNPUTask910(taskName, taskNamespace, reqNPUNum)
-	npuJob.Tasks[taskName] = task
+	npuJob.Tasks[api.TaskID(taskName)] = task
 	npuJob.ReqNPUNum += reqNPUNum
 	return npuJob
 }
@@ -489,7 +499,7 @@ func reCreateSchedulerJob910(namespace string, UID api.JobID) plugin.SchedulerJo
 	sJob := plugin.SchedulerJob{
 		SchedulerJobAttr: util.SchedulerJobAttr{
 			ComJob: util.ComJob{
-				JobName:   UID,
+				Name:      UID,
 				NameSpace: namespace,
 				Selector:  nil,
 				Label:     nil,
@@ -497,7 +507,7 @@ func reCreateSchedulerJob910(namespace string, UID api.JobID) plugin.SchedulerJo
 			NPUJob: &util.NPUJob{
 				ReqNPUName: "huawei.com/Ascend910",
 				ReqNPUNum:  zero,
-				Tasks:      make(map[string]util.NPUTask, util.MapInitNum),
+				Tasks:      make(map[api.TaskID]util.NPUTask, util.MapInitNum),
 			},
 		},
 	}

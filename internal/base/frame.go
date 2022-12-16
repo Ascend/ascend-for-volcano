@@ -1,11 +1,21 @@
 /*
 Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 */
 
 /*
-
 Package base is using for HuaWei Ascend pin affinity schedule.
-
 */
 package base
 
@@ -37,22 +47,18 @@ func (tp *NPUHandler) InitMyJobPlugin(attr util.SchedulerJobAttr, env plugin.Sch
 func (tp *NPUHandler) ValidNPUJob() *api.ValidateResult {
 	if tp == nil {
 		err := errors.New(util.ArgumentError)
-		return &api.ValidateResult{
-			Pass:    false,
-			Reason:  err.Error(),
-			Message: err.Error(),
-		}
+		return &api.ValidateResult{Pass: false, Reason: err.Error(), Message: err.Error()}
 	}
-	klog.V(util.LogDebugLev).Infof("%s ValidNPUJob job(%s).", tp.GetPluginName(), tp.JobName)
+	klog.V(util.LogDebugLev).Infof("%s ValidNPUJob job(%s).", tp.GetPluginName(), tp.Name)
 
 	for _, task := range tp.Tasks {
 		taskNPU := task.ReqNPUNum
 
 		klog.V(util.LogDebugLev).Infof("%s check task<%s> require npu<%d>.",
-			tp.GetPluginName(), task.TaskName, taskNPU)
+			tp.GetPluginName(), task.Name, taskNPU)
 
 		if taskNPU < 1 || taskNPU > tp.MaxNodeNPUNum {
-			err := fmt.Errorf("task<%s-%s> req npu num<%d> is invalid", tp.JobName, task.TaskName, taskNPU)
+			err := fmt.Errorf("task<%s-%s> req npu num<%d> is invalid", tp.Name, task.Name, taskNPU)
 			klog.V(util.LogErrorLev).Infof("%s ValidNPUJob err: %s", tp.GetPluginName(), err.Error())
 			return &api.ValidateResult{
 				Pass:    false,
@@ -62,6 +68,25 @@ func (tp *NPUHandler) ValidNPUJob() *api.ValidateResult {
 		}
 	}
 	return nil
+}
+
+// CheckVNPUSegmentEnableByConfig Check VNPU segmentEnable by init plugin parameters, return true if dynamic
+func (tp *NPUHandler) CheckVNPUSegmentEnableByConfig() bool {
+	configuration, err := util.GetConfigFromSchedulerConfigMap(util.CMInitParamKey, tp.FrameAttr.Conf)
+	if err != nil {
+		klog.V(util.LogDebugLev).Info("cannot get configuration, segmentEnable.")
+		return false
+	}
+	// get segmentEnable by user configuration
+	segmentEnable, ok := configuration.Arguments[util.SegmentEnable]
+	if !ok {
+		klog.V(util.LogDebugLev).Info("checkVNPUSegmentEnable doesn't exist presetVirtualDevice.")
+		return false
+	}
+	if segmentEnable == "false" {
+		return true
+	}
+	return false
 }
 
 // CheckNodeNPUByTask check nod npu meet task req
