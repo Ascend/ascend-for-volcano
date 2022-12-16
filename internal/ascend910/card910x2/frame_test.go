@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package card910x2 is using for HuaWei Ascend pin affinity schedule.
-
 */
 package card910x2
 

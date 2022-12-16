@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package test is using for HuaWei Ascend pin scheduling test.
-
 */
 package plugin
 
@@ -94,6 +92,10 @@ func (tp *ascendTest) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInf
 }
 
 func (tp *ascendTest) UseAnnotation(task *api.TaskInfo, node NPUNode) *NPUNode {
+	return nil
+}
+
+func (tp *ascendTest) ReleaseAnnotation(task *api.TaskInfo, node NPUNode) *NPUNode {
 	return nil
 }
 

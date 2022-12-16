@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package plugin is using for HuaWei Ascend pin affinity schedule frame.
-
 */
 package plugin
 
@@ -39,6 +37,7 @@ type ISchedulerPluginNeed interface {
 	CheckNodeNPUByTask(*api.TaskInfo, NPUNode) error
 	ScoreBestNPUNodes(*api.TaskInfo, []*api.NodeInfo, map[string]float64) error
 	UseAnnotation(*api.TaskInfo, NPUNode) *NPUNode
+	ReleaseAnnotation(*api.TaskInfo, NPUNode) *NPUNode
 	PreStartAction(ssn *framework.Session) error
 	PreStopAction(*ScheduleEnv) error
 	InitMyJobPlugin(util.SchedulerJobAttr, ScheduleEnv) error

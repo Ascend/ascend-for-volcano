@@ -3,15 +3,12 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package plugin is using for HuaWei Ascend pin affinity schedule frame.
-
 */
 package plugin
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 
 	"k8s.io/api/core/v1"
@@ -54,9 +51,9 @@ func (sHandle *ScheduleHandler) releaseAnnotation(task *api.TaskInfo, vcJob Sche
 			vcNode.Name, rankIndex)
 		delete(task.Pod.Annotations, podRankIndex)
 	}
-	vcTask, ok := vcJob.Tasks[task.Name]
+	vcTask, ok := vcJob.Tasks[task.UID]
 	if !ok {
-		klog.V(util.LogInfoLev).Infof("task %s not in vcjob %s", vcTask.TaskName, vcJob.JobName)
+		klog.V(util.LogInfoLev).Infof("task %s not in vcjob %s", vcTask.Name, vcJob.Name)
 		return
 	}
 	reqStr, ok := task.Pod.Annotations[util.AscendNPUPodRealUse]
@@ -75,7 +72,7 @@ func (sHandle *ScheduleHandler) releaseAnnotation(task *api.TaskInfo, vcJob Sche
 	if value != "" {
 		// if failed, reset by next session.
 		if isEachStringContainsSameElement(value, reqStr, ",") {
-			annErr := fmt.Errorf("%s:%s has same NPU used %s:%s", vcNode.Name, value, vcTask.TaskName, reqStr)
+			annErr := fmt.Errorf("%s:%s has same NPU used %s:%s", vcNode.Name, value, vcTask.Name, reqStr)
 			klog.V(util.LogErrorLev).Infof("releaseAnnotation %s", annErr)
 			return
 		}
@@ -84,6 +81,11 @@ func (sHandle *ScheduleHandler) releaseAnnotation(task *api.TaskInfo, vcJob Sche
 	sHandle.Nodes[vcNode.Name] = vcNode
 	klog.V(util.LogDebugLev).Infof("%s releaseAnnotation %s's %s on %s,new top:[%s].", PluginName, task.Name,
 		reqStr, vcNode.Name, reqStr+","+value)
+	tmpNode := vcJob.handler.ReleaseAnnotation(task, vcNode)
+	if tmpNode != nil {
+		// update node.
+		sHandle.Nodes[vcNode.Name] = *tmpNode
+	}
 }
 
 // NPUDeallocateFunc Free assigned npu, if allocate failed by volcano frame.
@@ -115,9 +117,21 @@ func updatePodPendingReason(task *api.TaskInfo, reasonTmp string) {
 		Message: reasonTmp,
 	}
 	for _, tmp := range task.Pod.Status.Conditions {
-		if reflect.DeepEqual(tmp, condition) {
+		if strings.Contains(tmp.Message, reasonTmp) {
+			klog.V(util.LogDebugLev).Infof("%s has record the reason:%s ,skip.", task.Name, reasonTmp)
 			return
 		}
 	}
 	task.Pod.Status.Conditions = append(task.Pod.Status.Conditions, condition)
+}
+
+// IsNPUTask to judge the task either is NPU task or not.
+func IsNPUTask(nT *api.TaskInfo) bool {
+	for k := range nT.Resreq.ScalarResources {
+		// must contain "huawei.com/"
+		if strings.Contains(string(k), util.HwPreName) {
+			return true
+		}
+	}
+	return false
 }

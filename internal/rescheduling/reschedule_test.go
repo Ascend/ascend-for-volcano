@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
-
 */
 package rescheduling
 
@@ -471,7 +469,7 @@ func reAddFaultJobWithSessionModifyJobInfo(jobInfos map[api.JobID]*api.JobInfo) 
 
 func reCreateNPUTask910(name, namespace string, reqResourceNum int) util.NPUTask {
 	return util.NPUTask{
-		TaskName:   namespace + "/" + name,
+		Name:       namespace + "/" + name,
 		ReqNPUName: "huawei.com/Ascend910",
 		ReqNPUNum:  reqResourceNum,
 		Selector:   nil,
@@ -480,7 +478,7 @@ func reCreateNPUTask910(name, namespace string, reqResourceNum int) util.NPUTask
 
 func addNPUTaskToNPUJob(npuJob plugin.SchedulerJob, taskName, taskNamespace string, reqNPUNum int) plugin.SchedulerJob {
 	task := reCreateNPUTask910(taskName, taskNamespace, reqNPUNum)
-	npuJob.Tasks[taskName] = task
+	npuJob.Tasks[api.TaskID(taskName)] = task
 	npuJob.ReqNPUNum += reqNPUNum
 	return npuJob
 }
@@ -489,7 +487,7 @@ func reCreateSchedulerJob910(namespace string, UID api.JobID) plugin.SchedulerJo
 	sJob := plugin.SchedulerJob{
 		SchedulerJobAttr: util.SchedulerJobAttr{
 			ComJob: util.ComJob{
-				JobName:   UID,
+				Name:      UID,
 				NameSpace: namespace,
 				Selector:  nil,
 				Label:     nil,
@@ -497,7 +495,7 @@ func reCreateSchedulerJob910(namespace string, UID api.JobID) plugin.SchedulerJo
 			NPUJob: &util.NPUJob{
 				ReqNPUName: "huawei.com/Ascend910",
 				ReqNPUNum:  zero,
-				Tasks:      make(map[string]util.NPUTask, util.MapInitNum),
+				Tasks:      make(map[api.TaskID]util.NPUTask, util.MapInitNum),
 			},
 		},
 	}

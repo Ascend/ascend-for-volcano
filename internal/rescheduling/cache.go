@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
-
 */
 package rescheduling
 
@@ -178,7 +176,8 @@ func (reCache DealReSchedulerCache) getRealFaultJobs() ([]FaultJob, error) {
 		realFaultJobs = append(realFaultJobs, fJob)
 	}
 	if len(realFaultJobs) == 0 {
-		return realFaultJobs, fmt.Errorf("none fault jobs to be restarted in cache")
+		klog.V(util.LogDebugLev).Infof("getRealFaultJobs %s.", NoFaultJobsErr)
+		return nil, fmt.Errorf(NoFaultJobsErr)
 	}
 	return realFaultJobs, nil
 }
@@ -207,6 +206,9 @@ func (reCache *DealReSchedulerCache) writeFaultNodesToCMString() (string, error)
 func (reCache *DealReSchedulerCache) writeFaultJobsToCMString() (string, error) {
 	realFaultJob, err := reCache.getRealFaultJobs()
 	if err != nil {
+		if err.Error() == NoFaultJobsErr {
+			return "", nil
+		}
 		return "", fmt.Errorf("writeFaultJobsToCM: %#v", err)
 	}
 	jobData, err := reCache.marshalCacheDataToString(realFaultJob)
@@ -269,7 +271,7 @@ func (reCache *DealReSchedulerCache) WriteReSchedulerCacheToEnvCache(env *plugin
 	}
 	fJobString, err := reCache.writeFaultJobsToCMString()
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("WriteReSchedulerCacheToEnvCache: %#v", err)
+		klog.V(util.LogInfoLev).Infof("WriteReSchedulerCacheToEnvCache: %#v", err)
 	}
 	nodeHBString, err := reCache.writeNodeHeartbeatToCMString()
 	if err != nil {

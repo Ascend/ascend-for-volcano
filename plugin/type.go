@@ -19,9 +19,54 @@ const (
 	PluginName = "huaweiNPU"
 
 	nodesNoMeetNPUReqError = "insufficient npus on the schedulable nodes in cluster"
-	nodeNoFitSelectorError = "no matching label on this node"
 	objectNilError         = "object or argument is nil"
 	podRankIndex           = "hccl/rankIndex"
+
+	// FormatIncorrectError format incorrect error
+	FormatIncorrectError = "format incorrect"
+
+	// AscendVNPULevel vnpu level
+	AscendVNPULevel = "vnpu-level"
+	// AscendVNPULevelLow low
+	AscendVNPULevelLow = "low"
+	// AscendVNPULevelHigh high
+	AscendVNPULevelHigh = "high"
+	// AscendVNPUPrefix vir
+	AscendVNPUPrefix = "vir"
+	// AscendVNPUDVPP dvpp enable
+	AscendVNPUDVPP = "vnpu-dvpp"
+	// AscendDVPPEnabledOff off
+	AscendDVPPEnabledOff = "no"
+	// AscendDVPPEnabledNull null
+	AscendDVPPEnabledNull = "null"
+	// AscendDVPPEnabledOn on
+	AscendDVPPEnabledOn = "yes"
+	// AscendNDVPPValue value
+	AscendNDVPPValue = "ndvpp"
+	// AscendDVPPValue value
+	AscendDVPPValue = "dvpp"
+	// VNPUTempVir01 vir01
+	VNPUTempVir01 = "vir01"
+	// VNPUTempVir02 vir02
+	VNPUTempVir02 = "vir02"
+	// VNPUTempVir02C1 vir02_1c
+	VNPUTempVir02C1 = "vir02_1c"
+	// VNPUTempVir04  vir04
+	VNPUTempVir04 = "vir04"
+	// VNPUTempVir04C3 vir04_3c
+	VNPUTempVir04C3 = "vir04_3c"
+	// VNPUTempVir04C3NDVPP vir04_3c_ndvpp
+	VNPUTempVir04C3NDVPP = "vir04_3c_ndvpp"
+	// VNPUTempVir04C4cDVPP vir04_4c_dvpp
+	VNPUTempVir04C4cDVPP = "vir04_4c_dvpp"
+	// VNPUTempVir08  vir08 only 910
+	VNPUTempVir08 = "vir08"
+	// VNPUTempVir16  vir16 only 910
+	VNPUTempVir16 = "vir16"
+	// Ascend310P 310P template name
+	Ascend310P = "Ascend310P"
+	// Ascend910 910 template name
+	Ascend910 = "Ascend910"
 )
 
 // SchedulerJob the plugin define job info
@@ -32,9 +77,10 @@ type SchedulerJob struct {
 
 // VolcanoFrame passed in by the volcano frame.
 type VolcanoFrame struct {
-	UID        types.UID
-	Conf       []conf.Configuration
-	KubeClient kubernetes.Interface
+	UID          types.UID
+	Conf         []conf.Configuration
+	KubeClient   kubernetes.Interface
+	VJobTemplate map[string]map[string]util.VResource
 }
 
 // ScheduleCache the plugin defined caches saving cm data

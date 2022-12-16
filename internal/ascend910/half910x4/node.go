@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package half910x4 is using for HuaWei A800/9000 Ascend910 pin affinity schedule.
-
 */
 package half910x4
 

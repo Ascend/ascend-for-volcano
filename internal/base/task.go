@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package base is using for HuaWei Ascend pin affinity schedule.
-
 */
 package base
 
@@ -26,7 +24,7 @@ func (tp *NPUHandler) GetTaskReqNPUNum(task *api.TaskInfo) (int, error) {
 	if tp == nil || task == nil {
 		return 0, errors.New(util.ArgumentError)
 	}
-	nTask, ok := tp.Tasks[string(task.UID)]
+	nTask, ok := tp.Tasks[task.UID]
 	if !ok {
 		err := fmt.Errorf("task<%s> is not npu task", task.Name)
 		klog.V(util.LogErrorLev).Infof("GetTaskReqNPUNum err: %s", err.Error())

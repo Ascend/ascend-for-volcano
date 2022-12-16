@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package card310x4 is using for HuaWei A300T Ascend pin affinity schedule.
-
 */
 package card310x4
 
@@ -50,14 +48,14 @@ func (tp *card310x4) ValidNPUJob() *api.ValidateResult {
 
 	taskNum := len(tp.Tasks)
 	klog.V(util.LogDebugLev).Infof("%s ValidNPUJob card-mode job<%s> has <%d> tasks.",
-		tp.GetPluginName(), tp.JobName, taskNum)
+		tp.GetPluginName(), tp.Name, taskNum)
 
 	for _, task := range tp.Tasks {
 		taskNPU := task.ReqNPUNum
 		klog.V(util.LogDebugLev).Infof("%s check Card Mode %s require %d npu.",
-			tp.GetPluginName(), task.TaskName, taskNPU)
+			tp.GetPluginName(), task.Name, taskNPU)
 		if taskNPU < 1 || taskNPU > tp.MaxCardNPUNum {
-			err := fmt.Errorf("task <%s-%s> req npu <%d> is invalid", tp.JobName, task.TaskName, taskNPU)
+			err := fmt.Errorf("task <%s-%s> req npu <%d> is invalid", tp.Name, task.Name, taskNPU)
 			klog.V(util.LogErrorLev).Infof("%s ValidNPUJob err: %s", tp.GetPluginName(), err.Error())
 			return &api.ValidateResult{
 				Pass:    false,
@@ -207,4 +205,9 @@ func (tp *card310x4) SelectNPUFromNode(task *api.TaskInfo, node plugin.NPUNode) 
 	err = fmt.Errorf("node top<%v> not meet task req<%d>", nodeTop, taskNPUNum)
 	klog.V(util.LogErrorLev).Infof("%s selectNPUFromNode err: %s.", tp.GetPluginName(), err.Error())
 	return nil, err
+}
+
+// ReleaseAnnotation Release used resource.
+func (tp *card310x4) ReleaseAnnotation(_ *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
+	return &node
 }

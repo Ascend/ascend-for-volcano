@@ -3,12 +3,6 @@
 // Package util is using for the total variable.
 package util
 
-import (
-	"k8s.io/api/core/v1"
-	"volcano.sh/apis/pkg/apis/scheduling"
-	"volcano.sh/volcano/pkg/scheduler/api"
-)
-
 const (
 	// LogErrorLev for log error.
 	LogErrorLev = 1
@@ -18,14 +12,32 @@ const (
 	LogInfoLev = 3
 	// LogDebugLev for log debug.
 	LogDebugLev = 4
+	// ErrorInt return -1 when get error for int
+	ErrorInt = -1
 	// NPUIndex2 the 2 index.
 	NPUIndex2 = 2
 	// NPUIndex3 the 3 index.
 	NPUIndex3 = 3
 	// NPUIndex8 the 8 index.
 	NPUIndex8 = 8
+	// NPUIndex16 the 16 index.
+	NPUIndex16 = 16
+	// NPUIndex7 the 7 index.
+	NPUIndex7 = 7
 	// NPUIndex4 the 4 index.
 	NPUIndex4 = 4
+	// NPUIndex5 the 5 index.
+	NPUIndex5 = 5
+	// NPUIndex1 the 1 index.
+	NPUIndex1 = 1
+	// CoreNum32 32 core 910
+	CoreNum32 = 32
+	// CoreNum30 30 core 910
+	CoreNum30 = 30
+	// CpuNum14 14 cpu 910
+	CpuNum14 = 14
+	// JobTemplateNum 11 vnpu job template
+	JobTemplateNum = 11
 	// MapInitNum for map init length.
 	MapInitNum = 3
 	// Base10 for const 10.
@@ -34,6 +46,10 @@ const (
 	BitSize64 = 64
 	// NPUHexKilo for const 1000,volcano frame used.
 	NPUHexKilo = 1000
+	// AICPU cpu resource name
+	AICPU = "cpu"
+	// HwPreName pre name
+	HwPreName = "huawei.com/"
 	// NPUCardPreName for NPU card pre-Name.
 	NPUCardPreName = "huawei.com/Ascend"
 	// ArchSelector MindX-dl arch selector.
@@ -64,6 +80,10 @@ const (
 	ChipAcceleratorType = "chip"
 	// HalfAcceleratorType for half mode
 	HalfAcceleratorType = "half"
+	// ServerType server type value takes Ascend310P-10-dual/Ascend910-32...
+	ServerType = "servertype"
+	// ServerTypeDual dual card
+	ServerTypeDual = "dual"
 
 	// NPU910CardName for judge 910 npu resource.
 	NPU910CardName = "huawei.com/Ascend910"
@@ -79,6 +99,8 @@ const (
 	NPU310PCardNamePre = "Ascend310P-"
 	// AscendNPUPodRealUse for NPU pod real use cards.
 	AscendNPUPodRealUse = "huawei.com/AscendReal"
+	// AscendNPUCore for NPU core num, like 56; Records the chip name that the scheduler assigns to the pod.
+	AscendNPUCore = "huawei.com/npu-core"
 
 	// SegmentEnable for VNPU segment enable flag. Default is "false".
 	SegmentEnable = "presetVirtualDevice"
@@ -102,46 +124,28 @@ const (
 	NodeNotMeetTopologyWarning = "the npus on this node don't satisfy the schedulable topology"
 	// ArgumentError argument nil error.
 	ArgumentError = "invalid argument"
+	// JobKindKey for define the Job kind:ascend-310P, ascend-910
+	JobKindKey = "ring-controller.atlas"
+	// JobKind910Value in ring-controller.atlas.
+	JobKind910Value = "ascend-910"
+	// JobKind310Value in ring-controller.atlas.
+	JobKind310Value = "ascend-310"
+	// JobKind310PValue 310p ring controller name
+	JobKind310PValue = "ascend-310P"
 )
 
-// NPUTask for npu task need.
-type NPUTask struct {
-	TaskName   string
-	ReqNPUName string
-	ReqNPUNum  int
-	// Selector the same as job.
-	Selector map[string]string
-	Label    map[string]string
+// VTemplate for vNode resource
+type VTemplate struct {
+	// ChipKind Ascend910/Ascend310P
+	ChipKind   string
+	AICore     int
+	AICPU      int
+	DVPPEnable string
 }
 
-// ComJob all vcJob has.
-type ComJob struct {
-	JobName   api.JobID
-	NameSpace string
-	Selector  map[string]string
-	Label     map[string]string
-}
-
-// NPUJob only npu vcJob have.
-type NPUJob struct {
-	ReqNPUName string
-	ReqNPUNum  int
-	PGStatus   scheduling.PodGroupPhase
-	TaskStatus []v1.PodPhase
-	CreateTime int64
-	// the mapKey is taskID,not Name.
-	Tasks map[string]NPUTask
-}
-
-// SchedulerJobAttr vcJob's attribute.
-type SchedulerJobAttr struct {
-	ComJob
-	*NPUJob
-}
-
-// ComConfigMap common config map
-type ComConfigMap struct {
-	Name      string
-	Namespace string
-	Data      map[string]string
+// VResource resource dimensions
+type VResource struct {
+	Aicore int
+	Aicpu  int
+	DVPP   string
 }

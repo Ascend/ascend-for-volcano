@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package card910x2 is using for HuaWei Ascend pin affinity schedule.
-
 */
 package card910x2
 
@@ -52,7 +50,7 @@ func (tp *card910x2) ValidNPUJob() *api.ValidateResult {
 	}
 	jobNPU := tp.ReqNPUNum
 	if jobNPU < 1 {
-		err := fmt.Errorf("job<%s> req npu num<%d> is invalid", tp.JobName, jobNPU)
+		err := fmt.Errorf("job<%s> req npu num<%d> is invalid", tp.Name, jobNPU)
 		klog.V(util.LogErrorLev).Infof("%s ValidNPUJob err: %s", tp.GetPluginName(), err.Error())
 		return &api.ValidateResult{
 			Pass:    false,
@@ -180,7 +178,7 @@ func (tp *card910x2) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo
 	}
 	taskNPUNum, err := tp.GetTaskReqNPUNum(task)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
+		klog.V(util.LogErrorLev).Infof("%s ScoreBestNPUNodes err: %s", tp.GetPluginName(), err.Error())
 		return err
 	}
 	if taskNPUNum < 1 || taskNPUNum > tp.MaxNodeNPUNum {
@@ -195,7 +193,7 @@ func (tp *card910x2) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo
 		}
 		nodeTop, err := tp.GetUsableTopFromNode(nNode)
 		if err != nil {
-			klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
+			klog.V(util.LogErrorLev).Infof("%s ScoreBestNPUNodes err: %s", tp.GetPluginName(), err.Error())
 			continue
 		}
 		if len(nodeTop) > tp.MaxNodeNPUNum {
@@ -214,4 +212,9 @@ func (tp *card910x2) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo
 		scoreMap[node.Name] = nodeWeight * float64(int(healthyNPUNum/util.NPUHexKilo)*npuNumPerHccs-bestScore)
 	}
 	return nil
+}
+
+// ReleaseAnnotation Release used resource.
+func (tp *card910x2) ReleaseAnnotation(_ *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
+	return &node
 }

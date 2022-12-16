@@ -3,9 +3,7 @@ Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
 */
 
 /*
-
 Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
-
 */
 package rescheduling
 
@@ -130,13 +128,14 @@ func (reScheduler *ReScheduler) GetRunningJobs(
 			klog.V(util.LogDebugLev).Infof("job %s not in session, skip", jobInfo.UID)
 			continue
 		}
-		if schedulerJob.ReqNPUNum == 0 || schedulerJob.ReqNPUName != cardName { // req type is not current card type
-			klog.V(util.LogDebugLev).Infof("job %s requires npu %d name %s: illegal, skip", schedulerJob.JobName,
-				schedulerJob.ReqNPUNum, schedulerJob.ReqNPUName)
+		// req type is not current card type
+		if schedulerJob.ReqNPUNum == 0 || schedulerJob.GetReqCardNameFromRingController() != cardName {
+			klog.V(util.LogDebugLev).Infof("job %s requires npu %d name %s: illegal, skip", schedulerJob.Name,
+				schedulerJob.ReqNPUNum, schedulerJob.GetReqCardNameFromRingController())
 			continue
 		}
 		if len(schedulerJob.Selector) == 0 {
-			klog.V(util.LogDebugLev).Infof("job %s has no selectors: illegal, skip", schedulerJob.JobName)
+			klog.V(util.LogDebugLev).Infof("job %s has no selectors: illegal, skip", schedulerJob.Name)
 			continue
 		}
 		if cardName != util.NPU910CardName {
@@ -434,16 +433,16 @@ func (reScheduler *ReScheduler) NewCommonReScheduler(jobType string) {
 
 // SynCacheFaultNodeWithSession Synchronise FaultNodes in cache by updating the information using current session
 func (reScheduler *ReScheduler) SynCacheFaultNodeWithSession(cardName string) {
-	klog.V(util.LogInfoLev).Infof("enter SynCacheFaultNodeWithSession ...")
-	defer klog.V(util.LogInfoLev).Infof("leave SynCacheFaultNodeWithSession ...")
-	klog.V(util.LogInfoLev).Infof("ReSchedulerCache fault nodes before sync: %#v", reScheduler.FaultNodes)
+	klog.V(util.LogDebugLev).Infof("enter SynCacheFaultNodeWithSession ...")
+	defer klog.V(util.LogDebugLev).Infof("leave SynCacheFaultNodeWithSession ...")
+	klog.V(util.LogDebugLev).Infof("ReSchedulerCache fault nodes before sync: %#v", reScheduler.FaultNodes)
 	if reScheduler == nil {
 		klog.V(util.LogErrorLev).Infof("SynCacheFaultNodeWithSession: %s, nil reScheduler", util.ArgumentError)
 		return
 	}
 	var updatedFaultNodes []FaultNode
 	for _, faultNode := range reScheduler.FaultNodes {
-		klog.V(util.LogInfoLev).Infof("Updating fault node %s recorded cache", faultNode.NodeName)
+		klog.V(util.LogDebugLev).Infof("Updating fault node %s recorded cache", faultNode.NodeName)
 		// 1. nodes not in session should be kept in cache
 		if !faultNode.isNodeInSessionByNpuNodes(reScheduler.Nodes) {
 			klog.V(util.LogInfoLev).Infof("node %s in cache is not in session, keep without updating.",
@@ -535,7 +534,7 @@ func (reScheduler *ReScheduler) SynCacheNodeRankOccMapWithSession(ssn *framework
 			if !ok {
 				newNodeRankOccMap[jobUID] = NodeRankOcc
 			}
-			if !fJob.IsFaultJob && plugin.IsJobInitial(ssnJob) { // delete none faultJobs
+			if !fJob.IsFaultJob && plugin.IsJobRestarted(ssnJob) { // delete none faultJobs
 				continue
 			}
 			newNodeRankOccMap[jobUID] = NodeRankOcc // only add faultJobs in the re-scheduling process
@@ -601,11 +600,11 @@ func (reScheduler *ReScheduler) RestartNeedForceDeleteJobs(ssn *framework.Sessio
 	klog.V(util.LogDebugLev).Infof("GetNeedForceDeleteDelayingNPUJobs: %#v", needDeleteNPUJobs)
 	for _, schedulerJob := range needDeleteNPUJobs {
 		for _, faultJob := range reScheduler.FaultJobs {
-			if schedulerJob.JobName != faultJob.JobUID {
+			if schedulerJob.Name != faultJob.JobUID {
 				continue
 			}
 			if deleteErr := faultJob.ForceDeleteJob(ssn, &schedulerJob); deleteErr != nil {
-				klog.V(util.LogErrorLev).Infof("%s ForceDeleteJob: %#v", schedulerJob.JobName, deleteErr)
+				klog.V(util.LogErrorLev).Infof("%s ForceDeleteJob: %#v", schedulerJob.Name, deleteErr)
 			}
 		}
 	}
@@ -624,6 +623,9 @@ func (reScheduler *ReScheduler) RestartFaultJobs(ssn *framework.Session) error {
 	// 1. Get fault jobs, only faultJobs that haven't been evicted yet should be put into list
 	realFaultJobs, err := reScheduler.getRealFaultJobs()
 	if err != nil {
+		if err.Error() == NoFaultJobsErr {
+			return nil
+		}
 		return fmt.Errorf("restartFaultJobs: %#v", err)
 	}
 
@@ -649,16 +651,16 @@ func (reScheduler *ReScheduler) RestartFaultJobs(ssn *framework.Session) error {
 		schedulerJob, ok := reScheduler.Jobs[restartFaultJob.JobUID]
 		if !ok {
 			klog.V(util.LogInfoLev).Infof("restartFaultJob %s not in session, has already been deleted",
-				schedulerJob.JobName)
+				schedulerJob.Name)
 			continue
 		}
 		klog.V(util.LogInfoLev).Infof("%s need restart.", restartFaultJob.JobName)
 		if restartErr := restartFaultJob.restartSingleFaultJob(
 			ssn, reScheduler.kubeClient, &schedulerJob, jobRestartReason); restartErr != nil {
-			klog.V(util.LogErrorLev).Infof("RestartJob %s %#v.", schedulerJob.JobName, restartErr)
+			klog.V(util.LogErrorLev).Infof("RestartJob %s %#v.", schedulerJob.Name, restartErr)
 		} else {
 			restartFaultJob.DeleteExecutedFlag = true
-			klog.V(util.LogInfoLev).Infof("RestartJob %s execution success, set flag true", schedulerJob.JobName)
+			klog.V(util.LogInfoLev).Infof("RestartJob %s execution success, set flag true", schedulerJob.Name)
 		}
 		newCacheJobs = append(newCacheJobs, restartFaultJob) // modify restartFlag and put modified fJob into cache
 	}
@@ -914,19 +916,14 @@ func (reScheduler *ReScheduler) checkNodeCurNodeIsFault(vcNode plugin.NPUNode, t
 	}
 	reschKey, ok := schedulerJob.SchedulerJobAttr.Label[JobRescheduleLabelKey]
 	if !ok || reschKey == JobOffRescheduleLabelValue {
-		klog.V(util.LogInfoLev).Infof("job %s rescheduling not enabled, skip check node", schedulerJob.JobName)
+		klog.V(util.LogInfoLev).Infof("job %s rescheduling not enabled, skip check node", schedulerJob.Name)
 		return nil
 	}
 	for _, fNode := range reScheduler.FaultNodes {
-		if vcNode.Name == fNode.NodeName && fNode.IsFaultNode {
-			if len(schedulerJob.Tasks) > 1 {
-				return fmt.Errorf("task %s cannot be assigned to node %s because it's in faultNode list",
-					task.Name, vcNode.Name)
-			}
-			if fNode.NodeHealthState == NodeUnhealthy { // none distributed job, npu fault considered in previous ops
-				return fmt.Errorf("task %s cannot be assigned to %s node %s", task.Name, NodeUnhealthy,
-					vcNode.Name)
-			}
+		if vcNode.Name == fNode.NodeName && fNode.IsFaultNode && fNode.NodeHealthState == NodeUnhealthy {
+			// none distributed job, npu fault considered in previous ops
+			return fmt.Errorf("task %s cannot be assigned to %s node %s", task.Name, NodeUnhealthy,
+				vcNode.Name)
 		}
 	}
 	klog.V(util.LogInfoLev).Infof("node %s is not fault node, check success", vcNode.Name)
