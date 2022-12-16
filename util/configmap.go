@@ -15,15 +15,12 @@ limitations under the License.
 */
 
 /*
-
 Package util is using for HuaWei infer common Ascend pin affinity schedule.
-
 */
 package util
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"reflect"
 
@@ -104,41 +101,4 @@ func UpdateConfigmapIncrementally(kubeClient kubernetes.Interface, ns, name stri
 		}
 	}
 	return newData, nil
-}
-
-// ReadCMFromKubernetes readCMFromKubernetes
-func (comCM *ComConfigMap) ReadCMFromKubernetes(client kubernetes.Interface) {
-	cm, err := GetConfigMapWithRetry(client, comCM.Namespace, comCM.Name)
-	if err != nil {
-		klog.V(LogErrorLev).Infof("ReadCMFromKubernetes: %s.", err.Error())
-		return
-	}
-	comCM.Name = cm.Name
-	comCM.Namespace = cm.Namespace
-	comCM.Data = cm.Data
-}
-
-// UpdateCMToKubernetes updateCMToKubernetes
-func (comCM *ComConfigMap) UpdateCMToKubernetes(client kubernetes.Interface) {
-	cm := &v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      comCM.Name,
-			Namespace: comCM.Namespace,
-		},
-		Data: comCM.Data,
-	}
-	err := CreateOrUpdateConfigMap(client, cm, cm.Name, cm.Namespace)
-	if err != nil {
-		klog.V(LogErrorLev).Infof("getNodeDeviceInfoFromCM: %s.", err.Error())
-	}
-}
-
-// MarshalCacheDataToString marshalCacheDataToString
-func (comCM *ComConfigMap) MarshalCacheDataToString(data interface{}) (string, error) {
-	dataBuffer, err := json.Marshal(data)
-	if err != nil {
-		klog.V(LogErrorLev).Infof("MarshalCacheDataToString err: %#v", err)
-		return "", err
-	}
-	return string(dataBuffer), nil
 }

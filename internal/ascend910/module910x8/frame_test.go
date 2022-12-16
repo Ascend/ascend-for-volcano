@@ -15,9 +15,7 @@ limitations under the License.
 */
 
 /*
-
 Package module910x8 is using for HuaWei Ascend pin affinity schedule.
-
 */
 package module910x8
 

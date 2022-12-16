@@ -15,9 +15,7 @@ limitations under the License.
 */
 
 /*
-
 Package card910x2 is using for HuaWei Ascend pin affinity schedule.
-
 */
 package card910x2
 

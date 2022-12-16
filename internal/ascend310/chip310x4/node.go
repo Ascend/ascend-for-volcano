@@ -15,9 +15,7 @@ limitations under the License.
 */
 
 /*
-
 Package chip310x4 is using for HuaWei Ascend pin affinity schedule.
-
 */
 package chip310x4
 

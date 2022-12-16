@@ -60,7 +60,7 @@ func ChangeTopToIntArray(topStr string, npuCardPreName string) []int {
 // IsMapHasNPUResource Determines whether a target string exists in the map.
 func IsMapHasNPUResource(resMap map[v1.ResourceName]float64, npuName string) bool {
 	for k := range resMap {
-		// must contains "huawei.com/Ascend"
+		// must contain "huawei.com/Ascend"
 		if strings.Contains(string(k), npuName) {
 			return true
 		}
@@ -193,4 +193,36 @@ func RemoveCommonElement(s1, s2 []int) []int {
 		}
 	}
 	return res
+}
+
+// Add add resource
+func (vResource *VResource) Add(resource VResource) {
+	vResource.Aicore += resource.Aicore
+	vResource.Aicpu += resource.Aicpu
+}
+
+// Sub sub resource
+func (vResource *VResource) Sub(resource VResource) {
+	vResource.Aicore -= resource.Aicore
+	vResource.Aicpu -= resource.Aicpu
+}
+
+// BeGreater judge resource greater or equal to
+func (vResource VResource) BeGreater(resource VResource) bool {
+	return vResource.Aicore >= resource.Aicore && vResource.Aicpu >= resource.Aicpu
+}
+
+// ConvertErrSliceToError convert []error to one error.
+func ConvertErrSliceToError(reErrors []error) error {
+	var reE error
+
+	for _, value := range reErrors {
+		if reE == nil {
+			reE = value
+			continue
+		}
+		reE = fmt.Errorf("%s %s", reE, value)
+	}
+
+	return reE
 }

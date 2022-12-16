@@ -15,9 +15,7 @@ limitations under the License.
 */
 
 /*
-
 Package test is using for HuaWei Ascend pin scheduling test.
-
 */
 package test
 

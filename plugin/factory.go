@@ -15,9 +15,7 @@ limitations under the License.
 */
 
 /*
-
 Package plugin is using for HuaWei Ascend pin affinity schedule.
-
 */
 package plugin
 
@@ -155,6 +153,28 @@ func addConf(configs, value string) string {
 	return configs
 }
 
+// GetJobTemplate get template of all possible segmentation jobs
+func (sHandle *ScheduleHandler) GetJobTemplate() map[string]map[string]util.VResource {
+	jobTemplate := map[string]map[string]util.VResource{
+		Ascend310P: {
+			VNPUTempVir01:        {Aicore: 1, Aicpu: 1, DVPP: AscendDVPPEnabledNull},
+			VNPUTempVir02:        {Aicore: util.NPUIndex2, Aicpu: util.NPUIndex2, DVPP: AscendDVPPEnabledNull},
+			VNPUTempVir02C1:      {Aicore: util.NPUIndex2, Aicpu: 1, DVPP: AscendDVPPEnabledNull},
+			VNPUTempVir04:        {Aicore: util.NPUIndex4, Aicpu: util.NPUIndex4, DVPP: AscendDVPPEnabledNull},
+			VNPUTempVir04C3:      {Aicore: util.NPUIndex4, Aicpu: util.NPUIndex3, DVPP: AscendDVPPEnabledNull},
+			VNPUTempVir04C3NDVPP: {Aicore: util.NPUIndex4, Aicpu: util.NPUIndex3, DVPP: AscendDVPPEnabledOff},
+			VNPUTempVir04C4cDVPP: {Aicore: util.NPUIndex4, Aicpu: util.NPUIndex4, DVPP: AscendDVPPEnabledOn},
+		},
+		Ascend910: {
+			VNPUTempVir02: {Aicore: util.NPUIndex2, Aicpu: 1, DVPP: AscendDVPPEnabledNull},
+			VNPUTempVir04: {Aicore: util.NPUIndex4, Aicpu: 1, DVPP: AscendDVPPEnabledNull},
+			VNPUTempVir08: {Aicore: util.NPUIndex8, Aicpu: util.NPUIndex3, DVPP: AscendDVPPEnabledNull},
+			VNPUTempVir16: {Aicore: util.NPUIndex16, Aicpu: util.NPUIndex7, DVPP: AscendDVPPEnabledNull},
+		},
+	}
+	return jobTemplate
+}
+
 // InitVolcanoFrameFromSsn init frame parameter from ssn.
 func (sHandle *ScheduleHandler) InitVolcanoFrameFromSsn(ssn *framework.Session) {
 	if sHandle == nil || ssn == nil {
@@ -162,9 +182,10 @@ func (sHandle *ScheduleHandler) InitVolcanoFrameFromSsn(ssn *framework.Session) 
 		return
 	}
 	sHandle.FrameAttr = VolcanoFrame{
-		UID:        ssn.UID,
-		Conf:       ssn.Configurations,
-		KubeClient: ssn.KubeClient(),
+		UID:          ssn.UID,
+		Conf:         ssn.Configurations,
+		KubeClient:   ssn.KubeClient(),
+		VJobTemplate: sHandle.GetJobTemplate(),
 	}
 	sHandle.FrameAttr.AddDefaultSchedulerSelectorConfig()
 }
@@ -177,7 +198,7 @@ func (sHandle *ScheduleHandler) InitJobsPlugin() {
 	}
 	for _, vcJob := range sHandle.Jobs {
 		if vcJob.handler == nil {
-			klog.V(util.LogErrorLev).Infof("InitJobsPlugin %s's plugin not register.", vcJob.JobName)
+			klog.V(util.LogErrorLev).Infof("InitJobsPlugin %s's plugin not register.", vcJob.Name)
 			continue
 		}
 		if err := vcJob.handler.InitMyJobPlugin(vcJob.SchedulerJobAttr, sHandle.ScheduleEnv); err != nil {
@@ -207,7 +228,10 @@ func (sHandle *ScheduleHandler) PreStartPlugin(ssn *framework.Session) {
 	}
 	for name, plugin := range sHandle.NPUPlugins {
 		if err := plugin.PreStartAction(ssn); err != nil {
-			klog.V(util.LogErrorLev).Infof("PreStartPlugin %s %#v.", name, err)
+			if strings.Contains(err.Error(), util.ArgumentError) {
+				continue
+			}
+			klog.V(util.LogErrorLev).Infof("PreStartPlugin %s %s.", name, err)
 		}
 	}
 }
@@ -246,8 +270,10 @@ func (sHandle *ScheduleHandler) BeforeCloseHandler() {
 	}
 	for name, plugin := range sHandle.NPUPlugins {
 		if err := plugin.PreStopAction(&sHandle.ScheduleEnv); err != nil {
+			if strings.Contains(err.Error(), util.ArgumentError) {
+				continue
+			}
 			klog.V(util.LogErrorLev).Infof("PreStopPlugin %s %#v.", name, err)
-			continue
 		}
 	}
 	sHandle.saveCacheToCm()

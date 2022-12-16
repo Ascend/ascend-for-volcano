@@ -15,9 +15,7 @@ limitations under the License.
 */
 
 /*
-
 Package ascend310p is using for HuaWei Ascend pin affinity schedule.
-
 */
 package ascend310p
 

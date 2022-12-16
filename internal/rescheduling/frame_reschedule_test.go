@@ -15,9 +15,7 @@ limitations under the License.
 */
 
 /*
-
 Package rescheduling is using for HuaWei Ascend pin fault
-
 */
 package rescheduling
 
@@ -387,11 +385,11 @@ func fakeEnvEmpty() plugin.ScheduleEnv {
 
 func fakeEnvAddJobsAndNodesToEnv(env *plugin.ScheduleEnv) {
 	job0 := fakeSchedulerJobEmptyTask("job0", "vcjob")
-	fakeSchedulerJobAddTask(&job0, "pod0", "vcjob", test.NPUIndex8)
-	fakeSchedulerJobAddTask(&job0, "pod1", "vcjob", test.NPUIndex8)
+	fakeSchedulerJobAddTask(&job0, "pod0", "vcjob", "node0", test.NPUIndex8)
+	fakeSchedulerJobAddTask(&job0, "pod1", "vcjob", "node1", test.NPUIndex8)
 	job1 := fakeSchedulerJobEmptyTask("job1", "vcjob")
-	fakeSchedulerJobAddTask(&job1, "pod0", "vcjob", test.NPUIndex8)
-	fakeSchedulerJobAddTask(&job1, "pod1", "vcjob", test.NPUIndex8)
+	fakeSchedulerJobAddTask(&job1, "pod0", "vcjob", "node2", test.NPUIndex8)
+	fakeSchedulerJobAddTask(&job1, "pod1", "vcjob", "node3", test.NPUIndex8)
 	node0 := fakeNPUNodeUnhealthy("node0", []string{"Ascend910-0"}, []string{})
 	node1 := fakeNPUNodeUnhealthy("node1", []string{}, []string{})
 	node2 := fakeNPUNodeUnhealthy("node2", []string{}, []string{})
@@ -555,7 +553,7 @@ func fakeSchedulerJobEmptyTask(jobName, namespace string) plugin.SchedulerJob {
 	job0 := plugin.SchedulerJob{
 		SchedulerJobAttr: util.SchedulerJobAttr{
 			ComJob: util.ComJob{
-				JobName:   api.JobID(jobName),
+				Name:      api.JobID(jobName),
 				NameSpace: namespace,
 				Selector:  map[string]string{util.AcceleratorType: util.ModuleAcceleratorType},
 				Label: map[string]string{
@@ -565,21 +563,26 @@ func fakeSchedulerJobEmptyTask(jobName, namespace string) plugin.SchedulerJob {
 			NPUJob: &util.NPUJob{
 				ReqNPUName: util.NPU910CardName,
 				ReqNPUNum:  0,
-				Tasks:      make(map[string]util.NPUTask, util.NPUIndex2),
+				Tasks:      make(map[api.TaskID]util.NPUTask, util.NPUIndex2),
 			},
 		},
 	}
 	return job0
 }
 
-func fakeSchedulerJobAddTask(sJob *plugin.SchedulerJob, taskName, ns string, reqNPUNum int) {
+func fakeSchedulerJobAddTask(sJob *plugin.SchedulerJob, taskName, ns, node string, reqNPUNum int) {
 	task := util.NPUTask{
-		TaskName:   taskName,
+		Name:       taskName,
 		ReqNPUName: util.NPU910CardName,
 		ReqNPUNum:  reqNPUNum,
 		Selector:   nil,
+		VTask: &util.VTask{
+			Allocated: util.TaskAllocated{
+				NodeName: node,
+			},
+		},
 	}
-	sJob.Tasks[`"`+ns+`"`+"-"+`"`+taskName+`"`] = task
+	sJob.Tasks[api.TaskID(`"`+ns+`"`+"-"+`"`+taskName+`"`)] = task
 	sJob.ReqNPUNum += reqNPUNum
 }
 

@@ -15,9 +15,7 @@ limitations under the License.
 */
 
 /*
-
 Package chip310x4 is using for HuaWei Ascend pin affinity schedule.
-
 */
 package chip310x4
 
@@ -50,13 +48,13 @@ func buildValidNPUJobTestCase01() []validNPUJobTestCase {
 	test.SetFakeJobResRequest(job01, util.NPU310CardName, "0")
 	attr1 := itest.FakeSchedulerJobAttrByJob(job01)
 	for _, task := range attr1.Tasks {
-		fmt.Println(task.TaskName)
+		fmt.Println(task.Name)
 	}
 	job02 := test.FakeNormalTestJob("job02", 1)
 	test.SetFakeJobResRequest(job02, util.NPU310CardName, "65")
 	attr2 := itest.FakeSchedulerJobAttrByJob(job02)
 	for _, task := range attr1.Tasks {
-		fmt.Println(task.TaskName)
+		fmt.Println(task.Name)
 	}
 	job03 := test.FakeNormalTestJob("job02", 1)
 	test.SetFakeJobResRequest(job03, util.NPU310CardName, "2")

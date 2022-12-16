@@ -15,9 +15,7 @@ limitations under the License.
 */
 
 /*
-
 Package rescheduling is using for HuaWei Ascend pin affinity schedule utilities.
-
 */
 package rescheduling
 
@@ -104,7 +102,8 @@ const (
 	NodeCardUnhealthy = "CardUnhealthy"
 	// NodeCardNetworkUnhealthy represents node is unhealthy because of card is network unhealthy
 	NodeCardNetworkUnhealthy = "CardNetworkUnhealthy"
-
+	// NoFaultJobsErr none fault jobs
+	NoFaultJobsErr   = "none fault jobs to be restarted in cache"
 	jobRestartReason = "restart for NPU malfunction"
 	// JobFaultRankIDCMPre the job cm name prefix, for retraining
 	JobFaultRankIDCMPre = "fault-config-"

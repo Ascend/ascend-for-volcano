@@ -15,9 +15,7 @@ limitations under the License.
 */
 
 /*
-
 Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
-
 */
 package rescheduling
 

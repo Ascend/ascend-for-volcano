@@ -15,9 +15,7 @@ limitations under the License.
 */
 
 /*
-
 Package half910x4 is using for HuaWei A800/9000 Ascend910 pin affinity schedule.
-
 */
 package half910x4
 
@@ -59,7 +57,7 @@ func (tp *half910x4) ValidNPUJob() *api.ValidateResult {
 	taskNum := len(tp.Tasks)
 
 	klog.V(util.LogDebugLev).Infof("%s Module DistributeTrainMode %s has %d tasks.",
-		tp.GetPluginName(), tp.JobName, taskNum)
+		tp.GetPluginName(), tp.Name, taskNum)
 
 	if taskNum <= 1 {
 		if err := tp.checkSingleTrainMode(); err != nil {
@@ -268,4 +266,9 @@ func (tp *half910x4) selectNPUFromNode(task *api.TaskInfo, node plugin.NPUNode) 
 		return nil, err
 	}
 	return nodeTop[:taskNPUNum], nil
+}
+
+// ReleaseAnnotation Release used resource.
+func (tp *half910x4) ReleaseAnnotation(_ *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
+	return &node
 }

@@ -15,9 +15,7 @@ limitations under the License.
 */
 
 /*
-
 Package plugin is using for HuaWei Ascend pin affinity schedule frame.
-
 */
 package plugin
 
@@ -167,7 +165,7 @@ func makeNPUDeallocateFuncTest05(vTask *api.TaskInfo) npuDeallocateFuncTest {
 				Jobs: map[api.JobID]SchedulerJob{
 					vTask.Job: {
 						SchedulerJobAttr: util.SchedulerJobAttr{
-							NPUJob: &util.NPUJob{Tasks: map[string]util.NPUTask{vTask.Name: {ReqNPUName: "haha"}}}},
+							NPUJob: &util.NPUJob{Tasks: map[api.TaskID]util.NPUTask{vTask.UID: {ReqNPUName: "haha"}}}},
 					},
 				},
 				Nodes: map[string]NPUNode{vTask.NodeName: {}}}},
@@ -178,8 +176,8 @@ func makeNPUDeallocateFuncTest05(vTask *api.TaskInfo) npuDeallocateFuncTest {
 func makeNPUDeallocateFuncTest06(vTask *api.TaskInfo) npuDeallocateFuncTest {
 	tmpSchedulerJobAttr := util.SchedulerJobAttr{
 		NPUJob: &util.NPUJob{
-			Tasks: map[string]util.NPUTask{
-				vTask.Name: {ReqNPUName: test.NPU910CardName, ReqNPUNum: util.NPUIndex2}},
+			Tasks: map[api.TaskID]util.NPUTask{
+				vTask.UID: {ReqNPUName: test.NPU910CardName, ReqNPUNum: util.NPUIndex2}},
 		},
 	}
 
@@ -200,8 +198,8 @@ func makeNPUDeallocateFuncTest06(vTask *api.TaskInfo) npuDeallocateFuncTest {
 func makeNPUDeallocateFuncTest07(vTask *api.TaskInfo) npuDeallocateFuncTest {
 	tmpSchedulerJobAttr := util.SchedulerJobAttr{
 		NPUJob: &util.NPUJob{
-			Tasks: map[string]util.NPUTask{
-				vTask.Name: {ReqNPUName: test.NPU910CardName, ReqNPUNum: 1}},
+			Tasks: map[api.TaskID]util.NPUTask{
+				vTask.UID: {ReqNPUName: test.NPU910CardName, ReqNPUNum: 1}},
 		},
 	}
 	tmpNPUNode := NPUNode{
@@ -222,8 +220,8 @@ func makeNPUDeallocateFuncTest07(vTask *api.TaskInfo) npuDeallocateFuncTest {
 func makeNPUDeallocateFuncTest08(vTask *api.TaskInfo) npuDeallocateFuncTest {
 	tmpSchedulerJobAttr := util.SchedulerJobAttr{
 		NPUJob: &util.NPUJob{
-			Tasks: map[string]util.NPUTask{
-				vTask.Name: {ReqNPUName: test.NPU910CardName, ReqNPUNum: 1}},
+			Tasks: map[api.TaskID]util.NPUTask{
+				vTask.UID: {ReqNPUName: test.NPU910CardName, ReqNPUNum: 1}},
 		},
 	}
 	tmpNPUNode := NPUNode{
@@ -244,8 +242,8 @@ func makeNPUDeallocateFuncTest08(vTask *api.TaskInfo) npuDeallocateFuncTest {
 func makeNPUDeallocateFuncTest09(vTask *api.TaskInfo) npuDeallocateFuncTest {
 	tmpSchedulerJobAttr := util.SchedulerJobAttr{
 		NPUJob: &util.NPUJob{
-			Tasks: map[string]util.NPUTask{
-				vTask.Name: {ReqNPUName: test.NPU910CardName, ReqNPUNum: 1}},
+			Tasks: map[api.TaskID]util.NPUTask{
+				vTask.UID: {ReqNPUName: test.NPU910CardName, ReqNPUNum: 1}},
 		},
 	}
 	tmpNPUNode := NPUNode{

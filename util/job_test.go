@@ -15,9 +15,7 @@ limitations under the License.
 */
 
 /*
-
 Package util is using for the total variable.
-
 */
 package util
 

@@ -15,9 +15,7 @@ limitations under the License.
 */
 
 /*
-
 Package main is using for HuaWei Ascend pin affinity schedule.
-
 */
 package main
 

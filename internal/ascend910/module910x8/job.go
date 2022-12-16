@@ -15,9 +15,7 @@ limitations under the License.
 */
 
 /*
-
 Package module910x8 is using for HuaWei Ascend pin affinity schedule.
-
 */
 package module910x8
 
@@ -32,10 +30,10 @@ import (
 // CheckSingleTrainMode Single Train job has only one task.
 func (tp *module910x8) checkSingleTrainMode() error {
 	taskNum := len(tp.Tasks)
-	klog.V(util.LogDebugLev).Infof("checkSingleTrainMode job(%s) has %d tasks.", tp.JobName, taskNum)
+	klog.V(util.LogDebugLev).Infof("checkSingleTrainMode job(%s) has %d tasks.", tp.Name, taskNum)
 	if taskNum > 1 {
 		return fmt.Errorf("%s checkSingleTrainMode job<%s> single trainning has too many task:%d",
-			tp.GetPluginName(), tp.JobName, taskNum)
+			tp.GetPluginName(), tp.Name, taskNum)
 	}
 
 	jobNPU := tp.ReqNPUNum
@@ -43,7 +41,7 @@ func (tp *module910x8) checkSingleTrainMode() error {
 		return nil
 	}
 	return fmt.Errorf("%s checkSingleTrainMode job<%s> req npu num is not [1 or 2 or 4 or 8]",
-		tp.GetPluginName(), tp.JobName)
+		tp.GetPluginName(), tp.Name)
 }
 
 // If job requires more than 8 npu, every task need 8 npu.
@@ -51,16 +49,16 @@ func (tp *module910x8) checkModuleDistributeTrainMode() error {
 	taskNum := len(tp.Tasks)
 
 	klog.V(util.LogDebugLev).Infof("%s Module DistributeTrainMode %s has %d tasks.",
-		tp.GetPluginName(), tp.JobName, taskNum)
+		tp.GetPluginName(), tp.Name, taskNum)
 
 	for _, task := range tp.Tasks {
 		taskNPU := task.ReqNPUNum
 		klog.V(util.LogDebugLev).Infof("%s  checkModuleDistributeTrainMode Module DistributeTrain %s has %d npu.",
-			tp.GetPluginName(), task.TaskName, taskNPU)
+			tp.GetPluginName(), task.Name, taskNPU)
 
 		if taskNPU != tp.MaxNodeNPUNum {
 			return fmt.Errorf("checkModuleDistributeTrainMode distributeTrain task<%s> req npu[%d] "+
-				"not equal [%d]", task.TaskName, taskNPU, tp.MaxNodeNPUNum)
+				"not equal [%d]", task.Name, taskNPU, tp.MaxNodeNPUNum)
 		}
 	}
 	return nil

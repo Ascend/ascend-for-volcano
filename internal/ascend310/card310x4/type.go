@@ -15,9 +15,7 @@ limitations under the License.
 */
 
 /*
-
 Package card310x4 is using for HuaWei A300T Ascend pin affinity schedule.
-
 */
 package card310x4
 

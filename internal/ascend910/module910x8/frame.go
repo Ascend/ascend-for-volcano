@@ -15,9 +15,7 @@ limitations under the License.
 */
 
 /*
-
 Package module910x8 is using for HuaWei A800/9000 Ascend910 pin affinity schedule.
-
 */
 package module910x8
 
@@ -306,4 +304,9 @@ func (tp *module910x8) selectNPUFromNode(task *api.TaskInfo, node plugin.NPUNode
 	err = fmt.Errorf("node<%s> top<%v> can not meet task req<%d>", node.Name, len(nodeTop), taskNPUNum)
 	klog.V(util.LogErrorLev).Infof("%s ScoreBestNPUNodes err: %s", tp.GetPluginName(), err.Error())
 	return nil, err
+}
+
+// ReleaseAnnotation Release used resource.
+func (tp *module910x8) ReleaseAnnotation(_ *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
+	return &node
 }

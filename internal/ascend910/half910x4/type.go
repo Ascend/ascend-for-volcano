@@ -15,9 +15,7 @@ limitations under the License.
 */
 
 /*
-
 Package half910x4 is using for HuaWei A800/9000 Ascend910 pin affinity schedule.
-
 */
 package half910x4
 

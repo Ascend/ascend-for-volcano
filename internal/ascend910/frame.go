@@ -15,9 +15,7 @@ limitations under the License.
 */
 
 /*
-
 Package ascend910 is using for HuaWei Ascend pin affinity schedule.
-
 */
 package ascend910
 
@@ -180,4 +178,9 @@ func (tp *ascend910) PreStopAction(env *plugin.ScheduleEnv) error {
 		}
 	}
 	return nil
+}
+
+// ReleaseAnnotation Release used resource.
+func (tp *ascend910) ReleaseAnnotation(_ *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
+	return &node
 }

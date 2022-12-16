@@ -15,9 +15,7 @@ limitations under the License.
 */
 
 /*
-
 Package chip310x4 is using for HuaWei 310 Ascend pin affinity schedule.
-
 */
 package chip310x4
 
@@ -112,4 +110,9 @@ func (tp *chip310x4) SelectNPUFromNode(task *api.TaskInfo, node plugin.NPUNode) 
 		task.Name, taskNPUNum)
 	klog.V(util.LogErrorLev).Infof("%s selectNPUFromNode err: %s", tp.GetPluginName(), err.Error())
 	return nil, err
+}
+
+// ReleaseAnnotation Release used resource.
+func (tp *chip310x4) ReleaseAnnotation(_ *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
+	return &node
 }
