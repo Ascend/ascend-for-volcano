@@ -22,6 +22,7 @@ package ascend910
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -68,7 +69,9 @@ func (tp *ascend910) InitMyJobPlugin(attr util.SchedulerJobAttr, env plugin.Sche
 	if !ok {
 		v = Module910AcceleratorValue
 	}
-	value, ok := tp.Kind[attr.ReqNPUName+v]
+	cardNameSplit := strings.Split(attr.ReqNPUName, "-")
+	cardName := cardNameSplit[0]
+	value, ok := tp.Kind[cardName+v]
 	if !ok {
 		err := fmt.Errorf("not support %s", attr.ReqNPUName+v)
 		klog.V(util.LogErrorLev).Infof("%s InitMyJobPlugin err: %s", tp.GetPluginName(), err.Error())

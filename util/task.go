@@ -36,8 +36,7 @@ import (
 
 // for task status
 const (
-	TaskStatusUnknown = -1
-	TaskStatusInit    = iota
+	TaskStatusInit = iota
 	TaskStatusAllocate
 	TaskStatusWrBack
 	TaskStatusRunning

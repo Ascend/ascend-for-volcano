@@ -462,13 +462,15 @@ func (sJob *SchedulerJob) CheckNodeNum(taskInfo *api.TaskInfo, vcNode NPUNode) e
 		return fmt.Errorf("%s not have %s", vcNode.Name, vcTask.ReqNPUName)
 	}
 	if int(nodeNPUNum/util.NPUHexKilo) < vcTask.ReqNPUNum {
-		return fmt.Errorf("%s not meet %s's %s:%#v", vcNode.Name, vcTask.Name, vcTask.ReqNPUName, vcTask.ReqNPUNum)
+		return fmt.Errorf("%s not meet %s's %s:%#v",
+			vcNode.Name, vcTask.Name, vcTask.ReqNPUName, vcTask.ReqNPUNum)
 	}
 	return nil
 }
 
 func (sJob SchedulerJob) getPluginNameByReq() string {
 	name := sJob.ReqNPUName
+	// 1. dynamic vJobs
 	if strings.Contains(name, "npu-core") {
 		label, ok := sJob.Label[util.JobKindKey]
 		if !ok {
@@ -486,6 +488,14 @@ func (sJob SchedulerJob) getPluginNameByReq() string {
 			klog.V(util.LogErrorLev).Infof("%s unknown label: %s in dyCut mode.", sJob.Name, label)
 			return ""
 		}
+	}
+	// 2. static vJobs
+	if strings.HasSuffix(name, "c") {
+		nameSplit := strings.Split(name, "-")
+		if len(nameSplit) < util.NPUIndex2 {
+			return ""
+		}
+		return nameSplit[0]
 	}
 	return name
 }

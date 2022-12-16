@@ -82,7 +82,10 @@ func (tp *ascend310P) ValidNPUJob() *api.ValidateResult {
 		return &api.ValidateResult{Pass: false, Reason: err.Error(), Message: err.Error()}
 	}
 	klog.V(util.LogDebugLev).Infof("%s ValidNPUJob job(%s).", tp.GetPluginName(), tp.Name)
-
+	if tp.VJob == nil {
+		// this is the old whole card.
+		return tp.NPUHandler.ValidNPUJob()
+	}
 	switch tp.Type {
 	case util.JobTypeWhole:
 		return tp.NPUHandler.ValidNPUJob()
@@ -102,21 +105,27 @@ func (tp *ascend310P) ValidNPUJob() *api.ValidateResult {
 func (tp *ascend310P) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode) error {
 	klog.V(util.LogDebugLev).Infof("%s CheckNodeNPUByTask job(%s).", tp.GetPluginName(), tp.Name)
 	var err error
-	taskRes, err := tp.vHandle.GetTaskResource(task, node)
-	if err != nil {
-		return err
+	if tp.VJob == nil {
+		// this is the old whole card.
+		if err = tp.NPUHandler.CheckNodeNPUByTask(task, node); err != nil {
+			return err
+		}
+		return nil
 	}
-
 	switch tp.Type {
 	case util.JobTypeWhole:
 		if err = tp.NPUHandler.CheckNodeNPUByTask(task, node); err != nil {
 			return err
 		}
 	case util.JobTypeStCut:
-		if err = tp.vHandle.StaticVNPU.CheckNodeNPUByTask(task, node, taskRes); err != nil {
+		if err = tp.vHandle.StaticVNPU.CheckNodeNPUByTask(task, node, util.VResource{}); err != nil {
 			return err
 		}
 	case util.JobTypeDyCut:
+		taskRes, err := tp.vHandle.GetTaskResource(task, node)
+		if err != nil {
+			return err
+		}
 		if err = tp.vHandle.CheckNodeNPUByDyTask(task, node, taskRes); err != nil {
 			return err
 		}
@@ -135,6 +144,13 @@ func (tp *ascend310P) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode
 // ScoreBestNPUNodes score node by calculate task req npu num and node npu top
 func (tp *ascend310P) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo, scoreMap map[string]float64) error {
 	klog.V(util.LogDebugLev).Infof("%s ScoreBestNPUNodes job(%s).", tp.GetPluginName(), tp.Name)
+	if tp.VJob == nil {
+		// this is the old whole card.
+		if err := tp.NPUHandler.ScoreBestNPUNodes(task, nodes, scoreMap); err != nil {
+			return err
+		}
+		return nil
+	}
 
 	switch tp.Type {
 	case util.JobTypeWhole:
@@ -168,19 +184,22 @@ func (tp *ascend310P) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInf
 func (tp *ascend310P) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
 	klog.V(util.LogDebugLev).Infof("%s UseAnnotation job(%s).", tp.GetPluginName(), tp.Name)
 	var err error
-	taskRes, err := tp.vHandle.GetTaskResource(task, node)
-	klog.V(util.LogDebugLev).Infof("task<%s> require resource<%#v>", task.Name, taskRes)
-	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s UseAnnotation job(%s) get require task resource failed: %s",
-			tp.GetPluginName(), tp.Name, err)
-		return &node
+	if tp.VJob == nil {
+		// this is the old whole card.
+		return tp.NPUHandler.UseAnnotation(task, node)
 	}
 	switch tp.Type {
 	case util.JobTypeWhole:
 		return tp.NPUHandler.UseAnnotation(task, node)
 	case util.JobTypeStCut:
-		return tp.vHandle.StaticVNPU.UseAnnotation(task, node, taskRes, tp.vHandle.VT)
+		return tp.vHandle.StaticVNPU.UseAnnotation(task, node, util.VResource{}, tp.vHandle.VT)
 	case util.JobTypeDyCut:
+		taskRes, err := tp.vHandle.GetTaskResource(task, node)
+		klog.V(util.LogDebugLev).Infof("task<%s> require resource<%#v>", task.Name, taskRes)
+		if err != nil {
+			klog.V(util.LogErrorLev).Infof("%s UseAnnotation job(%s) get require task resource failed: %s",
+				tp.GetPluginName(), tp.Name, err)
+		}
 		return tp.vHandle.DynamicVNPU.UseAnnotation(task, node, taskRes, tp.vHandle.VT)
 	default:
 		err = fmt.Errorf("%s no type %d", tp.Name, tp.Type)
@@ -193,6 +212,11 @@ func (tp *ascend310P) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *pl
 // ReleaseAnnotation release select npu for task to node
 func (tp *ascend310P) ReleaseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
 	klog.V(util.LogDebugLev).Infof("%s UseAnnotation job(%s).", tp.GetPluginName(), tp.Name)
+	if tp.VJob == nil {
+		// this is the old whole card.
+		return &node
+	}
+
 	var err error
 	switch tp.Type {
 	case util.JobTypeWhole, util.JobTypeStCut:

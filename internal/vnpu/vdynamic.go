@@ -225,38 +225,6 @@ func (tp *DynamicVNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode, ta
 	return upNode
 }
 
-// GetTaskResource get task resource.
-func (tp *DynamicVNPU) GetTaskResource(task *api.TaskInfo, node plugin.NPUNode,
-	chipVTemplate map[string]util.VResource) (util.VResource,
-	error) {
-	coreNum, err := getAiCoreNumFromTask(task)
-	if err != nil {
-		return util.VResource{}, fmt.Errorf("task %s AscendNPUCore read failed", task.Name)
-	}
-
-	if node.IsResourceWholeCard(coreNum) {
-		res := util.VResource{
-			Aicore: coreNum,
-			Aicpu:  coreNum * node.TotalRes.Aicpu / node.TotalRes.Aicore,
-			DVPP:   plugin.AscendDVPPEnabledNull,
-		}
-		return res, nil
-	}
-
-	cpuLevel, ok := task.Pod.Labels[plugin.AscendVNPULevel]
-	if !ok {
-		cpuLevel = plugin.AscendVNPULevelLow
-	}
-
-	dvpp, ok := task.Pod.Labels[plugin.AscendVNPUDVPP]
-	if !ok {
-		dvpp = plugin.AscendDVPPEnabledNull
-	}
-
-	virTemplate := getResTemplateFromTaskSetting(coreNum, cpuLevel, dvpp)
-	return chipVTemplate[virTemplate], nil
-}
-
 // taskAICPUCanBeDowngrade if task label is low, aicpu can be lower
 func (tp *DynamicVNPU) taskAICPUCanBeDowngrade(taskResReq util.VResource) bool {
 	if taskResReq.Aicore == util.NPUIndex2 && taskResReq.Aicpu == util.NPUIndex2 {

@@ -10,6 +10,7 @@ package ascend310p
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"k8s.io/klog"
 	"volcano.sh/apis/pkg/apis/scheduling"
@@ -44,7 +45,7 @@ func (tp *ascend310P) checkStVJobReq() error {
 		return fmt.Errorf("volcano configuration %s false, only support dynamic vnpu", util.SegmentEnable)
 	}
 	for _, vT := range tp.Tasks {
-		if _, ok := tp.vHandle.VT.Data[vT.ReqNPUName]; !ok {
+		if !strings.Contains(vT.ReqNPUName, tp.GetPluginName()) {
 			return fmt.Errorf("%s req %s not in template", vT.Name, vT.ReqNPUName)
 		}
 		if vT.ReqNPUNum != 1 {
@@ -135,6 +136,9 @@ func (tp *ascend310P) validDyVNPUJob() *api.ValidateResult {
 func (tp *ascend310P) getAllDyJobs() map[api.JobID]plugin.SchedulerJob {
 	jobMap := make(map[api.JobID]plugin.SchedulerJob, util.MapInitNum)
 	for jobID, vJob := range tp.Jobs {
+		if vJob.VJob == nil {
+			continue
+		}
 		if vJob.VJob.Type == util.JobTypeDyCut {
 			jobMap[jobID] = vJob
 		}
