@@ -178,10 +178,10 @@ func (n *NPUNode) initVChips(ni *api.NodeInfo, taskTemplate map[string]map[strin
 
 func (n NPUNode) createNodeNewVChips(chipTotalRes util.VResource) error {
 	healthyCardIDs, getErr := n.getHealthyCardIDsFromNodeAndDeviceInfo()
-	klog.V(util.LogDebugLev).Infof("createNodeNewVChips healthy chips: <%#v>", healthyCardIDs)
 	if getErr != nil {
 		return fmt.Errorf("getFreeCardIDsFromDeviceInfo %s", getErr)
 	}
+	klog.V(util.LogDebugLev).Infof("createNodeNewVChips healthy chips: %#v", healthyCardIDs)
 	for _, freeCardID := range healthyCardIDs {
 		n.VNode.Chips[freeCardID] = n.VNode.NewVChip(freeCardID, chipTotalRes)
 	}
@@ -189,32 +189,30 @@ func (n NPUNode) createNodeNewVChips(chipTotalRes util.VResource) error {
 }
 
 func (n *NPUNode) getHealthyCardIDsFromNodeAndDeviceInfo() ([]int, error) {
-	var freeCardIDs []int
-	allocatableCoreNum := n.Allocate[util.AscendNPUCore] / util.NPUHexKilo
-	allocatableChipNum := int(allocatableCoreNum) / n.VNode.AiCorePerChip
-
-	// 1. get fault chips
-	unhealthyChipsStr, ok := n.Annotation[util.HwPreName+n.VNode.ChipKind+"-Unhealthy"]
+	// 1. get health chips
+	healthyChipsStr, ok := n.Annotation[util.HwPreName+n.VNode.ChipKind]
 	if !ok {
-		klog.V(util.LogDebugLev).Infof("getHealthyCardIDsFromNodeAndDeviceInfo node<%s> get unhealthy string failed",
-			n.Name)
-		return nil, fmt.Errorf("no key: %s", util.HwPreName+n.VNode.ChipKind+"-Unhealthy")
+		klog.V(util.LogDebugLev).Infof("%s get healthy card failed", n.Name)
+		return nil, fmt.Errorf("no key: %s", util.HwPreName+n.VNode.ChipKind)
 	}
 
-	unhealthyChips := strings.Split(unhealthyChipsStr, ",")
+	var freeCardIDs []int
+	healthyChips := strings.Split(healthyChipsStr, ",")
+	for _, chip := range healthyChips {
+		if chip == "" {
+			continue
+		}
+		strID := strings.TrimPrefix(chip, n.VNode.ChipKind+"-")
+		chipID, aErr := strconv.Atoi(strID)
+		if aErr != nil {
+			klog.V(util.LogDebugLev).Infof("%s %s covert to int %#v", chip, strID, aErr)
+			continue
+		}
+		freeCardIDs = append(freeCardIDs, chipID)
+	}
 
-	// 2. get vChip ID list and exclude fault chips
-	for i := 0; i < allocatableChipNum; i++ {
-		unhealthyFlag := false
-		for _, unhealthyChip := range unhealthyChips {
-			if fmt.Sprintf("%s-%d", n.VNode.ChipKind, i) == unhealthyChip {
-				unhealthyFlag = true
-				break
-			}
-		}
-		if !unhealthyFlag {
-			freeCardIDs = append(freeCardIDs, i)
-		}
+	if len(freeCardIDs) == 0 {
+		return nil, fmt.Errorf("nil cards in %s", n.Name)
 	}
 	return freeCardIDs, nil
 }
