@@ -183,7 +183,7 @@ func (n *NPUNode) InitNPUNodeByNodeInf(npuNode *api.NodeInfo, kubeClient kuberne
 		return getErr
 	}
 	capability := npuNode.Capability.ScalarResources
-	if !util.IsMapHasNPUResource(capability, util.NPUCardPreName) {
+	if !util.IsMapHasNPUResource(capability, util.HwPreName) {
 		return fmt.Errorf("%s not NPU node", npuNode.Name)
 	}
 	n.Name = npuNode.Name
@@ -296,6 +296,7 @@ func (n NPUNode) CheckNPUResourceStableReScheduling(vcJob SchedulerJob) error {
 // InitNodesFromSsn init all nodes in ssn.
 func (sHandle *ScheduleHandler) InitNodesFromSsn(ssn *framework.Session) {
 	if sHandle == nil || sHandle.FrameAttr.KubeClient == nil {
+
 		return
 	}
 	sHandle.Nodes = make(map[string]NPUNode, util.MapInitNum)

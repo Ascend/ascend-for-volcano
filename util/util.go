@@ -60,7 +60,7 @@ func ChangeTopToIntArray(topStr string, npuCardPreName string) []int {
 // IsMapHasNPUResource Determines whether a target string exists in the map.
 func IsMapHasNPUResource(resMap map[v1.ResourceName]float64, npuName string) bool {
 	for k := range resMap {
-		// must contain "huawei.com/Ascend"
+		// must contain "huawei.com"
 		if strings.Contains(string(k), npuName) {
 			return true
 		}
