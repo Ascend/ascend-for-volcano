@@ -19,7 +19,12 @@ Package util is using for the total variable.
 */
 package util
 
-import "testing"
+import (
+	"testing"
+
+	"volcano.sh/apis/pkg/apis/scheduling"
+	"volcano.sh/volcano/pkg/scheduler/api"
+)
 
 type testIsSelectorMeetJobArgs struct {
 	jobSelectors map[string]string
@@ -60,7 +65,99 @@ func TestIsSelectorMeetJob(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := IsSelectorMeetJob(tt.args.jobSelectors, tt.args.conf); got != tt.want {
-				t.Errorf("IsSelectorMeetJob() = %v, want %v", got, tt.want)
+				t.Errorf("IsSelectorMeetJob() = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
+type testIsVJobTest struct {
+	name string
+	nJob *NPUJob
+	want bool
+}
+
+func buildTestIsVJobTest() []testIsVJobTest {
+	tests := []testIsVJobTest{
+		{
+			name: "01-IsVJob nJob.ReqNPUName nil test.",
+			nJob: &NPUJob{},
+			want: false,
+		},
+		{
+			name: "02-IsVjob nJob.ReqNPUName > 2 test.",
+			nJob: &NPUJob{
+				ReqNPUName: AscendNPUCore,
+			},
+			want: true,
+		},
+	}
+	return tests
+}
+
+func TestIsVJob(t *testing.T) {
+	tests := buildTestIsVJobTest()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.nJob.IsVJob(); got != tt.want {
+				t.Errorf("Name() = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSetVJobType(t *testing.T) {
+	tests := []struct {
+		name string
+		nJob *NPUJob
+		want int
+	}{
+		{
+			name: "TestSetVJobType JobTypeUnknown status",
+			nJob: &NPUJob{
+				VJob: &VJob{},
+			},
+			want: JobTypeUnknown,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.nJob.setVJobType()
+			if got := tt.nJob.Type; got != tt.want {
+				t.Errorf("Name() = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
+type testSetVJobStatusByInfTest struct {
+	name  string
+	nJob  *NPUJob
+	vcJob *api.JobInfo
+	want  scheduling.PodGroupPhase
+}
+
+func buildTestSetVJobStatusByInfTest() []testSetVJobStatusByInfTest {
+	tests := []testSetVJobStatusByInfTest{
+		{
+			name:  "test SetVJobStatusByInf ",
+			nJob:  &NPUJob{VJob: &VJob{}},
+			vcJob: &api.JobInfo{PodGroup: &api.PodGroup{}},
+			want: api.JobInfo{
+				PodGroup: &api.PodGroup{},
+			}.PodGroup.Status.Phase,
+		},
+	}
+	return tests
+}
+
+func TestSetVJobStatusByInf(t *testing.T) {
+	tests := buildTestSetVJobStatusByInfTest()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.nJob.SetVJobStatusByInf(tt.vcJob)
+			if got := tt.nJob.Status; got != tt.want {
+				t.Errorf("Name() = %#v, want %#v", got, tt.want)
 			}
 		})
 	}
