@@ -53,6 +53,27 @@ func TestHandlerStart(t *testing.T) {
 	}
 }
 
+func TestName(t *testing.T) {
+	tests := []struct {
+		name string
+		tp   *huaweiNPUPlugin
+		want string
+	}{
+		{
+			name: "01-Name ok test",
+			tp:   &huaweiNPUPlugin{},
+			want: PluginName,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.tp.Name(); got != tt.want {
+				t.Errorf("Name() = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestNew(t *testing.T) {
 	type args struct {
 		arguments framework.Arguments

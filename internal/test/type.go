@@ -57,6 +57,7 @@ type ScoreBestNPUNodesTestCase struct {
 	WantSMap map[string]float64
 	Name     string
 	WantErr  error
+	Attr     util.SchedulerJobAttr
 }
 
 // UseAnnotationTestCase useAnnotation test case
@@ -66,6 +67,7 @@ type UseAnnotationTestCase struct {
 	Name     string
 	Node     plugin.NPUNode
 	PodAnno  string
+	Attr     util.SchedulerJobAttr
 }
 
 // JudgeNodeAndTaskNPUTestCase JudgeNodeAndTaskNPU test case
