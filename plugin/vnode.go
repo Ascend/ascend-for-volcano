@@ -496,14 +496,15 @@ func (vChip *VChip) isChipVGroupValid(vRes util.VResource) bool {
 	return true
 }
 
+// realChip like:Ascend310P-2c.1cpu-105-0_3.
 func (vChip *VChip) getVGroups() []int {
 	var vGroups []int
 	for _, realChip := range vChip.ID {
-		realChipSplit := strings.Split(realChip, "-")
-		if len(realChipSplit) < util.NPUIndex5 {
+		realChipSplit := strings.Split(realChip, "_")
+		if len(realChipSplit) < util.NPUIndex2 {
 			continue
 		}
-		vGroupStr := realChipSplit[util.NPUIndex4]
+		vGroupStr := realChipSplit[len(realChipSplit)-1]
 		vGroup, err := strconv.Atoi(vGroupStr)
 		if err != nil {
 			continue
@@ -519,6 +520,7 @@ func (vChip *VChip) getVGroups() []int {
 			vGroups = append(vGroups, vGroup)
 		}
 	}
+
 	return vGroups
 }
 
