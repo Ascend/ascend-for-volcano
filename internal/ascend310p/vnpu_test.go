@@ -24,7 +24,7 @@ import (
 	"reflect"
 	"testing"
 
-	"bou.ke/monkey"
+	"github.com/agiledragon/gomonkey/v2"
 	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
@@ -428,7 +428,7 @@ func TestGetDyFailedNamespaces(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
 			if got := getDyFailedNamespaces(tt.VT); !reflect.DeepEqual(got, tt.Want) {
-				t.Errorf("getDyFailedNamespaces() got = %#v, want %#v", got, tt.Want)
+				t.Errorf("GetDyFailedNamespaces() got = %#v, want %#v", got, tt.Want)
 			}
 		})
 	}
@@ -452,13 +452,45 @@ func TestGetAllDyFailedTasks(t *testing.T) {
 			Want: []api.TaskID{"", "", "", "0001", "0001", "0001"},
 		},
 	}
-	monkey.Patch(vnpu.GetSegmentFailureTaskIDs, func(ssn *framework.Session, namespace string) []api.TaskID {
-		return []api.TaskID{"0001"}
-	})
+
+	patch := gomonkey.ApplyFunc(vnpu.GetSegmentFailureTaskIDs,
+		func(ssn *framework.Session, namespace string) []api.TaskID {
+			return []api.TaskID{"0001"}
+		})
+
+	defer patch.Reset()
+
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
 			if got := getAllDyFailedTasks(tt.SSN, tt.nsMap); !reflect.DeepEqual(got, tt.Want) {
-				t.Errorf("getAllDyFailedTasks() got = %#v, want %#v", got, tt.Want)
+				t.Errorf("GetAllDyFailedTasks() got = %#v, want %#v", got, tt.Want)
+			}
+		})
+	}
+}
+
+func TestGetDyFailedTaskIDsInFaileds(t *testing.T) {
+	tests := []struct {
+		Name string
+		VT   map[api.TaskID]util.NPUTask
+		Ids  []api.TaskID
+		Want []api.TaskID
+	}{
+		{
+			Name: "01-testGetDyFailedTaskIDsInFaileds will return tIDs when call this function",
+			VT: map[api.TaskID]util.NPUTask{
+				"task01": {NameSpace: "default"},
+				"task02": {NameSpace: "vcjob"},
+				"task03": {NameSpace: "kube-system"},
+			},
+			Ids:  []api.TaskID{"task01", "task02", "task03"},
+			Want: []api.TaskID{"", "", "", "task01", "task02", "task03"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			if got := getDyFailedTaskIDsInFaileds(tt.Ids, tt.VT); !reflect.DeepEqual(got, tt.Want) {
+				t.Errorf("GetDyFailedTaskIDsInFaileds() got = %#v, want %#v", got, tt.Want)
 			}
 		})
 	}

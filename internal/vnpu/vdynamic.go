@@ -108,11 +108,11 @@ func (tp *DynamicVNPU) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeIn
 	downgradeNodes, ok := tp.DowngradeCache[task.Name]
 	// 2. give the first node high score, none nodes are downgraded
 	if !ok {
-		value, sOK := scoreMap[nodesSorted[0].Name]
+		_, sOK := scoreMap[nodesSorted[0].Name]
 		if !sOK {
-			scoreMap[nodesSorted[0].Name] = value
+			scoreMap[nodesSorted[0].Name] = 0.0
 		}
-		scoreMap[nodesSorted[0].Name] = value + util.NPUIndex8
+		scoreMap[nodesSorted[0].Name] += util.NPUIndex8
 		return nil
 	}
 
@@ -126,9 +126,10 @@ func (tp *DynamicVNPU) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeIn
 			}
 		}
 		if !downgradeFlag {
-			scoreMap[node.Name] += util.NPUIndex8
+			scoreMap[node.Name] += util.NPUIndex8 * util.NPUIndex2
 			return nil
 		}
+		scoreMap[node.Name] += util.NPUIndex8
 	}
 
 	return nil
@@ -268,18 +269,15 @@ func (tp *DynamicVNPU) SetNPUTopologyToPodFn(task *api.TaskInfo, node plugin.NPU
 		return
 	}
 
-	var segmentAnnotation string
 	for curTemplate, jobVResource := range chipVTemplate.Data {
 		if taskResReq != jobVResource {
 			continue
 		}
-		segmentAnnotation = curTemplate
+		task.Pod.Annotations[util.AscendNPUCore] = fmt.Sprintf("%s-%s", allocChipID, curTemplate)
+		klog.V(util.LogInfoLev).Infof("dynamic vnpu setNPUTopologyToPod %s top:%s.", task.Name,
+			task.Pod.Annotations[util.AscendNPUCore])
+		return
 	}
-
-	task.Pod.Annotations[util.AscendNPUCore] = fmt.Sprintf("%s-%s", allocChipID,
-		segmentAnnotation)
-	klog.V(util.LogInfoLev).Infof("dynamic vnpu setNPUTopologyToPod %s top:%s.", task.Name,
-		task.Pod.Annotations[util.AscendNPUCore])
 	return
 }
 

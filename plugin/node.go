@@ -296,7 +296,6 @@ func (n NPUNode) CheckNPUResourceStableReScheduling(vcJob SchedulerJob) error {
 // InitNodesFromSsn init all nodes in ssn.
 func (sHandle *ScheduleHandler) InitNodesFromSsn(ssn *framework.Session) {
 	if sHandle == nil || sHandle.FrameAttr.KubeClient == nil {
-
 		return
 	}
 	sHandle.Nodes = make(map[string]NPUNode, util.MapInitNum)
@@ -304,6 +303,7 @@ func (sHandle *ScheduleHandler) InitNodesFromSsn(ssn *framework.Session) {
 		npuNode := NPUNode{}
 		err := npuNode.InitNPUNodeByNodeInf(nodeInf, sHandle.FrameAttr.KubeClient, sHandle.FrameAttr.VJobTemplate)
 		if err != nil {
+			klog.V(util.LogDebugLev).Infof("InitNodesFromSsn %s %s, not put in nodes.", nodeName, err)
 			continue
 		}
 		sHandle.Nodes[nodeName] = npuNode

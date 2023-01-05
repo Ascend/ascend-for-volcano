@@ -39,10 +39,14 @@ func (tp *VirtualNPU) GetTaskResource(task *api.TaskInfo, node plugin.NPUNode) (
 	}
 	klog.V(util.LogDebugLev).Infof("get coreNum %d", coreNum)
 
+	tempCore := node.TotalRes.Aicore
+	if tempCore == 0 {
+		return util.VResource{}, fmt.Errorf("%s not inital for Aicore is 0", node.Name)
+	}
 	if node.IsResourceWholeCard(coreNum) {
 		res := util.VResource{
 			Aicore: coreNum,
-			Aicpu:  coreNum * node.TotalRes.Aicpu / node.TotalRes.Aicore,
+			Aicpu:  coreNum * node.TotalRes.Aicpu / tempCore,
 			DVPP:   plugin.AscendDVPPEnabledNull,
 		}
 		return res, nil
