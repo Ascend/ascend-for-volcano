@@ -143,8 +143,7 @@ func Min(x, y int) int {
 // IsSliceContain judges whether keyword in tasgetSlice
 func IsSliceContain(keyword interface{}, targetSlice interface{}) bool {
 	if targetSlice == nil {
-		klog.V(LogErrorLev).Infof(
-			"unable to converts %#v of type %T to map[interface{}]struct{}", targetSlice, targetSlice)
+		klog.V(LogErrorLev).Infof("IsSliceContain :%s", ArgumentError)
 		return false
 	}
 	kind := reflect.TypeOf(targetSlice).Kind()

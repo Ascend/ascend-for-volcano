@@ -281,8 +281,8 @@ func (sHandle *ScheduleHandler) BeforeCloseHandler() {
 
 // InitNPUSession init npu plugin and nodes.
 func (sHandle *ScheduleHandler) InitNPUSession(ssn *framework.Session) error {
-	klog.V(util.LogInfoLev).Infof("enter %s InitNPUSession.", PluginName)
-	defer klog.V(util.LogInfoLev).Infof("leave %s InitNPUSession.", PluginName)
+	klog.V(util.LogDebugLev).Infof("enter %s InitNPUSession.", PluginName)
+	defer klog.V(util.LogDebugLev).Infof("leave %s InitNPUSession.", PluginName)
 
 	if err := sHandle.checkSession(ssn); err != nil {
 		klog.V(util.LogErrorLev).Infof("%s checkSession : %s.", PluginName, err)
