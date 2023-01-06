@@ -24,7 +24,10 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/agiledragon/gomonkey/v2"
+	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
+	"volcano.sh/volcano/pkg/scheduler/framework"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
@@ -82,7 +85,7 @@ func TestCheckStVJobReq(t *testing.T) {
 		npu.Tasks = tt.Tasks
 		t.Run(tt.Name, func(t *testing.T) {
 			if err := npu.checkStVJobReq(); !reflect.DeepEqual(err, tt.WantErr) {
-				t.Errorf("ValidNPUJob() error = %#v, wantErr %#v", err, tt.WantErr)
+				t.Errorf("CheckStVJobReq() error = %#v, wantErr %#v", err, tt.WantErr)
 			}
 		})
 	}
@@ -139,7 +142,7 @@ func TestCheckDyVJobReq(t *testing.T) {
 		npu.Tasks = tt.Tasks
 		t.Run(tt.Name, func(t *testing.T) {
 			if err := npu.checkDyVJobReq(); !reflect.DeepEqual(err, tt.WantErr) {
-				t.Errorf("ValidNPUJob() error = %#v, wantErr %#v", err, tt.WantErr)
+				t.Errorf("CheckDyVJobReq() error = %#v, wantErr %#v", err, tt.WantErr)
 			}
 		})
 	}
@@ -240,7 +243,254 @@ func TestValidDyVNPUTaskDVPPLabel(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
 			if err := npu.validDyVNPUTaskDVPPLabel(tt.Task); !reflect.DeepEqual(err, tt.WantErr) {
-				t.Errorf("ValidNPUJob() error = %#v, wantErr %#v", err, tt.WantErr)
+				t.Errorf("ValidDyVNPUTaskDVPPLabel() error = %#v, wantErr %#v", err, tt.WantErr)
+			}
+		})
+	}
+}
+
+type TestValidDyVNPUJobLabelTest struct {
+	Name    string
+	Task    util.NPUTask
+	WantErr error
+}
+
+func buildTestValidDyVNPUJobLabelTestCase() []TestValidDyVNPUJobLabelTest {
+	tests := []TestValidDyVNPUJobLabelTest{
+		{
+			Name:    "01-test will return err when Job is not VJob",
+			Task:    util.NPUTask{},
+			WantErr: errors.New("not vNPU task"),
+		},
+		{
+			Name: "02-test will return nil when Job is ok",
+			Task: util.NPUTask{
+				Name:       "task01",
+				ReqNPUName: util.AscendNPUCore,
+				ReqNPUNum:  4,
+			},
+			WantErr: nil,
+		},
+	}
+	return tests
+}
+
+func TestValidDyVNPUJobLabel(t *testing.T) {
+	n := New(PluginName)
+	npu, ok := n.(*ascend310P)
+	if !ok {
+		return
+	}
+	tests := buildTestValidDyVNPUJobLabelTestCase()
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			if err := npu.validDyVNPUTaskDVPPLabel(tt.Task); !reflect.DeepEqual(err, tt.WantErr) {
+				t.Errorf("ValidDyVNPUJobLabel() error = %#v, wantErr %#v", err, tt.WantErr)
+			}
+		})
+	}
+
+}
+
+type TestValidDyVNPUJobTest struct {
+	Name string
+	VJob *util.VJob
+	Want *api.ValidateResult
+}
+
+func buildTestValidDyVNPUJobTest() []TestValidDyVNPUJobTest {
+	tests := []TestValidDyVNPUJobTest{
+		{
+			Name: "01-test ValidDyVNPUJob will return nil when VJob status is Running",
+			VJob: &util.VJob{Status: scheduling.PodGroupRunning},
+			Want: nil,
+		},
+		{
+			Name: "02-test ValidDyVNPUJob will return when check VJob Request is invalid",
+			VJob: &util.VJob{Status: scheduling.PodGroupUnknown},
+			Want: &api.ValidateResult{Pass: false, Reason: " not VirtualNPU job", Message: " not VirtualNPU job"},
+		},
+		{
+			Name: "03-test ValidDyVNPUJob will return when validDyVNPUJobLabel is invalid",
+			VJob: &util.VJob{Status: scheduling.PodGroupUnknown},
+			Want: &api.ValidateResult{Pass: false, Reason: " not VirtualNPU job", Message: " not VirtualNPU job"},
+		},
+	}
+	return tests
+}
+
+func TestValidDyVNPUJob(t *testing.T) {
+	n := New(PluginName)
+	npu, ok := n.(*ascend310P)
+	if !ok {
+		return
+	}
+	npu.NPUJob = &util.NPUJob{}
+	tests := buildTestValidDyVNPUJobTest()
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			npu.VJob = tt.VJob
+			if got := npu.validDyVNPUJob(); !reflect.DeepEqual(got, tt.Want) {
+				t.Errorf("ValidDyVNPUJob() got = %#v, want %#v", got, tt.Want)
+			}
+		})
+	}
+}
+
+type TestGetAllDyJobsTest struct {
+	Name string
+	Jobs map[api.JobID]plugin.SchedulerJob
+	Want map[api.JobID]plugin.SchedulerJob
+}
+
+func buildTestGetAllDyJobsTestCase() []TestGetAllDyJobsTest {
+	tests := []TestGetAllDyJobsTest{
+		{
+			Name: "01-getAllDyJobs will return jobMap when VJob is nil",
+			Jobs: map[api.JobID]plugin.SchedulerJob{},
+			Want: map[api.JobID]plugin.SchedulerJob{},
+		},
+		{
+			Name: "01-getAllDyJobs will return jobMap when VJob is nil",
+			Jobs: map[api.JobID]plugin.SchedulerJob{
+				"Job01": {SchedulerJobAttr: util.SchedulerJobAttr{
+					NPUJob: &util.NPUJob{VJob: &util.VJob{Type: util.JobTypeDyCut}}}}},
+			Want: map[api.JobID]plugin.SchedulerJob{"Job01": {SchedulerJobAttr: util.SchedulerJobAttr{
+				NPUJob: &util.NPUJob{VJob: &util.VJob{Type: util.JobTypeDyCut}}}}},
+		},
+	}
+	return tests
+}
+
+func TestGetAllDyJobs(t *testing.T) {
+	n := New(PluginName)
+	npu, ok := n.(*ascend310P)
+	if !ok {
+		return
+	}
+	tests := buildTestGetAllDyJobsTestCase()
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			npu.Jobs = tt.Jobs
+			if got := npu.getAllDyJobs(); !reflect.DeepEqual(got, tt.Want) {
+				t.Errorf("ValidNPUJob() got = %#v, want %#v", got, tt.Want)
+			}
+		})
+	}
+}
+
+func TestGetFailedDyTasksFromJobs(t *testing.T) {
+	tests := []struct {
+		Name  string
+		vJobs map[api.JobID]plugin.SchedulerJob
+		Want  map[api.TaskID]util.NPUTask
+	}{
+		{
+			Name: "01-getFailedDyTasksFromJobs will return vTask when call this function",
+			vJobs: map[api.JobID]plugin.SchedulerJob{
+				"vjob01": {
+					SchedulerJobAttr: util.SchedulerJobAttr{NPUJob: &util.NPUJob{
+						Tasks: map[api.TaskID]util.NPUTask{"Task01": {VTask: &util.VTask{Status: util.TaskStatusFailed}}}}},
+				},
+			},
+			Want: map[api.TaskID]util.NPUTask{"Task01": {VTask: &util.VTask{Status: util.TaskStatusFailed}}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			if got := getFailedDyTasksFromJobs(tt.vJobs); !reflect.DeepEqual(got, tt.Want) {
+				t.Errorf("GetFailedDyTasksFromJobs() got = %#v, want %#v", got, tt.Want)
+			}
+		})
+	}
+}
+
+func TestGetDyFailedNamespaces(t *testing.T) {
+	tests := []struct {
+		Name string
+		VT   map[api.TaskID]util.NPUTask
+		Want map[string]struct{}
+	}{
+		{
+			Name: "01-testGetDyFailedNamespaces will return nsMap when when call this function",
+			VT: map[api.TaskID]util.NPUTask{
+				"task01": {NameSpace: "default"},
+				"task02": {NameSpace: "vcjob"},
+				"task03": {NameSpace: "kube-system"},
+			},
+			Want: map[string]struct{}{
+				"default":     {},
+				"vcjob":       {},
+				"kube-system": {},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			if got := getDyFailedNamespaces(tt.VT); !reflect.DeepEqual(got, tt.Want) {
+				t.Errorf("GetDyFailedNamespaces() got = %#v, want %#v", got, tt.Want)
+			}
+		})
+	}
+}
+
+func TestGetAllDyFailedTasks(t *testing.T) {
+	tests := []struct {
+		Name  string
+		SSN   *framework.Session
+		nsMap map[string]struct{}
+		Want  []api.TaskID
+	}{
+		{
+			Name: "01-testGetAllDyFailedTasks will return IDs when when call this function",
+			SSN:  &framework.Session{},
+			nsMap: map[string]struct{}{
+				"default":     {},
+				"vcjob":       {},
+				"kube-system": {},
+			},
+			Want: []api.TaskID{"", "", "", "0001", "0001", "0001"},
+		},
+	}
+
+	patch := gomonkey.ApplyFunc(vnpu.GetSegmentFailureTaskIDs,
+		func(ssn *framework.Session, namespace string) []api.TaskID {
+			return []api.TaskID{"0001"}
+		})
+
+	defer patch.Reset()
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			if got := getAllDyFailedTasks(tt.SSN, tt.nsMap); !reflect.DeepEqual(got, tt.Want) {
+				t.Errorf("GetAllDyFailedTasks() got = %#v, want %#v", got, tt.Want)
+			}
+		})
+	}
+}
+
+func TestGetDyFailedTaskIDsInFaileds(t *testing.T) {
+	tests := []struct {
+		Name string
+		VT   map[api.TaskID]util.NPUTask
+		Ids  []api.TaskID
+		Want []api.TaskID
+	}{
+		{
+			Name: "01-testGetDyFailedTaskIDsInFaileds will return tIDs when call this function",
+			VT: map[api.TaskID]util.NPUTask{
+				"task01": {NameSpace: "default"},
+				"task02": {NameSpace: "vcjob"},
+				"task03": {NameSpace: "kube-system"},
+			},
+			Ids:  []api.TaskID{"task01", "task02", "task03"},
+			Want: []api.TaskID{"", "", "", "task01", "task02", "task03"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			if got := getDyFailedTaskIDsInFaileds(tt.Ids, tt.VT); !reflect.DeepEqual(got, tt.Want) {
+				t.Errorf("GetDyFailedTaskIDsInFaileds() got = %#v, want %#v", got, tt.Want)
 			}
 		})
 	}
