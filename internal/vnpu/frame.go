@@ -48,20 +48,49 @@ func (tp *VirtualNPU) GetTaskResource(task *api.TaskInfo, node plugin.NPUNode) (
 		return res, nil
 	}
 
-	cpuLevel, ok := task.Pod.Labels[plugin.AscendVNPULevel]
-	if !ok {
-		cpuLevel = plugin.AscendVNPULevelLow
+	dvpp, err := tp.getVTaskDVPP(task)
+	if err != nil {
+		return util.VResource{}, err
 	}
 
-	dvpp, ok := task.Pod.Labels[plugin.AscendVNPUDVPP]
-	if !ok {
-		dvpp = plugin.AscendDVPPEnabledNull
-	}
+	cpuLevel := tp.getVTaskLevel(task)
 
 	virTemplate := getResTemplateFromTaskSetting(coreNum, cpuLevel, dvpp)
 	klog.V(util.LogDebugLev).Infof("vnpu template string for cur task:<%s>", virTemplate)
 	taskReqRes := tp.VT.Data[virTemplate]
 	return taskReqRes, nil
+}
+
+func (tp *VirtualNPU) getVTaskDVPP(task *api.TaskInfo) (string, error) {
+	dvpp, ok := task.Pod.Labels[plugin.AscendVNPUDVPP]
+	if !ok {
+		klog.V(util.LogWarningLev).Infof("%s not set VNPU dvpp, use default null.", task.Name)
+		return plugin.AscendDVPPEnabledNull, nil
+	}
+	switch dvpp {
+	case plugin.AscendDVPPEnabledOff, plugin.AscendDVPPEnabledNull, plugin.AscendDVPPEnabledOn:
+		break
+	default:
+		klog.V(util.LogWarningLev).Infof("%s set wrong dvpp %s.", task.Name, dvpp)
+		return "", fmt.Errorf("err dvpp value:%s", dvpp)
+	}
+	return dvpp, nil
+}
+
+func (tp *VirtualNPU) getVTaskLevel(task *api.TaskInfo) string {
+	cpuLevel, ok := task.Pod.Labels[plugin.AscendVNPULevel]
+	if !ok {
+		klog.V(util.LogWarningLev).Infof("%s not set VNPU level, use default low.", task.Name)
+		return plugin.AscendVNPULevelLow
+	}
+	switch cpuLevel {
+	case plugin.AscendVNPULevelLow, plugin.AscendVNPULevelHigh:
+		break
+	default:
+		klog.V(util.LogWarningLev).Infof("%s set wrong VNPU level %s, use default low.", task.Name, cpuLevel)
+		cpuLevel = plugin.AscendVNPULevelLow
+	}
+	return cpuLevel
 }
 
 func getAiCoreNumFromTask(task *api.TaskInfo) (int, error) {
