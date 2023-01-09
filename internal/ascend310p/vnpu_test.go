@@ -31,6 +31,7 @@ import (
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
@@ -42,7 +43,7 @@ type TestCheckStVJobReqTest struct {
 }
 
 func buildTestCheckStVJobReqTestCase01() []TestCheckStVJobReqTest {
-	test := []TestCheckStVJobReqTest{
+	tests := []TestCheckStVJobReqTest{
 		{
 			Name:    "01-TestCheckStVJobReq will return err when vHandle.DynamicByConf is true",
 			vHandle: &vnpu.VirtualNPU{DynamicByConf: true},
@@ -69,7 +70,7 @@ func buildTestCheckStVJobReqTestCase01() []TestCheckStVJobReqTest {
 			WantErr: errors.New("task0 req 0 not 1"),
 		},
 	}
-	return test
+	return tests
 }
 
 func TestCheckStVJobReq(t *testing.T) {
@@ -100,7 +101,7 @@ type TestCheckDyVJobReqTest struct {
 }
 
 func buildTestCheckDyVJobReqTestCase01() []TestCheckDyVJobReqTest {
-	test := []TestCheckDyVJobReqTest{
+	tests := []TestCheckDyVJobReqTest{
 		{
 			Name:    "01-TestCheckDyVJobReq will return err when job is not VJob",
 			NPUJob:  &util.NPUJob{ReqNPUName: util.NPU310PCardName},
@@ -126,7 +127,7 @@ func buildTestCheckDyVJobReqTestCase01() []TestCheckDyVJobReqTest {
 			WantErr: errors.New("task2 req err 3"),
 		},
 	}
-	return test
+	return tests
 }
 
 func TestCheckDyVJobReq(t *testing.T) {
@@ -157,7 +158,7 @@ type TestValidDyVNPUTaskDVPPLabelTest struct {
 }
 
 func buildTestValidDyVNPUTaskDVPPLabelTestCase01() TestValidDyVNPUTaskDVPPLabelTest {
-	test := TestValidDyVNPUTaskDVPPLabelTest{
+	test01 := TestValidDyVNPUTaskDVPPLabelTest{
 		Name: "01-test will return err when task is not vnpu task",
 		Task: util.NPUTask{
 			Name:       "task01",
@@ -166,11 +167,11 @@ func buildTestValidDyVNPUTaskDVPPLabelTestCase01() TestValidDyVNPUTaskDVPPLabelT
 		},
 		WantErr: errors.New("not vNPU task"),
 	}
-	return test
+	return test01
 }
 
 func buildTestValidDyVNPUTaskDVPPLabelTestCase02() TestValidDyVNPUTaskDVPPLabelTest {
-	test := TestValidDyVNPUTaskDVPPLabelTest{
+	test02 := TestValidDyVNPUTaskDVPPLabelTest{
 		Name: "02-test will return nil when task is a multiple of eight",
 		Task: util.NPUTask{
 			Name:       "task02",
@@ -179,11 +180,11 @@ func buildTestValidDyVNPUTaskDVPPLabelTestCase02() TestValidDyVNPUTaskDVPPLabelT
 		},
 		WantErr: nil,
 	}
-	return test
+	return test02
 }
 
 func buildTestValidDyVNPUTaskDVPPLabelTestCase03() TestValidDyVNPUTaskDVPPLabelTest {
-	test := TestValidDyVNPUTaskDVPPLabelTest{
+	test03 := TestValidDyVNPUTaskDVPPLabelTest{
 		Name: "03-test will return err when task is 1 or util.NPUIndex2",
 		Task: util.NPUTask{
 			Name:       "task03",
@@ -193,11 +194,11 @@ func buildTestValidDyVNPUTaskDVPPLabelTestCase03() TestValidDyVNPUTaskDVPPLabelT
 		},
 		WantErr: errors.New("task03 dvpp label err:dvpp"),
 	}
-	return test
+	return test03
 }
 
 func buildTestValidDyVNPUTaskDVPPLabelTestCase04() TestValidDyVNPUTaskDVPPLabelTest {
-	test := TestValidDyVNPUTaskDVPPLabelTest{
+	test04 := TestValidDyVNPUTaskDVPPLabelTest{
 		Name: "03-test will return nil when task is util.NPUIndex4",
 		Task: util.NPUTask{
 			Name:       "task04",
@@ -206,11 +207,11 @@ func buildTestValidDyVNPUTaskDVPPLabelTestCase04() TestValidDyVNPUTaskDVPPLabelT
 		},
 		WantErr: nil,
 	}
-	return test
+	return test04
 }
 
 func buildTestValidDyVNPUTaskDVPPLabelTestCase05() TestValidDyVNPUTaskDVPPLabelTest {
-	test := TestValidDyVNPUTaskDVPPLabelTest{
+	test05 := TestValidDyVNPUTaskDVPPLabelTest{
 		Name: "03-test will return nil when task ReqNPUNum is other",
 		Task: util.NPUTask{
 			Name:       "task04",
@@ -219,7 +220,7 @@ func buildTestValidDyVNPUTaskDVPPLabelTestCase05() TestValidDyVNPUTaskDVPPLabelT
 		},
 		WantErr: errors.New("err require number:3"),
 	}
-	return test
+	return test05
 }
 
 func buildTestValidDyVNPUTaskDVPPLabelTestCase() []TestValidDyVNPUTaskDVPPLabelTest {
@@ -540,28 +541,32 @@ func TestGetDyFailedTasksFromFailed(t *testing.T) {
 }
 
 type TestGetRestartDyTasksFromJobsTest struct {
-	Name string
-	VJob map[api.JobID]plugin.SchedulerJob
-	ssn  *framework.Session
-	Want []util.NPUTask
+	Name  string
+	Tasks []api.TaskID
+	VJob  map[api.JobID]plugin.SchedulerJob
+	ssn   *framework.Session
+	Want  []util.NPUTask
 }
 
 func buildTestGetRestartDyTasksFromJobsTestCase() []TestGetRestartDyTasksFromJobsTest {
 	tests := []TestGetRestartDyTasksFromJobsTest{
 		{
-			Name: "01-GetRestartDyTasksFromJobs will return nil  when vjob is nil",
-			VJob: nil,
-			ssn:  nil,
-			Want: nil,
+			Name:  "01-GetRestartDyTasksFromJobs will return nil  when vjob is nil",
+			Tasks: []api.TaskID{},
+			VJob:  nil,
+			ssn:   nil,
+			Want:  nil,
 		},
 		{
-			Name: "02-GetRestartDyTasksFromJobs will return nil  when fTIDs is 0",
-			VJob: nil,
-			ssn:  nil,
-			Want: nil,
+			Name:  "02-GetRestartDyTasksFromJobs will return nil  when fTIDs is 0",
+			Tasks: []api.TaskID{"task01"},
+			VJob:  nil,
+			ssn:   nil,
+			Want:  nil,
 		},
 		{
-			Name: "03-GetRestartDyTasksFromJobs will return nSlice  when call this method",
+			Name:  "03-GetRestartDyTasksFromJobs will return nSlice  when call this method",
+			Tasks: []api.TaskID{"task01"},
 			VJob: map[api.JobID]plugin.SchedulerJob{
 				"vjob01": {
 					SchedulerJobAttr: util.SchedulerJobAttr{NPUJob: &util.NPUJob{
@@ -581,24 +586,271 @@ func TestGetRestartDyTasksFromJobs(t *testing.T) {
 		return
 	}
 	tests := buildTestGetRestartDyTasksFromJobsTestCase()
-	for i, tt := range tests {
-
+	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
 
-			patch2 := gomonkey.ApplyFunc(getDyFailedTasksFromFailed,
+			patch := gomonkey.ApplyFunc(getDyFailedTasksFromFailed,
 				func(ssn *framework.Session, vT map[api.TaskID]util.NPUTask) []api.TaskID {
-					if i == 0 {
-						return nil
-					}
-					return []api.TaskID{"task01"}
+					return tt.Tasks
 				})
 
-			defer patch2.Reset()
-
+			defer patch.Reset()
 			if got := npu.getRestartDyTasksFromJobs(tt.VJob, tt.ssn); !reflect.DeepEqual(got, tt.Want) {
 				t.Errorf("GetAllDyFailedTasks() got = %#v, want %#v", got, tt.Want)
 			}
 		})
 	}
+}
 
+type InitDyCutConCacheByJobInfoTest struct {
+	Name    string
+	JobInfo *api.JobInfo
+	VJob    plugin.SchedulerJob
+	NPUJob  *util.NPUJob
+	Nodes   map[string]map[string]map[api.TaskID]struct{}
+	WantErr error
+}
+
+func buildInitDyCutConCacheByJobInfoTestCase() []InitDyCutConCacheByJobInfoTest {
+	tests := []InitDyCutConCacheByJobInfoTest{
+		{
+			Name:    "01-InitDyCutConCacheByJobInfo will return err when jobInfo is nil",
+			WantErr: errors.New("initDyCutConCacheByJobInfo :invalid argument"),
+		},
+		{
+			Name:    "02-InitDyCutConCacheByJobInfo will return nil when taskInfo do not exist ",
+			JobInfo: test.FakeNormalTestJob("job01", 0),
+			NPUJob: &util.NPUJob{
+				Tasks: map[api.TaskID]util.NPUTask{
+					"task01": {NameSpace: "default", VTask: &util.VTask{Status: util.TaskStatusAllocate}},
+				},
+			},
+			WantErr: nil,
+		},
+		{
+			Name: "03-InitDyCutConCacheByJobInfo will return nil when taskInfo exist ",
+			JobInfo: &api.JobInfo{Tasks: map[api.TaskID]*api.TaskInfo{
+				"task01": {Name: "task01-test"},
+			}},
+			NPUJob: &util.NPUJob{
+				Tasks: map[api.TaskID]util.NPUTask{
+					"task01": {NameSpace: "default", VTask: &util.VTask{Status: util.TaskStatusAllocate}},
+				},
+			},
+			WantErr: nil,
+		},
+	}
+	return tests
+}
+
+func TestInitDyCutConCacheByJobInfo(t *testing.T) {
+	tests := buildInitDyCutConCacheByJobInfoTestCase()
+
+	patch := gomonkey.ApplyFunc(util.GetVTaskUseTemplate, func(taskInf *api.TaskInfo) (string, error) {
+		return "", errors.New("task01's anno has no huawei.com/npu-core")
+	})
+	defer patch.Reset()
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.VJob.NPUJob = tt.NPUJob
+			if err := initDyCutConCacheByJobInfo(tt.Nodes, tt.JobInfo, tt.VJob); !reflect.DeepEqual(err, tt.WantErr) {
+				t.Errorf("InitDyCutConCacheByJobInfo() err = %#v want %#v", err, tt.WantErr)
+			}
+		})
+	}
+}
+
+type InitConcacheByTemplateTest struct {
+	Name     string
+	nodes    map[string]map[string]map[api.TaskID]struct{}
+	vT       util.NPUTask
+	template string
+	taskID   api.TaskID
+	WantNode map[string]map[string]map[api.TaskID]struct{}
+}
+
+func buildInitConcacheByTemplateTestCase() []InitConcacheByTemplateTest {
+	tests := []InitConcacheByTemplateTest{
+		{
+			Name:     "01-InitConcacheByTemplate will return nil when node is nil",
+			nodes:    nil,
+			vT:       util.NPUTask{},
+			template: util.NPU310PCardName,
+			taskID:   "task01",
+			WantNode: nil,
+		},
+		{
+			Name: "02-InitConcacheByTemplate will return template node when nodeName is not nil",
+			nodes: map[string]map[string]map[api.TaskID]struct{}{
+				"node1": {"node1-1": {"task01": {}}},
+			},
+			vT:       util.NPUTask{VTask: &util.VTask{}},
+			template: util.NPU310PCardName,
+			taskID:   "task01",
+			WantNode: map[string]map[string]map[api.TaskID]struct{}{
+				"node name test01": {
+					"huawei.com/Ascend310P": map[api.TaskID]struct{}{"task01": {}},
+				},
+				"node1": {"node1-1": map[api.TaskID]struct{}{"task01": {}}},
+			},
+		},
+		{
+			Name: "03-InitConcacheByTemplate will return node when nodeName is nil",
+			nodes: map[string]map[string]map[api.TaskID]struct{}{
+				"node1": {"node1-1": {"task01": {}}},
+			},
+			vT:       util.NPUTask{VTask: &util.VTask{}},
+			template: util.NPU310PCardName,
+			taskID:   "task01",
+			WantNode: map[string]map[string]map[api.TaskID]struct{}{
+				"node1": {"node1-1": {"task01": {}}},
+			},
+		},
+	}
+	tests[1].vT.Allocated.NodeName = "node name test01"
+	return tests
+}
+
+func TestInitConcacheByTemplate(t *testing.T) {
+	tests := buildInitConcacheByTemplateTestCase()
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			if initConcacheByTemplate(tt.nodes, tt.vT, tt.template, tt.taskID); !reflect.DeepEqual(tt.nodes, tt.WantNode) {
+				t.Errorf("initConcacheByTemplate() tt.nodes = %#v want %#v", tt.nodes, tt.WantNode)
+			}
+		})
+	}
+}
+
+type InitConCacheTest struct {
+	Name    string
+	ssn     *framework.Session
+	NPU     *ascend310P
+	WantErr error
+}
+
+func buildInitConCacheTestCase01() InitConCacheTest {
+	test01 := InitConCacheTest{
+		Name:    "01-InitConCache will return err when vHandle is nil",
+		ssn:     nil,
+		NPU:     &ascend310P{},
+		WantErr: errors.New("initConCache : 's vHandle not init"),
+	}
+	return test01
+}
+
+func buildInitConCacheTestCase02() InitConCacheTest {
+	test02 := InitConCacheTest{
+		Name:    "02-InitConCache will return nil when jobOk is false",
+		ssn:     test.FakeNormalSSN(),
+		NPU:     &ascend310P{vHandle: &vnpu.VirtualNPU{}},
+		WantErr: nil,
+	}
+	test02.NPU.Jobs = map[api.JobID]plugin.SchedulerJob{
+		"Job02": {},
+	}
+	return test02
+}
+
+func buildInitConCacheTestCase03() InitConCacheTest {
+	test03 := InitConCacheTest{
+		Name:    "03-InitConCache will return nil when jobOk is true",
+		ssn:     test.FakeNormalSSN(),
+		NPU:     &ascend310P{vHandle: &vnpu.VirtualNPU{}},
+		WantErr: nil,
+	}
+	test03.NPU.Jobs = map[api.JobID]plugin.SchedulerJob{
+		"Job03": {SchedulerJobAttr: util.SchedulerJobAttr{NPUJob: &util.NPUJob{}}},
+	}
+	test03.ssn.Jobs = map[api.JobID]*api.JobInfo{
+		"Job03": {Name: PluginName},
+	}
+	return test03
+}
+
+func buildInitConCacheTestCase() []InitConCacheTest {
+	tests := []InitConCacheTest{
+		buildInitConCacheTestCase01(),
+		buildInitConCacheTestCase02(),
+		buildInitConCacheTestCase03(),
+	}
+	return tests
+}
+
+func TestInitConCache(t *testing.T) {
+	npu := &ascend310P{}
+	tests := buildInitConCacheTestCase()
+	for _, tt := range tests {
+		npu = tt.NPU
+		t.Run(tt.Name, func(t *testing.T) {
+			if err := npu.initConCache(tt.ssn); !reflect.DeepEqual(err, tt.WantErr) {
+				t.Errorf("initConCache() error = %#v, wantErr %#v", err, tt.WantErr)
+			}
+		})
+	}
+}
+
+type TestDeleteDyCutErrTasksTest struct {
+	Name    string
+	ssn     *framework.Session
+	Jobs    map[api.JobID]plugin.SchedulerJob
+	WantErr error
+}
+
+func buildTestDeleteDyCutErrTasksTestCase() []TestDeleteDyCutErrTasksTest {
+	tests := []TestDeleteDyCutErrTasksTest{
+		{
+			Name:    "01-DeleteDyCutErrTasks will return nil when nTasks is nil",
+			ssn:     nil,
+			WantErr: nil,
+		},
+		{
+			Name: "02-DeleteDyCutErrTasks will return nil when VTask is nil",
+			ssn:  nil,
+			Jobs: map[api.JobID]plugin.SchedulerJob{"Job01": {SchedulerJobAttr: util.SchedulerJobAttr{
+				NPUJob: &util.NPUJob{
+					Tasks: map[api.TaskID]util.NPUTask{
+						"task01": {VTask: &util.VTask{Status: util.TaskStatusFailed}}},
+					VJob: &util.VJob{Type: util.JobTypeDyCut}}}}},
+			WantErr: nil,
+		},
+		{
+			Name: "03-DeleteDyCutErrTasks will return nil when VTask is not nil",
+			ssn:  nil,
+			Jobs: map[api.JobID]plugin.SchedulerJob{"Job01": {SchedulerJobAttr: util.SchedulerJobAttr{
+				NPUJob: &util.NPUJob{
+					Tasks: map[api.TaskID]util.NPUTask{
+						"task01": {VTask: &util.VTask{Status: util.TaskStatusFailed}}},
+					VJob: &util.VJob{Type: util.JobTypeDyCut}}}}},
+			WantErr: nil,
+		},
+	}
+	return tests
+}
+
+func TestDeleteDyCutErrTasks(t *testing.T) {
+	n := New(PluginName)
+	npu, ok := n.(*ascend310P)
+	if !ok {
+		return
+	}
+
+	patch := gomonkey.ApplyFunc(getDyFailedTasksFromFailed,
+		func(ssn *framework.Session, vT map[api.TaskID]util.NPUTask) []api.TaskID {
+			return []api.TaskID{"task01"}
+		})
+
+	defer patch.Reset()
+
+	tests := buildTestDeleteDyCutErrTasksTestCase()
+	for _, tt := range tests {
+		npu.Jobs = tt.Jobs
+
+		t.Run(tt.Name, func(t *testing.T) {
+			if err := npu.deleteDyCutErrTasks(tt.ssn); !reflect.DeepEqual(err, tt.WantErr) {
+				t.Errorf("deleteDyCutErrTasks() err = %#v, want %#v", err, tt.WantErr)
+			}
+		})
+	}
 }
