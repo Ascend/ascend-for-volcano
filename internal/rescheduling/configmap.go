@@ -82,8 +82,7 @@ func checkReSchedulerCMCheckCode(data map[string]string) error {
 	delete(data, CmCheckCode)
 	curCheckCode := plugin.MakeDataHash(data)
 	if checkCode != curCheckCode {
-		klog.V(util.LogDebugLev).Infof("cm checkCode: %s, calc checkCode: %s, equal? %v, data: %#v", checkCode,
-			plugin.MakeDataHash(data), checkCode == curCheckCode, data)
+		klog.V(util.LogErrorLev).Infof("checkCode err:(%s), calc(%s), data: %#v", checkCode, curCheckCode, data)
 		return fmt.Errorf("checkCode does not match")
 	}
 	return nil
