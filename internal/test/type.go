@@ -84,3 +84,13 @@ type SetMaxNodeNPUNumTestCase struct {
 	Num     int
 	WantNum int
 }
+
+// ReleaseAnnotationTestCase releaseAnnotation test case
+type ReleaseAnnotationTestCase struct {
+	Task     *api.TaskInfo
+	WantNode *plugin.NPUNode
+	Name     string
+	Node     plugin.NPUNode
+	PodAnno  string
+	Attr     util.SchedulerJobAttr
+}

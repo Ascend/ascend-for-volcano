@@ -584,3 +584,106 @@ func TestUseAnnotation(t *testing.T) {
 		})
 	}
 }
+
+func buildReleaseAnnotationTestCase01() itest.ReleaseAnnotationTestCase {
+	test1 := itest.ReleaseAnnotationTestCase{
+		Name: "01-ReleaseAnnotation return node when job is not VJob",
+		Task: test.FakeNormalTestTask("pod1", "node1", "vcjob"),
+		Node: plugin.NPUNode{
+			CommonNode: plugin.CommonNode{
+				Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0,Ascend310P-1"},
+			},
+		},
+		Attr: util.SchedulerJobAttr{NPUJob: &util.NPUJob{}},
+		WantNode: &plugin.NPUNode{
+			CommonNode: plugin.CommonNode{
+				Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0,Ascend310P-1"},
+			},
+		},
+	}
+	return test1
+}
+
+func buildReleaseAnnotationTestCase02() itest.ReleaseAnnotationTestCase {
+	test2 := itest.ReleaseAnnotationTestCase{
+		Name: "02-ReleaseAnnotation return node  when type  is util.JobTypeWhole",
+		Task: test.FakeNormalTestTask("pod1", "node1", "vcjob"),
+		Node: plugin.NPUNode{
+			CommonNode: plugin.CommonNode{
+				Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0,Ascend310P-1"},
+			},
+		},
+		Attr: util.SchedulerJobAttr{NPUJob: &util.NPUJob{VJob: &util.VJob{Type: util.JobTypeWhole}}},
+		WantNode: &plugin.NPUNode{
+			CommonNode: plugin.CommonNode{
+				Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0,Ascend310P-1"},
+			},
+		},
+	}
+	return test2
+}
+
+func buildReleaseAnnotationTestCase03() itest.ReleaseAnnotationTestCase {
+	test3 := itest.ReleaseAnnotationTestCase{
+		Name: "03-ReleaseAnnotation return node  when type  is util.JobTypeDyCut",
+		Task: test.FakeNormalTestTask("pod1", "node1", "vcjob"),
+		Node: plugin.NPUNode{
+			CommonNode: plugin.CommonNode{
+				Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0,Ascend310P-1"},
+			},
+		},
+		Attr: util.SchedulerJobAttr{NPUJob: &util.NPUJob{VJob: &util.VJob{Type: util.JobTypeDyCut}}},
+		WantNode: &plugin.NPUNode{
+			CommonNode: plugin.CommonNode{
+				Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0,Ascend310P-1"},
+			},
+		},
+	}
+	return test3
+}
+
+func buildReleaseAnnotationTestCase04() itest.ReleaseAnnotationTestCase {
+	test4 := itest.ReleaseAnnotationTestCase{
+		Name: "04-ReleaseAnnotation return node  when type  is other",
+		Task: test.FakeNormalTestTask("pod1", "node1", "vcjob"),
+		Node: plugin.NPUNode{
+			CommonNode: plugin.CommonNode{
+				Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0,Ascend310P-1"},
+			},
+		},
+		Attr: util.SchedulerJobAttr{NPUJob: &util.NPUJob{VJob: &util.VJob{Type: 3}}},
+		WantNode: &plugin.NPUNode{
+			CommonNode: plugin.CommonNode{
+				Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0,Ascend310P-1"},
+			},
+		},
+	}
+	return test4
+}
+
+func buildReleaseAnnotationTestCase() []itest.ReleaseAnnotationTestCase {
+	tests := []itest.ReleaseAnnotationTestCase{
+		buildReleaseAnnotationTestCase01(),
+		buildReleaseAnnotationTestCase02(),
+		buildReleaseAnnotationTestCase03(),
+		buildReleaseAnnotationTestCase04(),
+	}
+	return tests
+}
+
+func TestReleaseAnnotation(t *testing.T) {
+	n := New(PluginName)
+	npu, ok := n.(*ascend310P)
+	if !ok {
+		return
+	}
+	testCases := buildReleaseAnnotationTestCase()
+	for _, tt := range testCases {
+		npu.SchedulerJobAttr = tt.Attr
+		t.Run(tt.Name, func(t *testing.T) {
+			if got := npu.ReleaseAnnotation(tt.Task, tt.Node); !reflect.DeepEqual(got, tt.WantNode) {
+				t.Errorf("CheckNodeNPUByTask() got = %#v, wantNode %#v", got, tt.WantNode)
+			}
+		})
+	}
+}

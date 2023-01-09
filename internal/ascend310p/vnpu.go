@@ -167,7 +167,7 @@ func getDyFailedNamespaces(vT map[api.TaskID]util.NPUTask) map[string]struct{} {
 }
 
 func getAllDyFailedTasks(ssn *framework.Session, nsMap map[string]struct{}) []api.TaskID {
-	tIDs := make([]api.TaskID, util.MapInitNum)
+	var tIDs []api.TaskID
 	for ns := range nsMap {
 		tmp := vnpu.GetSegmentFailureTaskIDs(ssn, ns)
 		if len(tmp) == 0 {
@@ -179,7 +179,7 @@ func getAllDyFailedTasks(ssn *framework.Session, nsMap map[string]struct{}) []ap
 }
 
 func getDyFailedTaskIDsInFaileds(allIDS []api.TaskID, vT map[api.TaskID]util.NPUTask) []api.TaskID {
-	tIDs := make([]api.TaskID, util.MapInitNum)
+	var tIDs []api.TaskID
 	for _, tID := range allIDS {
 		if _, ok := vT[tID]; !ok {
 			klog.V(util.LogErrorLev).Infof("getDyFailedTaskIDsInFaileds taskID(%s) not in tasks.", tID)
@@ -208,7 +208,7 @@ func (tp *ascend310P) getRestartDyTasksFromJobs(vJobs map[api.JobID]plugin.Sched
 	if len(fTIDs) == 0 {
 		return nil
 	}
-	nSlice := make([]util.NPUTask, util.MapInitNum)
+	var nSlice []util.NPUTask
 	for _, tID := range fTIDs {
 		vT, ok := vTasks[tID]
 		if !ok {
