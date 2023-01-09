@@ -583,16 +583,18 @@ func TestGetRestartDyTasksFromJobs(t *testing.T) {
 	tests := buildTestGetRestartDyTasksFromJobsTestCase()
 	for i, tt := range tests {
 
-		patch2 := gomonkey.ApplyFunc(getDyFailedTasksFromFailed, func(ssn *framework.Session, vT map[api.TaskID]util.NPUTask) []api.TaskID {
-			if i == 0 {
-				return nil
-			}
-			return []api.TaskID{"task01"}
-		})
-
-		defer patch2.Reset()
-
 		t.Run(tt.Name, func(t *testing.T) {
+
+			patch2 := gomonkey.ApplyFunc(getDyFailedTasksFromFailed,
+				func(ssn *framework.Session, vT map[api.TaskID]util.NPUTask) []api.TaskID {
+					if i == 0 {
+						return nil
+					}
+					return []api.TaskID{"task01"}
+				})
+
+			defer patch2.Reset()
+
 			if got := npu.getRestartDyTasksFromJobs(tt.VJob, tt.ssn); !reflect.DeepEqual(got, tt.Want) {
 				t.Errorf("GetAllDyFailedTasks() got = %#v, want %#v", got, tt.Want)
 			}
