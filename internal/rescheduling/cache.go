@@ -324,6 +324,7 @@ func (reCache *DealReSchedulerCache) writeRecoveryCacheToEnv(env *plugin.Schedul
 		if fJob.IsFaultJob {
 			env.Cache.Names[JobRecovery] = JobFaultRankIDCMPre + fJob.JobName
 			env.Cache.Namespaces[JobRecovery] = fJob.JobNamespace
+			env.Cache.UnCreateCM[JobRecovery] = true
 			jobRankIndex, jobRankIndexString, err := reCache.writeJobRankIndexToCMString(&fJob)
 			if err != nil {
 				return err

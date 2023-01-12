@@ -149,6 +149,7 @@ func buildReSchedulerCacheWriteReSchedulerCacheToEnvCache() []ReSchedulerCacheWr
 				Cache: plugin.ScheduleCache{
 					Names:      map[string]string{RePropertyName: CmName},
 					Namespaces: map[string]string{RePropertyName: CmNameSpace},
+					UnCreateCM: map[string]bool{RePropertyName: false},
 					Data:       map[string]map[string]string{RePropertyName: make(map[string]string, util.MapInitNum)},
 				},
 			},
@@ -171,6 +172,7 @@ func buildReSchedulerCacheWriteReSchedulerCacheToEnvCache() []ReSchedulerCacheWr
 				Cache: plugin.ScheduleCache{
 					Names:      map[string]string{RePropertyName: CmName},
 					Namespaces: map[string]string{RePropertyName: CmNameSpace},
+					UnCreateCM: map[string]bool{RePropertyName: false},
 					Data: map[string]map[string]string{RePropertyName: make(map[string]string, util.MapInitNum),
 						JobRecovery: make(map[string]string, util.MapInitNum)},
 				},

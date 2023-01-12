@@ -217,7 +217,7 @@ func (sHandle *ScheduleHandler) InitCache() {
 	data[util.RePropertyCacheName] = make(map[string]string, util.MapInitNum)
 	data[util.JobRecovery] = make(map[string]string, util.MapInitNum)
 	sHandle.Cache = ScheduleCache{Names: make(map[string]string, util.MapInitNum), Namespaces: make(map[string]string,
-		util.MapInitNum), Data: data}
+		util.MapInitNum), UnCreateCM: make(map[string]bool, util.MapInitNum), Data: data}
 }
 
 // PreStartPlugin preStart plugin action.
@@ -247,6 +247,11 @@ func (sHandle *ScheduleHandler) saveCacheToCm() {
 		data, err := util.UpdateConfigmapIncrementally(sHandle.FrameAttr.KubeClient, nameSpace, cmName, data)
 		if err != nil {
 			klog.V(util.LogInfoLev).Infof("get old %s configmap failed: %v, write new data into cm", spName, err)
+			unCreateCM, ok := sHandle.ScheduleEnv.Cache.UnCreateCM[spName]
+			if ok && unCreateCM {
+				klog.V(util.LogDebugLev).Infof("cm <%s-%s> no need create, skip", nameSpace, cmName)
+				continue
+			}
 		}
 		var tmpCM = &v12.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
