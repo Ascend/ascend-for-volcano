@@ -100,6 +100,7 @@ type ScheduleCache struct {
 	// special, name, value
 	Names, Namespaces map[string]string
 	Data              map[string]map[string]string
+	UnCreateCM        map[string]bool
 }
 
 // ScheduleEnv for job scheduler context.

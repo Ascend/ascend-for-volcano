@@ -277,6 +277,7 @@ func (reCache *DealReSchedulerCache) WriteReSchedulerCacheToEnvCache(env *plugin
 	}
 	env.Cache.Names[RePropertyName] = CmName
 	env.Cache.Namespaces[RePropertyName] = CmNameSpace
+	env.Cache.UnCreateCM[RePropertyName] = false
 	fNodeString, err := reCache.writeFaultNodesToCMString()
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("WriteReSchedulerCacheToEnvCache: %#v", err)
@@ -324,6 +325,7 @@ func (reCache *DealReSchedulerCache) writeRecoveryCacheToEnv(env *plugin.Schedul
 		if fJob.IsFaultJob {
 			env.Cache.Names[JobRecovery] = JobFaultRankIDCMPre + fJob.JobName
 			env.Cache.Namespaces[JobRecovery] = fJob.JobNamespace
+			env.Cache.UnCreateCM[JobRecovery] = true
 			jobRankIndex, jobRankIndexString, err := reCache.writeJobRankIndexToCMString(&fJob)
 			if err != nil {
 				return err

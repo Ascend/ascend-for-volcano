@@ -217,7 +217,7 @@ func (sHandle *ScheduleHandler) InitCache() {
 	data[util.RePropertyCacheName] = make(map[string]string, util.MapInitNum)
 	data[util.JobRecovery] = make(map[string]string, util.MapInitNum)
 	sHandle.Cache = ScheduleCache{Names: make(map[string]string, util.MapInitNum), Namespaces: make(map[string]string,
-		util.MapInitNum), Data: data}
+		util.MapInitNum), UnCreateCM: make(map[string]bool, util.MapInitNum), Data: data}
 }
 
 // PreStartPlugin preStart plugin action.
@@ -240,13 +240,19 @@ func (sHandle *ScheduleHandler) saveCacheToCm() {
 	for spName, cmName := range sHandle.ScheduleEnv.Cache.Names {
 		nameSpace, okSp := sHandle.ScheduleEnv.Cache.Namespaces[spName]
 		data, okData := sHandle.ScheduleEnv.Cache.Data[spName]
-		if !okSp || !okData {
-			klog.V(util.LogErrorLev).Infof("SaveCacheToCm %s no namespace or Data in cache.", spName)
+		unCreateCM, ok := sHandle.ScheduleEnv.Cache.UnCreateCM[spName]
+		if !okSp || !okData || !ok {
+			klog.V(util.LogErrorLev).Infof("SaveCacheToCm %s no namespace or Data in cache or "+
+				"create flag is not set.", spName)
 			continue
 		}
 		data, err := util.UpdateConfigmapIncrementally(sHandle.FrameAttr.KubeClient, nameSpace, cmName, data)
 		if err != nil {
 			klog.V(util.LogInfoLev).Infof("get old %s configmap failed: %v, write new data into cm", spName, err)
+			if unCreateCM {
+				klog.V(util.LogInfoLev).Infof("cm <%s-%s> no need create, skip", nameSpace, cmName)
+				return
+			}
 		}
 		var tmpCM = &v12.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
