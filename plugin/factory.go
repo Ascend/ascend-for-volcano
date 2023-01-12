@@ -240,18 +240,17 @@ func (sHandle *ScheduleHandler) saveCacheToCm() {
 	for spName, cmName := range sHandle.ScheduleEnv.Cache.Names {
 		nameSpace, okSp := sHandle.ScheduleEnv.Cache.Namespaces[spName]
 		data, okData := sHandle.ScheduleEnv.Cache.Data[spName]
-		unCreateCM, ok := sHandle.ScheduleEnv.Cache.UnCreateCM[spName]
-		if !okSp || !okData || !ok {
-			klog.V(util.LogErrorLev).Infof("SaveCacheToCm %s no namespace or Data in cache or "+
-				"create flag is not set.", spName)
+		if !okSp || !okData {
+			klog.V(util.LogErrorLev).Infof("SaveCacheToCm %s no namespace or Data in cache.", spName)
 			continue
 		}
 		data, err := util.UpdateConfigmapIncrementally(sHandle.FrameAttr.KubeClient, nameSpace, cmName, data)
 		if err != nil {
 			klog.V(util.LogInfoLev).Infof("get old %s configmap failed: %v, write new data into cm", spName, err)
-			if unCreateCM {
-				klog.V(util.LogInfoLev).Infof("cm <%s-%s> no need create, skip", nameSpace, cmName)
-				return
+			unCreateCM, ok := sHandle.ScheduleEnv.Cache.UnCreateCM[spName]
+			if ok && unCreateCM {
+				klog.V(util.LogDebugLev).Infof("cm <%s-%s> no need create, skip", nameSpace, cmName)
+				continue
 			}
 		}
 		var tmpCM = &v12.ConfigMap{

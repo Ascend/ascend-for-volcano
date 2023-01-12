@@ -277,7 +277,6 @@ func (reCache *DealReSchedulerCache) WriteReSchedulerCacheToEnvCache(env *plugin
 	}
 	env.Cache.Names[RePropertyName] = CmName
 	env.Cache.Namespaces[RePropertyName] = CmNameSpace
-	env.Cache.UnCreateCM[RePropertyName] = false
 	fNodeString, err := reCache.writeFaultNodesToCMString()
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("WriteReSchedulerCacheToEnvCache: %#v", err)
