@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<manifest>
-    <remote name="codehub_y" fetch="ssh://git@codehub-dg-y.huawei.com:2222"/>
-    <project remote="codehub_y" name="OpenSourceCenter/volcano.git" path="/opt/buildtools/go/src/volcano.sh/volcano" revision="refs/tags/v1.3.0" groups="volcano1.0"/>
-</manifest>
