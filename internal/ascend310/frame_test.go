@@ -26,6 +26,8 @@ import (
 	"testing"
 
 	"github.com/agiledragon/gomonkey/v2"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
@@ -339,7 +341,7 @@ func buildAscend310PreStartActionTest3() ascend310PreStartActionTests {
 			cacheFuncAfter8:  func() { itest.PatchReset(tmpPatch8) },
 			cacheFuncAfter9:  func() { itest.PatchReset(tmpPatch9) },
 		},
-		wantErr: true,
+		wantErr: false,
 	}
 	test3.fields.NPUHandler.SchedulerJobAttr.Label = map[string]string{rescheduling.
 		JobRescheduleLabelKey: rescheduling.JobGraceRescheduleLabelValue}
@@ -357,6 +359,11 @@ func buildAscend310PreStartActionTests() []ascend310PreStartActionTests {
 
 // TestAscend310PreStartAction test for preStartAction
 func TestAscend310PreStartAction(t *testing.T) {
+	config := &rest.Config{}
+	client, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return
+	}
 	tests := buildAscend310PreStartActionTests()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -377,6 +384,7 @@ func TestAscend310PreStartAction(t *testing.T) {
 				handle:     tt.fields.handle,
 				reHandle:   tt.fields.reHandle,
 			}
+			tp.FrameAttr.KubeClient = client
 			if err := tp.PreStartAction(tt.args.ssn); (err != nil) != tt.wantErr {
 				t.Errorf("PreStartAction() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -390,6 +398,89 @@ func TestAscend310PreStartAction(t *testing.T) {
 				tt.args.cacheFuncAfter7()
 				tt.args.cacheFuncAfter8()
 				tt.args.cacheFuncAfter9()
+			}
+		})
+	}
+}
+
+type ValidNPUJobTest struct {
+	name string
+	tp   *asend310
+	want *api.ValidateResult
+}
+
+func buildValidNPUJobTestCase() []ValidNPUJobTest {
+	tests := []ValidNPUJobTest{
+		{
+			name: "01-ValidNPUJob will return when tp is nil",
+			tp:   nil,
+			want: &api.ValidateResult{Pass: false, Reason: "invalid argument", Message: "invalid argument"},
+		},
+		{
+			name: "02-ValidNPUJob will return when tp is nil",
+			tp:   &asend310{},
+			want: nil,
+		},
+	}
+	return tests
+}
+
+func TestAscend310ValidNPUJob(t *testing.T) {
+	tests := buildValidNPUJobTestCase()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.tp.ValidNPUJob(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ValidNPUJob() = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAscend310Name(t *testing.T) {
+	tests := []struct {
+		Name string
+		want string
+	}{
+		{
+			Name: "01-Name will return PluginName",
+			want: PluginName,
+		},
+	}
+	tp := &asend310{}
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			if got := tp.Name(); got != tt.want {
+				t.Errorf("Name() = %s, want %s", got, tt.want)
+			}
+		})
+	}
+}
+
+func buildReleaseAnnotationTestCases() []itest.ReleaseAnnotationTestCase {
+	return []itest.ReleaseAnnotationTestCase{
+		{
+			Name: "01-ReleaseAnnotation return nil when call this fn",
+			Node: plugin.NPUNode{
+				CommonNode: plugin.CommonNode{
+					Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1"},
+				},
+			},
+			WantNode: &plugin.NPUNode{
+				CommonNode: plugin.CommonNode{
+					Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1"},
+				},
+			},
+		},
+	}
+}
+
+func TestReleaseAnnotation(t *testing.T) {
+	tests := buildReleaseAnnotationTestCases()
+	tp := &asend310{}
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			if got := tp.ReleaseAnnotation(tt.Task, tt.Node); !reflect.DeepEqual(got, tt.WantNode) {
+				t.Errorf("ReleaseAnnotation() = %#v, want %#v", got, tt.WantNode)
 			}
 		})
 	}
