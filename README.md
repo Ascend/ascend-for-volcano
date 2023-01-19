@@ -17,9 +17,9 @@
 昇腾910 AI处理器是华为研发的一款高性能AI处理器。其内部的处理器之间采用HCCS方式连接。每台物理设备具备8颗处理器，两个HCCS。每个HCCS存在4颗处理器，同一HCCS内处理器可做数据交换，不同HCCS内处理器不能通信，即同一Pod分配的昇腾910 AI处理器（若小于等于4）必须在同一个HCCS环内，否则任务运行失败。昇腾910 AI处理器的互联拓扑图如[图1](#fig997414281914)所示。
 
 **图 1** Ascend 910 AI Processor  interconnection topology<a name="fig997414281914"></a>  
-![](figures/Ascend-910-AI-Processor-interconnection-topology.png "Ascend-910-AI-Processor-interconnection-topology")
+![](doc/figures/Ascend-910-AI-Processor-interconnection-topology.png "Ascend-910-AI-Processor-interconnection-topology")
 
->![](figures/icon-note.gif) **说明：** 
+>![](doc/figures/icon-note.gif) **说明：** 
 >图中A0\~A7为昇腾910 AI处理器。
 
 ## 亲和性策略说明<a name="section1024522919366"></a>
@@ -86,7 +86,7 @@
 
 根据亲和性策略和业务模型设计梳理出场景如[表1](#table34241172175)所示。
 
->![](figures/icon-note.gif) **说明：** 
+>![](doc/figures/icon-note.gif) **说明：** 
 >-   A\~D列4个分组，表示处理器选取时，满足处理器选取的四种HCCS情况。优先级逐次递减，即当A中不满足时，才会选择B，C，D。
 >-   当组内满足HCCS时节点的情况。‘\~’左边为满足要求的HCCS，右边为另一个HCCS的处理器剩余情况。如对于1个处理器申请的A组情况：另一个HCCS可能为0、1、2、3、4五种处理器剩余情况。其代表的节点优先级也依次减小。
 >-   8颗及其以上处理器适用于4颗及其以下的情况。且均放在A组，且需要全部占用。
@@ -187,7 +187,7 @@
 ## 算法设计说明<a name="section95222037117"></a>
 
 **图 1**  Affinity algorithm design process<a name="fig23092914208"></a>  
-![](figures/Affinity-algorithm-design-process-ch.png "Affinity-algorithm-design-process")
+![](doc/figures/Affinity-algorithm-design-process-ch.png "Affinity-algorithm-design-process")
 
 图中关键步骤说明如下：
 
@@ -197,12 +197,12 @@
 4.  对选出的结果进行保存。
 5.  <a name="li205713218818"></a>对选出的节点进行加权操作。
 
-    >![](figures/icon-note.gif) **说明：** 
+    >![](doc/figures/icon-note.gif) **说明：** 
     >[1](#li2081354582012)\~[5](#li205713218818)都是在Volcano提供的注册函数batchNodeOrderFn中实现。
 
 6.  对选出的节点进行资源分配管理。
 
-    >![](figures/icon-note.gif) **说明：** 
+    >![](doc/figures/icon-note.gif) **说明：** 
     >该步骤是在Volcano的AddEventHandler函数中实现。该函数包含了节点资源的预分配allocate函数。
 
 7.  完成以上的分配操作后，Volcano框架会将本轮分配结果提交给K8s的kubelet进行确认执行，本次分配结束。
@@ -233,7 +233,7 @@
 ## 程序流程设计说明<a name="section7199282319"></a>
 
 **图 1**  Affinity program process \(Volcano part\)<a name="fig11310145516212"></a>  
-![](figures/Affinity-program-process-(Volcano-part)-ch.png "Affinity-program-process-(Volcano-part)")
+![](doc/figures/Affinity-program-process-(Volcano-part)-ch.png "Affinity-program-process-(Volcano-part)")
 
 华为昇腾处理器的亲和性调度基于Volcano开源部分提供的的插件机制，实现了插件简化开发。过程中主要实现了volcano-schedule框架中的几个插件函数。当Volcano每次session运行时，实现的函数就会按照编写的规则运行，从而实现处理器的亲和性调度。亲和性调度插件主要实现的函数如下：
 
@@ -261,111 +261,134 @@
 │   ├── build.sh                                            # CI构建二进制脚本
 │   └── testBuild.sh                                        # LLT测试启动脚本
 ├── doc                                                      # 说明文档
-│   ├── figures
-│   │   ├── Affinity-algorithm-design-process-ch.png
-│   │   ├── Affinity-algorithm-design-process-en.png
-│   │   ├── Affinity-program-process-(Volcano-part)-ch.png
-│   │   ├── Affinity-program-process-(Volcano-part)-en.png
-│   │   ├── Ascend-910-AI-Processor-interconnection-topology.png
-│   │   ├── icon-caution.gif
-│   │   ├── icon-danger.gif
-│   │   ├── icon-note.gif
-│   │   ├── icon-notice.gif
-│   │   ├── icon-tip.gif
-│   │   └── icon-warning.gif
-│   ├── README.EN.md
-│   └── README.ZH.md
+│   └── figures
+│       ├── Affinity-algorithm-design-process-ch.png
+│       ├── Affinity-algorithm-design-process-en.png
+│       ├── Affinity-program-process-(Volcano-part)-ch.png
+│       ├── Affinity-program-process-(Volcano-part)-en.png
+│       ├── Ascend-910-AI-Processor-interconnection-topology.png
+│       ├── icon-caution.gif
+│       ├── icon-danger.gif
+│       ├── icon-note.gif
+│       ├── icon-notice.gif
+│       ├── icon-tip.gif
+│       └── icon-warning.gif
 ├── huawei_npu.go                                         # ascend-volcano-plugin组件入口代码
-├── npuinterface                                          # 对外接口目录
-│   └── interface.go
+├── huawei_npu_test.go
+├── internal
+│   ├── ascend310
+│   │   ├── card310x4                                          # 310卡调度策略代码目录
+│   │   │   ├── frame.go
+│   │   │   ├── frame_test.go
+│   │   │   ├── task.go
+│   │   │   └── type.go
+│   │   ├── chip310x4                                         # 310 芯片调度策略代码目录
+│   │   │   ├── frame.go
+│   │   │   ├── frame_test.go
+│   │   │   ├── node.go
+│   │   │   └── type.go
+│   │   ├── frame.go
+│   │   ├── frame_test.go
+│   │   └── type.go
+│   ├── ascend310p                                            # 310P 卡调度公共代码目录
+│   │   ├── frame.go
+│   │   ├── frame_test.go
+│   │   ├── rescheduling.go
+│   │   ├── type.go
+│   │   ├── vnpu.go
+│   │   └── vnpu_test.go
+│   ├── ascend910
+│   │   ├── card910x2                                          # A300T调度策略代码目录
+│   │   │   ├── frame.go
+│   │   │   ├── frame_test.go
+│   │   │   ├── job.go
+│   │   │   └── type.go
+│   │   ├── frame.go
+│   │   ├── frame_test.go
+│   │   ├── half910x4                                       # 800/9000 4卡调度策略代码目录
+│   │   │   ├── frame.go
+│   │   │   ├── frame_test.go
+│   │   │   ├── job.go
+│   │   │   ├── node.go
+│   │   │   └── type.go
+│   │   ├── module910x8                                       # 800/9000调度策略代码目录
+│   │   │   ├── frame.go
+│   │   │   ├── frame_reschedule_test.go
+│   │   │   ├── frame_test.go
+│   │   │   ├── job.go
+│   │   │   ├── node.go
+│   │   │   ├── task.go
+│   │   │   └── type.go
+│   │   └── type.go
+│   ├── base                                       # 基础调度策略代码目录
+│   │   ├── frame.go
+│   │   ├── frame_test.go
+│   │   ├── node.go
+│   │   ├── task.go
+│   │   └── type.go
+│   ├── rescheduling                                      # 故障调度策略代码目录
+│   │   ├── cache.go
+│   │   ├── cache_test.go
+│   │   ├── configmap.go
+│   │   ├── configmap_test.go
+│   │   ├── frame_reschedule_test.go
+│   │   ├── job.go
+│   │   ├── job_test.go
+│   │   ├── node.go
+│   │   ├── node_test.go
+│   │   ├── reschedule.go
+│   │   ├── reschedule_test.go
+│   │   ├── task.go
+│   │   └── type.go
+│   ├── test                                             # LLT公共代码目录
+│   │   ├── job.go
+│   │   ├── reschedule.go
+│   │   └── type.go
+│   └── vnpu                                             # VNPU调度公共代码目录
+│       ├── frame.go
+│       ├── node.go
+│       ├── pod.go
+│       ├── type.go
+│       ├── vdynamic.go
+│       └── vstatic.go
+├── LICENSE
 ├── output                                                # CI编译结果目录
 │   ├── Dockerfile-controller
 │   ├── Dockerfile-scheduler
 │   └── volcano-v1.4.0.yaml
+├── OWNERS
 ├── plugin                                                 # 插件适配代码目录
+│   ├── device_info.go
+│   ├── device_info_test.go
+│   ├── factory.go
+│   ├── factory_test.go
 │   ├── job.go
+│   ├── job_test.go
 │   ├── node.go
+│   ├── node_test.go
 │   ├── plugin.go
+│   ├── plugin_test.go
 │   ├── task.go
-│   └── type.go
-├── scheduler-strategy                                      # 调度策略代码目录
-│   ├── card310x4                                          # 310卡调度策略代码目录
-│   │   ├── frame.go
-│   │   ├── frame_test.go
-│   │   ├── job.go
-│   │   ├── model.go
-│   │   ├── node.go
-│   │   ├── task.go
-│   │   └── type.go
-│   ├── card910x2                                          # A300T调度策略代码目录
-│   │   ├── frame.go
-│   │   ├── frame_test.go
-│   │   ├── job.go
-│   │   ├── model.go
-│   │   ├── node.go
-│   │   ├── task.go
-│   │   └── type.go
-│   ├── cardv910x2                                        # VNPU 910卡调度策略代码目录
-│   │   ├── frame.go
-│   │   ├── frame_test.go
-│   │   └── type.go
-│   ├── chip310x4                                         # 310 芯片调度策略代码目录
-│   │   ├── frame.go
-│   │   ├── frame_test.go
-│   │   ├── model.go
-│   │   ├── node.go
-│   │   └── type.go
-│   ├── chip310p                                            # 310P 芯片调度公共代码目录
-│   │   ├── frame.go
-│   │   └── type.go
-│   ├── common                                             # VNPU调度公共代码目录
-│   │   ├── frame.go
-│   │   ├── job.go
-│   │   ├── model.go
-│   │   ├── node.go
-│   │   ├── rescheduler.go
-│   │   └── type.go
-│   ├── commonv910                                        # 800/9000 VNPU调度策略代码目录
-│   │   ├── frame.go
-│   │   ├── frame_test.go
-│   │   ├── job.go
-│   │   ├── node.go
-│   │   ├── task.go
-│   │   └── type.go
-│   ├── module910x8                                       # 800/9000调度策略代码目录
-│   │   ├── frame.go
-│   │   ├── frame_test.go
-│   │   ├── job.go
-│   │   ├── job_test.go
-│   │   ├── model.go
-│   │   ├── model_test.go
-│   │   ├── node.go
-│   │   ├── task.go
-│   │   └── type.go
-│   ├── modulev910x8                                      # 800/9000 VNPU调度策略代码目录
-│   │   ├── frame.go
-│   │   └── type.go
-│   ├── rescheduling                                      # 故障调度策略代码目录
-│   │   ├── configmap.go
-│   │   ├── job.go
-│   │   ├── node.go
-│   │   ├── preprocessing.go
-│   │   ├── rescheduling_test.go
-│   │   ├── task.go
-│   │   └── type.go
-│   └── util                                              # 调度策略公共代码目录
-│       ├── job.go
-│       ├── node.go
-│       ├── task.go
-│       ├── type.go
-│       └── util.go
+│   ├── task_test.go
+│   ├── type.go
+│   └── vnode.go
+├── README.md
 ├── test                                                   # llt公共基础代码目录
 │   ├── frame.go
 │   ├── job.go
 │   ├── node.go
 │   ├── pod.go
+│   ├── reschedule.go
 │   └── type.go
-└── type.go
+├── tree.txt
+├── type.go
+└── util                                              # 调度策略公共代码目录
+    ├── configmap.go
+    ├── job.go
+    ├── job_test.go
+    ├── task.go
+    ├── type.go
+    └── util.go
 ```
 
 <h2 id="编译说明.md">编译说明</h2>
@@ -439,7 +462,7 @@
     </tbody>
     </table>
 
-    >![](figures/icon-note.gif) **说明：** 
+    >![](doc/figures/icon-note.gif) **说明：** 
     >_\{__version__\}_：表示版本号。
 
 
@@ -465,7 +488,14 @@
 </th>
 </tr>
 </thead>
-<tbody><tr id="row20475407015"><td class="cellrowborder" valign="top" width="26.662666266626662%" headers="mcps1.1.4.1.1 "><p id="p13476001109"><a name="p13476001109"></a><a name="p13476001109"></a>v2.0.4</p>
+<tbody><tr id="row20475407015"><td class="cellrowborder" valign="top" width="26.662666266626662%" headers="mcps1.1.4.1.1 "><p id="p13476001109"><a name="p13476001109"></a><a name="p13476001109"></a>v3.0.0</p>
+</td>
+<td class="cellrowborder" valign="top" width="29.94299429942994%" headers="mcps1.1.4.1.2 "><p id="p11476901010"><a name="p11476901010"></a><a name="p11476901010"></a>2022-12-30</p>
+</td>
+<td class="cellrowborder" valign="top" width="43.394339433943394%" headers="mcps1.1.4.1.3 "><a name="ul7682144015113"></a><a name="ul7682144015113"></a><ul id="ul7682144015113"><li>开源首次发布。</li><li>具体内容参考《MindX DL用户指南》</li></ul>
+</td>
+</tr>
+<tr id="row20475407015"><td class="cellrowborder" valign="top" width="26.662666266626662%" headers="mcps1.1.4.1.1 "><p id="p13476001109"><a name="p13476001109"></a><a name="p13476001109"></a>v2.0.4</p>
 </td>
 <td class="cellrowborder" valign="top" width="29.94299429942994%" headers="mcps1.1.4.1.2 "><p id="p11476901010"><a name="p11476901010"></a><a name="p11476901010"></a>2022-01-15</p>
 </td>
