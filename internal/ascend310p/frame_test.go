@@ -25,12 +25,15 @@ import (
 	"testing"
 
 	"github.com/agiledragon/gomonkey/v2"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/base"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/rescheduling"
 	itest "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/test"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/vnpu"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
@@ -85,7 +88,7 @@ type ascend310pPreStartActionTests struct {
 	name    string
 	fields  ascend310pFields
 	args    ascend310pPreStartActionArgs
-	wantErr bool
+	wantErr error
 }
 
 func buildAscend310pPreStartActionTest1() ascend310pPreStartActionTests {
@@ -99,7 +102,7 @@ func buildAscend310pPreStartActionTest1() ascend310pPreStartActionTests {
 			ssn:      nil,
 			addCache: false,
 		},
-		wantErr: true,
+		wantErr: errors.New("huawei.com/Ascend310P handler not enabled or ssn is nil: invalid argument"),
 	}
 	return test1
 }
@@ -115,7 +118,7 @@ func buildAscend310pPreStartActionTest2() ascend310pPreStartActionTests {
 			ssn:      test.FakeSSNReSchedule(),
 			addCache: false,
 		},
-		wantErr: true,
+		wantErr: nil,
 	}
 	test2.fields.NPUHandler.SchedulerJobAttr.Label = map[string]string{rescheduling.
 		JobRescheduleLabelKey: rescheduling.JobOffRescheduleLabelValue}
@@ -136,7 +139,7 @@ func buildAscend310pPreStartActionTest3() ascend310pPreStartActionTests {
 		name: "03-Ascend310pPreStartAction()-success",
 		fields: ascend310pFields{
 			NPUHandler: base.NPUHandler{},
-			reHandle:   nil,
+			reHandle:   &rescheduling.ReScheduler{},
 		},
 		args: ascend310pPreStartActionArgs{
 			ssn:              test.FakeSSNReSchedule(),
@@ -160,7 +163,7 @@ func buildAscend310pPreStartActionTest3() ascend310pPreStartActionTests {
 			cacheFuncAfter8:  func() { itest.PatchReset(tmpPatch8) },
 			cacheFuncAfter9:  func() { itest.PatchReset(tmpPatch9) },
 		},
-		wantErr: true,
+		wantErr: nil,
 	}
 	test3.fields.NPUHandler.SchedulerJobAttr.Label = map[string]string{rescheduling.
 		JobRescheduleLabelKey: rescheduling.JobGraceRescheduleLabelValue}
@@ -179,6 +182,11 @@ func buildAscend310pPreStartActionTests() []ascend310pPreStartActionTests {
 
 // TestAscend310pPreStartAction test for preStartAction
 func TestAscend310pPreStartAction(t *testing.T) {
+	config := &rest.Config{}
+	client, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return
+	}
 	tests := buildAscend310pPreStartActionTests()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -196,8 +204,10 @@ func TestAscend310pPreStartAction(t *testing.T) {
 			tp := &ascend310P{
 				NPUHandler: tt.fields.NPUHandler,
 				reHandle:   tt.fields.reHandle,
+				vHandle:    &vnpu.VirtualNPU{},
 			}
-			if err := tp.PreStartAction(tt.args.ssn); (err != nil) != tt.wantErr {
+			tp.FrameAttr.KubeClient = client
+			if err := tp.PreStartAction(tt.args.ssn); !reflect.DeepEqual(err, tt.wantErr) {
 				t.Errorf("PreStartAction() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.args.addCache {
@@ -366,8 +376,20 @@ func buildCheckNodeNPUByTaskTestCases02() []itest.CheckNodeNPUByTaskTestCase {
 					Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0,Ascend310P-1,Ascend310P-3,Ascend310P-4"},
 				},
 			},
-			Attr:    util.SchedulerJobAttr{NPUJob: &util.NPUJob{VJob: &util.VJob{Type: util.JobTypeWhole}}},
-			WantErr: errors.New("task<pod1> is not npu task"),
+			Attr:    util.SchedulerJobAttr{NPUJob: &util.NPUJob{VJob: &util.VJob{Type: util.JobTypeDyCut}}},
+			WantErr: errors.New("task pod1 AscendNPUCore read failed"),
+		},
+		{
+			Name: "06-CheckNodeNPUByTask return err when ty.Type is other",
+			Task: test.FakeTaskWithResReq("pod1", util.NPU310PCardName, util.NPUIndex4),
+			Node: plugin.NPUNode{
+				CommonNode: plugin.CommonNode{
+					Name:       "node1",
+					Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0,Ascend310P-1,Ascend310P-3,Ascend310P-4"},
+				},
+			},
+			Attr:    util.SchedulerJobAttr{NPUJob: &util.NPUJob{VJob: &util.VJob{Type: 3}}},
+			WantErr: errors.New(" no type 3"),
 		},
 	}
 }
@@ -420,11 +442,6 @@ func buildScoreBestNPUNodesTestCases01() []itest.ScoreBestNPUNodesTestCase {
 			Attr:     util.SchedulerJobAttr{NPUJob: &util.NPUJob{}},
 			WantErr:  errors.New(util.ArgumentError),
 		},
-	}
-}
-
-func buildScoreBestNPUNodesTestCases02() []itest.ScoreBestNPUNodesTestCase {
-	return []itest.ScoreBestNPUNodesTestCase{
 		{
 			Name:     "04-ScoreBestNPUNodes return nil when tp.VJob is nil",
 			Task:     test.FakeNormalTestTask("pod1", "node1", "vcjob"),
@@ -434,6 +451,11 @@ func buildScoreBestNPUNodesTestCases02() []itest.ScoreBestNPUNodesTestCase {
 			Attr:     util.SchedulerJobAttr{NPUJob: &util.NPUJob{}},
 			WantErr:  nil,
 		},
+	}
+}
+
+func buildScoreBestNPUNodesTestCases02() []itest.ScoreBestNPUNodesTestCase {
+	return []itest.ScoreBestNPUNodesTestCase{
 		{
 			Name:     "05-ScoreBestNPUNodes return nil when tp.Type is JobTypeWhole",
 			Task:     test.FakeNormalTestTask("pod1", "node1", "vcjob"),
@@ -460,6 +482,15 @@ func buildScoreBestNPUNodesTestCases02() []itest.ScoreBestNPUNodesTestCase {
 			WantSMap: map[string]float64{"node1": 0},
 			Attr:     util.SchedulerJobAttr{NPUJob: &util.NPUJob{VJob: &util.VJob{Type: util.JobTypeDyCut}}},
 			WantErr:  nil,
+		},
+		{
+			Name:     "08-ScoreBestNPUNodes return nil when tp.Type is other",
+			Task:     test.FakeNormalTestTask("pod1", "node1", "vcjob"),
+			Nodes:    []*api.NodeInfo{test.FakeNormalTestNode("node1")},
+			ScoreMap: map[string]float64{"node1": 0},
+			WantSMap: map[string]float64{"node1": 0},
+			Attr:     util.SchedulerJobAttr{NPUJob: &util.NPUJob{VJob: &util.VJob{Type: 4}}},
+			WantErr:  errors.New(" no type 4"),
 		},
 	}
 }

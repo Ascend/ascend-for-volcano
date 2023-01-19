@@ -215,3 +215,37 @@ func TestUseAnnotation(t *testing.T) {
 		})
 	}
 }
+
+type ValidNPUJobTest struct {
+	name string
+	tp   *ascend910
+	want *api.ValidateResult
+}
+
+func buildValidNPUJobTestCase() []ValidNPUJobTest {
+	tests := []ValidNPUJobTest{
+		{
+			name: "01-ValidNPUJob will return when tp is nil",
+			tp:   nil,
+			want: &api.ValidateResult{Pass: false, Reason: "nil plugin huawei.com/Ascend910",
+				Message: "nil plugin huawei.com/Ascend910"},
+		},
+		{
+			name: "02-ValidNPUJob will return when tp is nil",
+			tp:   &ascend910{},
+			want: nil,
+		},
+	}
+	return tests
+}
+
+func TestAscend910ValidNPUJob(t *testing.T) {
+	tests := buildValidNPUJobTestCase()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.tp.ValidNPUJob(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ValidNPUJob() = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
