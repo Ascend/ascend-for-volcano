@@ -1,5 +1,5 @@
 /*
-Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2023. Huawei Technologies Co.,Ltd. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ Package util is using for the total variable.
 package util
 
 import (
+	"reflect"
 	"testing"
 
 	"volcano.sh/apis/pkg/apis/scheduling"
@@ -106,24 +107,39 @@ func TestIsVJob(t *testing.T) {
 	}
 }
 
-func TestSetVJobType(t *testing.T) {
-	tests := []struct {
-		name string
-		nJob *NPUJob
-		want int
-	}{
+type SetVJobTypeTest struct {
+	name string
+	nJob *NPUJob
+	want int
+}
+
+func buildSetVJobTypeTestCase() []SetVJobTypeTest {
+	return []SetVJobTypeTest{
 		{
-			name: "TestSetVJobType JobTypeUnknown status",
+			name: "01-TestSetVJobType JobTypeUnknown status",
 			nJob: &NPUJob{
-				VJob: &VJob{},
+				Tasks: map[api.TaskID]NPUTask{},
+				VJob:  &VJob{},
 			},
 			want: JobTypeUnknown,
 		},
+		{
+			name: "02-TestSetVJobType JobTypeWhole status",
+			nJob: &NPUJob{
+				Tasks: map[api.TaskID]NPUTask{"task01": {VTask: &VTask{Type: JobTypeWhole}}},
+				VJob:  &VJob{},
+			},
+			want: JobTypeWhole,
+		},
 	}
+}
+
+func TestSetVJobType(t *testing.T) {
+	tests := buildSetVJobTypeTestCase()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.nJob.setVJobType()
-			if got := tt.nJob.Type; got != tt.want {
+			tt.nJob.SetVJobType()
+			if got := tt.nJob.Type; !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Name() = %#v, want %#v", got, tt.want)
 			}
 		})
@@ -140,7 +156,7 @@ type testSetVJobStatusByInfTest struct {
 func buildTestSetVJobStatusByInfTest() []testSetVJobStatusByInfTest {
 	tests := []testSetVJobStatusByInfTest{
 		{
-			name:  "test SetVJobStatusByInf ",
+			name:  "01-test SetVJobStatusByInf ",
 			nJob:  &NPUJob{VJob: &VJob{}},
 			vcJob: &api.JobInfo{PodGroup: &api.PodGroup{}},
 			want: api.JobInfo{
