@@ -51,7 +51,8 @@ func isEventSegmentFailurePod(event v1.Event) bool {
 	}
 
 	if event.Type != PodEventTypeAllocateFailed || event.Reason != PodEventReasonAllocateFailed ||
-		!strings.Contains(event.Message, PodEventMsgAllocateFailed) {
+		!(strings.Contains(event.Message, PodEventMsgNoResourceFailed) ||
+			strings.Contains(event.Message, PodEventMsgDyCutFailed)) {
 		klog.V(util.LogDebugLev).Infof("GetSegmentFailureTaskIDs pod event not segmentation error")
 		return false
 	}

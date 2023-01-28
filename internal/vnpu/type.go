@@ -27,8 +27,10 @@ import (
 )
 
 const (
-	// PodEventMsgAllocateFailed dp pod segment failed msg
-	PodEventMsgAllocateFailed = "NoNPUAffinity"
+	// PodEventMsgNoResourceFailed dp pod segment failed msg for not enough resource.
+	PodEventMsgNoResourceFailed = "NoNPUResource"
+	// PodEventMsgDyCutFailed dp pod segment failed msg for DCMI failed.
+	PodEventMsgDyCutFailed = "NPUSegmentFailed"
 	// PodEventReasonAllocateFailed dp pod segment failed reason
 	PodEventReasonAllocateFailed = "UnexpectedAdmissionError"
 	// DyCutFailedError for device-plugin cut failed error.
