@@ -92,7 +92,7 @@ func (tp *ascend310P) validDyVNPUTaskDVPPLabel(vT util.NPUTask) error {
 	switch vT.ReqNPUNum {
 	case 1, util.NPUIndex2:
 		if dvppValue != plugin.AscendDVPPEnabledNull {
-			return fmt.Errorf("%s dvpp label err:%s", vT.Name, dvppValue)
+			return fmt.Errorf("%s req %d ai-core, but dvpp label is:%s", vT.Name, vT.ReqNPUNum, dvppValue)
 		}
 	case util.NPUIndex4:
 		return nil

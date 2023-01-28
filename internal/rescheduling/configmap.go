@@ -51,10 +51,10 @@ func (dealCM *DealReSchedulerConfigmap) newReSchedulerCMFromEnv(env *plugin.Sche
 			klog.V(util.LogErrorLev).Infof("newReSchedulerCMFromEnv :%#v.", getErr)
 			return getErr
 		}
-		klog.V(util.LogDebugLev).Infof("configmap %s not in env", RePropertyName)
+		klog.V(util.LogDebugLev).Infof("%s's configmap %s not in env", RePropertyName, CmName)
 		cmData, err := dealCM.createEmptyReCM(env.FrameAttr.KubeClient, jobType)
 		if err != nil {
-			return fmt.Errorf("create rescheduler configmap %s configmap failed: %#v", RePropertyName, err)
+			return fmt.Errorf("create %s configmap %s configmap failed: %#v", RePropertyName, CmName, err)
 		}
 		dealCM.setCMName(CmName)
 		dealCM.setCMNameSpace(CmNameSpace)
@@ -67,7 +67,7 @@ func (dealCM *DealReSchedulerConfigmap) newReSchedulerCMFromEnv(env *plugin.Sche
 		klog.V(util.LogErrorLev).Infof("newReSchedulerCMFromEnv: %v", err)
 		return fmt.Errorf("newReSchedulerCMFromEnv: %v", err)
 	}
-	klog.V(util.LogInfoLev).Infof("%s configmap: checkCode success", RePropertyName)
+	klog.V(util.LogInfoLev).Infof("%s configmap %s: checkCode success", RePropertyName, CmName)
 	dealCM.setCMName(reCmData.Name)
 	dealCM.setCMNameSpace(reCmData.Namespace)
 	dealCM.setCMData(reCmData.Data)

@@ -295,7 +295,7 @@ func (reCache *DealReSchedulerCache) WriteReSchedulerCacheToEnvCache(env *plugin
 	}
 	cmData, ok := env.Cache.Data[RePropertyName]
 	if !ok {
-		cmData := make(map[string]string, util.MapInitNum)
+		cmData = make(map[string]string, util.MapInitNum)
 		env.Cache.Data[RePropertyName] = cmData
 	}
 	cmData[CmFaultNodeKind] = fNodeString
@@ -307,9 +307,10 @@ func (reCache *DealReSchedulerCache) WriteReSchedulerCacheToEnvCache(env *plugin
 		delete(cmData, CmCheckCode) // if check code exists, delete and create new
 	}
 	checkCode := plugin.MakeDataHash(cmData)
+	cmData[CmCheckCode] = checkCode
+
 	klog.V(util.LogDebugLev).Infof("cm checkCode: %s, calc checkCode: %s, check equal: %v", checkCode,
 		plugin.MakeDataHash(cmData), checkCode == plugin.MakeDataHash(cmData))
-	cmData[CmCheckCode] = checkCode
 	if jobType != CmFaultJob910x8Kind && jobType != CmFaultJob910x4Kind {
 		return nil
 	}
