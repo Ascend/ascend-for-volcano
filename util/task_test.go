@@ -26,6 +26,7 @@ import (
 
 	"github.com/agiledragon/gomonkey/v2"
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 )
@@ -225,7 +226,7 @@ func TestForceDeletePodByTaskInf(t *testing.T) {
 			asTask: &NPUTask{
 				Name: "task01",
 				VTask: &VTask{
-					Allocated: TaskAllocated{NodeName: "huawei"},
+					Allocated: TaskAllocated{NodeName: "master"},
 				},
 			},
 			args:    args{ssn: nil},
@@ -258,7 +259,7 @@ func buildIsTaskInItsNodeTestCase() []IsTaskInItsNodeTest {
 			asTask: &NPUTask{
 				Name: "task01",
 				VTask: &VTask{
-					Allocated: TaskAllocated{NodeName: "huawei"},
+					Allocated: TaskAllocated{NodeName: "master"},
 				},
 			},
 			ssn:  &framework.Session{Nodes: map[string]*api.NodeInfo{}},
@@ -269,11 +270,11 @@ func buildIsTaskInItsNodeTestCase() []IsTaskInItsNodeTest {
 			asTask: &NPUTask{
 				Name: "task01",
 				VTask: &VTask{
-					Allocated: TaskAllocated{NodeName: "huawei"},
+					Allocated: TaskAllocated{NodeName: "master"},
 				},
 			},
-			ssn:      &framework.Session{Nodes: map[string]*api.NodeInfo{"huawei": {}}},
-			nodeName: "huawei",
+			ssn:      &framework.Session{Nodes: map[string]*api.NodeInfo{"master": {}}},
+			nodeName: "master",
 			want:     false,
 		},
 	}
@@ -286,6 +287,293 @@ func TestIsTaskInItsNode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.asTask.IsTaskInItsNode(tt.ssn, tt.nodeName); got != tt.want {
 				t.Errorf("IsTaskInItsNode() = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
+type SetVTaskTypeTest struct {
+	name   string
+	asTask *NPUTask
+	want   int
+}
+
+func buildSetVTaskTypeTestCase() []SetVTaskTypeTest {
+	tests := []SetVTaskTypeTest{
+		{
+			name:   "01-SetVTaskType will return JobTypeUnknown",
+			asTask: &NPUTask{ReqNPUName: NPU310CardName},
+			want:   JobTypeWhole,
+		},
+		{
+			name:   "02-SetVTaskType will return JobTypeUnknown",
+			asTask: &NPUTask{ReqNPUName: "vir02_1c"},
+			want:   JobTypeStCut,
+		},
+		{
+			name:   "03-SetVTaskType will return JobTypeDyCut",
+			asTask: &NPUTask{ReqNPUName: AscendNPUCore},
+			want:   JobTypeDyCut,
+		},
+	}
+	return tests
+}
+
+func TestSetVTaskType(t *testing.T) {
+	tests := buildSetVTaskTypeTestCase()
+	for _, tt := range tests {
+		tt.asTask.VTask = &VTask{}
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.asTask.setVTaskType(); tt.asTask.Type != tt.want {
+				t.Errorf("SetVTaskType() = %#v, want %#v", tt.asTask.Type, tt.want)
+			}
+		})
+	}
+}
+
+type GetVTaskUseTemplateTest struct {
+	name    string
+	taskInf *api.TaskInfo
+	want    string
+	wantErr error
+}
+
+func buildGetVTaskUseTemplateTestCase() []GetVTaskUseTemplateTest {
+	tests := []GetVTaskUseTemplateTest{
+		{
+			name:    "01-GetVTaskUseTemplate will return err when pod is empty",
+			taskInf: &api.TaskInfo{Pod: &v1.Pod{}},
+			want:    "",
+			wantErr: errors.New("'s anno has no huawei.com/npu-core"),
+		},
+		{
+			name: "02-GetVTaskUseTemplate will return err when task is not VTask",
+			taskInf: &api.TaskInfo{Pod: &v1.Pod{ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{AscendNPUCore: NPU910CardName},
+			}}},
+			want:    "",
+			wantErr: errors.New(" not dyCut task :huawei.com/Ascend910"),
+		},
+		{
+			name: "03-GetVTaskUseTemplate will return nil when task is VTask",
+			taskInf: &api.TaskInfo{Pod: &v1.Pod{ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{AscendNPUCore: "vir-01"},
+			}}},
+			want:    "01",
+			wantErr: nil,
+		},
+	}
+	return tests
+}
+
+func TestGetVTaskUseTemplate(t *testing.T) {
+	tests := buildGetVTaskUseTemplateTestCase()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetVTaskUseTemplate(tt.taskInf)
+			if !reflect.DeepEqual(err, tt.wantErr) {
+				t.Errorf("GetVTaskUseTemplate() error = %#v, wantErr %#v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("GetVTaskUseTemplate() got = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
+type SetVTaskUseCardIDsTest struct {
+	name string
+	vt   *VTask
+	want []int
+}
+
+func buildSetVTaskUseCardIDsTestCase() []SetVTaskUseCardIDsTest {
+	tests := []SetVTaskUseCardIDsTest{
+		{
+			name: "01-SetVTaskUseCardIDs will return nil when vt is empty",
+			vt:   &VTask{},
+			want: nil,
+		},
+		{
+			name: "02-SetVTaskUseCardIDs will return ids when PhysicsName is not empty",
+			vt:   &VTask{Allocated: TaskAllocated{PhysicsName: []string{"", "Ascend310P-2c-100-1_1"}}},
+			want: []int{1},
+		},
+	}
+	return tests
+
+}
+
+func TestSetVTaskUseCardIDs(t *testing.T) {
+	tests := buildSetVTaskUseCardIDsTestCase()
+	vTask := &VTask{}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			vTask = tt.vt
+			vTask.setVTaskUseCardIDs()
+			if !reflect.DeepEqual(vTask.Allocated.CardName, tt.want) {
+				t.Errorf("setVTaskUseCardIDs = %#v, want %#v", vTask.Allocated.CardName, tt.want)
+			}
+		})
+	}
+}
+
+type SetVTaskAllocatedTest struct {
+	name     string
+	asTask   *NPUTask
+	taskInfo *api.TaskInfo
+	want     TaskAllocated
+}
+
+func buildSetVTaskAllocatedTestCase01() SetVTaskAllocatedTest {
+	test01 := SetVTaskAllocatedTest{
+		name:     "01-SetVTaskAllocated will return Allocated when Status is running, wrBack or failed",
+		asTask:   &NPUTask{VTask: &VTask{Status: TaskStatusRunning}},
+		taskInfo: &api.TaskInfo{Pod: &v1.Pod{}},
+		want: TaskAllocated{
+			NodeName:    "master",
+			CardName:    []int{1, 2, 3, 4},
+			PhysicsName: []string{"1", "2", "3", "4"},
+		},
+	}
+	test01.taskInfo.NodeName = "master"
+	test01.taskInfo.Pod.Annotations = map[string]string{AscendNPUPodRealUse: "1,2,3,4"}
+	return test01
+}
+
+func buildSetVTaskAllocatedTestCase02() SetVTaskAllocatedTest {
+	test02 := SetVTaskAllocatedTest{
+		name:     "01-SetVTaskAllocated will return Allocated when Status is Allocate",
+		asTask:   &NPUTask{VTask: &VTask{Status: TaskStatusAllocate}},
+		taskInfo: &api.TaskInfo{Pod: &v1.Pod{}},
+		want: TaskAllocated{
+			NodeName:    "master",
+			CardName:    nil,
+			PhysicsName: nil,
+		},
+	}
+	test02.taskInfo.NodeName = "master"
+	test02.taskInfo.Pod.Annotations = map[string]string{AscendNPUPodRealUse: "1,2,3,4"}
+	return test02
+}
+
+func buildSetVTaskAllocatedTestCase03() SetVTaskAllocatedTest {
+	test03 := SetVTaskAllocatedTest{
+		name:     "01-SetVTaskAllocated will return Allocated when Status is other",
+		asTask:   &NPUTask{VTask: &VTask{Status: 0}},
+		taskInfo: &api.TaskInfo{Pod: &v1.Pod{}},
+		want: TaskAllocated{
+			NodeName:    "",
+			CardName:    nil,
+			PhysicsName: nil,
+		},
+	}
+	test03.taskInfo.NodeName = "master"
+	test03.taskInfo.Pod.Annotations = map[string]string{AscendNPUPodRealUse: "1,2,3,4"}
+	return test03
+}
+
+func buildSetVTaskAllocatedTestCase() []SetVTaskAllocatedTest {
+	return []SetVTaskAllocatedTest{
+		buildSetVTaskAllocatedTestCase01(),
+		buildSetVTaskAllocatedTestCase02(),
+		buildSetVTaskAllocatedTestCase03(),
+	}
+}
+
+func TestSetVTaskAllocated(t *testing.T) {
+	tests := buildSetVTaskAllocatedTestCase()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.asTask.setVTaskAllocated(tt.taskInfo)
+			if !reflect.DeepEqual(tt.asTask.VTask.Allocated, tt.want) {
+				t.Errorf("setVTaskAllocated = %#v, want %#v", tt.asTask.Allocated, tt.want)
+			}
+		})
+	}
+}
+
+type SetVTaskStatusFromInfoTest struct {
+	name    string
+	asTask  *NPUTask
+	taskInf *api.TaskInfo
+	want    int
+}
+
+func buildSetVTaskStatusFromInfoTestCase01() SetVTaskStatusFromInfoTest {
+	test01 := SetVTaskStatusFromInfoTest{
+		name:    "01-SetVTaskStatusFromInfo will return nil when pod is nil",
+		asTask:  &NPUTask{VTask: &VTask{}},
+		taskInf: &api.TaskInfo{Pod: &v1.Pod{}},
+		want:    TaskStatusInit,
+	}
+	return test01
+}
+
+func buildSetVTaskStatusFromInfoTestCase02() SetVTaskStatusFromInfoTest {
+	test02 := SetVTaskStatusFromInfoTest{
+		name:   "02-SetVTaskStatusFromInfo will return nil when AscendNPUPodRealUse is nil",
+		asTask: &NPUTask{VTask: &VTask{}},
+		taskInf: &api.TaskInfo{Pod: &v1.Pod{ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				AscendNPUCore: NPU910CardName},
+		}}},
+		want: TaskStatusAllocate,
+	}
+	return test02
+}
+
+func buildSetVTaskStatusFromInfoTestCase03() SetVTaskStatusFromInfoTest {
+	test03 := SetVTaskStatusFromInfoTest{
+		name:   "02-SetVTaskStatusFromInfo will return nil when taskInf.Status is running",
+		asTask: &NPUTask{VTask: &VTask{}},
+		taskInf: &api.TaskInfo{Pod: &v1.Pod{ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				AscendNPUCore:       NPU910CardName,
+				AscendNPUPodRealUse: NPU910CardName},
+		}}},
+		want: TaskStatusRunning,
+	}
+	test03.taskInf.Status = api.Running
+	return test03
+}
+
+func buildSetVTaskStatusFromInfoTestCase04() SetVTaskStatusFromInfoTest {
+	test04 := SetVTaskStatusFromInfoTest{
+		name:   "02-SetVTaskStatusFromInfo will return nil when taskInf.Status is running",
+		asTask: &NPUTask{VTask: &VTask{}},
+		taskInf: &api.TaskInfo{Pod: &v1.Pod{ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				AscendNPUCore:       NPU910CardName,
+				AscendNPUPodRealUse: NPU910CardName},
+		}}},
+		want: TaskStatusFailed,
+	}
+	test04.taskInf.Status = api.Failed
+	return test04
+}
+
+func buildSetVTaskStatusFromInfoTestCase() []SetVTaskStatusFromInfoTest {
+	tests := []SetVTaskStatusFromInfoTest{
+		buildSetVTaskStatusFromInfoTestCase01(),
+		buildSetVTaskStatusFromInfoTestCase02(),
+		buildSetVTaskStatusFromInfoTestCase03(),
+		buildSetVTaskStatusFromInfoTestCase04(),
+	}
+	return tests
+}
+
+func TestSetVTaskStatusFromInfo(t *testing.T) {
+	tests := buildSetVTaskStatusFromInfoTestCase()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.asTask.setVTaskStatusFromInfo(tt.taskInf)
+			if err != nil {
+				return
+			}
+			if !reflect.DeepEqual(tt.asTask.Status, tt.want) {
+				t.Errorf("setVTaskStatusFromInfo()  = %#v, wantErr %#v", tt.asTask.Status, tt.want)
 			}
 		})
 	}
