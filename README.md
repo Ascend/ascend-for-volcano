@@ -495,40 +495,5 @@
 <td class="cellrowborder" valign="top" width="43.394339433943394%" headers="mcps1.1.4.1.3 "><a name="ul7682144015113"></a><a name="ul7682144015113"></a><ul id="ul7682144015113"><li>开源首次发布。</li><li>具体内容参考《MindX DL用户指南》</li></ul>
 </td>
 </tr>
-<tr id="row20475407015"><td class="cellrowborder" valign="top" width="26.662666266626662%" headers="mcps1.1.4.1.1 "><p id="p13476001109"><a name="p13476001109"></a><a name="p13476001109"></a>v2.0.4</p>
-</td>
-<td class="cellrowborder" valign="top" width="29.94299429942994%" headers="mcps1.1.4.1.2 "><p id="p11476901010"><a name="p11476901010"></a><a name="p11476901010"></a>2022-01-15</p>
-</td>
-<td class="cellrowborder" valign="top" width="43.394339433943394%" headers="mcps1.1.4.1.3 "><a name="ul7682144015113"></a><a name="ul7682144015113"></a><ul id="ul7682144015113"><li>支持临终遗言特性。</li><li>支持310P调度。</li><li>修复若干问题。</li></ul>
-</td>
-</tr>
-<tr id="row1851165074015"><td class="cellrowborder" valign="top" width="26.662666266626662%" headers="mcps1.1.4.1.1 "><p id="p135216508401"><a name="p135216508401"></a><a name="p135216508401"></a>v2.0.3</p>
-</td>
-<td class="cellrowborder" valign="top" width="29.94299429942994%" headers="mcps1.1.4.1.2 "><p id="p952650134010"><a name="p952650134010"></a><a name="p952650134010"></a>2021-11-02</p>
-</td>
-<td class="cellrowborder" valign="top" width="43.394339433943394%" headers="mcps1.1.4.1.3 "><a name="ul1621195620416"></a><a name="ul1621195620416"></a><ul id="ul1621195620416"><li>修复若干问题。</li><li>支持310调度。</li><li>支持断点续训。</li><li>支持volcano对应版本v1.4.0。</li></ul>
-</td>
-</tr>
-<tr id="row1683152117244"><td class="cellrowborder" valign="top" width="26.662666266626662%" headers="mcps1.1.4.1.1 "><p id="p86612143014"><a name="p86612143014"></a><a name="p86612143014"></a>v2.0.2</p>
-</td>
-<td class="cellrowborder" valign="top" width="29.94299429942994%" headers="mcps1.1.4.1.2 "><p id="p14684142142415"><a name="p14684142142415"></a><a name="p14684142142415"></a>2021-07-15</p>
-</td>
-<td class="cellrowborder" valign="top" width="43.394339433943394%" headers="mcps1.1.4.1.3 "><a name="ul14125133182411"></a><a name="ul14125133182411"></a><ul id="ul14125133182411"><li>新增支持虚拟设备调度。</li><li>实现NPU调度插件化，对应Volcano版本v1.3.0。</li></ul>
-</td>
-</tr>
-<tr id="row44004561696"><td class="cellrowborder" valign="top" width="26.662666266626662%" headers="mcps1.1.4.1.1 "><p id="p1146010528296"><a name="p1146010528296"></a><a name="p1146010528296"></a>v1.0.1-r50</p>
-</td>
-<td class="cellrowborder" valign="top" width="29.94299429942994%" headers="mcps1.1.4.1.2 "><p id="p463310341015"><a name="p463310341015"></a><a name="p463310341015"></a>2021-04-15</p>
-</td>
-<td class="cellrowborder" valign="top" width="43.394339433943394%" headers="mcps1.1.4.1.3 "><a name="ul183071538121915"></a><a name="ul183071538121915"></a><ul id="ul183071538121915"><li>修复开源社区任务进入pending后进程崩溃问题。</li><li>优化代码结构。</li></ul>
-</td>
-</tr>
-<tr id="row118567425441"><td class="cellrowborder" valign="top" width="26.662666266626662%" headers="mcps1.1.4.1.1 "><p id="p14900144942912"><a name="p14900144942912"></a><a name="p14900144942912"></a>v1.0.1-r40</p>
-</td>
-<td class="cellrowborder" valign="top" width="29.94299429942994%" headers="mcps1.1.4.1.2 "><p id="p38571542154414"><a name="p38571542154414"></a><a name="p38571542154414"></a>2021-01-11</p>
-</td>
-<td class="cellrowborder" valign="top" width="43.394339433943394%" headers="mcps1.1.4.1.3 "><p id="p5857142154415"><a name="p5857142154415"></a><a name="p5857142154415"></a>第一次正式发布。</p>
-</td>
-</tr>
 </tbody>
 </table>
