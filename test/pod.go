@@ -94,7 +94,18 @@ func FakeNormalTestTask(name string, nodename string, groupname string) *api.Tas
 	pod := NPUPod{
 		Namespace: "vcjob", Name: name, NodeName: nodename, GroupName: groupname, Phase: v1.PodRunning,
 		Labels:    make(map[string]string, util.MapInitNum),
-		ReqSource: buildNPUResourceList("1", "1000", NPU910CardName, strconv.Itoa(NPUIndex8)),
+		ReqSource: buildNPUResourceList("1", strconv.Itoa(NPUHexKilo), NPU910CardName, strconv.Itoa(NPUIndex8)),
+	}
+	task := api.NewTaskInfo(BuildNPUPod(pod))
+	return task
+}
+
+// FakeVNPUTestTask fake vnpu test task.
+func FakeVNPUTestTask(name string, nodename string, groupname string, num int) *api.TaskInfo {
+	pod := NPUPod{
+		Namespace: "vcjob", Name: name, NodeName: nodename, GroupName: groupname, Phase: v1.PodRunning,
+		Labels:    make(map[string]string, util.MapInitNum),
+		ReqSource: buildNPUResourceList("1", strconv.Itoa(NPUHexKilo), util.AscendNPUCore, strconv.Itoa(num)),
 	}
 	task := api.NewTaskInfo(BuildNPUPod(pod))
 	return task
@@ -163,4 +174,9 @@ func AddTestTaskLabel(task *api.TaskInfo, labelKey, labelValue string) {
 		task.Pod.Spec.NodeSelector = make(map[string]string, npuIndex3)
 	}
 	task.Pod.Spec.NodeSelector[labelKey] = labelValue
+
+	if len(task.Pod.Labels) == 0 {
+		task.Pod.Labels = make(map[string]string, npuIndex3)
+	}
+	task.Pod.Labels[labelKey] = labelValue
 }
