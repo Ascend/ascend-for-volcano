@@ -408,9 +408,9 @@
 
 ## 编译和安装Volcano<a name="section1922947135013"></a>
 
-1.  将Volcano v1.4.0版本官方开源代码放至“$GOPATH/src/volcano.sh/volcano“。
-2.  将代码目录“ascend-volcano-plugin“拷贝至Volcano官方开源代码的插件路径下（“$GOPATH/src/volcano.sh/volcano/pkg/scheduler/plugins/“）。
-3.  执行以下命令，编译Volcano二进制文件和so文件。
+1. 将Volcano v1.4.0版本官方开源代码放至“$GOPATH/src/volcano.sh/volcano“。
+2. 将代码目录“ascend-volcano-plugin“拷贝至Volcano官方开源代码的插件路径下（“$GOPATH/src/volcano.sh/volcano/pkg/scheduler/plugins/“）。
+3. 执行以下命令，编译Volcano二进制文件和so文件。
 
     **cd** **$GOPATH/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/build**
 
@@ -419,9 +419,8 @@
     **./build.sh**
 
     编译出的二进制文件和动态链接库文件在“ascend-volcano-plugin/output“目录下，文件[表1](#table922124765019)所示。
-
+  
     **表 1**  output路径下的文件列表
-
     <a name="table922124765019"></a>
     <table><thead align="left"><tr id="row92014710505"><th class="cellrowborder" valign="top" width="50%" id="mcps1.2.3.1.1"><p id="p8201347165014"><a name="p8201347165014"></a><a name="p8201347165014"></a>文件名</p>
     </th>
@@ -465,16 +464,9 @@
     >![](doc/figures/icon-note.gif) **说明：** 
     >_\{__version__\}_：表示版本号。
 
+## 安装前准备和安装Volcano<a name="section2739745153910"></a>
 
-## 安装前准备<a name="section2739745153910"></a>
-
-需要先完成《[MindX DL用户指南](https://www.hiascend.com/software/mindx-dl)》“安装前准备”章节中除“准备软件包”章节之外的其他章节内容。
-
-请参考《[MindX DL用户指南](https://www.hiascend.com/software/mindx-dl)》中的“安装部署 \> 安装前准备”。
-
-## 安装Volcano<a name="section3436132203218"></a>
-
-请参考《[MindX DL用户指南](https://www.hiascend.com/software/mindx-dl)》中的“安装部署 \> 安装MindX DL \> 安装Volcano”。
+请参考《[MindX DL集群调度用户指南](https://www.hiascend.com/software/mindx-dl)》中的“环境依赖 \> 安装集群调度组件 \> 常用操作”进行。
 
 <h2 id="版本更新记录.md">版本更新记录</h2>
 
@@ -490,9 +482,9 @@
 </thead>
 <tbody><tr id="row20475407015"><td class="cellrowborder" valign="top" width="26.662666266626662%" headers="mcps1.1.4.1.1 "><p id="p13476001109"><a name="p13476001109"></a><a name="p13476001109"></a>v3.0.0</p>
 </td>
-<td class="cellrowborder" valign="top" width="29.94299429942994%" headers="mcps1.1.4.1.2 "><p id="p11476901010"><a name="p11476901010"></a><a name="p11476901010"></a>2022-12-30</p>
+<td class="cellrowborder" valign="top" width="29.94299429942994%" headers="mcps1.1.4.1.2 "><p id="p11476901010"><a name="p11476901010"></a><a name="p11476901010"></a>2023-01-18</p>
 </td>
-<td class="cellrowborder" valign="top" width="43.394339433943394%" headers="mcps1.1.4.1.3 "><a name="ul7682144015113"></a><a name="ul7682144015113"></a><ul id="ul7682144015113"><li>开源首次发布。</li><li>具体内容参考《MindX DL用户指南》</li></ul>
+<td class="cellrowborder" valign="top" width="43.394339433943394%" headers="mcps1.1.4.1.3 "><a name="ul7682144015113"></a><a name="ul7682144015113"></a><ul id="ul7682144015113"><li>开源首次发布。</li><li>具体内容请参考《MindX DL集群调度用户指南》</li></ul>
 </td>
 </tr>
 </tbody>
