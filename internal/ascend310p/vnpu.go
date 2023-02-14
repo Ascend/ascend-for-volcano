@@ -150,7 +150,7 @@ func getFailedDyTasksFromJobs(vJobs map[api.JobID]plugin.SchedulerJob) map[api.T
 	vTasks := make(map[api.TaskID]util.NPUTask, util.MapInitNum)
 	for _, vJob := range vJobs {
 		for tID, vTask := range vJob.Tasks {
-			if vTask.Status == util.TaskStatusFailed {
+			if vTask.Status == util.TaskStatusAllocate || vTask.Status == util.TaskStatusFailed {
 				vTasks[tID] = vTask
 			}
 		}
