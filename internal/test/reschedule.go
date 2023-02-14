@@ -94,10 +94,3 @@ func PatchRestart() *gomonkey.Patches {
 		"RestartFaultJobs",
 		func(_ *rescheduling.ReScheduler, _ *framework.Session) error { return nil })
 }
-
-// PatchReset go monkey patch reset
-func PatchReset(patch *gomonkey.Patches) {
-	if patch != nil {
-		patch.Reset()
-	}
-}
