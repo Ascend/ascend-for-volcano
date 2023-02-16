@@ -1,16 +1,10 @@
-reviewers:
-  - k82cn
-  - kevin-wangzefeng
-  - animeshsingh
-  - hzxuzhonghu
-  - yuanchen8911
-  - william-wang
-  - Thor-wl
-  - merryzhou
 approvers:
-  - k82cn
-  - kevin-wangzefeng
-  - animeshsingh
-  - william-wang
-  - hzxuzhonghu
-  - Thor-wl
+  - biantanggui
+  - zhangxiaopeng
+  - kangfuan
+  - fengjianqing
+reviewers:
+  - biantanggui
+  - zhangxiaopeng
+  - kangfuan
+  - fengjianqing
