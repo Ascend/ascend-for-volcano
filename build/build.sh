@@ -17,7 +17,7 @@
 
 set -e
 
-DEFAULT_VER='v3.0.0'
+DEFAULT_VER='v5.0.RC1'
 TOP_DIR=${GOPATH}/src/volcano.sh/volcano/
 BASE_PATH=${GOPATH}/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/
 CMD_PATH=${GOPATH}/src/volcano.sh/volcano/cmd/
@@ -29,7 +29,7 @@ function parse_version() {
     version_file="${TOP_DIR}"/service_config.ini
     if  [ -f "$version_file" ]; then
       line=$(sed -n '1p' "$version_file" 2>&1)
-      version=${line#*:}
+      version=${line#*=}
       echo "${version}"
       return
     fi
@@ -80,11 +80,11 @@ function build() {
 
     if [ ! -f "${BASE_PATH}/output/${REL_NPU_PLUGIN}.so" ]
     then
-      echo "fail to find volcano-npu-${REL_VERSION}.so"
+      echo "fail to find volcano-npu_${REL_VERSION}.so"
       exit 1
     fi
 
-    sed -i "s/name: volcano-npu-.*/name: ${REL_NPU_PLUGIN}/" "${BASE_PATH}"/output/volcano-*.yaml
+    sed -i "s/name: volcano-npu_.*/name: ${REL_NPU_PLUGIN}/" "${BASE_PATH}"/output/volcano-*.yaml
 
     chmod 400 "${BASE_PATH}"/output/*.so
     chmod 500 vc-controller-manager vc-scheduler
