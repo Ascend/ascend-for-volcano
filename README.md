@@ -1,16 +1,17 @@
 # NPU亲和性调度算法设计说明与开发指导.zh
--   [Ascend-volcano-plugin介绍](#Ascend-volcano-plugin介绍.md)
--   [亲和性策略说明](#亲和性策略说明.md)
--   [调度算法设计说明](#调度算法设计说明.md)
--   [调度算法实现说明](#调度算法实现说明.md)
--   [目录结构](#目录结构.md)
--   [编译说明](#编译说明.md)
--   [版本更新记录](#版本更新记录.md)
-<h2 id="Ascend-volcano-plugin介绍.md">Ascend-volcano-plugin介绍</h2>
+- [Ascend-volcano-plugin介绍](#Ascend-volcano-plugin介绍文档)
+- [亲和性策略说明](#亲和性策略说明文档)
+- [调度算法设计说明](#调度算法设计说明文档)
+- [调度算法实现说明](#调度算法实现说明文档)
+- [目录结构](#目录结构文档)
+- [编译说明](#编译说明文档)
+- [版本更新记录](#版本更新记录文档)
+
+<h2 id="Ascend-volcano-plugin介绍文档">Ascend-volcano-plugin介绍</h2>
 
 基于开源Volcano调度的插件机制，增加昇腾处理器的亲和性调度，虚拟设备调度等特性，最大化发挥昇腾处理器计算性能。
 
-<h2 id="亲和性策略说明.md">亲和性策略说明</h2>
+<h2 id="亲和性策略说明文档">亲和性策略说明</h2>
 
 ## 昇腾910 AI处理器亲和性规则<a name="section14879332111413"></a>
 
@@ -80,7 +81,7 @@
 5.  当训练任务申请虚拟设备vNPU时，申请数量只能为1。
 6.  遵循Volcano开源部分的其他约束。
 
-<h2 id="调度算法设计说明.md">调度算法设计说明</h2>
+<h2 id="调度算法设计说明文档">调度算法设计说明</h2>
 
 ## 场景分类<a name="section17611254115419"></a>
 
@@ -228,7 +229,7 @@
     解决该问题的方法之一：在加权阶段进行处理器分配时，判断资源是否处于待释放状态。若是，则本次不分配。
 
 
-<h2 id="调度算法实现说明.md">调度算法实现说明</h2>
+<h2 id="调度算法实现说明文档">调度算法实现说明</h2>
 
 ## 程序流程设计说明<a name="section7199282319"></a>
 
@@ -254,7 +255,7 @@
     该函数主要是将节点拥有的可用的昇腾910 AI处理器进行统一管理。防止并发情况下的分发错误。
 
 
-<h2 id="目录结构.md">目录结构</h2>
+<h2 id="目录结构文档">目录结构</h2>
 
 ```
 ├── build                                                    # CI编译脚本
@@ -391,7 +392,7 @@
     └── util.go
 ```
 
-<h2 id="编译说明.md">编译说明</h2>
+<h2 id="编译说明文档">编译说明</h2>
 
 ## 编译前准备<a name="section2078393613277"></a>
 
@@ -408,8 +409,12 @@
 
 ## 编译Volcano<a name="section1922947135013"></a>
 
-1. 将Volcano v1.4.0版本官方开源代码放至“$GOPATH/src/volcano.sh/volcano“。
-2. 将代码目录“ascend-volcano-plugin“拷贝至Volcano官方开源代码的插件路径下（“$GOPATH/src/volcano.sh/volcano/pkg/scheduler/plugins/“）。
+1. 执行以下命令，在“$GOPATH/src/volcano.sh/“目录下拉取Volcano v1.4.0版本官方开源代码。
+
+    **cd** **$GOPATH/src/volcano.sh/**
+    **git clone -b release-1.4 https://github.com/volcano-sh/volcano.git**
+
+2. 将代码目录“ascend-for-volcano“重命名为“ascend-volcano-plugin”拷贝至Volcano官方开源代码的插件路径下（“$GOPATH/src/volcano.sh/volcano/pkg/scheduler/plugins/“）。
 3. 执行以下命令，编译Volcano二进制文件和so文件。
 
     **cd** **$GOPATH/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/build**
@@ -468,7 +473,7 @@
 
 请参考《[MindX DL用户指南](https://www.hiascend.com/software/mindx-dl)》中的“集群调度用户指南 \> 安装部署指导 \> 安装集群调度组件 \> 典型安装场景 \> 集群调度场景”进行。
 
-<h2 id="版本更新记录.md">版本更新记录</h2>
+<h2 id="版本更新记录文档">版本更新记录</h2>
 
 <a name="table7854542104414"></a>
 

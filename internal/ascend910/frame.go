@@ -112,6 +112,11 @@ func (tp *ascend910) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode)
 		klog.V(util.LogErrorLev).Infof("CheckNodeNPUByTask err: %s", err.Error())
 		return err
 	}
+	if tp.Type != util.JobTypeWhole {
+		klog.V(util.LogDebugLev).Infof("%s %s CheckNodeNPUByTask is %s, skip it.", tp.GetPluginName(), task.Name,
+			tp.Type)
+		return nil
+	}
 	if tp.handle != nil {
 		return tp.handle.CheckNodeNPUByTask(task, node)
 	}

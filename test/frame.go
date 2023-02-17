@@ -22,6 +22,7 @@ package test
 import (
 	"fmt"
 
+	"github.com/agiledragon/gomonkey/v2"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/uuid"
@@ -96,4 +97,11 @@ func FakeNormalSSN() *framework.Session {
 		NamespaceInfo:  snapshot.NamespaceInfo,
 	}
 	return ssn
+}
+
+// PatchReset go monkey patch reset
+func PatchReset(patch *gomonkey.Patches) {
+	if patch != nil {
+		patch.Reset()
+	}
 }
