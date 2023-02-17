@@ -22,7 +22,7 @@ data:
       - name: priority
       - name: gang
       - name: conformance
-      - name: volcano-npu-v3.0.0_linux-x86_64
+      - name: volcano-npu_v5.0.RC1_linux-x86_64
     - plugins:
       - name: drf
       - name: predicates
