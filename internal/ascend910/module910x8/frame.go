@@ -55,37 +55,30 @@ func New(name string) base.AscendHandler {
 
 // ValidNPUJob check job req npu num and mode
 func (tp *module910x8) ValidNPUJob() *api.ValidateResult {
+	vResult := &api.ValidateResult{}
+	var vErr error
+	defer func() {
+		if vErr != nil {
+			vResult.Pass = false
+			vResult.Reason = vErr.Error()
+			vResult.Message = vErr.Error()
+			return
+		}
+	}()
+
+	// 1. check parameter.
 	if tp == nil {
-		err := fmt.Errorf("nil plugin %s", SchedulerName)
-		klog.V(util.LogErrorLev).Infof("ValidNPUJob err: %s.", err.Error())
-		return &api.ValidateResult{
-			Pass:    false,
-			Reason:  err.Error(),
-			Message: err.Error(),
-		}
+		vErr = fmt.Errorf("nil plugin %s", SchedulerName)
+		klog.V(util.LogErrorLev).Infof("ValidNPUJob err: %s.", vErr)
+		return vResult
 	}
 
-	jobNPU := tp.ReqNPUNum
-	if jobNPU <= nodeNPUNumber {
-		if err := tp.checkSingleTrainMode(); err != nil {
-			klog.V(util.LogErrorLev).Infof("%s ValidNPUJob err: %s", tp.GetPluginName(), err.Error())
-			return &api.ValidateResult{
-				Pass:    false,
-				Reason:  "job req npu is invalid",
-				Message: err.Error(),
-			}
-		}
-		return nil
+	// 2.check job train mode:distribute and single.
+	if vErr = tp.checkJobTrainMode(); vErr != nil {
+		klog.V(util.LogErrorLev).Infof("checkJobTrainMode: %s.", vErr)
+		return vResult
 	}
 
-	if err := tp.checkModuleDistributeTrainMode(); err != nil {
-		klog.V(util.LogErrorLev).Infof("%s ValidNPUJob err: %s", tp.GetPluginName(), err.Error())
-		return &api.ValidateResult{
-			Pass:    false,
-			Reason:  "job req npu is invalid",
-			Message: err.Error(),
-		}
-	}
 	return nil
 }
 
@@ -157,14 +150,9 @@ func (tp *module910x8) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNod
 		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
 		return err
 	}
-	job, ok := tp.Jobs[task.Job]
+	_, ok := tp.Jobs[task.Job]
 	if !ok {
 		err = fmt.Errorf("task<%s> is not npu task", task.Name)
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
-		return err
-	}
-	if taskNPUNum < tp.MaxNodeNPUNum && len(job.Tasks) > 1 {
-		err = fmt.Errorf("distribute task<%s> req num<%d> is invalid", task.Name, taskNPUNum)
 		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
 		return err
 	}

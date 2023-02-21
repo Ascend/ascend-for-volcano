@@ -1,5 +1,5 @@
 /*
-Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2023. Huawei Technologies Co.,Ltd. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,31 +27,53 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
+func (tp *half910x4) checkJobTrainMode() error {
+	nTaskNum := tp.GetNPUTaskNumInVCJob()
+	if nTaskNum == 0 {
+		klog.V(util.LogErrorLev).Infof("GetVTaskNumInVJob %s has no npu tasks.", tp.Name)
+		return fmt.Errorf("%s no npu job", tp.Name)
+	}
+	if nTaskNum == 1 {
+		if err := tp.checkSingleTrainMode(); err != nil {
+			klog.V(util.LogErrorLev).Infof("%s checkSingleTrainMode %s: %s", tp.GetPluginName(), tp.Name, err)
+			return err
+		}
+		return nil
+	}
+
+	if err := tp.checkModuleDistributeTrainMode(); err != nil {
+		klog.V(util.LogErrorLev).Infof("%s check distribute %s err: %s", tp.GetPluginName(), tp.Name, err)
+		return err
+	}
+
+	return nil
+}
+
 // CheckSingleTrainMode Single Train job has only one task.
 func (tp *half910x4) checkSingleTrainMode() error {
 	klog.V(util.LogDebugLev).Infof("checkSingleTrainMode job(%s) has %d tasks.", tp.Name, len(tp.Tasks))
 
 	jobNPU := tp.ReqNPUNum
-	if jobNPU == 1 || jobNPU == util.NPUIndex2 || jobNPU == npuNumPerHccs {
+	if jobNPU == 1 || jobNPU == util.NPUIndex2 || jobNPU == util.NPUIndex4 {
 		return nil
 	}
-	return fmt.Errorf("%s checkSingleTrainMode job<%s> req npu num is not [1 or 2 or 4]",
-		tp.GetPluginName(), tp.Name)
+	return fmt.Errorf("%s checkSingleTrainMode %s req npu not in [1,2,4]", tp.GetPluginName(), tp.Name)
 }
 
-// If job requires more than 8 npu, every task need 8 npu.
+// checkModuleDistributeTrainMode Distribute Train job has more than one task.
 func (tp *half910x4) checkModuleDistributeTrainMode() error {
 	klog.V(util.LogDebugLev).Infof("half DistributeTrainMode %s has %d tasks.", tp.Name, len(tp.Tasks))
 
 	for _, task := range tp.Tasks {
-		taskNPU := task.ReqNPUNum
-		klog.V(util.LogDebugLev).Infof("checkModuleDistributeTrainMode half DistributeTrain %s has %d npu.",
-			task.Name, taskNPU)
-
-		if taskNPU != tp.MaxNodeNPUNum {
-			return fmt.Errorf("checkModuleDistributeTrainMode half distributeTrain task<%s> req npu[%d] "+
-				"not equal [%d]", task.Name, taskNPU, tp.MaxNodeNPUNum)
+		if !task.IsNPUTask() {
+			continue
 		}
+
+		if task.ReqNPUNum == util.NPUIndex1 || task.ReqNPUNum == util.NPUIndex2 || task.ReqNPUNum == tp.MaxNodeNPUNum {
+			return nil
+		}
+
+		return fmt.Errorf("checkModuleDistributeTrainMode %s req %d not in [1,2,4]", task.Name, task.ReqNPUNum)
 	}
 	return nil
 }
