@@ -1,5 +1,5 @@
 /*
-Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2023. Huawei Technologies Co.,Ltd. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,31 +15,24 @@ limitations under the License.
 */
 
 /*
-Package card910x2 is using for HuaWei Ascend pin affinity schedule.
+Package module910bx16 is using for HuaWei Ascend 910B(A+X) pin affinity schedule.
 */
-package card910x2
+package module910bx16
 
 import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/base"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/rescheduling"
 )
 
-type card910x2 struct {
+type module910bx16 struct {
 	base.NPUHandler
 	affScoreList [][]int
-	reHandle     *rescheduling.ReScheduler
 }
 
 const (
 	// SchedulerName name of scheduler
-	SchedulerName = "huawei.com/Ascend910card"
-	maxNodeNPUNum = 2
-	npuNumPerHccs = 4
-	nodeWeight    = 8.0
-)
-
-const (
-	affScore0 = iota
-	affScore1
-	affScore2
+	SchedulerName = "huawei.com/Ascend910module-910B-16"
+	// module910BAcceleratorValue partner value 16 card only for A+X A2
+	module910BAcceleratorValue = "module-910B-16"
+	nodeNPUNumber              = 16
+	nodeWeight                 = 8.0
 )

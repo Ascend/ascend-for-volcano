@@ -192,14 +192,14 @@ func buildTestValidDyVNPUTaskDVPPLabelTestCase03() TestValidDyVNPUTaskDVPPLabelT
 			ReqNPUName: util.AscendNPUCore,
 			ReqNPUNum:  1,
 		},
-		WantErr: errors.New("task03 dvpp label err:dvpp"),
+		WantErr: errors.New("task03 req 1 ai-core, but dvpp label is:dvpp"),
 	}
 	return test03
 }
 
 func buildTestValidDyVNPUTaskDVPPLabelTestCase04() TestValidDyVNPUTaskDVPPLabelTest {
 	test04 := TestValidDyVNPUTaskDVPPLabelTest{
-		Name: "03-test will return nil when task is util.NPUIndex4",
+		Name: "04-test will return nil when task is util.NPUIndex4",
 		Task: util.NPUTask{
 			Name:       "task04",
 			ReqNPUName: util.AscendNPUCore,
@@ -212,7 +212,7 @@ func buildTestValidDyVNPUTaskDVPPLabelTestCase04() TestValidDyVNPUTaskDVPPLabelT
 
 func buildTestValidDyVNPUTaskDVPPLabelTestCase05() TestValidDyVNPUTaskDVPPLabelTest {
 	test05 := TestValidDyVNPUTaskDVPPLabelTest{
-		Name: "03-test will return nil when task ReqNPUNum is other",
+		Name: "05-test will return nil when task ReqNPUNum is other",
 		Task: util.NPUTask{
 			Name:       "task04",
 			ReqNPUName: util.AscendNPUCore,

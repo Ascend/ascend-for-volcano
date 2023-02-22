@@ -1,5 +1,5 @@
 /*
-Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2023. Huawei Technologies Co.,Ltd. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -44,10 +44,10 @@ func New(name string) base.AscendHandler {
 	m.SetMaxNodeNPUNum(npuNumPerHccs)
 	m.netUnhealthyKey = networkUnhealthyNPU
 	m.affScoreList = [][]int{
-		{affScore0, affScore2, affScore1, affScore3},
-		{affScore4, affScore0, affScore2, affScore1},
-		{affScore4, affScore4, affScore4, affScore4},
-		{affScore4, affScore4, affScore4, affScore0},
+		{util.AffScore0, util.AffScore2, util.AffScore1, util.AffScore3},
+		{util.AffScore4, util.AffScore0, util.AffScore2, util.AffScore1},
+		{util.AffScore4, util.AffScore4, util.AffScore4, util.AffScore4},
+		{util.AffScore4, util.AffScore4, util.AffScore4, util.AffScore0},
 	}
 	return m
 }

@@ -1,5 +1,5 @@
 /*
-Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2023. Huawei Technologies Co.,Ltd. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -43,8 +43,8 @@ func New(name string) base.AscendHandler {
 	c.SetDefaultJobSchedulerConfig(nil)
 	c.SetMaxNodeNPUNum(maxNodeNPUNum)
 	c.affScoreList = [][]int{
-		{affScore0, affScore1},
-		{affScore2, affScore0},
+		{util.AffScore0, util.AffScore1},
+		{util.AffScore2, util.AffScore0},
 	}
 	return c
 }
@@ -212,7 +212,7 @@ func (tp *card910x2) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo
 			continue
 		}
 		bestScore := tp.affScoreList[taskNPUNum-1][len(nodeTop)-1]
-		if bestScore == affScore2 {
+		if bestScore == util.AffScore2 {
 			continue
 		}
 		healthyNPUNum, ok := nNode.Allocate[v1.ResourceName(tp.GetAnnoName())]
