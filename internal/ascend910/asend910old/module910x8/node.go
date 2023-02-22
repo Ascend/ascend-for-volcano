@@ -1,5 +1,5 @@
 /*
-Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2023. Huawei Technologies Co.,Ltd. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -115,7 +115,7 @@ func getNodeHccsArray(nodeTop []int) ([]int, []int) {
 }
 
 func (tp *module910x8) getNodeBestScore(taskNPUNum int, npuTop []int) (int, error) {
-	var bestScore = affScore4
+	var bestScore = util.AffScore4
 
 	sNodeInf := initSelectNodeInf(npuTop)
 	if sNodeInf.allNPUNum < 1 ||
@@ -144,7 +144,7 @@ func (tp *module910x8) getNodeBestScore(taskNPUNum int, npuTop []int) (int, erro
 		bestScore = util.Min(tp.affScoreList[taskNPUNum-1][sNodeInf.rightNPUNum-1],
 			tp.affScoreList[taskNPUNum-1][sNodeInf.leftNPUNum-1])
 	}
-	if bestScore == affScore4 {
+	if bestScore == util.AffScore4 {
 		return bestScore, err
 	}
 	return bestScore, nil

@@ -822,7 +822,8 @@ func (reScheduler *ReScheduler) GenerateNodeRankIndexTaskMap() {
 		if ok {
 			klog.V(util.LogDebugLev).Infof("NodeRankOccMap for job %s already generated, keep it", fJob.JobName)
 			nodeRankIndexTaskMap[fJob.JobUID] = oldRecord
-			continue // todo: continue but do not change those whose jobid already occurred
+			// continue but do not change those whose jobid already occurred
+			continue
 		}
 		if fJob.DeleteExecutedFlag {
 			klog.V(util.LogDebugLev).Infof("Create NodeRankOccMap for job %s", fJob.JobName)

@@ -1,5 +1,5 @@
 /*
-Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2023. Huawei Technologies Co.,Ltd. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -244,7 +244,8 @@ func (asTask *NPUTask) IsTaskInItsNode(ssn *framework.Session, nodeName string) 
 	return true
 }
 
-func (asTask *NPUTask) setVTaskType() {
+// ComputeTaskType compute the task's type.
+func (asTask *NPUTask) ComputeTaskType() int {
 	taskType := JobTypeUnknown
 	names := strings.Split(asTask.ReqNPUName, "-")
 	if len(names) == 1 {
@@ -256,7 +257,11 @@ func (asTask *NPUTask) setVTaskType() {
 	if strings.Contains(asTask.ReqNPUName, "npu-core") {
 		taskType = JobTypeDyCut
 	}
-	asTask.Type = taskType
+	return taskType
+}
+
+func (asTask *NPUTask) setVTaskType() {
+	asTask.Type = asTask.ComputeTaskType()
 }
 
 func getVTaskUsePhysicsNamesByInfo(taskInf *api.TaskInfo) []string {
@@ -365,4 +370,12 @@ func (asTask *NPUTask) IsVNPUTask() bool {
 		return true
 	}
 	return false
+}
+
+// IsNPUTask Determine whether is the NPU task.
+// Dynamic segmentation: huawei.com/npu-core.
+// static segmentation: huawei.com/Ascend910-Y.
+// no segmentation: huawei.com/Ascend910.
+func (asTask *NPUTask) IsNPUTask() bool {
+	return strings.Contains(asTask.ReqNPUName, HwPreName)
 }
