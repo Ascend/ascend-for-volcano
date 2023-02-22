@@ -1,5 +1,5 @@
 /*
-Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2023. Huawei Technologies Co.,Ltd. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,6 +42,8 @@ const (
 	NPUIndex4 = 4
 	// NPUIndex5 the 5 index.
 	NPUIndex5 = 5
+	// NPUIndex6 the 6 index.
+	NPUIndex6 = 6
 	// NPUIndex1 the 1 index.
 	NPUIndex1 = 1
 	// CoreNum32 32 core 910
@@ -50,8 +52,6 @@ const (
 	CoreNum30 = 30
 	// CpuNum14 14 cpu 910
 	CpuNum14 = 14
-	// JobTemplateNum 11 vnpu job template
-	JobTemplateNum = 11
 	// MapInitNum for map init length.
 	MapInitNum = 3
 	// Base10 for const 10.
@@ -60,8 +60,6 @@ const (
 	BitSize64 = 64
 	// NPUHexKilo for const 1000,volcano frame used.
 	NPUHexKilo = 1000
-	// AICPU cpu resource name
-	AICPU = "cpu"
 	// HwPreName pre name
 	HwPreName = "huawei.com/"
 	// NPUCardPreName for NPU card pre-Name.
@@ -118,8 +116,6 @@ const (
 
 	// SegmentEnable for VNPU segment enable flag. Default is "false".
 	SegmentEnable = "presetVirtualDevice"
-	// SegmentNoEnable SegmentEnable not enable.
-	SegmentNoEnable = "SegmentEnable not enable"
 
 	// DevInfoNameSpace device-plugin install Namespace
 	DevInfoNameSpace = "kube-system"
@@ -146,6 +142,27 @@ const (
 	JobKind310Value = "ascend-310"
 	// JobKind310PValue 310p ring controller name
 	JobKind310PValue = "ascend-310P"
+)
+
+const (
+	// AffScore0 value 0 for scored.
+	AffScore0 = iota
+	// AffScore1 value 1 for scored.
+	AffScore1
+	// AffScore2 value 2 for scored.
+	AffScore2
+	// AffScore3 value 3 for scored.
+	AffScore3
+	// AffScore4 value 4 for scored.
+	AffScore4
+	// AffScore5 value 4 for scored.
+	AffScore5
+	// AffScore6 value 4 for scored.
+	AffScore6
+	// AffScore7 value 4 for scored.
+	AffScore7
+	// AffScore8 value 4 for scored.
+	AffScore8
 )
 
 // VTemplate for vNode resource
