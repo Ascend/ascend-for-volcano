@@ -1,5 +1,5 @@
 /*
-Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2023. Huawei Technologies Co.,Ltd. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -97,34 +97,74 @@ func (nJob *NPUJob) IsVJob() bool {
 	return false
 }
 
-func (nJob *NPUJob) setVJobType() {
-	tmpTypes := make(map[int]struct{}, MapInitNum)
-	for _, vTask := range nJob.Tasks {
-		nJob.Type = vTask.Type
-		if len(nJob.Tasks) == 1 {
-			return
-		}
-		tmpTypes[vTask.Type] = struct{}{}
+// IsNPUJob Determine whether is the NPU job.
+// Dynamic segmentation: huawei.com/npu-core.
+// static segmentation: huawei.com/Ascend910-Y.
+// no segmentation: huawei.com/Ascend910.
+func (nJob *NPUJob) IsNPUJob() bool {
+	return strings.Contains(nJob.ReqNPUName, HwPreName)
+}
+
+// GetNPUTaskNumInJob get the NPU task number in one job. for some task has no NPU.
+func (nJob *NPUJob) GetNPUTaskNumInJob() int {
+	if nJob == nil || !nJob.IsNPUJob() {
+		return 0
 	}
-	// all vTask type in job must be same.
+	taskNum := 0
+	for _, task := range nJob.Tasks {
+		if task.IsNPUTask() {
+			taskNum++
+		}
+	}
+
+	return taskNum
+}
+
+// GetVTaskNumInVJob get the NPU task number in one job. for some task has no NPU.
+func (nJob *NPUJob) GetVTaskNumInVJob() int {
+	if nJob == nil || !nJob.IsVJob() {
+		return 0
+	}
+	taskNum := 0
+	for _, task := range nJob.Tasks {
+		if task.IsVNPUTask() {
+			taskNum++
+		}
+	}
+
+	return taskNum
+}
+
+func (nJob *NPUJob) setJobType() {
+	tmpTypes := make(map[int]struct{}, MapInitNum)
+	for _, nTask := range nJob.Tasks {
+		if nTask.ReqNPUNum == 0 {
+			continue
+		}
+		value := nTask.ComputeTaskType()
+		nJob.Type = value
+		tmpTypes[value] = struct{}{}
+	}
+
+	// all NPU Task type in job must be same.
 	if len(tmpTypes) != 1 {
 		nJob.Type = JobTypeUnknown
 		return
 	}
 }
 
-// SetVJobType set virtual job type
+// SetJobType set virtual job type
 // must be used after isVJob.
 // for all chips: 910, 310P
-func (nJob *NPUJob) SetVJobType() {
+func (nJob *NPUJob) SetJobType() {
 	if nJob == nil {
 		return
 	}
-	nJob.setVJobType()
+	nJob.setJobType()
 }
 
-// SetVJobStatusByInf set vJob status by podGroup.
-func (nJob *NPUJob) SetVJobStatusByInf(vcJob *api.JobInfo) {
+// SetJobStatusByInf set vJob status by podGroup.
+func (nJob *NPUJob) SetJobStatusByInf(vcJob *api.JobInfo) {
 	if nJob == nil {
 		return
 	}

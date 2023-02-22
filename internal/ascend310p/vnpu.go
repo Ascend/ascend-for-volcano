@@ -120,7 +120,7 @@ func (tp *ascend310P) validDyVNPUJobLabel() error {
 }
 
 func (tp *ascend310P) validDyVNPUJob() *api.ValidateResult {
-	if tp.Status == scheduling.PodGroupRunning { // todo: uncomment
+	if tp.Status == scheduling.PodGroupRunning {
 		klog.V(util.LogDebugLev).Infof("%s %s's pg is running", PluginName, tp.ComJob.Name)
 		return nil
 	}

@@ -138,7 +138,7 @@ func TestSetVJobType(t *testing.T) {
 	tests := buildSetVJobTypeTestCase()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.nJob.SetVJobType()
+			tt.nJob.SetJobType()
 			if got := tt.nJob.Type; !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Name() = %#v, want %#v", got, tt.want)
 			}
@@ -156,7 +156,7 @@ type testSetVJobStatusByInfTest struct {
 func buildTestSetVJobStatusByInfTest() []testSetVJobStatusByInfTest {
 	tests := []testSetVJobStatusByInfTest{
 		{
-			name:  "01-test SetVJobStatusByInf ",
+			name:  "01-test SetJobStatusByInf ",
 			nJob:  &NPUJob{VJob: &VJob{}},
 			vcJob: &api.JobInfo{PodGroup: &api.PodGroup{}},
 			want: api.JobInfo{
@@ -171,7 +171,7 @@ func TestSetVJobStatusByInf(t *testing.T) {
 	tests := buildTestSetVJobStatusByInfTest()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.nJob.SetVJobStatusByInf(tt.vcJob)
+			tt.nJob.SetJobStatusByInf(tt.vcJob)
 			if got := tt.nJob.Status; got != tt.want {
 				t.Errorf("Name() = %#v, want %#v", got, tt.want)
 			}
