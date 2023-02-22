@@ -1,5 +1,5 @@
 /*
-Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2023. Huawei Technologies Co.,Ltd. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -55,7 +55,7 @@ func buildInitMyJobPluginTestCases() []itest.InitMyJobPluginTestCase {
 		{
 			Name: "01-InitMyJobPlugin return nil when define accelerator the handler will be define as card",
 			Attr: util.SchedulerJobAttr{
-				ComJob: util.ComJob{Selector: map[string]string{Accelerator910Key: Card910AcceleratorValue}},
+				ComJob: util.ComJob{Selector: map[string]string{util.AcceleratorType: util.CardAcceleratorType}},
 				NPUJob: &util.NPUJob{ReqNPUName: util.NPU910CardName},
 			},
 			Env:     plugin.ScheduleEnv{},
@@ -77,7 +77,7 @@ func buildInitMyJobPluginTestCases() []itest.InitMyJobPluginTestCase {
 				NPUJob: &util.NPUJob{ReqNPUName: util.NPU310PCardName},
 			},
 			Env:     plugin.ScheduleEnv{},
-			WantErr: fmt.Errorf("not support %s", util.NPU310PCardName+Module910AcceleratorValue),
+			WantErr: fmt.Errorf("not support %s", util.NPU310PCardName+util.ModuleAcceleratorType),
 		},
 	}
 }

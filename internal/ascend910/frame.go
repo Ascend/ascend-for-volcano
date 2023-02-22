@@ -1,5 +1,5 @@
 /*
-Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2023. Huawei Technologies Co.,Ltd. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,9 +28,10 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910/card910x2"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910/half910x4"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910/module910x8"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910/ascend910b/module910bx16"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910/asend910old/card910x2"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910/asend910old/half910x4"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910/asend910old/module910x8"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/base"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
@@ -53,6 +54,7 @@ func New(npuName string) plugin.ISchedulerPlugin {
 	npuPlugin.Kind[card910x2.SchedulerName] = card910x2.New(card910x2.SchedulerName)
 	npuPlugin.Kind[module910x8.SchedulerName] = module910x8.New(module910x8.SchedulerName)
 	npuPlugin.Kind[half910x4.SchedulerName] = half910x4.New(half910x4.SchedulerName)
+	npuPlugin.Kind[module910bx16.SchedulerName] = module910bx16.New(module910bx16.SchedulerName)
 	return npuPlugin
 }
 
@@ -65,9 +67,9 @@ func (tp *ascend910) InitMyJobPlugin(attr util.SchedulerJobAttr, env plugin.Sche
 	}
 	tp.SetSchedulerAttr(attr)
 	tp.SetSchedulerEnv(env)
-	v, ok := attr.Selector[Accelerator910Key]
+	v, ok := attr.Selector[util.AcceleratorType]
 	if !ok {
-		v = Module910AcceleratorValue
+		v = util.ModuleAcceleratorType
 	}
 	cardNameSplit := strings.Split(attr.ReqNPUName, "-")
 	cardName := cardNameSplit[0]
@@ -113,7 +115,7 @@ func (tp *ascend910) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode)
 		return err
 	}
 	if tp.Type != util.JobTypeWhole {
-		klog.V(util.LogDebugLev).Infof("%s %s CheckNodeNPUByTask is %s, skip it.", tp.GetPluginName(), task.Name,
+		klog.V(util.LogDebugLev).Infof("%s %s CheckNodeNPUByTask is %d, skip it.", tp.GetPluginName(), task.Name,
 			tp.Type)
 		return nil
 	}
@@ -165,6 +167,9 @@ func (tp *ascend910) PreStartAction(ssn *framework.Session) error {
 	for name, handler := range tp.Kind {
 		klog.V(util.LogInfoLev).Infof("preStartAction for %s", name)
 		if err := handler.PreStartAction(ssn); err != nil {
+			if strings.Contains(err.Error(), util.ArgumentError) {
+				continue
+			}
 			klog.V(util.LogErrorLev).Infof("preStartAction %s error: %v", name, err)
 		}
 	}
@@ -182,6 +187,9 @@ func (tp *ascend910) PreStopAction(env *plugin.ScheduleEnv) error {
 	for name, handler := range tp.Kind {
 		klog.V(util.LogInfoLev).Infof("preStopAction for %s", name)
 		if err := handler.PreStopAction(env); err != nil {
+			if strings.Contains(err.Error(), util.ArgumentError) {
+				continue
+			}
 			klog.V(util.LogErrorLev).Infof("preStopAction %s error: %v", name, err)
 		}
 	}
