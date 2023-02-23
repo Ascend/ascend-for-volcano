@@ -54,31 +54,30 @@ func New(name string) base.AscendHandler {
 
 // ValidNPUJob check job req npu num
 func (tp *half910x4) ValidNPUJob() *api.ValidateResult {
-	taskNum := len(tp.Tasks)
-
-	klog.V(util.LogDebugLev).Infof("%s Module DistributeTrainMode %s has %d tasks.",
-		tp.GetPluginName(), tp.Name, taskNum)
-
-	if taskNum <= 1 {
-		if err := tp.checkSingleTrainMode(); err != nil {
-			klog.V(util.LogErrorLev).Infof("%s ValidNPUJob err: %s", tp.GetPluginName(), err.Error())
-			return &api.ValidateResult{
-				Pass:    false,
-				Reason:  "job req npu is invalid",
-				Message: err.Error(),
-			}
+	vResult := &api.ValidateResult{}
+	var vErr error
+	defer func() {
+		if vErr != nil {
+			vResult.Pass = false
+			vResult.Reason = vErr.Error()
+			vResult.Message = vErr.Error()
+			return
 		}
-		return nil
+	}()
+
+	// 1. check parameter.
+	if tp == nil {
+		vErr = fmt.Errorf("nil plugin %s", SchedulerName)
+		klog.V(util.LogErrorLev).Infof("ValidNPUJob err: %s.", vErr)
+		return vResult
 	}
 
-	if err := tp.checkModuleDistributeTrainMode(); err != nil {
-		klog.V(util.LogErrorLev).Infof("%s ValidNPUJob err: %s", tp.GetPluginName(), err.Error())
-		return &api.ValidateResult{
-			Pass:    false,
-			Reason:  "job req npu is invalid",
-			Message: err.Error(),
-		}
+	// 2.check job train mode:distribute and single.
+	if vErr = tp.checkJobTrainMode(); vErr != nil {
+		klog.V(util.LogErrorLev).Infof("checkJobTrainMode: %s.", vErr)
+		return vResult
 	}
+
 	return nil
 }
 
