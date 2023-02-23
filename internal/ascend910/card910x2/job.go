@@ -28,7 +28,7 @@ import (
 )
 
 func (tp *card910x2) checkJobTrainMode() error {
-	nTaskNum := tp.GetNPUTaskNumInVCJob()
+	nTaskNum := tp.GetNPUTaskNumInJob()
 	if nTaskNum == 0 {
 		klog.V(util.LogErrorLev).Infof("GetVTaskNumInVJob %s has no npu tasks.", tp.Name)
 		return fmt.Errorf("%s no npu job", tp.Name)
