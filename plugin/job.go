@@ -1,5 +1,5 @@
 /*
-Copyright(C)2020-2022. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2020-2023. Huawei Technologies Co.,Ltd. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -456,6 +456,9 @@ func (sJob *SchedulerJob) CheckNodeNum(taskInfo *api.TaskInfo, vcNode NPUNode) e
 	if !ok {
 		klog.V(util.LogErrorLev).Infof("CheckNodeNum %+v.", sJob.SchedulerJobAttr.NPUJob)
 		return fmt.Errorf("no %s in SchedulerJob", taskInfo.Name)
+	}
+	if !vcTask.IsNPUTask() {
+		return nil
 	}
 	nodeNPUNum, ok := vcNode.Idle[v1.ResourceName(vcTask.ReqNPUName)]
 	if !ok {
