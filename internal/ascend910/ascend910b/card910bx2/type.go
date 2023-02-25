@@ -15,18 +15,20 @@ limitations under the License.
 */
 
 /*
-Package module910bx16 is using for HuaWei Ascend 910B(A+X) pin affinity schedule.
+Package card910bx2 is using for HuaWei Ascend 910B(Atlas 300T A2) card pin affinity schedule.
 */
-package module910bx16
+package card910bx2
 
-import "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910/ascend910b"
+import (
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910/ascend910b"
+)
 
-type module910bx16 struct {
+type card910bx2 struct {
 	ascend910b.Base910b
 }
 
 const (
 	// SchedulerName name of scheduler
-	SchedulerName = "huawei.com/Ascend910module-910b-16"
-	nodeNPUNumber = 16
+	SchedulerName = "huawei.com/Ascend910card-910B-2"
+	nodeNPUNumber = 2
 )
