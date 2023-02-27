@@ -143,14 +143,9 @@ func (tp *card910x2) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode)
 		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
 		return err
 	}
-	job, ok := tp.Jobs[task.Job]
+	_, ok := tp.Jobs[task.Job]
 	if !ok {
 		err = fmt.Errorf("task<%s> is not npu task", task.Name)
-		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
-		return err
-	}
-	if taskNPUNum < tp.MaxNodeNPUNum && len(job.Tasks) > 1 {
-		err = fmt.Errorf("distribute task<%s> req num<%d> is invalid", task.Name, taskNPUNum)
 		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
 		return err
 	}
