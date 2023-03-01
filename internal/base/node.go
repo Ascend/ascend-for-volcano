@@ -29,19 +29,21 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
-// GetUsableTopFromNode get node usable npu from annotation
+// GetUsableTopFromNode Get ascend node usable top.
 func (tp *NPUHandler) GetUsableTopFromNode(node plugin.NPUNode) ([]int, error) {
 	if tp == nil || len(node.Annotation) == 0 {
 		return nil, errors.New(util.ArgumentError)
 	}
 	topStr, ok := node.Annotation[tp.GetAnnoName()]
 	if !ok || len(topStr) == 0 {
-		return nil, fmt.Errorf("getUsableTopFromNode node<%s> don't have npu<%s>", node.Name, tp.GetAnnoName())
+		return nil, fmt.Errorf("getUsableTopFromNode %s don't have %s", node.Name, tp.GetAnnoName())
 	}
 
 	nodeTop := util.ChangeTopToIntArray(topStr, tp.GetAnnoPreVal())
-	if len(nodeTop) == 0 {
-		return nil, fmt.Errorf("getUsableTopFromNode err: top string<%s> convert faild", topStr)
+	if len(nodeTop) > tp.MaxNodeNPUNum {
+		err := fmt.Errorf("node<%s> npu top<%v> is invalid", node.Name, nodeTop)
+		klog.V(util.LogWarningLev).Infof("%s GetUsableTopFromNode err: %s", tp.GetPluginName(), err.Error())
+		return nil, err
 	}
 	return nodeTop, nil
 }

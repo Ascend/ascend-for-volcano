@@ -564,7 +564,6 @@ func (reScheduler *ReScheduler) AddFaultNodeWithSession(cardName string) {
 		klog.V(util.LogErrorLev).Infof("AddFaultNodeWithSession: %s, nil reScheduler", util.ArgumentError)
 		return
 	}
-	klog.V(util.LogDebugLev).Infof("ReSchedulerCache fault nodes before add: %#v", reScheduler.FaultNodes)
 	newNodes := make(map[string]plugin.NPUNode, util.MapInitNum)
 	nowTime := time.Now().Unix()
 	for npuNodeName, npuNode := range reScheduler.Nodes {
@@ -593,7 +592,6 @@ func (reScheduler *ReScheduler) AddFaultNodeWithSession(cardName string) {
 		}
 		reScheduler.FaultNodes = append(reScheduler.FaultNodes, faultNode)
 	}
-	klog.V(util.LogDebugLev).Infof("ReSchedulerCache fault nodes after add: %#v", reScheduler.FaultNodes)
 }
 
 // RestartNeedForceDeleteJobs Restart jobs that need to be force deleted
