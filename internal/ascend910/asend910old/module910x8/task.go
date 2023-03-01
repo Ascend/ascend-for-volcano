@@ -33,7 +33,7 @@ func (tp *module910x8) judgeNodeAndTaskNPU(taskNPU int, nodeTop []int) error {
 	sNodeInf := initSelectNodeInf(nodeTop)
 
 	switch taskNPU {
-	case 1, npuIndex2, npuNumPerHccs:
+	case 0, 1, npuIndex2, npuNumPerHccs:
 		reFlag = (sNodeInf.leftNPUNum >= taskNPU) || (sNodeInf.rightNPUNum >= taskNPU)
 	case nodeNPUNumber:
 		reFlag = sNodeInf.allNPUNum == nodeNPUNumber
@@ -56,6 +56,8 @@ func getNPUAllocPriorityArray(taskNPUNumber int) ([]int, error) {
 	var err error
 
 	switch taskNPUNumber {
+	case 0:
+		priorityArray = []int{0, 1, npuIndex2, npuIndex3, npuNumPerHccs}
 	case 1:
 		// priority:1>3>2>4
 		priorityArray = []int{1, npuIndex3, npuIndex2, npuNumPerHccs}
