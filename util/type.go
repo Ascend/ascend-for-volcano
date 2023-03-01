@@ -142,6 +142,8 @@ const (
 	JobKind310Value = "ascend-310"
 	// JobKind310PValue 310p ring controller name
 	JobKind310PValue = "ascend-310P"
+	// JobKind910BValue 910B ring controller name
+	JobKind910BValue = "ascend-910b"
 )
 
 const (
