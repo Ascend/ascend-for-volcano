@@ -27,37 +27,53 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
-func (tp *card910x2) checkSingleTrainMode() error {
-	taskNum := len(tp.Tasks)
+func (tp *card910x2) checkJobTrainMode() error {
+	nTaskNum := tp.GetNPUTaskNumInJob()
+	if nTaskNum == 0 {
+		klog.V(util.LogErrorLev).Infof("GetVTaskNumInVJob %s has no npu tasks.", tp.Name)
+		return fmt.Errorf("%s no npu job", tp.Name)
+	}
+	if nTaskNum == 1 {
+		if err := tp.checkSingleTrainMode(); err != nil {
+			klog.V(util.LogErrorLev).Infof("%s checkSingleTrainMode %s: %s", tp.GetPluginName(), tp.Name, err)
+			return err
+		}
+		return nil
+	}
 
-	klog.V(util.LogDebugLev).Infof("%s checkSingleTrainMode job<%s> has <%d> tasks.",
-		tp.GetPluginName(), tp.Name, taskNum)
-
-	if taskNum > 1 {
-		return fmt.Errorf("%s checkSingleTrainMode single trainning job<%s> has too many task: <%d>",
-			tp.GetPluginName(), tp.Name, taskNum)
+	if err := tp.checkCardDistributeTrainMode(); err != nil {
+		klog.V(util.LogErrorLev).Infof("%s check distribute %s err: %s", tp.GetPluginName(), tp.Name, err)
+		return err
 	}
 
 	return nil
 }
 
-func (tp *card910x2) checkCardDistributeTrainMode() error {
-	taskNum := len(tp.Tasks)
+// CheckSingleTrainMode Single Train job has only one task.
+func (tp *card910x2) checkSingleTrainMode() error {
+	klog.V(util.LogDebugLev).Infof("checkSingleTrainMode job(%s) has %d tasks.", tp.Name, len(tp.Tasks))
 
-	klog.V(util.LogDebugLev).Infof("%s check Card Mode %s has %d tasks.",
-		tp.GetPluginName(), tp.Name, taskNum)
+	jobNPU := tp.ReqNPUNum
+	if jobNPU == 1 || jobNPU == util.NPUIndex2 {
+		return nil
+	}
+	return fmt.Errorf("%s checkSingleTrainMode %s req npu not in [1,2]", tp.GetPluginName(), tp.Name)
+}
+
+// checkModuleDistributeTrainMode Distribute Train job has more than one task.
+func (tp *card910x2) checkCardDistributeTrainMode() error {
+	klog.V(util.LogDebugLev).Infof("half DistributeTrainMode %s has %d tasks.", tp.Name, len(tp.Tasks))
 
 	for _, task := range tp.Tasks {
-		taskNPU := task.ReqNPUNum
-
-		klog.V(util.LogDebugLev).Infof("%s check Card Mode %s require %d npu.",
-			tp.GetPluginName(), task.Name, taskNPU)
-
-		if taskNPU != tp.MaxNodeNPUNum {
-			return fmt.Errorf("%s checkCardDistributeTrainMode distributed card train job<%s> req npu<%d>"+
-				" not equal<%d>", tp.GetPluginName(), task.Name, taskNPU, tp.MaxNodeNPUNum)
+		if !task.IsNPUTask() {
+			continue
 		}
-	}
 
+		if task.ReqNPUNum == util.NPUIndex1 || task.ReqNPUNum == util.NPUIndex2 {
+			return nil
+		}
+
+		return fmt.Errorf("checkModuleDistributeTrainMode %s req %d not in [1,2,4,8]", task.Name, task.ReqNPUNum)
+	}
 	return nil
 }
