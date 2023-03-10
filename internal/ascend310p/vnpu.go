@@ -29,7 +29,7 @@ func (tp *ascend310P) GetVNPUTemplate() {
 }
 
 func (tp *ascend310P) GetPresetVirtualDevices() {
-	tp.vHandle.DynamicByConf = tp.CheckVNPUSegmentEnableByConfig()
+	tp.vHandle.DynamicByConf = tp.FrameAttr.CheckVNPUSegmentEnableByConfig()
 }
 
 func (tp *ascend310P) InitVNPU() {

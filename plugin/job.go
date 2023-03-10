@@ -169,6 +169,9 @@ func GetVCTaskReqNPUTypeFromTaskInfo(vcTask *api.TaskInfo) (string, int) {
 // GetJobNPUTasks get NPUTask from jobInfo.
 func GetJobNPUTasks(vcJob *api.JobInfo) map[api.TaskID]util.NPUTask {
 	if vcJob == nil || len(vcJob.Tasks) == 0 {
+		if vcJob == nil {
+			klog.V(util.LogDebugLev).Infof("GetJobNPUTasks %s not init has no task.", vcJob.Name)
+		}
 		return nil
 	}
 	resultMap := make(map[api.TaskID]util.NPUTask, util.MapInitNum)
@@ -317,7 +320,7 @@ func (sJob SchedulerJob) ValidJobFn(vcFrame VolcanoFrame) *api.ValidateResult {
 		return &api.ValidateResult{
 			Pass:    false,
 			Reason:  msg,
-			Message: fmt.Sprintf("%s", errPreCheck.Error()),
+			Message: fmt.Sprintf("%s", errPreCheck),
 		}
 	}
 	if result := sJob.handler.ValidNPUJob(); result != nil {
