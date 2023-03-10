@@ -58,6 +58,7 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 	}
 	// Init npu plugin and nodes.
 	if err := tp.Scheduler.InitNPUSession(ssn); err != nil {
+		klog.V(util.LogErrorLev).Infof("InitNPUSession : %s, npu plugin will not be initialized.", err)
 		return
 	}
 	// check job npu resource, if illegal return failed
