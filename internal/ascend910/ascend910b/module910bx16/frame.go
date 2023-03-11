@@ -41,8 +41,8 @@ func New(name string) base.AscendHandler {
 	m.SetSingleAllowNumsMap(map[int]struct{}{1: {}, util.NPUIndex2: {}, util.NPUIndex4: {}, util.NPUIndex8: {},
 		util.NPUIndex16: {}})
 	m.AffScoreList = [][]int{
-		{util.AffScore0, util.AffScore2, util.AffScore3, util.AffScore4, util.AffScore5, util.AffScore6,
-			util.AffScore7, util.AffScore7},
+		{util.AffScore0, util.AffScore1, util.AffScore2, util.AffScore3, util.AffScore4, util.AffScore5,
+			util.AffScore6, util.AffScore7},
 		{util.AffScore8, util.AffScore0, util.AffScore1, util.AffScore2, util.AffScore3, util.AffScore4,
 			util.AffScore5, util.AffScore6},
 		{util.AffScore8, util.AffScore8, util.AffScore8, util.AffScore8, util.AffScore8, util.AffScore8,

@@ -29,6 +29,6 @@ type card910bx2 struct {
 
 const (
 	// SchedulerName name of scheduler
-	SchedulerName = "huawei.com/Ascend910card-910B-2"
+	SchedulerName = "huawei.com/Ascend910card-910b-2"
 	nodeNPUNumber = 2
 )
