@@ -30,12 +30,43 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
+// IsTaskNeedNPUAllocated to judge the task is static cut. true is dynamic cut.
+func (sHandle ScheduleHandler) IsTaskNeedNPUAllocated(task *api.TaskInfo) bool {
+	if !IsNPUTask(task) {
+		klog.V(util.LogDebugLev).Infof("IsTaskNeedNPUAllocated %s not npu task.", task.Name)
+		return false
+	}
+
+	vcJob, ok := sHandle.Jobs[task.Job]
+	if !ok {
+		klog.V(util.LogDebugLev).Infof("IsTaskNeedNPUAllocated %s not in npu jobs.", task.Job)
+		return false
+	}
+	nTask, ok := vcJob.Tasks[task.UID]
+	if !ok {
+		klog.V(util.LogDebugLev).Infof("IsTaskNeedNPUAllocated %s not in npu tasks.", task.Name)
+		return false
+	}
+	// static cut job no need allocated,it followed by kubelet in device-plugin.
+	if nTask.Type == util.JobTypeStCut {
+		klog.V(util.LogDebugLev).Infof("IsTaskNeedNPUAllocated %s is static cut job.", task.Name)
+		return false
+	}
+	return true
+}
+
 // NPUAllocateFunc Allocate npu and called by volcano frame.
 func (sHandle ScheduleHandler) NPUAllocateFunc(task *api.TaskInfo) {
 	if task == nil {
 		klog.V(util.LogErrorLev).Infof("NPUAllocateFunc %s.", util.ArgumentError)
 		return
 	}
+
+	if !sHandle.IsTaskNeedNPUAllocated(task) {
+		klog.V(util.LogDebugLev).Infof("NPUAllocateFunc %s no need to set pod annotation.", task.Name)
+		return
+	}
+
 	vcJob, ok := sHandle.Jobs[task.Job]
 	if !ok {
 		klog.V(util.LogDebugLev).Infof("NPUAllocateFunc %s not req npu.", task.Name)

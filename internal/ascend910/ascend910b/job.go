@@ -21,6 +21,7 @@ package ascend910b
 
 import (
 	"fmt"
+	"strings"
 
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -79,7 +80,7 @@ func (ab *Base910b) CheckJobForm() error {
 	}
 
 	if lValue != ab.GetAcceleratorValue() {
-		return fmt.Errorf("%s label:%s not right %s", ab.Name, ab.GetAcceleratorValue(), lValue)
+		return fmt.Errorf("%s label:%s not right(%s)", ab.Name, lValue, ab.GetAcceleratorValue())
 	}
 	return nil
 }
@@ -92,7 +93,7 @@ func (ab *Base910b) CheckJobArch() error {
 		return fmt.Errorf("%s not has no selector:%s", ab.Name, util.ArchSelector)
 	}
 
-	if lValue != ab.GetArch() {
+	if !strings.Contains(ab.GetArch(), lValue) {
 		return fmt.Errorf("%s selector:%s not right %s", ab.Name, util.ArchSelector, lValue)
 	}
 	return nil
@@ -162,6 +163,13 @@ func (ab *Base910b) getNPUAllocPriorityArray(taskNPUNumber int) ([]int, error) {
 		priorityArray = append(priorityArray, i)
 	}
 
+	if ab.MaxNodeNPUNum < util.NPUIndex8 {
+		priorityArray = []int{}
+		for i := taskNPUNumber; i <= len(ab.AffScoreList); i++ {
+			priorityArray = append(priorityArray, i)
+		}
+	}
+
 	if taskNPUNumber == ab.MaxNodeNPUNum {
 		priorityArray = []int{ab.MaxNodeNPUNum}
 	}
@@ -197,10 +205,10 @@ func (ab *Base910b) selectNPUFromNode(task *api.TaskInfo, node plugin.NPUNode) (
 
 	leftHCCSArray, rightHCCSArray := ab.getNodeHccsArray(nodeTop)
 	for _, priority := range priorityArray {
-		if priority == len(leftHCCSArray) {
+		if priority == len(leftHCCSArray) && len(leftHCCSArray) != 0 {
 			return leftHCCSArray[:taskNPUNum], nil
 		}
-		if priority == len(rightHCCSArray) {
+		if priority == len(rightHCCSArray) && len(rightHCCSArray) != 0 {
 			return rightHCCSArray[:taskNPUNum], nil
 		}
 	}
