@@ -53,8 +53,19 @@ func (ab *Base910b) getNodeHccsArray(nodeTop []int) ([]int, []int) {
 	var leftHccsArray []int
 	var rightHccsArray []int
 
+	idCutNum := ab.MaxNodeNPUNum / util.NPUIndex2
+	if ab.MaxNodeNPUNum < util.NPUIndex8 {
+		for _, v := range nodeTop {
+			if v < util.NPUIndex4 {
+				leftHccsArray = append(leftHccsArray, v)
+				continue
+			}
+			rightHccsArray = append(rightHccsArray, v)
+		}
+		return leftHccsArray, rightHccsArray
+	}
 	for _, v := range nodeTop {
-		if v < ab.MaxNodeNPUNum/util.NPUIndex2 {
+		if v < idCutNum {
 			leftHccsArray = append(leftHccsArray, v)
 			continue
 		}

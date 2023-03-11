@@ -89,8 +89,9 @@ func (ab *Base910b) initSelectNodeInf(npuTop []int) SelectNodeInf {
 	var leftHccsTop []int
 	var rightHccsTop []int
 
+	numHCCS := ab.MaxNodeNPUNum / util.NPUIndex2
 	for _, cardID := range npuTop {
-		if cardID < ab.MaxNodeNPUNum/util.NPUIndex2 {
+		if cardID < numHCCS {
 			leftHccsTop = append(leftHccsTop, cardID)
 		} else {
 			rightHccsTop = append(rightHccsTop, cardID)
@@ -127,14 +128,12 @@ func (ab *Base910b) Judge910BNodeAndTaskNPU(taskNPU int, nodeTop []int) error {
 
 // GetNodeBestScore Get node core
 func (ab *Base910b) GetNodeBestScore(taskNPUNum int, npuTop []int) (int, error) {
-	var bestScore = ab.MaxNodeNPUNum / util.NPUIndex2
-
+	var bestScore = len(ab.AffScoreList)
+	klog.V(util.LogErrorLev).Infof("haha===== %s %v.", ab.GetPluginName(), bestScore)
 	sNodeInf := ab.initSelectNodeInf(npuTop)
 	if sNodeInf.AllNPUNum < 1 ||
-		sNodeInf.AllNPUNum > ab.MaxNodeNPUNum ||
-		sNodeInf.RightNPUNum > bestScore ||
-		sNodeInf.LeftNPUNum > bestScore {
-		return bestScore, fmt.Errorf("node top %#v is invalid", npuTop)
+		sNodeInf.AllNPUNum > ab.MaxNodeNPUNum {
+		return 0, fmt.Errorf("node top %#v is invalid for %#v", npuTop, sNodeInf)
 	}
 
 	var err = fmt.Errorf("node %#v is not meet task req %d", npuTop, taskNPUNum)
@@ -144,19 +143,17 @@ func (ab *Base910b) GetNodeBestScore(taskNPUNum int, npuTop []int) (int, error) 
 		}
 		return 0, err
 	}
-	if taskNPUNum < 1 || taskNPUNum > ab.MaxNodeNPUNum {
-		return bestScore, fmt.Errorf("task req npu num<%d> is invalid", taskNPUNum)
-	}
+
 	switch {
 	case sNodeInf.RightNPUNum == 0:
 		bestScore = ab.AffScoreList[taskNPUNum-1][sNodeInf.LeftNPUNum-1]
 	case sNodeInf.LeftNPUNum == 0:
 		bestScore = ab.AffScoreList[taskNPUNum-1][sNodeInf.RightNPUNum-1]
 	default:
-		bestScore = util.Min(ab.AffScoreList[taskNPUNum-1][sNodeInf.RightNPUNum-1],
-			ab.AffScoreList[taskNPUNum-1][sNodeInf.LeftNPUNum-1])
+		bestScore = util.Min(ab.AffScoreList[taskNPUNum-1][sNodeInf.RightNPUNum-1]+sNodeInf.LeftNPUNum,
+			ab.AffScoreList[taskNPUNum-1][sNodeInf.LeftNPUNum-1]+sNodeInf.RightNPUNum)
 	}
-	if bestScore == ab.MaxNodeNPUNum {
+	if bestScore == len(ab.AffScoreList) {
 		return 0, err
 	}
 	return bestScore, nil
@@ -200,7 +197,7 @@ func (ab *Base910b) ScoreAscendNPUNodes(task *api.TaskInfo, nodes []*api.NodeInf
 				ab.GetPluginName(), node.Name)
 			continue
 		}
-		sMap[node.Name] = float64(ab.MaxNodeNPUNum * (int(healthyNPUNum/util.NPUHexKilo)*ab.MaxNodeNPUNum - bestScore))
+		sMap[node.Name] = float64(ab.MaxNodeNPUNum * (int(healthyNPUNum/util.NPUHexKilo) - bestScore))
 	}
 	klog.V(util.LogInfoLev).Infof("%s ScoreBestNPUNodes task<%s> sMap<%v>", ab.GetPluginName(),
 		task.Name, sMap)
