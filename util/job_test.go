@@ -126,7 +126,7 @@ func buildSetVJobTypeTestCase() []SetVJobTypeTest {
 		{
 			name: "02-TestSetVJobType JobTypeWhole status",
 			nJob: &NPUJob{
-				Tasks: map[api.TaskID]NPUTask{"task01": {VTask: &VTask{Type: JobTypeWhole}}},
+				Tasks: map[api.TaskID]NPUTask{"task01": {ReqNPUNum: 1, VTask: &VTask{Type: JobTypeWhole}}},
 				VJob:  &VJob{},
 			},
 			want: JobTypeWhole,
