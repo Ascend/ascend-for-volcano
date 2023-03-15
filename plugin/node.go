@@ -319,9 +319,7 @@ func (sHandle *ScheduleHandler) NodePredicate(taskInfo *api.TaskInfo, nodeInfo *
 	}
 	klog.V(util.LogInfoLev).Infof("enter node(%s) predicate", nodeInfo.Name)
 	defer klog.V(util.LogInfoLev).Infof("leave node(%s) predicate", nodeInfo.Name)
-	if !IsNPUTask(taskInfo) {
-		return nil
-	}
+
 	vcJob, ok := sHandle.Jobs[taskInfo.Job]
 	if !ok {
 		klog.V(util.LogInfoLev).Infof("NodePredicate not support job:%#v.", taskInfo.Job)
@@ -343,6 +341,9 @@ func (sHandle *ScheduleHandler) NodePredicate(taskInfo *api.TaskInfo, nodeInfo *
 			vcJob.Selector, vcNode.Name, vcNode.Label)
 		klog.V(util.LogErrorLev).Infof(meetErr.Error())
 		return meetErr
+	}
+	if !IsNPUTask(taskInfo) {
+		return nil
 	}
 	if err := vcNode.CheckNPUResourceStable(vcJob); err != nil {
 		return err
