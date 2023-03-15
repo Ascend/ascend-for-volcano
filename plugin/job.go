@@ -457,9 +457,6 @@ func (sJob *SchedulerJob) CheckNodeNum(taskInfo *api.TaskInfo, vcNode NPUNode) e
 		klog.V(util.LogErrorLev).Infof("CheckNodeNum %+v.", sJob.SchedulerJobAttr.NPUJob)
 		return fmt.Errorf("no %s in SchedulerJob", taskInfo.Name)
 	}
-	if !vcTask.IsNPUTask() {
-		return nil
-	}
 	nodeNPUNum, ok := vcNode.Idle[v1.ResourceName(vcTask.ReqNPUName)]
 	if !ok {
 		return fmt.Errorf("%s not have %s", vcNode.Name, vcTask.ReqNPUName)
