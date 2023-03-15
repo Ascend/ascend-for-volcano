@@ -342,6 +342,9 @@ func (sHandle *ScheduleHandler) NodePredicate(taskInfo *api.TaskInfo, nodeInfo *
 		klog.V(util.LogErrorLev).Infof(meetErr.Error())
 		return meetErr
 	}
+	if !IsNPUTask(taskInfo) {
+		return nil
+	}
 	if err := vcNode.CheckNPUResourceStable(vcJob); err != nil {
 		return err
 	}
