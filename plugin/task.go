@@ -101,7 +101,11 @@ func (sHandle *ScheduleHandler) releaseAnnotation(task *api.TaskInfo, vcJob Sche
 	}
 	reqStr, ok := task.Pod.Annotations[util.AscendNPUPodRealUse]
 	if !ok {
-		return
+		reqStr, ok = task.Pod.Annotations[vcTask.ReqNPUName]
+		if !ok {
+			return
+		}
+
 	}
 	reqSlice := strings.Split(reqStr, ",")
 	if len(reqSlice) != vcTask.ReqNPUNum {
