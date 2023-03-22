@@ -105,7 +105,6 @@ func (sHandle *ScheduleHandler) releaseAnnotation(task *api.TaskInfo, vcJob Sche
 		if !ok {
 			return
 		}
-
 	}
 	reqSlice := strings.Split(reqStr, ",")
 	if len(reqSlice) != vcTask.ReqNPUNum {
