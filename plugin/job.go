@@ -178,7 +178,6 @@ func GetJobNPUTasks(vcJob *api.JobInfo) map[api.TaskID]util.NPUTask {
 	for taskID, taskInf := range vcJob.Tasks {
 		name, num := GetVCTaskReqNPUTypeFromTaskInfo(taskInf)
 		if num == 0 {
-			resultMap[taskID] = util.NPUTask{}
 			continue
 		}
 		resultMap[taskID] = util.NPUTask{Name: taskInf.Name, NameSpace: taskInf.Namespace, ReqNPUName: name,
@@ -240,47 +239,40 @@ func (sJob *SchedulerJob) Init(vcJob *api.JobInfo, sHandle *ScheduleHandler) err
 // setJobType get job type, used in vJob temporary.
 func (sJob *SchedulerJob) initVTasks(vcJob *api.JobInfo) {
 	for tID, t := range vcJob.Tasks {
-		tmpTask, ok := sJob.Tasks[tID]
+		tmpTask, ok := sJob.SchedulerJobAttr.NPUJob.Tasks[tID]
 		if !ok {
-			klog.V(util.LogErrorLev).Infof("%s not in frame tasks.", tID)
+			klog.V(util.LogDebugLev).Infof("%s not in frame tasks.", tID)
 			continue
 		}
-
 		if initErr := tmpTask.InitVTask(t); initErr != nil {
 			klog.V(util.LogErrorLev).Infof("Init vTask %s %s.", tID, initErr)
 			continue
 		}
-
-		sJob.Tasks[tID] = tmpTask
+		sJob.SchedulerJobAttr.NPUJob.Tasks[tID] = tmpTask
 	}
 }
 
-// initVJob get job type, used in vJob temporary.
-func (sJob *SchedulerJob) initVJob(vcJob *api.JobInfo) {
-	sJob.VJob = &util.VJob{}
+// initNPUJob get job type, used in vJob temporary.
+func (sJob *SchedulerJob) initNPUJob(vcJob *api.JobInfo) {
 	sJob.SetJobType()
 	sJob.SetJobStatusByInf(vcJob)
-
-	if !sJob.IsVJob() {
-		klog.V(util.LogDebugLev).Infof("%s not VJob.", vcJob.Name)
-		return
-	}
 	sJob.initVTasks(vcJob)
 	return
 }
 
 func (sJob *SchedulerJob) initByJobInfo(vcJob *api.JobInfo) error {
-	sJob.ComJob = util.ComJob{Name: vcJob.UID, NameSpace: vcJob.Namespace,
+	sJob.SchedulerJobAttr.ComJob = util.ComJob{Name: vcJob.UID, NameSpace: vcJob.Namespace,
 		Selector: GetJobSelectorFromVcJob(vcJob),
 		Label:    GetJobLabelFromVcJob(vcJob)}
-	sJob.NPUJob = nil
+	sJob.SchedulerJobAttr.NPUJob = nil
 	sJob.handler = nil
 	name, num, err := GetVCJobReqNPUTypeFromJobInfo(vcJob)
 	if err != nil {
 		return err
 	}
-	sJob.NPUJob = &util.NPUJob{ReqNPUName: name, ReqNPUNum: num, Tasks: GetJobNPUTasks(vcJob)}
-	sJob.initVJob(vcJob)
+	sJob.SchedulerJobAttr.NPUJob = &util.NPUJob{ReqNPUName: name, ReqNPUNum: num, Tasks: GetJobNPUTasks(vcJob),
+		VJob: &util.VJob{}}
+	sJob.initNPUJob(vcJob)
 	return nil
 }
 
@@ -408,7 +400,6 @@ func (sHandle *ScheduleHandler) JobValid(obj interface{}) *api.ValidateResult {
 		return &api.ValidateResult{Pass: false, Reason: objectNilError,
 			Message: fmt.Sprintf("validJobFn [%#v] failed:%#v", obj, objectNilError)}
 	}
-
 	job, ok := obj.(*api.JobInfo)
 	if !ok {
 		reason := "job convert failed"

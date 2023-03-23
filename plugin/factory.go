@@ -144,7 +144,7 @@ func (vf *VolcanoFrame) AddDefaultSchedulerSelectorConfig() {
 	}
 }
 
-// CheckVNPUSegmentEnableByConfig Check VNPU segmentEnable by init plugin parameters, return true if dynamic
+// CheckVNPUSegmentEnableByConfig Check VNPU segmentEnable by init plugin parameters, return true if static
 func (vf *VolcanoFrame) CheckVNPUSegmentEnableByConfig() bool {
 	configuration, err := util.GetConfigFromSchedulerConfigMap(util.CMInitParamKey, vf.Conf)
 	if err != nil {
@@ -157,7 +157,7 @@ func (vf *VolcanoFrame) CheckVNPUSegmentEnableByConfig() bool {
 		klog.V(util.LogDebugLev).Info("checkVNPUSegmentEnable doesn't exist presetVirtualDevice.")
 		return false
 	}
-	if segmentEnable == "false" {
+	if segmentEnable == "true" {
 		return true
 	}
 	return false
