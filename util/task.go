@@ -261,7 +261,7 @@ func (asTask *NPUTask) ComputeTaskType() int {
 }
 
 func (asTask *NPUTask) setVTaskType() {
-	asTask.Type = asTask.ComputeTaskType()
+	asTask.VTask.Type = asTask.ComputeTaskType()
 }
 
 func getVTaskUsePhysicsNamesByInfo(taskInf *api.TaskInfo) []string {

@@ -29,7 +29,7 @@ func (tp *ascend310P) GetVNPUTemplate() {
 }
 
 func (tp *ascend310P) GetPresetVirtualDevices() {
-	tp.vHandle.DynamicByConf = tp.FrameAttr.CheckVNPUSegmentEnableByConfig()
+	tp.vHandle.DynamicByConf = !tp.FrameAttr.CheckVNPUSegmentEnableByConfig()
 }
 
 func (tp *ascend310P) InitVNPU() {
@@ -251,6 +251,9 @@ func initDyCutConCacheByJobInfo(nodes map[string]map[string]map[api.TaskID]struc
 		return fmt.Errorf("initDyCutConCacheByJobInfo :%s", util.ArgumentError)
 	}
 	for taskID, vT := range vJob.Tasks {
+		if !vT.IsNPUTask() {
+			continue
+		}
 		if vT.Status == util.TaskStatusAllocate {
 			taskInfo, taskOK := jobInf.Tasks[taskID]
 			if !taskOK {

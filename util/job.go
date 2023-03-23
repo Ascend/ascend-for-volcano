@@ -142,13 +142,13 @@ func (nJob *NPUJob) setJobType() {
 			continue
 		}
 		value := nTask.ComputeTaskType()
-		nJob.Type = value
+		nJob.VJob.Type = value
 		tmpTypes[value] = struct{}{}
 	}
 
 	// all NPU Task type in job must be same.
 	if len(tmpTypes) != 1 {
-		nJob.Type = JobTypeUnknown
+		nJob.VJob.Type = JobTypeUnknown
 		return
 	}
 }
@@ -168,5 +168,5 @@ func (nJob *NPUJob) SetJobStatusByInf(vcJob *api.JobInfo) {
 	if nJob == nil {
 		return
 	}
-	nJob.Status = vcJob.PodGroup.Status.Phase
+	nJob.VJob.Status = vcJob.PodGroup.Status.Phase
 }
