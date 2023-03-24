@@ -47,8 +47,8 @@ type VTemplate struct {
 
 // VirtualNPU vnpu struct
 type VirtualNPU struct {
-	DynamicByConf bool
-	VT            VTemplate
+	StaticByConf bool
+	VT           VTemplate
 	StaticVNPU
 	DynamicVNPU
 }

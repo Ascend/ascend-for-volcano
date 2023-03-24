@@ -253,10 +253,10 @@ func TestGetTaskResource(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var tp = &VirtualNPU{
-				DynamicByConf: tt.fields.DynamicByConf,
-				VT:            tt.fields.VT,
-				StaticVNPU:    tt.fields.StaticVNPU,
-				DynamicVNPU:   tt.fields.DynamicVNPU,
+				StaticByConf: tt.fields.DynamicByConf,
+				VT:           tt.fields.VT,
+				StaticVNPU:   tt.fields.StaticVNPU,
+				DynamicVNPU:  tt.fields.DynamicVNPU,
 			}
 			got, err := tp.GetTaskResource(tt.args.task, tt.args.node)
 			if !reflect.DeepEqual(err, tt.wantErr) {
