@@ -45,13 +45,13 @@ type TestCheckStVJobReqTest struct {
 func buildTestCheckStVJobReqTestCase01() []TestCheckStVJobReqTest {
 	tests := []TestCheckStVJobReqTest{
 		{
-			Name:    "01-TestCheckStVJobReq will return err when vHandle.DynamicByConf is true",
-			vHandle: &vnpu.VirtualNPU{DynamicByConf: true},
+			Name:    "01-TestCheckStVJobReq will return err when vHandle.StaticByConf is true",
+			vHandle: &vnpu.VirtualNPU{StaticByConf: true},
 			WantErr: errors.New("volcano configuration presetVirtualDevice false, only support dynamic vnpu"),
 		},
 		{
-			Name:    "02-TestCheckStVJobReq will return err when vHandle.DynamicByConf is true",
-			vHandle: &vnpu.VirtualNPU{DynamicByConf: false},
+			Name:    "02-TestCheckStVJobReq will return err when vHandle.StaticByConf is true",
+			vHandle: &vnpu.VirtualNPU{StaticByConf: false},
 			Tasks: map[api.TaskID]util.NPUTask{
 				"1234": {
 					Name:       "task0",
@@ -62,7 +62,7 @@ func buildTestCheckStVJobReqTestCase01() []TestCheckStVJobReqTest {
 		},
 		{
 			Name:    "03-TestCheckStVJobReq will return err when ReqNPUNum is not 1",
-			vHandle: &vnpu.VirtualNPU{DynamicByConf: false},
+			vHandle: &vnpu.VirtualNPU{StaticByConf: false},
 			Tasks: map[api.TaskID]util.NPUTask{"1234": {
 				Name:       "task0",
 				ReqNPUName: PluginName,
@@ -105,20 +105,20 @@ func buildTestCheckDyVJobReqTestCase01() []TestCheckDyVJobReqTest {
 		{
 			Name:    "01-TestCheckDyVJobReq will return err when job is not VJob",
 			NPUJob:  &util.NPUJob{ReqNPUName: util.NPU310PCardName},
-			vHandle: &vnpu.VirtualNPU{DynamicByConf: true},
+			vHandle: &vnpu.VirtualNPU{StaticByConf: true},
 			Tasks:   map[api.TaskID]util.NPUTask{"1234": {Name: "task0"}},
 			WantErr: errors.New(" not VirtualNPU job"),
 		},
 		{
-			Name:    "02-TestCheckStVJobReq will return err when vHandle.DynamicByConf is false",
-			vHandle: &vnpu.VirtualNPU{DynamicByConf: false},
+			Name:    "02-TestCheckStVJobReq will return err when vHandle.StaticByConf is false",
+			vHandle: &vnpu.VirtualNPU{StaticByConf: false},
 			NPUJob:  &util.NPUJob{ReqNPUName: util.AscendNPUCore},
 			Tasks:   map[api.TaskID]util.NPUTask{"1234": {Name: "task1"}},
 			WantErr: errors.New("volcano configuration presetVirtualDevice true, only support static vnpu"),
 		},
 		{
 			Name:    "03-TestCheckStVJobReq will return err when ReqNPUNum is not 1",
-			vHandle: &vnpu.VirtualNPU{DynamicByConf: true},
+			vHandle: &vnpu.VirtualNPU{StaticByConf: true},
 			NPUJob:  &util.NPUJob{ReqNPUName: util.AscendNPUCore},
 			Tasks: map[api.TaskID]util.NPUTask{"1234": {
 				Name:      "task2",
