@@ -29,7 +29,7 @@ func (tp *ascend310P) GetVNPUTemplate() {
 }
 
 func (tp *ascend310P) GetPresetVirtualDevices() {
-	tp.vHandle.DynamicByConf = !tp.FrameAttr.CheckVNPUSegmentEnableByConfig()
+	tp.vHandle.StaticByConf = tp.FrameAttr.CheckVNPUSegmentEnableByConfig()
 }
 
 func (tp *ascend310P) InitVNPU() {
@@ -41,7 +41,7 @@ func (tp *ascend310P) InitVNPU() {
 }
 
 func (tp *ascend310P) checkStVJobReq() error {
-	if tp.vHandle.DynamicByConf {
+	if tp.vHandle.StaticByConf {
 		return fmt.Errorf("volcano configuration %s false, only support dynamic vnpu", util.SegmentEnable)
 	}
 	for _, vT := range tp.Tasks {
@@ -66,7 +66,7 @@ func (tp *ascend310P) checkDyVJobReq() error {
 	if !tp.IsVJob() {
 		return fmt.Errorf("%s not VirtualNPU job", tp.Name)
 	}
-	if !tp.vHandle.DynamicByConf {
+	if tp.vHandle.StaticByConf {
 		return fmt.Errorf("volcano configuration %s true, only support static vnpu", util.SegmentEnable)
 	}
 	for _, vT := range tp.Tasks {
