@@ -129,7 +129,6 @@ func (ab *Base910b) Judge910BNodeAndTaskNPU(taskNPU int, nodeTop []int) error {
 // GetNodeBestScore Get node core
 func (ab *Base910b) GetNodeBestScore(taskNPUNum int, npuTop []int) (int, error) {
 	var bestScore = len(ab.AffScoreList)
-	klog.V(util.LogErrorLev).Infof("haha===== %s %v.", ab.GetPluginName(), bestScore)
 	sNodeInf := ab.initSelectNodeInf(npuTop)
 	if sNodeInf.AllNPUNum < 1 ||
 		sNodeInf.AllNPUNum > ab.MaxNodeNPUNum {

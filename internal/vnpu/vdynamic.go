@@ -83,6 +83,8 @@ func (tp *VirtualNPU) CheckNodeNPUByDyTask(task *api.TaskInfo, node plugin.NPUNo
 			tp.DowngradeCache[task.Name] = append(tp.DowngradeCache[task.Name], node.Name)
 			return tp.CheckNodeNPUByDyTask(task, node, tp.downgradeTaskAICPU(taskResReq))
 		}
+		klog.V(util.LogInfoLev).Infof("CheckNodeNPUByDyTask %s req %#v , %s has %#v", task.Name,
+			taskResReq, node.Name, node.VNode.Chips)
 		return fmt.Errorf("dynamic vnpu task<%s> CheckNodeNPUByDyTask node %s resource not enough",
 			task.Name, node.Name)
 	}
