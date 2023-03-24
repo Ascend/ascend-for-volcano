@@ -41,7 +41,7 @@ func (tp *ascend310P) InitVNPU() {
 }
 
 func (tp *ascend310P) checkStVJobReq() error {
-	if tp.vHandle.StaticByConf {
+	if !tp.vHandle.StaticByConf {
 		return fmt.Errorf("volcano configuration %s false, only support dynamic vnpu", util.SegmentEnable)
 	}
 	for _, vT := range tp.Tasks {
