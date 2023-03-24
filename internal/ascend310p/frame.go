@@ -112,7 +112,19 @@ func (tp *ascend310P) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode
 		}
 		return nil
 	}
-	switch tp.Type {
+	nJob, jobOK := tp.NPUHandler.Jobs[task.Job]
+	if !jobOK {
+		err = fmt.Errorf("%s not in jobs", task.Job)
+		klog.V(util.LogDebugLev).Infof("%s CheckNodeNPUByTask %s.", tp.GetPluginName(), err)
+		return err
+	}
+	tpTask, ok := nJob.NPUJob.Tasks[task.UID]
+	if !ok {
+		err = fmt.Errorf("%s not in tasks", task.Name)
+		klog.V(util.LogDebugLev).Infof("%s CheckNodeNPUByTask %s.", tp.GetPluginName(), err)
+		return err
+	}
+	switch tpTask.VTask.Type {
 	case util.JobTypeWhole:
 		if err = tp.NPUHandler.CheckNodeNPUByTask(task, node); err != nil {
 			return err
@@ -188,7 +200,17 @@ func (tp *ascend310P) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *pl
 		// this is the old whole card.
 		return tp.NPUHandler.UseAnnotation(task, node)
 	}
-	switch tp.Type {
+	nJob, jobOK := tp.NPUHandler.Jobs[task.Job]
+	if !jobOK {
+		klog.V(util.LogDebugLev).Infof("%s UseAnnotation %s not exist in jobs.", tp.GetPluginName(), task.Job)
+		return &node
+	}
+	tpTask, taskOk := nJob.NPUJob.Tasks[task.UID]
+	if !taskOk {
+		klog.V(util.LogDebugLev).Infof("%s UseAnnotation %s not npu tasks.", tp.GetPluginName(), task.Name)
+		return &node
+	}
+	switch tpTask.VTask.Type {
 	case util.JobTypeWhole:
 		return tp.NPUHandler.UseAnnotation(task, node)
 	case util.JobTypeStCut:
