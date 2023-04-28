@@ -208,11 +208,41 @@ func (fNode *FaultNode) updateFaultNodesAttr(node *plugin.NPUNode) error {
 	tmpFaultCards, err := fNode.createFaultCardHandlers(node)
 	if err != nil {
 		klog.V(util.LogDebugLev).Infof("Getting node card failed: %#v", err)
+		return err
 	}
 	fNode.setFaultCards(tmpFaultCards)
 
-	// 2. judge if node is unhealthy because of card unhealthy
-	for _, card := range tmpFaultCards {
+	fNode.setNodeHealthStateValue(NodeHealthy)
+	fNode.setIsFaultNodeValue(false)
+
+	// 2. judge if node is unhealthy by NodeD
+	fNode.setNodeHealthyByNodeD(node)
+	if fNode.NodeHealthState == NodeUnhealthy {
+		return nil
+	}
+
+	// 3. set node health state by card unhealthy
+	fNode.setNodeHealthyByCardHealth(node)
+	return nil
+}
+
+func (fNode *FaultNode) setNodeHealthyByNodeD(node *plugin.NPUNode) {
+	if !fNode.isNodeDEnabled(node) {
+		klog.V(util.LogInfoLev).Infof("node %s nodeD not enabled", node.Name)
+		fNode.setNodeDValue(false)
+		return
+	}
+	fNode.setNodeDValue(true)
+	// 1. last node heartbeat update time until now being greater than maxInterval indicates unhealthy
+	if !fNode.isNodeHealthyByHeartbeat() {
+		fNode.setIsFaultNodeValue(true)
+		fNode.setNodeHealthStateValue(NodeUnhealthy)
+		klog.V(util.LogInfoLev).Infof("Node %s health state set %s for wrong heartbeat", node.Name, NodeUnhealthy)
+	}
+}
+
+func (fNode *FaultNode) setNodeHealthyByCardHealth(node *plugin.NPUNode) {
+	for _, card := range fNode.FaultCards {
 		if !card.IsFaultCard {
 			continue
 		}
@@ -227,30 +257,7 @@ func (fNode *FaultNode) updateFaultNodesAttr(node *plugin.NPUNode) error {
 		default:
 			klog.V(util.LogInfoLev).Infof("card health state %s illegal", card.FaultType)
 		}
-		return nil
 	}
-	fNode.setNodeHealthStateValue(NodeHealthy)
-	fNode.setIsFaultNodeValue(false)
-
-	// 3. Ensure nodeD enabled to get node heartbeat
-	if !fNode.isNodeDEnabled(node) {
-		klog.V(util.LogInfoLev).Infof("node %s nodeD not enabled", node.Name)
-		fNode.setNodeDValue(false)
-		return nil
-	}
-	fNode.setNodeDValue(true)
-
-	// 4. last node heartbeat update time until now being greater than maxInterval indicates unhealthy
-	if fNode.isNodeHealthyByHeartbeat() {
-		fNode.setIsFaultNodeValue(false)
-		fNode.setNodeHealthStateValue(NodeHealthy)
-		klog.V(util.LogInfoLev).Infof("Node %s health state set to %s", node.Name, NodeHealthy)
-		return nil
-	}
-	fNode.setIsFaultNodeValue(true)
-	fNode.setNodeHealthStateValue(NodeUnhealthy)
-	klog.V(util.LogInfoLev).Infof("Node %s health state set %s for wrong heartbeat", node.Name, NodeUnhealthy)
-	return nil
 }
 
 func (fNode *FaultNode) isNodeDEnabled(node *plugin.NPUNode) bool {
