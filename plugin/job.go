@@ -400,12 +400,6 @@ func (sHandle *ScheduleHandler) JobValid(obj interface{}) *api.ValidateResult {
 		return &api.ValidateResult{Pass: false, Reason: objectNilError,
 			Message: fmt.Sprintf("validJobFn [%#v] failed:%#v", obj, objectNilError)}
 	}
-	if !sHandle.FrameAttr.CheckVNPUSegmentEnableByConfig() {
-		reason := "only support preset virtualDevice"
-		klog.V(util.LogErrorLev).Infof("JobValid :%s.", reason)
-		return &api.ValidateResult{Pass: false, Reason: reason,
-			Message: fmt.Sprintf("validJobFn %s", reason)}
-	}
 	job, ok := obj.(*api.JobInfo)
 	if !ok {
 		reason := "job convert failed"
