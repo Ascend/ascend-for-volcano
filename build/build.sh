@@ -17,13 +17,21 @@
 
 set -e
 
-DEFAULT_VER='v5.0.RC1'
+# BASE_VER only support v1.4.0 or v1.7.0
+if [ ! -n "$1" ]; then
+    BASE_VER=v1.7.0
+else
+    BASE_VER=$1
+fi
+
+echo "Build Version is ${BASE_VER}"
+
+DEFAULT_VER='v5.0.RC2'
 TOP_DIR=${GOPATH}/src/volcano.sh/volcano/
 BASE_PATH=${GOPATH}/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/
 CMD_PATH=${GOPATH}/src/volcano.sh/volcano/cmd/
 PKG_PATH=volcano.sh/volcano/pkg
 DATE=$(date "+%Y-%m-%d %H:%M:%S")
-BASE_VER=v1.4.0
 
 function parse_version() {
     version_file="${TOP_DIR}"/service_config.ini
@@ -49,6 +57,10 @@ function clean() {
     rm -f "${BASE_PATH}"/output/vc-controller-manager
     rm -f "${BASE_PATH}"/output/vc-scheduler
     rm -f "${BASE_PATH}"/output/*.so
+}
+
+function copy_yaml() {
+    cp "${BASE_PATH}"/build/volcano-"${BASE_VER}".yaml "${BASE_PATH}"/output/
 }
 
 function build() {
@@ -94,6 +106,7 @@ function build() {
 
 function main() {
   clean
+  copy_yaml
   build
 }
 

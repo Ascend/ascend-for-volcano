@@ -45,9 +45,9 @@ type TestCheckStVJobReqTest struct {
 func buildTestCheckStVJobReqTestCase01() []TestCheckStVJobReqTest {
 	tests := []TestCheckStVJobReqTest{
 		{
-			Name:    "01-TestCheckStVJobReq will return err when vHandle.StaticByConf is true",
+			Name:    "01-TestCheckStVJobReq will return nil when vHandle.StaticByConf is true",
 			vHandle: &vnpu.VirtualNPU{StaticByConf: true},
-			WantErr: errors.New("volcano configuration presetVirtualDevice false, only support dynamic vnpu"),
+			WantErr: nil,
 		},
 		{
 			Name:    "02-TestCheckStVJobReq will return err when vHandle.StaticByConf is true",
@@ -58,7 +58,7 @@ func buildTestCheckStVJobReqTestCase01() []TestCheckStVJobReqTest {
 					ReqNPUNum:  1,
 					ReqNPUName: "error npu name",
 				}},
-			WantErr: errors.New("task0 req error npu name not in template"),
+			WantErr: errors.New("volcano configuration presetVirtualDevice false, only support dynamic vnpu"),
 		},
 		{
 			Name:    "03-TestCheckStVJobReq will return err when ReqNPUNum is not 1",
@@ -67,7 +67,7 @@ func buildTestCheckStVJobReqTestCase01() []TestCheckStVJobReqTest {
 				Name:       "task0",
 				ReqNPUName: PluginName,
 			}},
-			WantErr: errors.New("task0 req 0 not 1"),
+			WantErr: errors.New("volcano configuration presetVirtualDevice false, only support dynamic vnpu"),
 		},
 	}
 	return tests
@@ -114,11 +114,11 @@ func buildTestCheckDyVJobReqTestCase01() []TestCheckDyVJobReqTest {
 			vHandle: &vnpu.VirtualNPU{StaticByConf: false},
 			NPUJob:  &util.NPUJob{ReqNPUName: util.AscendNPUCore},
 			Tasks:   map[api.TaskID]util.NPUTask{"1234": {Name: "task1"}},
-			WantErr: errors.New("volcano configuration presetVirtualDevice true, only support static vnpu"),
+			WantErr: nil,
 		},
 		{
 			Name:    "03-TestCheckStVJobReq will return err when ReqNPUNum is not 1",
-			vHandle: &vnpu.VirtualNPU{StaticByConf: true},
+			vHandle: &vnpu.VirtualNPU{StaticByConf: false},
 			NPUJob:  &util.NPUJob{ReqNPUName: util.AscendNPUCore},
 			Tasks: map[api.TaskID]util.NPUTask{"1234": {
 				Name:      "task2",

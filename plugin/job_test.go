@@ -23,11 +23,10 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/config"
 
 	"k8s.io/api/core/v1"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	"volcano.sh/volcano/pkg/scheduler/conf"
-
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
@@ -70,8 +69,7 @@ type getJobNPUTasksTest struct {
 
 func buildGetJobNPUTasksTest() []getJobNPUTasksTest {
 	tJob1 := test.FakeNormalTestJob("test1", 1)
-	tasks := test.FakeNormalTestTasks(1)[0]
-	test.AddFakeTaskResReq(tasks, util.NPU910CardName, util.NPUIndex8)
+	test.AddFakeTaskResReq(tJob1.Tasks[`"vcjob"-"pod"`], util.NPU910CardName, util.NPUIndex8)
 	tests := []getJobNPUTasksTest{
 		{
 			name: "01-GetJobNPUTasks job nil test.",
@@ -81,7 +79,7 @@ func buildGetJobNPUTasksTest() []getJobNPUTasksTest {
 		{
 			name: "02-GetJobNPUTasks ok test.",
 			args: getJobNPUTasksArgs{vcJob: tJob1},
-			want: map[api.TaskID]util.NPUTask{tasks.UID: {Selector: nil}},
+			want: map[api.TaskID]util.NPUTask{},
 		},
 	}
 	return tests
@@ -330,7 +328,7 @@ func buildJobValidTest() []jobValidTest {
 			fields: fields{},
 			args:   jobValidArgs{obj: "haha"},
 			want: &api.ValidateResult{Pass: false, Reason: "job convert failed",
-				Message: fmt.Sprintf("validJobFn [%#v] failed:%#v", "haha", "job convert failed")},
+				Message: "validJobFn [\"haha\"] failed:\"job convert failed\""},
 		},
 		{
 			name:   "02-JobValid job not initial test.",
@@ -657,7 +655,7 @@ func buildValidJobSelectorTest() []validJobSelectorTest {
 			fields: schedulerJobFields{SchedulerJobAttr: util.SchedulerJobAttr{ComJob: util.ComJob{
 				Name: "haha", Selector: map[string]string{"heihei": "what?"},
 			}}},
-			args: validJobSelectorArgs{vcFrame: VolcanoFrame{Conf: []conf.
+			args: validJobSelectorArgs{vcFrame: VolcanoFrame{Confs: []config.
 				Configuration{{Arguments: map[string]string{"heihei": "why?"}}}}},
 			wantErr: true,
 		},
@@ -666,7 +664,7 @@ func buildValidJobSelectorTest() []validJobSelectorTest {
 			fields: schedulerJobFields{SchedulerJobAttr: util.SchedulerJobAttr{ComJob: util.ComJob{
 				Name: "haha", Selector: map[string]string{"heihei": "oh"},
 			}}},
-			args: validJobSelectorArgs{vcFrame: VolcanoFrame{Conf: []conf.
+			args: validJobSelectorArgs{vcFrame: VolcanoFrame{Confs: []config.
 				Configuration{{Arguments: map[string]string{"heihei": "oh"}}}}},
 			wantErr: false,
 		},

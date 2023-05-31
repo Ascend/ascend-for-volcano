@@ -23,6 +23,7 @@ import (
 	"errors"
 	"strings"
 
+	"gopkg.in/yaml.v2"
 	v12 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
@@ -31,6 +32,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/config"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
@@ -126,27 +128,42 @@ func (vf *VolcanoFrame) AddDefaultSchedulerSelectorConfig() {
 	defaultSchedulerConfig[util.AcceleratorType] = util.CardAcceleratorType + "|" + util.ModuleAcceleratorType +
 		"|" + util.ChipAcceleratorType
 
-	if len(vf.Conf) == 0 {
-		vf.Conf = []conf.Configuration{{Name: util.CMSelectorKey, Arguments: defaultSchedulerConfig}}
+	defaultCfg := config.Configuration{Name: util.CMSelectorKey, Arguments: defaultSchedulerConfig}
+
+	if len(vf.Confs) == 0 {
+		vf.Confs = []config.Configuration{defaultCfg}
 		return
 	}
-	if len(vf.Conf[0].Arguments) == 0 {
-		vf.Conf[0].Arguments = defaultSchedulerConfig
+
+	var selectorConf config.Configuration
+	var index int
+	for idx, selectors := range vf.Confs {
+		if selectors.Name == util.CMSelectorKey {
+			selectorConf = selectors
+			index = idx
+			break
+		}
+	}
+
+	if len(selectorConf.Arguments) == 0 {
+		vf.Confs[index] = defaultCfg
 		return
 	}
+
 	for k, v := range defaultSchedulerConfig {
-		confs, ok := vf.Conf[0].Arguments[k]
+		confs, ok := selectorConf.Arguments[k]
 		if ok {
-			vf.Conf[0].Arguments[k] = addConf(confs, v)
+			selectorConf.Arguments[k] = addConf(confs, v)
 			continue
 		}
-		vf.Conf[0].Arguments[k] = v
+		selectorConf.Arguments[k] = v
 	}
+	vf.Confs[index] = selectorConf
 }
 
 // CheckVNPUSegmentEnableByConfig Check VNPU segmentEnable by init plugin parameters, return true if static
 func (vf *VolcanoFrame) CheckVNPUSegmentEnableByConfig() bool {
-	configuration, err := util.GetConfigFromSchedulerConfigMap(util.CMInitParamKey, vf.Conf)
+	configuration, err := util.GetConfigFromSchedulerConfigMap(util.CMInitParamKey, vf.Confs)
 	if err != nil {
 		klog.V(util.LogDebugLev).Info("cannot get configuration, segmentEnable.")
 		return false
@@ -202,11 +219,32 @@ func (sHandle *ScheduleHandler) InitVolcanoFrameFromSsn(ssn *framework.Session) 
 	}
 	sHandle.FrameAttr = VolcanoFrame{
 		UID:          ssn.UID,
-		Conf:         ssn.Configurations,
+		Confs:        initConfsFromSsn(ssn.Configurations),
 		KubeClient:   ssn.KubeClient(),
 		VJobTemplate: sHandle.GetJobTemplate(),
 	}
+
 	sHandle.FrameAttr.AddDefaultSchedulerSelectorConfig()
+}
+
+func initConfsFromSsn(confs []conf.Configuration) []config.Configuration {
+	var out []byte
+	var err error
+	newConfs := make([]config.Configuration, len(confs))
+	for idx, cfg := range confs {
+		newCfg := &config.Configuration{}
+		out, err = yaml.Marshal(cfg)
+		if err != nil {
+			klog.V(util.LogInfoLev).Infof("Marshal configuration failed: %s.", err)
+			continue
+		}
+		if err = yaml.Unmarshal(out, newCfg); err != nil {
+			klog.V(util.LogInfoLev).Infof("Unmarshal configuration failed: %s.", err)
+			continue
+		}
+		newConfs[idx] = *newCfg
+	}
+	return newConfs
 }
 
 // InitJobsPlugin init job by plugins.

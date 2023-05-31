@@ -41,6 +41,12 @@ const (
 	AscendNPUPodRealUse = "huawei.com/AscendReal"
 	// FakeUpdateTime fake update time for test
 	FakeUpdateTime = int64(11110)
+	// FakeJobName fake job namespace/name
+	FakeJobName = "vcjob/job"
+	// FakeTaskName0 fake task name
+	FakeTaskName0 = `"vcjob"-"pod0"`
+	// FakeTaskName1 fake task name
+	FakeTaskName1 = `"vcjob"-"pod1"`
 )
 
 // NPUPod test NPU pod struct

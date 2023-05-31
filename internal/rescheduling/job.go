@@ -202,6 +202,16 @@ func (fJob *FaultJob) isJobInSession(jobs map[api.JobID]plugin.SchedulerJob) boo
 	return ok
 }
 
+func (fJob *FaultJob) jobInfoInSession(jobs map[api.JobID]*api.JobInfo) *api.JobInfo {
+	for _, job := range jobs {
+		if job.Namespace == fJob.JobNamespace &&
+			(job.Name == fJob.JobName || referenceNameOfJob(job) == fJob.ReferenceName) {
+			return job
+		}
+	}
+	return nil
+}
+
 func (fJob *FaultJob) getJobUseNodes() []string {
 	jobUseNodes := make([]string, len(fJob.FaultTasks))
 	for i, fTask := range fJob.FaultTasks {
@@ -254,14 +264,14 @@ func (fJob *FaultJob) setIsFaultJob(value bool) {
 	fJob.IsFaultJob = value
 }
 
-func newFaultJobDefault(jobName, jobNamespace string, jobUID api.JobID, updateTime int64) FaultJob {
+func newFaultJobDefault(job *api.JobInfo, updateTime int64) FaultJob {
 	faultJob := FaultJob{
 		ReScheduleKey:       JobOffRescheduleLabelValue, // off/grace/force
 		IsFaultJob:          false,
 		IsInSession:         true,
-		JobName:             jobName,
-		JobUID:              jobUID,
-		JobNamespace:        jobNamespace,
+		JobName:             job.Name,
+		JobUID:              job.UID,
+		JobNamespace:        job.Namespace,
 		JobRankIds:          nil,
 		NodeNames:           nil,
 		FaultTasks:          nil,
@@ -270,6 +280,14 @@ func newFaultJobDefault(jobName, jobNamespace string, jobUID api.JobID, updateTi
 		FaultTypes:          nil,
 		DeleteExecutedFlag:  false,
 		ElasticScheduling:   JobOffElasticScheduling,
+		ReferenceName:       referenceNameOfJob(job),
 	}
 	return faultJob
+}
+
+func referenceNameOfJob(job *api.JobInfo) string {
+	if job.PodGroup != nil && len(job.PodGroup.OwnerReferences) > 0 {
+		return job.PodGroup.OwnerReferences[0].Name
+	}
+	return ""
 }

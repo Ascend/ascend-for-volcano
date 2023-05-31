@@ -175,6 +175,6 @@ func FakeTaskWithResReq(name, resName string, resNum int) *api.TaskInfo {
 		ReqSource: buildNPUResourceList("1", "1000", v1.ResourceName(resName), strconv.Itoa(resNum)),
 	}
 	task := api.NewTaskInfo(BuildNPUPod(pod))
-	task.Job = "vcjob/job"
+	task.Job = FakeJobName
 	return task
 }

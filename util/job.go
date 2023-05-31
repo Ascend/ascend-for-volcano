@@ -77,7 +77,6 @@ func IsSelectorMeetJob(jobSelectors, conf map[string]string) bool {
 			klog.V(LogErrorLev).Infof("conf has no job selector key:%s.", jobKey)
 			return false
 		}
-
 		if !strings.Contains(confValue, jobValue) {
 			klog.V(LogErrorLev).Infof("conf has no job selector value:%s.", jobValue)
 			return false

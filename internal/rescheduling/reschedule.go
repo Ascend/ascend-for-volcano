@@ -29,15 +29,15 @@ import (
 	"k8s.io/klog"
 	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/config"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
 // GetGraceDeleteTime Get the graceful delete time from configuration
-func (reScheduler *ReScheduler) GetGraceDeleteTime(Conf []conf.Configuration) (int64, error) {
+func (reScheduler *ReScheduler) GetGraceDeleteTime(Conf []config.Configuration) (int64, error) {
 	klog.V(util.LogInfoLev).Infof("enter GetGraceDeleteTime ...")
 	defer klog.V(util.LogInfoLev).Infof("leave GetGraceDeleteTime ...")
 	if reScheduler == nil {
@@ -237,7 +237,7 @@ func (reScheduler *ReScheduler) AddFaultJobWithSession(
 		}
 		// 2. create FaultJob objects for jobs not in cache but sent by session
 		klog.V(util.LogDebugLev).Infof("Add job %s to cache", jobInfo.Name)
-		faultJob := newFaultJobDefault(jobInfo.Name, jobInfo.Namespace, jobInfo.UID, nowTime)
+		faultJob := newFaultJobDefault(jobInfo, nowTime)
 		faultJob = reScheduler.updateNewFaultJobAttr(faultJob, jobInfo, cardName, cardPreName)
 		reScheduler.FaultJobs = append(reScheduler.FaultJobs, faultJob)
 	}
@@ -324,8 +324,8 @@ func (reScheduler *ReScheduler) GetNeedForceDeleteDelayingNPUJobs(
 	var forceJobs []plugin.SchedulerJob
 	graceDeleteFaultJobs := reScheduler.getGraceDeleteFaultJobs()
 	for _, fJob := range graceDeleteFaultJobs {
-		jobInfo, ok := ssn.Jobs[fJob.JobUID] // if job in cache not in session, do not force delete
-		if !ok {
+		jobInfo := fJob.jobInfoInSession(ssn.Jobs)
+		if jobInfo == nil {
 			klog.V(util.LogDebugLev).Infof(
 				"GetNeedForceDeleteDelayingNPUJobs %v not in ssn.Jobs.", fJob.JobName)
 		}
@@ -370,7 +370,7 @@ func New(env *plugin.ScheduleEnv, jobType string) *ReScheduler {
 	}
 	// 1. Initialise ReScheduler.graceDeleteTime
 	klog.V(util.LogDebugLev).Infof("Initialising graceDeleteTime.")
-	graceDeleteTime, err := faultReScheduler.GetGraceDeleteTime(env.FrameAttr.Conf)
+	graceDeleteTime, err := faultReScheduler.GetGraceDeleteTime(env.FrameAttr.Confs)
 	if err != nil {
 		klog.V(util.LogDebugLev).Infof("GetGraceDeleteTime %#v.", err)
 	}
@@ -496,7 +496,8 @@ func (reScheduler *ReScheduler) SynCacheFaultJobWithSession(
 			continue
 		}
 
-		if !faultJob.isJobInSession(reScheduler.Jobs) {
+		jobInfo := faultJob.jobInfoInSession(ssn.Jobs)
+		if jobInfo == nil {
 			klog.V(util.LogDebugLev).Infof("faultJob name: %s not in session", faultJob.JobName)
 			if !faultJob.CheckJobExistsInKubernetes(ssn) { // 1.1 delete jobs not in session or k8s
 				klog.V(util.LogInfoLev).Infof(
@@ -509,7 +510,6 @@ func (reScheduler *ReScheduler) SynCacheFaultJobWithSession(
 			continue
 		}
 		// 2. cache Jobs turned normal in session should be deleted ,meaning it has been restarted
-		jobInfo, _ := ssn.Jobs[faultJob.JobUID]
 		if faultJob.isJobGraceDeleteSuccess(jobInfo) {
 			klog.V(util.LogDebugLev).Infof("%s grace deleted successful.", faultJob.JobName)
 			if jobInfo.PodGroup.Status.Phase == scheduling.PodGroupRunning { // new job successfully running
@@ -1023,6 +1023,10 @@ func (reScheduler ReScheduler) getSchedulerJobOfGivenUIDFromReScheduler(jobUID a
 func (reScheduler ReScheduler) getFaultJobOfGivenTaskInfoFromCache(taskInfo *api.TaskInfo) *FaultJob {
 	for _, fJob := range reScheduler.FaultJobs {
 		if fJob.JobUID == taskInfo.Job {
+			return &fJob
+		}
+		if len(fJob.JobUID) > util.LenOfUuid && len(taskInfo.Job) > util.LenOfUuid &&
+			util.CutUuidInResourceName(string(fJob.JobUID)) == util.CutUuidInResourceName(string(taskInfo.Job)) {
 			return &fJob
 		}
 	}

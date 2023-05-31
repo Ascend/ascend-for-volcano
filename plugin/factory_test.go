@@ -22,13 +22,13 @@ package plugin
 import (
 	"reflect"
 	"testing"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/config"
 
 	"github.com/agiledragon/gomonkey/v2"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
@@ -427,7 +427,7 @@ func TestUnRegisterNPUScheduler(t *testing.T) {
 
 type frameFields struct {
 	UID        types.UID
-	Conf       []conf.Configuration
+	Conf       []config.Configuration
 	KubeClient kubernetes.Interface
 }
 
@@ -453,7 +453,7 @@ func TestVolcanoFrameAddDefaultSchedulerSelectorConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			vf := &VolcanoFrame{
 				UID:        tt.fields.UID,
-				Conf:       tt.fields.Conf,
+				Confs:      tt.fields.Conf,
 				KubeClient: tt.fields.KubeClient,
 			}
 			vf.AddDefaultSchedulerSelectorConfig()

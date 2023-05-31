@@ -31,6 +31,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/conf"
 
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/config"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
@@ -281,7 +282,7 @@ type FaultReSchedulerGetGraceDeleteTimeFields struct {
 }
 
 type FaultReSchedulerGetGraceDeleteTimeArgs struct {
-	conf           []conf.Configuration
+	conf           []config.Configuration
 	cacheFunBefore func()
 	cacheFunAfter  func()
 }
@@ -294,16 +295,16 @@ type FaultReSchedulerGetGraceDeleteTimeTests struct {
 	wantErr bool
 }
 
-func fakeSchedulerConfiguration(_ string, _ []conf.Configuration) *conf.Configuration {
-	schedulerConf := &conf.Configuration{
+func fakeSchedulerConfiguration(_ string, _ []conf.Configuration) *config.Configuration {
+	schedulerConf := &config.Configuration{
 		Name:      "util.CMInitParamKey",
 		Arguments: map[string]string{GraceOverTimeKey: "800"},
 	}
 	return schedulerConf
 }
 
-func fakeSchedulerConfGraceOverTime() []conf.Configuration {
-	schedulerConf := []conf.Configuration{
+func fakeSchedulerConfGraceOverTime() []config.Configuration {
+	schedulerConf := []config.Configuration{
 		{
 			Name:      "util.CMInitParamKey",
 			Arguments: map[string]string{GraceOverTimeKey: "800"},
@@ -312,7 +313,7 @@ func fakeSchedulerConfGraceOverTime() []conf.Configuration {
 	return schedulerConf
 }
 
-func buildFaultReSchedulerGetGraceDeleteArgs(conf2 []conf.Configuration,
+func buildFaultReSchedulerGetGraceDeleteArgs(conf2 []config.Configuration,
 	tmpPatche *gomonkey.Patches) FaultReSchedulerGetGraceDeleteTimeArgs {
 	args := FaultReSchedulerGetGraceDeleteTimeArgs{
 		conf: conf2,
@@ -466,16 +467,16 @@ func fakeCacheWithFJobReSchedulerAddFaultJobWithSession() *DealReSchedulerCache 
 func reAddFaultJobWithSessionModifyJobInfo(jobInfos map[api.JobID]*api.JobInfo) map[api.JobID]*api.JobInfo {
 	jobInfos["vcjob/job0"].PodGroup.Labels = map[string]string{JobRescheduleLabelKey: "grace"}
 	jobInfos["vcjob/job1"].PodGroup.Labels = map[string]string{JobRescheduleLabelKey: "grace"}
-	jobInfos["vcjob/job0"].Tasks[`"vcjob"-"pod1"`].Pod.Annotations =
+	jobInfos["vcjob/job0"].Tasks[test.FakeTaskName1].Pod.Annotations =
 		map[string]string{podRankIndex: "0", util.NPU910CardName: "Ascend910-0,Ascend910-1"}
-	jobInfos["vcjob/job0"].Tasks[`"vcjob"-"pod1"`].Pod.Annotations =
+	jobInfos["vcjob/job0"].Tasks[test.FakeTaskName1].Pod.Annotations =
 		map[string]string{podRankIndex: "1", util.NPU910CardName: "Ascend910-0,Ascend910-1"}
-	jobInfos["vcjob/job1"].Tasks[`"vcjob"-"pod1"`].Pod.Annotations =
+	jobInfos["vcjob/job1"].Tasks[test.FakeTaskName1].Pod.Annotations =
 		map[string]string{podRankIndex: "2", util.NPU910CardName: "Ascend910-0,Ascend910-1"}
-	jobInfos["vcjob/job1"].Tasks[`"vcjob"-"pod1"`].Pod.Annotations =
+	jobInfos["vcjob/job1"].Tasks[test.FakeTaskName1].Pod.Annotations =
 		map[string]string{podRankIndex: "3", util.NPU910CardName: "Ascend910-0,Ascend910-1"}
-	jobInfos["vcjob/job1"].Tasks[`"vcjob"-"pod0"`].NodeName = "node3"
-	jobInfos["vcjob/job1"].Tasks[`"vcjob"-"pod1"`].NodeName = "node4"
+	jobInfos["vcjob/job1"].Tasks[test.FakeTaskName0].NodeName = "node3"
+	jobInfos["vcjob/job1"].Tasks[test.FakeTaskName1].NodeName = "node4"
 	return jobInfos
 }
 

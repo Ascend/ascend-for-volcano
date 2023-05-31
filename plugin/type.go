@@ -21,8 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	"volcano.sh/volcano/pkg/scheduler/conf"
-
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/config"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
@@ -90,7 +89,7 @@ type SchedulerJob struct {
 // VolcanoFrame passed in by the volcano frame.
 type VolcanoFrame struct {
 	UID          types.UID
-	Conf         []conf.Configuration
+	Confs        []config.Configuration
 	KubeClient   kubernetes.Interface
 	VJobTemplate map[string]map[string]util.VResource
 }

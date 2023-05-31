@@ -168,10 +168,11 @@ func GetVCTaskReqNPUTypeFromTaskInfo(vcTask *api.TaskInfo) (string, int) {
 
 // GetJobNPUTasks get NPUTask from jobInfo.
 func GetJobNPUTasks(vcJob *api.JobInfo) map[api.TaskID]util.NPUTask {
-	if vcJob == nil || len(vcJob.Tasks) == 0 {
-		if vcJob == nil {
-			klog.V(util.LogDebugLev).Infof("GetJobNPUTasks %s not init has no task.", vcJob.Name)
-		}
+	if vcJob == nil {
+		return nil
+	}
+	if len(vcJob.Tasks) == 0 {
+		klog.V(util.LogDebugLev).Infof("GetJobNPUTasks %s not init has no task.", vcJob.Name)
 		return nil
 	}
 	resultMap := make(map[api.TaskID]util.NPUTask, util.MapInitNum)
@@ -283,16 +284,16 @@ func (sJob SchedulerJob) IsNPUJob() bool {
 
 // ValidJobSelector validate the job selector.
 func (sJob SchedulerJob) ValidJobSelector(vcFrame VolcanoFrame) error {
-	if len(sJob.Selector) == 0 || len(vcFrame.Conf) == 0 || len(vcFrame.Conf[0].Arguments) == 0 {
+	if len(sJob.Selector) == 0 || len(vcFrame.Confs) == 0 || len(vcFrame.Confs[0].Arguments) == 0 {
 		msg := fmt.Errorf("%s or vcFrame's selectors nil", sJob.Name)
 		klog.V(util.LogErrorLev).Infof("%s.", msg.Error())
 		return msg
 	}
 
 	// check the job selector
-	if !util.IsSelectorMeetJob(sJob.Selector, vcFrame.Conf[0].Arguments) {
+	if !util.IsSelectorMeetJob(sJob.Selector, vcFrame.Confs[0].Arguments) {
 		meetErr := fmt.Errorf("job(%s) selector:%#v not meet scheduler conf:%#v", sJob.Name, sJob.Selector,
-			vcFrame.Conf[0].Arguments)
+			vcFrame.Confs[0].Arguments)
 		klog.V(util.LogErrorLev).Infof(meetErr.Error())
 		return meetErr
 	}
@@ -399,12 +400,6 @@ func (sHandle *ScheduleHandler) JobValid(obj interface{}) *api.ValidateResult {
 	if sHandle == nil {
 		return &api.ValidateResult{Pass: false, Reason: objectNilError,
 			Message: fmt.Sprintf("validJobFn [%#v] failed:%#v", obj, objectNilError)}
-	}
-	if !sHandle.FrameAttr.CheckVNPUSegmentEnableByConfig() {
-		reason := "only support preset virtualDevice"
-		klog.V(util.LogErrorLev).Infof("JobValid :%s.", reason)
-		return &api.ValidateResult{Pass: false, Reason: reason,
-			Message: fmt.Sprintf("validJobFn %s", reason)}
 	}
 	job, ok := obj.(*api.JobInfo)
 	if !ok {

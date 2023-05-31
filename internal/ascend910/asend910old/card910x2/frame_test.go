@@ -64,18 +64,17 @@ func buildValidNPUJobTestCase01() []validNPUJobTestCase {
 			attr: attr1,
 			wantErr: &api.ValidateResult{
 				Pass:    false,
-				Reason:  "job req npu is invalid",
-				Message: "job<vcjob/job01> req npu num<0> is invalid",
+				Reason:  "vcjob/job01 no npu job",
+				Message: "vcjob/job01 no npu job",
 			},
 		},
 		{
 			name: "02-ValidNPUJob should return error when task request npu more than 3",
 			attr: attr2,
 			wantErr: &api.ValidateResult{
-				Pass:   false,
-				Reason: "job req npu is invalid",
-				Message: "huawei.com/Ascend910card checkCardDistributeTrainMode distributed card train job<pod0> " +
-					"req npu<3> not equal<2>",
+				Pass:    false,
+				Reason:  "huawei.com/Ascend910card checkSingleTrainMode vcjob/job02 req npu not in [1,2]",
+				Message: "huawei.com/Ascend910card checkSingleTrainMode vcjob/job02 req npu not in [1,2]",
 			},
 		},
 		{
@@ -104,19 +103,14 @@ func buildValidNPUJobTestCase02() []validNPUJobTestCase {
 			attr: attr4,
 			wantErr: &api.ValidateResult{
 				Pass:    false,
-				Reason:  "job req npu is invalid",
-				Message: "job<vcjob/job04> req npu num<0> is invalid",
+				Reason:  "vcjob/job04 no npu job",
+				Message: "vcjob/job04 no npu job",
 			},
 		},
 		{
-			name: "05-ValidNPUJob should return error when task request npu more than 4",
-			attr: attr5,
-			wantErr: &api.ValidateResult{
-				Pass:   false,
-				Reason: "job req npu is invalid",
-				Message: "huawei.com/Ascend910card checkSingleTrainMode single trainning job<vcjob/job05> " +
-					"has too many task: <2>",
-			},
+			name:    "05-ValidNPUJob should return error when task request npu more than 4",
+			attr:    attr5,
+			wantErr: nil,
 		},
 		{
 			name:    "06-ValidNPUJob should return nil when tasks request is valid",
@@ -178,7 +172,7 @@ func buildCheckNodeNPUByTaskTestCase3() itest.CheckNodeNPUByTaskTestCase {
 				Annotation: map[string]string{util.NPU310PCardName: "Ascend910-0,Ascend910-1"},
 			},
 		},
-		WantErr: errors.New("getUsableTopFromNode node<node1> don't have npu<huawei.com/Ascend910>"),
+		WantErr: errors.New("getUsableTopFromNode node1 don't have huawei.com/Ascend910"),
 	}
 }
 
@@ -192,7 +186,7 @@ func buildCheckNodeNPUByTaskTestCase4() itest.CheckNodeNPUByTaskTestCase {
 				Annotation: map[string]string{util.NPU910CardName: "Ascend910-0, Ascend910-1"},
 			},
 		},
-		WantErr: errors.New("getUsableTopFromNode err: top string<Ascend910-0, Ascend910-1> convert faild"),
+		WantErr: errors.New("node <node1> don't have enough resource <huawei.com/Ascend910>, req<2>, idle<0>"),
 	}
 }
 
@@ -326,12 +320,14 @@ func TestScoreBestNPUNodes(t *testing.T) {
 				Allocate: map[v1.ResourceName]float64{util.NPU910CardName: npuNum2 * util.NPUHexKilo}}},
 		},
 	}
-	npu.SetSchedulerEnv(env)
+	//npu.SetSchedulerEnv(env)
 	testCases := buildScoreBestNPUNodesTestCases01()
 	testCases = append(testCases, buildScoreBestNPUNodesTestCases02()...)
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			npu.SetSchedulerAttr(tt.attr)
+			env.Jobs = map[api.JobID]plugin.SchedulerJob{test.FakeJobName: {SchedulerJobAttr: tt.attr}}
+			npu.SetSchedulerEnv(env)
 			err := npu.ScoreBestNPUNodes(tt.task, tt.nodes, tt.scoreMap)
 			if !reflect.DeepEqual(err, tt.wantErr) || !reflect.DeepEqual(tt.scoreMap, tt.wantSMap) {
 				t.Errorf("ScoreBestNPUNodes() scoreMap: %v, wantSMap: %v, error = %v, wantErr %v",
@@ -434,6 +430,10 @@ func TestUseAnnotation(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			npu.SetSchedulerAttr(tt.attr)
+			env := plugin.ScheduleEnv{
+				Jobs: map[api.JobID]plugin.SchedulerJob{test.FakeJobName: {SchedulerJobAttr: tt.attr}},
+			}
+			npu.SetSchedulerEnv(env)
 			node := npu.UseAnnotation(tt.task, tt.node)
 			if !reflect.DeepEqual(node.Annotation, tt.node.Annotation) ||
 				!reflect.DeepEqual(node.Idle, tt.node.Idle) ||

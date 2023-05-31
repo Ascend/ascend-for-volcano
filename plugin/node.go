@@ -335,6 +335,7 @@ func (sHandle *ScheduleHandler) NodePredicate(taskInfo *api.TaskInfo, nodeInfo *
 		klog.V(util.LogInfoLev).Infof("NodePredicate %s not in.", nodeInfo.Name)
 		return nil
 	}
+
 	// task and frame conf has check before in job valid.
 	if !util.IsSelectorMeetJob(vcJob.Selector, vcNode.Label) {
 		meetErr := fmt.Errorf("job(%s) selector:%#v not meet node<%s> label or selector:%#v", vcJob.Name,

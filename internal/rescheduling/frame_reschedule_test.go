@@ -35,9 +35,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/config"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/base"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
@@ -367,7 +367,7 @@ func fakeEnvEmpty() plugin.ScheduleEnv {
 		},
 	}
 	frameAttr := plugin.VolcanoFrame{
-		Conf: []conf.Configuration{
+		Confs: []config.Configuration{
 			{
 				Name:      util.CMInitParamKey,
 				Arguments: map[string]string{GraceOverTimeKey: "800"},
