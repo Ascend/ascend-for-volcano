@@ -75,8 +75,8 @@ func FakeSSNReSchedule() *framework.Session {
 }
 
 func modifyJobInf(jobInf0 *api.JobInfo, jobInf1 *api.JobInfo) {
-	taskName0 := `"vcjob"-"pod0"`
-	taskName1 := `"vcjob"-"pod1"`
+	taskName0 := FakeTaskName0
+	taskName1 := FakeTaskName1
 	annoCards := "Ascend910-0,Ascend910-1,Ascend910-2,Ascend910-3,Ascend910-4,Ascend910-5,Ascend910-6,Ascend910-7"
 	jobInf0.PodGroup.Labels = make(map[string]string, npuIndex3)
 	jobInf1.PodGroup.Labels = make(map[string]string, npuIndex3)

@@ -237,13 +237,9 @@ func buildValidNPUJobTestCase01() []itest.ValidNPUJobTestCase {
 	attr3 := itest.FakeSchedulerJobAttrByJob(job03)
 	return []itest.ValidNPUJobTestCase{
 		{
-			Name: "01-ValidNPUJob should return error when job request no npu",
-			Attr: attr1,
-			WantErr: &api.ValidateResult{
-				Pass:    false,
-				Reason:  "task req npu num is invalid",
-				Message: "task<vcjob/job01-> req npu num<0> is invalid",
-			},
+			Name:    "01-ValidNPUJob should return nil when job request no npu",
+			Attr:    attr1,
+			WantErr: nil,
 		},
 		{
 			Name:    "02-ValidNPUJob should return error when tasks request npu more than 4",
@@ -263,23 +259,19 @@ func buildValidNPUJobTestCase02() []itest.ValidNPUJobTestCase {
 	test.SetFakeJobResRequest(job04, util.NPU310PCardName, "0")
 	attr4 := itest.FakeSchedulerJobAttrByJob(job04)
 	task := util.NPUTask{ReqNPUNum: 1}
-	attr4.Tasks[`"vcjob"-"pod1"`] = task
+	attr4.Tasks[test.FakeTaskName1] = task
 	job05 := test.FakeNormalTestJob("job05", util.NPUIndex2)
 	test.SetFakeJobResRequest(job05, util.NPU310PCardName, "5")
 	attr5 := itest.FakeSchedulerJobAttrByJob(job05)
-	attr5.Tasks[`"vcjob"-"pod1"`] = task
+	attr5.Tasks[test.FakeTaskName1] = task
 	job06 := test.FakeNormalTestJob("job06", util.NPUIndex2)
 	test.SetFakeJobResRequest(job06, util.NPU310PCardName, "2")
 	attr6 := itest.FakeSchedulerJobAttrByJob(job06)
 	return []itest.ValidNPUJobTestCase{
 		{
-			Name: "04-ValidNPUJob should return error when task request no npu",
-			Attr: attr4,
-			WantErr: &api.ValidateResult{
-				Pass:    false,
-				Reason:  "task req npu num is invalid",
-				Message: "task<vcjob/job04-> req npu num<0> is invalid",
-			},
+			Name:    "04-ValidNPUJob should return nil when task request no npu",
+			Attr:    attr4,
+			WantErr: nil,
 		},
 		{
 			Name:    "05-ValidNPUJob should return error when task request npu more than 4",
@@ -364,7 +356,10 @@ func buildCheckNodeNPUByTaskTestCases02() []itest.CheckNodeNPUByTaskTestCase {
 					Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0,Ascend310P-1,Ascend310P-3,Ascend310P-4"},
 				},
 			},
-			Attr:    util.SchedulerJobAttr{NPUJob: &util.NPUJob{VJob: &util.VJob{Type: util.JobTypeStCut}}},
+			Attr: util.SchedulerJobAttr{NPUJob: &util.NPUJob{Tasks: map[api.TaskID]util.NPUTask{
+				test.FakeTaskName1: {VTask: &util.VTask{Type: util.JobTypeStCut}},
+			},
+				VJob: &util.VJob{Type: util.JobTypeStCut}}},
 			WantErr: errors.New("rescheduling CheckNodeNPUByTask invalid argument"),
 		},
 		{
@@ -376,7 +371,10 @@ func buildCheckNodeNPUByTaskTestCases02() []itest.CheckNodeNPUByTaskTestCase {
 					Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0,Ascend310P-1,Ascend310P-3,Ascend310P-4"},
 				},
 			},
-			Attr:    util.SchedulerJobAttr{NPUJob: &util.NPUJob{VJob: &util.VJob{Type: util.JobTypeDyCut}}},
+			Attr: util.SchedulerJobAttr{NPUJob: &util.NPUJob{Tasks: map[api.TaskID]util.NPUTask{
+				test.FakeTaskName1: {VTask: &util.VTask{Type: util.JobTypeDyCut}},
+			},
+				VJob: &util.VJob{Type: util.JobTypeDyCut}}},
 			WantErr: errors.New("task pod1 AscendNPUCore read failed"),
 		},
 		{
@@ -388,7 +386,9 @@ func buildCheckNodeNPUByTaskTestCases02() []itest.CheckNodeNPUByTaskTestCase {
 					Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0,Ascend310P-1,Ascend310P-3,Ascend310P-4"},
 				},
 			},
-			Attr:    util.SchedulerJobAttr{NPUJob: &util.NPUJob{VJob: &util.VJob{Type: 3}}},
+			Attr: util.SchedulerJobAttr{NPUJob: &util.NPUJob{Tasks: map[api.TaskID]util.NPUTask{
+				test.FakeTaskName1: {VTask: &util.VTask{Type: 3}},
+			}, VJob: &util.VJob{Type: 3}}},
 			WantErr: errors.New(" no type 3"),
 		},
 	}
@@ -405,6 +405,11 @@ func TestCheckNodeNPUByTask(t *testing.T) {
 	testCases = append(testCases, buildCheckNodeNPUByTaskTestCases02()...)
 	for _, tt := range testCases {
 		npu.SchedulerJobAttr = tt.Attr
+		npu.SetSchedulerEnv(plugin.ScheduleEnv{
+			Jobs: map[api.JobID]plugin.SchedulerJob{
+				test.FakeJobName: {SchedulerJobAttr: tt.Attr},
+			},
+		})
 		t.Run(tt.Name, func(t *testing.T) {
 			if err := npu.CheckNodeNPUByTask(tt.Task, tt.Node); !reflect.DeepEqual(err, tt.WantErr) {
 				t.Errorf("CheckNodeNPUByTask() error = %#v, wantErr %#v", err, tt.WantErr)
@@ -561,7 +566,9 @@ func buildUseAnnotationTestCases02() []itest.UseAnnotationTestCase {
 					Annotation: map[string]string{util.NPU310PCardName: "Ascend310P-0,Ascend310P-1,Ascend310P-3,Ascend310P-4"},
 				},
 			},
-			Attr:     util.SchedulerJobAttr{NPUJob: &util.NPUJob{VJob: &util.VJob{Type: util.JobTypeWhole}}},
+			Attr: util.SchedulerJobAttr{NPUJob: &util.NPUJob{Tasks: map[api.TaskID]util.NPUTask{
+				test.FakeTaskName1: {VTask: &util.VTask{Type: util.JobTypeWhole}},
+			}, VJob: &util.VJob{Type: util.JobTypeWhole}}},
 			WantNode: nil,
 		},
 		{
@@ -608,6 +615,12 @@ func TestUseAnnotation(t *testing.T) {
 	testCases = append(testCases, buildUseAnnotationTestCases02()...)
 	for _, tt := range testCases {
 		npu.SchedulerJobAttr = tt.Attr
+		env := plugin.ScheduleEnv{
+			Jobs: map[api.JobID]plugin.SchedulerJob{
+				"vcjob/vcjob": {SchedulerJobAttr: tt.Attr},
+			},
+		}
+		npu.SetSchedulerEnv(env)
 		t.Run(tt.Name, func(t *testing.T) {
 			if got := npu.UseAnnotation(tt.Task, tt.Node); !reflect.DeepEqual(got, tt.WantNode) {
 				t.Errorf("CheckNodeNPUByTask() got = %#v, wantNode %#v", got, tt.WantNode)

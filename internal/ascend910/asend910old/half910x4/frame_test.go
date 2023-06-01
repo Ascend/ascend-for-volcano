@@ -65,20 +65,18 @@ func buildValidNPUJobTestCase01() []itest.ValidNPUJobTestCase {
 			Name: "01-ValidNPUJob should return error when job request no npu",
 			Attr: attr1,
 			WantErr: &api.ValidateResult{
-				Pass:   false,
-				Reason: "job req npu is invalid",
-				Message: "huawei.com/Ascend910half checkSingleTrainMode job<vcjob/job01> req npu num is not " +
-					"[1 or 2 or 4]",
+				Pass:    false,
+				Reason:  "vcjob/job01 no npu job",
+				Message: "vcjob/job01 no npu job",
 			},
 		},
 		{
 			Name: "02-ValidNPUJob should return error when tasks request is not 1-2-4",
 			Attr: attr2,
 			WantErr: &api.ValidateResult{
-				Pass:   false,
-				Reason: "job req npu is invalid",
-				Message: "huawei.com/Ascend910half checkSingleTrainMode job<vcjob/job02> req npu num is not " +
-					"[1 or 2 or 4]",
+				Pass:    false,
+				Reason:  "huawei.com/Ascend910half checkSingleTrainMode vcjob/job02 req npu not in [1,2,4]",
+				Message: "huawei.com/Ascend910half checkSingleTrainMode vcjob/job02 req npu not in [1,2,4]",
 			},
 		},
 		{
@@ -95,12 +93,12 @@ func buildValidNPUJobTestCase02() []itest.ValidNPUJobTestCase {
 	test.SetFakeJobResRequest(job04, util.NPU910CardName, "4")
 	attr4 := itest.FakeSchedulerJobAttrByJob(job04)
 	task1 := util.NPUTask{Name: "pod0", ReqNPUNum: npuNum5}
-	attr4.Tasks[`"vcjob"-"pod0"`] = task1
+	attr4.Tasks[test.FakeTaskName0] = task1
 	job05 := test.FakeNormalTestJob("job05", util.NPUIndex2)
 	test.SetFakeJobResRequest(job05, util.NPU910CardName, "4")
 	attr5 := itest.FakeSchedulerJobAttrByJob(job05)
 	task2 := util.NPUTask{Name: "pod0", ReqNPUNum: 1}
-	attr5.Tasks[`"vcjob"-"pod0"`] = task2
+	attr5.Tasks[test.FakeTaskName0] = task2
 	job06 := test.FakeNormalTestJob("job06", util.NPUIndex2)
 	test.SetFakeJobResRequest(job06, util.NPU910CardName, "4")
 	attr6 := itest.FakeSchedulerJobAttrByJob(job06)
@@ -110,8 +108,8 @@ func buildValidNPUJobTestCase02() []itest.ValidNPUJobTestCase {
 			Attr: attr4,
 			WantErr: &api.ValidateResult{
 				Pass:    false,
-				Reason:  "job req npu is invalid",
-				Message: "checkModuleDistributeTrainMode half distributeTrain task<pod0> req npu[5] not equal [4]",
+				Reason:  "huawei.com/Ascend910half checkSingleTrainMode vcjob/job04 req npu not in [1,2,4]",
+				Message: "huawei.com/Ascend910half checkSingleTrainMode vcjob/job04 req npu not in [1,2,4]",
 			},
 		},
 		{
@@ -119,8 +117,8 @@ func buildValidNPUJobTestCase02() []itest.ValidNPUJobTestCase {
 			Attr: attr5,
 			WantErr: &api.ValidateResult{
 				Pass:    false,
-				Reason:  "job req npu is invalid",
-				Message: "checkModuleDistributeTrainMode half distributeTrain task<pod0> req npu[1] not equal [4]",
+				Reason:  "huawei.com/Ascend910half checkSingleTrainMode vcjob/job05 req npu not in [1,2,4]",
+				Message: "huawei.com/Ascend910half checkSingleTrainMode vcjob/job05 req npu not in [1,2,4]",
 			},
 		},
 		{
@@ -182,7 +180,7 @@ func buildCheckNodeNPUByTaskTestCases01() []itest.CheckNodeNPUByTaskTestCase {
 					Annotation: map[string]string{util.NPU310CardName: "Ascend310-0,Ascend310-1,Ascend310-2"},
 				},
 			},
-			WantErr: errors.New("getUsableTopFromNode node<node1> don't have npu<huawei.com/Ascend910>"),
+			WantErr: errors.New("getUsableTopFromNode node1 don't have huawei.com/Ascend910"),
 		},
 	}
 
@@ -199,7 +197,7 @@ func buildCheckNodeNPUByTaskTestCases02() []itest.CheckNodeNPUByTaskTestCase {
 					Annotation: map[string]string{util.NPU910CardName: "Ascend910-0, Ascend910-1"},
 				},
 			},
-			WantErr: errors.New("getUsableTopFromNode err: top string<Ascend910-0, Ascend910-1> convert faild"),
+			WantErr: errors.New("checkNodeNPUByTask the npus on this node don't satisfy the schedulable topology err: [] not meet req npu(4)"),
 		},
 		{
 			Name: "05-CheckNodeNPUByTask return err when node has no req npu",
@@ -431,12 +429,13 @@ func buildFakeScheduleEnv() plugin.ScheduleEnv {
 // TestCheckNodeNPUByTask
 func TestScoreBestNPUNodes(t *testing.T) {
 	npu := New(SchedulerName)
-	env := buildFakeScheduleEnv()
-	npu.SetSchedulerEnv(env)
 	job := test.FakeNormalTestJob("job", 1)
 	test.SetFakeJobResRequest(job, util.NPU910CardName, "1")
 	attr := itest.FakeSchedulerJobAttrByJob(job)
 	npu.SetSchedulerAttr(attr)
+	env := buildFakeScheduleEnv()
+	env.Jobs = map[api.JobID]plugin.SchedulerJob{test.FakeJobName: {SchedulerJobAttr: attr}}
+	npu.SetSchedulerEnv(env)
 	testCases := buildScoreBestNPUNodesTestCases01()
 	testCases = append(testCases, buildScoreBestNPUNodesTestCases02()...)
 	for _, tt := range testCases {
@@ -478,6 +477,10 @@ func TestUseAnnotation(t *testing.T) {
 	test.SetFakeJobResRequest(job, util.NPU910CardName, "1")
 	attr := itest.FakeSchedulerJobAttrByJob(job)
 	npu.SetSchedulerAttr(attr)
+	env := plugin.ScheduleEnv{
+		Jobs: map[api.JobID]plugin.SchedulerJob{test.FakeJobName: {SchedulerJobAttr: attr}},
+	}
+	npu.SetSchedulerEnv(env)
 	testCases := buildUseAnnotationTestCases01()
 	for _, tt := range testCases {
 		t.Run(tt.Name, func(t *testing.T) {

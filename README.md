@@ -409,19 +409,19 @@
 
 ## 编译Volcano<a name="section1922947135013"></a>
 
-1. 执行以下命令，在“$GOPATH/src/volcano.sh/“目录下拉取Volcano v1.4.0版本官方开源代码。
+1. 执行以下命令，在“$GOPATH/src/volcano.sh/“目录下拉取Volcano v1.4.0（或v1.7.0）版本官方开源代码。
 
     **cd** **$GOPATH/src/volcano.sh/**
     **git clone -b release-1.4 https://github.com/volcano-sh/volcano.git**
 
 2. 将代码目录“ascend-for-volcano“重命名为“ascend-volcano-plugin”拷贝至Volcano官方开源代码的插件路径下（“$GOPATH/src/volcano.sh/volcano/pkg/scheduler/plugins/“）。
-3. 执行以下命令，编译Volcano二进制文件和so文件。
+3. 执行以下命令，编译Volcano二进制文件和so文件。根据开源代码版本，为build.sh脚本选择对应的参数，如v1.4.0.
 
     **cd** **$GOPATH/src/volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/build**
 
     **chmod +x build.sh**
 
-    **./build.sh**
+    **./build.sh v1.4.0** 
 
     编译出的二进制文件和动态链接库文件在“ascend-volcano-plugin/output“目录下，文件[表1](#table922124765019)所示。
   

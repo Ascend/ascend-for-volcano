@@ -104,6 +104,10 @@ func (tp *ascend310P) ValidNPUJob() *api.ValidateResult {
 // CheckNodeNPUByTask check nod npu meet task req
 func (tp *ascend310P) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode) error {
 	klog.V(util.LogDebugLev).Infof("%s CheckNodeNPUByTask job(%s).", tp.GetPluginName(), tp.Name)
+	if task == nil || len(node.Annotation) == 0 {
+		return errors.New(util.ArgumentError)
+	}
+
 	var err error
 	if tp.VJob == nil {
 		// this is the old whole card.

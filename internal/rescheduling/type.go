@@ -202,6 +202,7 @@ type FaultJob struct {
 	FaultTypes          []string
 	DeleteExecutedFlag  bool
 	ElasticScheduling   string
+	ReferenceName       string
 }
 
 // NodeHeartbeat object recording nodes and their heartbeats

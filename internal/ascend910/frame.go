@@ -194,6 +194,9 @@ func (tp *ascend910) PreStopAction(env *plugin.ScheduleEnv) error {
 			}
 			klog.V(util.LogErrorLev).Infof("preStopAction %s error: %v", name, err)
 		}
+		if err := handler.InitMyJobPlugin(util.SchedulerJobAttr{}, plugin.ScheduleEnv{}); err != nil {
+			klog.V(util.LogErrorLev).Infof("PreStartAction init plugin failed, err: %s", err)
+		}
 	}
 	return nil
 }
