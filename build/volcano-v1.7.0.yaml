@@ -147,6 +147,8 @@ spec:
       nodeSelector:
         masterselector: dls-master-node
       serviceAccount: volcano-scheduler
+      securityContext:
+        fsGroup: 9000
       containers:
         - name: volcano-scheduler
           image: volcanosh/vc-scheduler:v1.7.0
@@ -312,6 +314,8 @@ spec:
       nodeSelector:
         masterselector: dls-master-node
       serviceAccount: volcano-controllers
+      securityContext:
+        fsGroup: 9000
       containers:
         - name: volcano-controllers
           image: volcanosh/vc-controller-manager:v1.7.0
