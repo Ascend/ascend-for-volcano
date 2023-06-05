@@ -65,7 +65,7 @@ func (tp *ascend310P) PreStartAction(ssn *framework.Session) error {
 func (tp *ascend310P) PreStopAction(env *plugin.ScheduleEnv) error {
 	klog.V(util.LogDebugLev).Infof("enter PreStopAction of %s...", util.NPU310PCardName)
 	defer klog.V(util.LogDebugLev).Infof("leave PreStopAction of %s...", util.NPU310PCardName)
-	if tp == nil || tp.reHandle == nil || env == nil {
+	if tp == nil || tp.reHandle == nil || env == nil || tp.FrameAttr.KubeClient == nil {
 		return fmt.Errorf("%s reSchedule not enabled or nil env: %s", util.NPU310PCardName, util.ArgumentError)
 	}
 	if err := tp.reHandle.WriteReSchedulerCacheToEnvCache(env, rescheduling.CmFaultJob310PKind); err != nil {

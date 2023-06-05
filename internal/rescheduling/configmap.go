@@ -80,7 +80,7 @@ func checkReSchedulerCMCheckCode(data map[string]string) error {
 		return fmt.Errorf("configmap %s in %s has no checkcode", CmName, CmNameSpace)
 	}
 	delete(data, CmCheckCode)
-	curCheckCode := plugin.MakeDataHash(data)
+	curCheckCode := util.MakeDataHash(data)
 	if checkCode != curCheckCode {
 		klog.V(util.LogErrorLev).Infof("checkCode err:(%s), calc(%s), data: %#v", checkCode, curCheckCode, data)
 		return fmt.Errorf("checkCode does not match")
@@ -95,7 +95,7 @@ func (dealCM *DealReSchedulerConfigmap) createEmptyReCM(kubeClient kubernetes.In
 	cmData[jobType] = ""
 	cmData[CmNodeHeartbeatKind] = ""
 	cmData[CmNodeRankTimeMapKind] = ""
-	checkCode := plugin.MakeDataHash(cmData)
+	checkCode := util.MakeDataHash(cmData)
 	cmData[CmCheckCode] = checkCode
 
 	var faultCM = &v1.ConfigMap{

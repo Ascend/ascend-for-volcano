@@ -15,24 +15,24 @@ limitations under the License.
 */
 
 /*
-Package ascend910b is using for HuaWei Ascend pin affinity schedule.
+Package module910bx8 is using for HuaWei Ascend910Bx8 pin affinity schedule.
 */
-package ascend910b
+package module910bx8
 
-import "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/base"
+import (
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910/ascend910b"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/rescheduling"
+)
 
-// SelectNodeInf for node hccs.
-type SelectNodeInf struct {
-	AllNPUNum   int
-	LeftNPUNum  int
-	RightNPUNum int
+type module910bx8 struct {
+	ascend910b.Base910b
+	reHandle        *rescheduling.ReScheduler
+	netUnhealthyKey string
 }
 
-// Base910b for Ascend 910B base.
-type Base910b struct {
-	base.NPUHandler
-	AffScoreList       [][]int
-	singleAllowNumsMap map[int]struct{}
-	acceleratorValue   string
-	arch               string
-}
+const (
+	// SchedulerName name of scheduler
+	SchedulerName       = "huawei.com/Ascend910module-910b-8"
+	nodeNPUNumber       = 8
+	networkUnhealthyNPU = "huawei.com/Ascend910-NetworkUnhealthy"
+)

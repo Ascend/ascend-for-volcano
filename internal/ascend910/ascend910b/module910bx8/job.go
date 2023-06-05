@@ -15,24 +15,23 @@ limitations under the License.
 */
 
 /*
-Package ascend910b is using for HuaWei Ascend pin affinity schedule.
+Package module910bx8 is using for HuaWei Ascend910Bx8 pin affinity schedule.
 */
-package ascend910b
+package module910bx8
 
-import "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/base"
+import (
+	"fmt"
 
-// SelectNodeInf for node hccs.
-type SelectNodeInf struct {
-	AllNPUNum   int
-	LeftNPUNum  int
-	RightNPUNum int
-}
+	"k8s.io/klog"
 
-// Base910b for Ascend 910B base.
-type Base910b struct {
-	base.NPUHandler
-	AffScoreList       [][]int
-	singleAllowNumsMap map[int]struct{}
-	acceleratorValue   string
-	arch               string
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
+)
+
+func (tp *module910bx8) JudgeNodeAndTaskNPU(taskNPU int, nodeTop []int) error {
+	if taskNPU <= len(nodeTop) {
+		return nil
+	}
+	meetErr := fmt.Errorf("%v not meet req npu(%d)", nodeTop, taskNPU)
+	klog.V(util.LogErrorLev).Infof("cardIDs:<%v> not meet task reqNum<%d>.", nodeTop, taskNPU)
+	return meetErr
 }
