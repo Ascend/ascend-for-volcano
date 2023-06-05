@@ -129,7 +129,7 @@ func (tp *module910x8) PreStopAction(env *plugin.ScheduleEnv) error {
 	moduleFullName := util.NPU910CardName + util.ModuleAcceleratorType
 	klog.V(util.LogInfoLev).Infof("enter PreStopAction %s...", moduleFullName)
 	defer klog.V(util.LogInfoLev).Infof("leave PreStopAction %s...", moduleFullName)
-	if tp == nil || tp.reHandle == nil || env == nil {
+	if tp == nil || tp.reHandle == nil || env == nil || tp.FrameAttr.KubeClient == nil {
 		return fmt.Errorf("%s reSchedule not enabled or nil env: %s", moduleFullName, util.ArgumentError)
 	}
 	if err := tp.reHandle.WriteReSchedulerCacheToEnvCache(env, rescheduling.CmFaultJob910x8Kind); err != nil {
@@ -258,13 +258,13 @@ func (tp *module910x8) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *p
 func (tp *module910x8) selectNPUFromNode(task *api.TaskInfo, node plugin.NPUNode) ([]int, error) {
 	taskNPUNum, err := tp.GetTaskReqNPUNum(task)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s ScoreBestNPUNodes err: %s", tp.GetPluginName(), err.Error())
+		klog.V(util.LogErrorLev).Infof("%s GetTaskReqNPUNum err: %s", tp.GetPluginName(), err.Error())
 		return nil, err
 	}
 	nTaskNum := tp.GetNPUTaskNumInJob()
 	nodeTop, err := tp.getUsableTopFromNode(node, nTaskNum > 1)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s ScoreBestNPUNodes err: %s", tp.GetPluginName(), err.Error())
+		klog.V(util.LogErrorLev).Infof("%s getUsableTopFromNode err: %s", tp.GetPluginName(), err.Error())
 		return nil, err
 	}
 	if taskNPUNum == nodeNPUNumber {
@@ -272,7 +272,7 @@ func (tp *module910x8) selectNPUFromNode(task *api.TaskInfo, node plugin.NPUNode
 			return nodeTop, nil
 		}
 		err = fmt.Errorf("node<%s> top<%v> can not meet task req<%d>", node.Name, nodeTop, taskNPUNum)
-		klog.V(util.LogErrorLev).Infof("%s ScoreBestNPUNodes err: %s", tp.GetPluginName(), err.Error())
+		klog.V(util.LogErrorLev).Infof("%s selectNPUFromNode err: %s", tp.GetPluginName(), err.Error())
 		return nil, err
 	}
 	priorityArray, err := getNPUAllocPriorityArray(taskNPUNum)
@@ -293,7 +293,7 @@ func (tp *module910x8) selectNPUFromNode(task *api.TaskInfo, node plugin.NPUNode
 		}
 	}
 	err = fmt.Errorf("node<%s> top<%v> can not meet task req<%d>", node.Name, len(nodeTop), taskNPUNum)
-	klog.V(util.LogErrorLev).Infof("%s ScoreBestNPUNodes err: %s", tp.GetPluginName(), err.Error())
+	klog.V(util.LogErrorLev).Infof("%s selectNPUFromNode err: %s", tp.GetPluginName(), err.Error())
 	return nil, err
 }
 

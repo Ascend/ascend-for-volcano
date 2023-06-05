@@ -150,7 +150,7 @@ func (reScheduler *ReScheduler) GetRunningJobs(
 			klog.V(util.LogDebugLev).Infof("job %s has no selectors: illegal, skip", schedulerJob.Name)
 			continue
 		}
-		if cardName != util.NPU910CardName {
+		if cardName != util.NPU910CardName && cardName != util.Ascend910bName {
 			myJobs[jobInfo.UID] = jobInfo
 			klog.V(util.LogInfoLev).Infof("job %s require %s, add to %s running job", jobInfo.UID,
 				schedulerJob.ReqNPUName, cardName)
@@ -401,7 +401,8 @@ func New(env *plugin.ScheduleEnv, jobType string) *ReScheduler {
 		klog.V(util.LogDebugLev).Infof("SetNodeHeartbeatFromCM: %#v", setHBErr)
 	}
 	// 2.4 Initialise ReScheduler.DealReSchedulerCache.AllocNodeRankOccurrenceMap by unmarshal data read from cm
-	if jobType == CmFaultJob910x8Kind || jobType == CmFaultJob910x4Kind {
+	if jobType == CmFaultJob910x8Kind || jobType == CmFaultJob910x4Kind ||
+		jobType == CmFaultJob910bx8Kind || jobType == CmFaultJob910bx16Kind {
 		if setNROErr := reSchedulerCache.SetNodeRankOccurrenceMapFromCM(); setNROErr != nil {
 			klog.V(util.LogDebugLev).Infof("SetNodeRankOccurrenceMapFromCM: %#v", setNROErr)
 		}
@@ -948,21 +949,29 @@ func (reScheduler *ReScheduler) checkNodeNewJobUseFJobNormNode(vcNode plugin.NPU
 		klog.V(util.LogDebugLev).Infof("none real fault jobs")
 		return nil
 	}
+	count := 0
 	// 3. non faultJobs should not occupy normal nodes previously used by distributional
 	// faultJobs in the re-scheduling process
 	for _, fJob := range realFaultJobs {
 		for _, fJobUseNode := range fJob.NodeNames {
-			if fJobUseNode == vcNode.Name && task.Job != fJob.JobUID && len(fJob.FaultTasks) > 1 {
-				klog.V(util.LogDebugLev).Infof("task %s cannot use normal node %s occupied by faultJob %s",
-					task.Name, vcNode.Name, fJob.JobName)
-				return fmt.Errorf("task %s cannot use node %s occupied by faultJob %s",
-					task.Name, vcNode.Name, fJob.JobName)
+			if fJobUseNode != vcNode.Name {
+				continue
+			}
+			count++
+			if task.Job == fJob.JobUID {
+				klog.V(util.LogInfoLev).Infof("node %s is not normal node used by fault job or current task %s is in "+
+					"reScheduler job, check success", vcNode.Name, task.Name)
+				return nil
 			}
 		}
 	}
-	klog.V(util.LogInfoLev).Infof("node %s is not normal node used by fault job or current task %s is in "+
-		"reScheduler job, check success", vcNode.Name, task.Name)
-	return nil
+	if count == 0 {
+		return nil
+	}
+	klog.V(util.LogDebugLev).Infof("task %s cannot use normal node %s occupied by faultJob %v",
+		task.Name, vcNode.Name, realFaultJobs)
+	return fmt.Errorf("task %s cannot use node %s occupied by faultJob %v",
+		task.Name, vcNode.Name, realFaultJobs)
 }
 
 // checkFJobFNodeRankIndexAllAllocated ensure rankIndex of fNode not allocated is enough for nodes not occurred

@@ -21,6 +21,9 @@ package util
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"reflect"
 
@@ -100,5 +103,36 @@ func UpdateConfigmapIncrementally(kubeClient kubernetes.Interface, ns, name stri
 			}
 		}
 	}
+	_, ok := newData[CmCheckCode]
+	if ok {
+		delete(newData, CmCheckCode) // if check code exists, delete and create new
+	}
+	checkCode := MakeDataHash(newData)
+	newData[CmCheckCode] = checkCode
+
 	return newData, nil
+}
+
+// MakeDataHash check code for configmap
+func MakeDataHash(data interface{}) string {
+	var dataBuffer []byte
+	if dataBuffer = marshalData(data); len(dataBuffer) == 0 {
+		return ""
+	}
+	h := sha256.New()
+	if _, err := h.Write(dataBuffer); err != nil {
+		klog.V(LogErrorLev).Infof("hash data error")
+		return ""
+	}
+	sum := h.Sum(nil)
+	return hex.EncodeToString(sum)
+}
+
+func marshalData(data interface{}) []byte {
+	dataBuffer, err := json.Marshal(data)
+	if err != nil {
+		klog.V(LogErrorLev).Infof("marshal data err: %#v", err)
+		return nil
+	}
+	return dataBuffer
 }

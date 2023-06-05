@@ -188,7 +188,7 @@ func buildCheckNodeDeviceInfoTestCases() []checkNodeDeviceInfoTestCase {
 			"huawei.com/Ascend910-Unhealthy":        ""},
 		UpdateTime: 0,
 	}
-	checkCode := MakeDataHash(deviceInfo)
+	checkCode := util.MakeDataHash(deviceInfo)
 
 	return []checkNodeDeviceInfoTestCase{
 		{

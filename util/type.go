@@ -86,6 +86,10 @@ const (
 	AcceleratorType = "accelerator-type"
 	// CardAcceleratorType for card mode.
 	CardAcceleratorType = "card"
+	// Module910bx16AcceleratorType for module mode.
+	Module910bx16AcceleratorType = "module-910b-16"
+	// Module910bx8AcceleratorType for module mode.
+	Module910bx8AcceleratorType = "module-910b-8"
 	// ModuleAcceleratorType for module mode.
 	ModuleAcceleratorType = "module"
 	// ChipAcceleratorType for chip mode.
@@ -113,6 +117,8 @@ const (
 	AscendNPUPodRealUse = "huawei.com/AscendReal"
 	// AscendNPUCore for NPU core num, like 56; Records the chip name that the scheduler assigns to the pod.
 	AscendNPUCore = "huawei.com/npu-core"
+	// Ascend910bName for judge Ascend910b npu resource.
+	Ascend910bName = "huawei.com/Ascend910b"
 
 	// SegmentEnable for VNPU segment enable flag. Default is "false".
 	SegmentEnable = "presetVirtualDevice"
@@ -125,6 +131,8 @@ const (
 	DevInfoCMKey = "DeviceInfoCfg"
 	// RePropertyCacheName rescheduling keyword in init env.cache
 	RePropertyCacheName = "re-scheduling"
+	// CmCheckCode Check code key
+	CmCheckCode = "checkCode"
 	// JobRecovery keywords for retain
 	JobRecovery = "job-recovery"
 

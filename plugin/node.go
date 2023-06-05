@@ -20,8 +20,6 @@ Package plugin is using for HuaWei Ascend pin affinity schedule frame.
 package plugin
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -115,35 +113,11 @@ func checkNodeDeviceInfo(nodeData *NodeDeviceInfoWithDevPlugin) error {
 	}
 
 	nodeDeviceInfo := nodeData.DeviceInfo
-	if nodeData.CheckCode != MakeDataHash(nodeDeviceInfo) {
+	if nodeData.CheckCode != util.MakeDataHash(nodeDeviceInfo) {
 		return errors.New("checkCode is not match")
 	}
 
 	return nil
-}
-
-// MakeDataHash check code for configmap
-func MakeDataHash(data interface{}) string {
-	var dataBuffer []byte
-	if dataBuffer = marshalData(data); len(dataBuffer) == 0 {
-		return ""
-	}
-	h := sha256.New()
-	if _, err := h.Write(dataBuffer); err != nil {
-		klog.V(util.LogErrorLev).Infof("hash data error")
-		return ""
-	}
-	sum := h.Sum(nil)
-	return hex.EncodeToString(sum)
-}
-
-func marshalData(data interface{}) []byte {
-	dataBuffer, err := json.Marshal(data)
-	if err != nil {
-		klog.V(util.LogErrorLev).Infof("marshal data err: %#v", err)
-		return nil
-	}
-	return dataBuffer
 }
 
 func getNodeDeviceInfoFromCM(kubeClient kubernetes.Interface, node *api.NodeInfo) (*NodeDeviceInfo, error) {

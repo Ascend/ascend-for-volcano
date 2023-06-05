@@ -482,7 +482,7 @@ func fakeFaultCM(env plugin.ScheduleEnv) *v1.ConfigMap {
 		env.Cache.Data[rescheduling.RePropertyName][rescheduling.CmFaultJob910x8Kind]
 	cmData[rescheduling.CmNodeHeartbeatKind] = ""
 	cmData[rescheduling.CmNodeRankTimeMapKind] = ""
-	cmData[rescheduling.CmCheckCode] = plugin.MakeDataHash(cmData)
+	cmData[rescheduling.CmCheckCode] = util.MakeDataHash(cmData)
 	var faultCM = &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      rescheduling.CmName,

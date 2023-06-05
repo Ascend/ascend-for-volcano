@@ -302,16 +302,8 @@ func (reCache *DealReSchedulerCache) WriteReSchedulerCacheToEnvCache(env *plugin
 	cmData[jobType] = fJobString
 	cmData[CmNodeHeartbeatKind] = nodeHBString
 	cmData[CmNodeRankTimeMapKind] = nodeRankOccurrenceMapString
-	_, ok = cmData[CmCheckCode]
-	if ok {
-		delete(cmData, CmCheckCode) // if check code exists, delete and create new
-	}
-	checkCode := plugin.MakeDataHash(cmData)
-	cmData[CmCheckCode] = checkCode
-
-	klog.V(util.LogDebugLev).Infof("cm checkCode: %s, calc checkCode: %s, check equal: %v", checkCode,
-		plugin.MakeDataHash(cmData), checkCode == plugin.MakeDataHash(cmData))
-	if jobType != CmFaultJob910x8Kind && jobType != CmFaultJob910x4Kind {
+	if jobType != CmFaultJob910x8Kind && jobType != CmFaultJob910x4Kind && jobType != CmFaultJob910bx8Kind &&
+		jobType != CmFaultJob910bx16Kind {
 		return nil
 	}
 	if err := reCache.writeRecoveryCacheToEnv(env); err != nil {
@@ -337,7 +329,7 @@ func (reCache *DealReSchedulerCache) writeRecoveryCacheToEnv(env *plugin.Schedul
 			}
 			cmRecData[JobFaultRankIDCMDataKey] = jobRankIndexString
 			klog.V(util.LogDebugLev).Infof("fault configMap string to calculate checkCode: <%s>", jobRankIndexString)
-			checkCode := plugin.MakeDataHash(jobRankIndex)
+			checkCode := util.MakeDataHash(jobRankIndex)
 			klog.V(util.LogDebugLev).Infof("checkCode for fault configMap: %s", checkCode)
 			cmRecData[CmCheckCode] = checkCode
 		}
