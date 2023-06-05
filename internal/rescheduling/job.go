@@ -286,8 +286,15 @@ func newFaultJobDefault(job *api.JobInfo, updateTime int64) FaultJob {
 }
 
 func referenceNameOfJob(job *api.JobInfo) string {
-	if job.PodGroup != nil && len(job.PodGroup.OwnerReferences) > 0 {
+	if job != nil && job.PodGroup != nil && len(job.PodGroup.OwnerReferences) > 0 {
 		return job.PodGroup.OwnerReferences[0].Name
+	}
+	return ""
+}
+
+func referenceNameOfTask(task *api.TaskInfo) string {
+	if task != nil && task.Pod != nil && len(task.Pod.OwnerReferences) > 0 {
+		return task.Pod.OwnerReferences[0].Name
 	}
 	return ""
 }

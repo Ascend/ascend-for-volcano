@@ -226,8 +226,3 @@ func ConvertErrSliceToError(reErrors []error) error {
 
 	return reE
 }
-
-// CutUuidInResourceName get resource name
-func CutUuidInResourceName(name string) string {
-	return name[:len(name)-LenOfUuid]
-}

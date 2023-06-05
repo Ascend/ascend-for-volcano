@@ -33,7 +33,7 @@ data:
       - name: selector
         arguments: {"host-arch":"huawei-arm|huawei-x86",
         "accelerator":"huawei-Ascend910|nvidia-tesla-v100|nvidia-tesla-p40",
-        "accelerator-type":"card|module|half|module-910b-16|card-910b-2","servertype":"soc"}
+        "accelerator-type":"card|module|half|module-910b-16|module-910b-8|card-910b-2","servertype":"soc"
       - name: init-params
         arguments: {"grace-over-time":"900","presetVirtualDevice":"true"}
 
