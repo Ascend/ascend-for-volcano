@@ -31,8 +31,8 @@ type SelectNodeInf struct {
 // Base910b for Ascend 910B base.
 type Base910b struct {
 	base.NPUHandler
-	AffScoreList       [][]int
-	singleAllowNumsMap map[int]struct{}
-	acceleratorValue   string
-	arch               string
+	AffScoreList     [][]int
+	NpuNumInvalidMap map[int]struct{}
+	acceleratorValue string
+	arch             string
 }

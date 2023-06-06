@@ -63,6 +63,8 @@ const (
 
 	// CmFaultNodeKind key in configmap which saves the FaultNode cache
 	CmFaultNodeKind = "fault-node"
+	// CmFaultJob910bx2Kind key in configmap which saves the 910bx2 FaultJob cache
+	CmFaultJob910bx2Kind = "fault-job-910bx2"
 	// CmFaultJob910bx8Kind key in configmap which saves the 910bx8 FaultJob cache
 	CmFaultJob910bx8Kind = "fault-job-910bx8"
 	// CmFaultJob910bx16Kind key in configmap which saves the 910bx16 FaultJob cache
