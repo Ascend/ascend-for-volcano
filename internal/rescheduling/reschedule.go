@@ -958,7 +958,8 @@ func (reScheduler *ReScheduler) checkNodeNewJobUseFJobNormNode(vcNode plugin.NPU
 				continue
 			}
 			count++
-			if task.Job == fJob.JobUID {
+			if task.Job == fJob.JobUID ||
+				(task.Namespace == fJob.JobNamespace && referenceNameOfTask(task) == fJob.ReferenceName) {
 				klog.V(util.LogInfoLev).Infof("node %s is not normal node used by fault job or current task %s is in "+
 					"reScheduler job, check success", vcNode.Name, task.Name)
 				return nil
@@ -1029,13 +1030,12 @@ func (reScheduler ReScheduler) getSchedulerJobOfGivenUIDFromReScheduler(jobUID a
 	return reScheduler.Jobs[jobUID]
 }
 
-func (reScheduler ReScheduler) getFaultJobOfGivenTaskInfoFromCache(taskInfo *api.TaskInfo) *FaultJob {
+func (reScheduler ReScheduler) getFaultJobOfGivenTaskInfoFromCache(task *api.TaskInfo) *FaultJob {
 	for _, fJob := range reScheduler.FaultJobs {
-		if fJob.JobUID == taskInfo.Job {
+		if fJob.JobUID == task.Job {
 			return &fJob
 		}
-		if len(fJob.JobUID) > util.LenOfUuid && len(taskInfo.Job) > util.LenOfUuid &&
-			util.CutUuidInResourceName(string(fJob.JobUID)) == util.CutUuidInResourceName(string(taskInfo.Job)) {
+		if task.Namespace == fJob.JobNamespace && referenceNameOfTask(task) == fJob.ReferenceName {
 			return &fJob
 		}
 	}

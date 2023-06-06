@@ -173,10 +173,11 @@ func buildUpdateConfigmapIncrementallyTestCase02() UpdateConfigmapIncrementallyT
 
 func buildUpdateConfigmapIncrementallyTestCase03() UpdateConfigmapIncrementallyTest {
 	test02 := UpdateConfigmapIncrementallyTest{
-		name:    "03-UpdateConfigmapIncrementally will return nil when newDate is nil",
-		args:    UpdateConfigmapIncrementallyArgs{newData: map[string]string{"ascend01": "data01"}},
-		cm:      &v1.ConfigMap{Data: map[string]string{"ascend": "data"}},
-		want:    map[string]string{"ascend": "data", "ascend01": "data01"},
+		name: "03-UpdateConfigmapIncrementally will return nil when newDate is nil",
+		args: UpdateConfigmapIncrementallyArgs{newData: map[string]string{"ascend01": "data01"}},
+		cm:   &v1.ConfigMap{Data: map[string]string{"ascend": "data"}},
+		want: map[string]string{"ascend": "data", "ascend01": "data01",
+			"checkCode": "a3532dd518a58b0995945843253baf3f7e64cf37c8b9a10c93533c338c66c448"},
 		wantErr: false,
 	}
 	return test02
