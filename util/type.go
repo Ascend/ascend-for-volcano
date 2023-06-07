@@ -46,6 +46,20 @@ const (
 	NPUIndex6 = 6
 	// NPUIndex1 the 1 index.
 	NPUIndex1 = 1
+	// NPUIndex9 the 9 index.
+	NPUIndex9 = 9
+	// NPUIndex10 the 10 index.
+	NPUIndex10 = 10
+	// NPUIndex11 the 11 index.
+	NPUIndex11 = 11
+	// NPUIndex12 the 12 index.
+	NPUIndex12 = 12
+	// NPUIndex13 the 13 index.
+	NPUIndex13 = 13
+	// NPUIndex14 the 14 index.
+	NPUIndex14 = 14
+	// NPUIndex15 the 15 index.
+	NPUIndex15 = 15
 	// CoreNum32 32 core 910
 	CoreNum32 = 32
 	// CoreNum30 30 core 910
@@ -90,6 +104,8 @@ const (
 	Module910bx16AcceleratorType = "module-910b-16"
 	// Module910bx8AcceleratorType for module mode.
 	Module910bx8AcceleratorType = "module-910b-8"
+	// Card910bx2AcceleratorType for module mode.
+	Card910bx2AcceleratorType = "card-910b-2"
 	// ModuleAcceleratorType for module mode.
 	ModuleAcceleratorType = "module"
 	// ChipAcceleratorType for chip mode.

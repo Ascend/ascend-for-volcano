@@ -45,24 +45,24 @@ func New(name string) base.AscendHandler {
 	m.SetMaxNodeNPUNum(nodeNPUNumber)
 	m.SetAcceleratorValue(util.JobKind910BValue)
 	m.SetArch(util.HuaweiArchX86)
-	m.SetSingleAllowNumsMap(map[int]struct{}{1: {}, util.NPUIndex2: {}, util.NPUIndex4: {}, util.NPUIndex8: {},
-		util.NPUIndex16: {}})
+	m.SetNpuNumInvalidMap(map[int]struct{}{util.NPUIndex9: {}, util.NPUIndex10: {}, util.NPUIndex11: {},
+		util.NPUIndex12: {}, util.NPUIndex13: {}, util.NPUIndex14: {}, util.NPUIndex15: {}})
 	m.netUnhealthyKey = networkUnhealthyNPU
 	m.AffScoreList = [][]int{
 		{util.AffScore0, util.AffScore1, util.AffScore2, util.AffScore3, util.AffScore4, util.AffScore5,
 			util.AffScore6, util.AffScore7},
 		{util.AffScore8, util.AffScore0, util.AffScore1, util.AffScore2, util.AffScore3, util.AffScore4,
 			util.AffScore5, util.AffScore6},
-		{util.AffScore8, util.AffScore8, util.AffScore8, util.AffScore8, util.AffScore8, util.AffScore8,
-			util.AffScore8, util.AffScore8},
+		{util.AffScore8, util.AffScore8, util.AffScore0, util.AffScore1, util.AffScore2, util.AffScore3,
+			util.AffScore4, util.AffScore5},
 		{util.AffScore8, util.AffScore8, util.AffScore8, util.AffScore0, util.AffScore1, util.AffScore2,
 			util.AffScore3, util.AffScore4},
+		{util.AffScore8, util.AffScore8, util.AffScore8, util.AffScore8, util.AffScore0, util.AffScore1,
+			util.AffScore2, util.AffScore3},
+		{util.AffScore8, util.AffScore8, util.AffScore8, util.AffScore8, util.AffScore8, util.AffScore0,
+			util.AffScore1, util.AffScore2},
 		{util.AffScore8, util.AffScore8, util.AffScore8, util.AffScore8, util.AffScore8, util.AffScore8,
-			util.AffScore8, util.AffScore8},
-		{util.AffScore8, util.AffScore8, util.AffScore8, util.AffScore8, util.AffScore8, util.AffScore8,
-			util.AffScore8, util.AffScore8},
-		{util.AffScore8, util.AffScore8, util.AffScore8, util.AffScore8, util.AffScore8, util.AffScore8,
-			util.AffScore8, util.AffScore8},
+			util.AffScore0, util.AffScore1},
 		{util.AffScore8, util.AffScore8, util.AffScore8, util.AffScore8, util.AffScore8, util.AffScore8,
 			util.AffScore8, util.AffScore0},
 	}

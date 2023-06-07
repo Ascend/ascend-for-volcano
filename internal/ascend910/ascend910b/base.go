@@ -53,15 +53,15 @@ func (ab *Base910b) GetArch() string {
 	return ab.arch
 }
 
-// SetSingleAllowNumsMap Set the single job allow number. eg:A+X 16P:1,2,4,8,16;A+K 1,2,4,8.
-func (ab *Base910b) SetSingleAllowNumsMap(value map[int]struct{}) {
-	ab.singleAllowNumsMap = value
+// SetNpuNumInvalidMap  Set the single job not allow number. eg:A+X 16P:9,10,11,12,13,14,15
+func (ab *Base910b) SetNpuNumInvalidMap(value map[int]struct{}) {
+	ab.NpuNumInvalidMap = value
 }
 
 // CheckJobAllowNum check the single job require is valid. eg:A+X 16P:1,2,4,8,16;A+K 1,2,4,8.
 func (ab *Base910b) CheckJobAllowNum(value int) bool {
-	_, ok := ab.singleAllowNumsMap[value]
-	return ok
+	_, ok := ab.NpuNumInvalidMap[value]
+	return !ok && value <= ab.MaxNodeNPUNum
 }
 
 // PreStartActionCheck check pre-processing actions for rescheduling
@@ -123,7 +123,7 @@ func (ab *Base910b) Judge910BNodeAndTaskNPU(taskNPU int, nodeTop []int) error {
 	if ab.CheckJobAllowNum(taskNPU) {
 		return dealReturnValue((sNodeInf.LeftNPUNum >= taskNPU) || (sNodeInf.RightNPUNum >= taskNPU))
 	}
-	return nil
+	return dealReturnValue(false)
 }
 
 // GetNodeBestScore Get node core

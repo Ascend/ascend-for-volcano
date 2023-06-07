@@ -21,12 +21,14 @@ package card910bx2
 
 import (
 	"errors"
+	"fmt"
 
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/base"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/rescheduling"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
@@ -41,7 +43,6 @@ func New(name string) base.AscendHandler {
 	m.SetMaxNodeNPUNum(nodeNPUNumber)
 	m.SetAcceleratorValue(util.JobKind910BValue)
 	m.SetArch(util.HuaweiArchX86 + util.HuaweiArchArm)
-	m.SetSingleAllowNumsMap(map[int]struct{}{1: {}, util.NPUIndex2: {}})
 	m.AffScoreList = [][]int{
 		{util.AffScore0, util.AffScore1},
 		{util.AffScore2, util.AffScore0},
@@ -56,12 +57,58 @@ func (tp *card910bx2) ValidNPUJob() *api.ValidateResult {
 
 // PreStartAction pre-processing actions for rescheduling
 func (tp *card910bx2) PreStartAction(ssn *framework.Session) error {
-	return tp.PreStartActionCheck(ssn)
+	moduleFullName := util.NPU910CardName + util.Card910bx2AcceleratorType
+	klog.V(util.LogInfoLev).Infof("Entering PreStartAction of %s...", moduleFullName)
+	if tp == nil || ssn == nil || tp.FrameAttr.KubeClient == nil {
+		return fmt.Errorf("%s handler not enabled or ssn is nil: %s", moduleFullName, util.ArgumentError)
+	}
+	tp.reHandle = rescheduling.New(&tp.ScheduleEnv, rescheduling.CmFaultJob910bx2Kind)
+	if tp.reHandle == nil {
+		klog.V(util.LogErrorLev).Infof("create new fault handler failed.")
+		return fmt.Errorf("%s reSchedule not enabled: %s", moduleFullName, util.ArgumentError)
+	}
+	tp.reHandle.NewCommonReScheduler(rescheduling.CmFaultJob910bx2Kind)
+	tp.reHandle.SynCacheFaultNodeWithSession(util.NPU910CardName)
+	tp.reHandle.AddFaultNodeWithSession(util.NPU910CardName)
+	tp.reHandle.SynCacheFaultJobWithSession(ssn, util.NPU910CardName, util.NPU910CardNamePre)
+	tp.reHandle.SynCacheNodeRankOccMapWithSession(ssn)
+	// 1. restart Fault Jobs that are recorded in cache
+	if restartErr := tp.reHandle.RestartNeedForceDeleteJobs(ssn); restartErr != nil {
+		klog.V(util.LogErrorLev).Infof("%s RestartNeedForceDeleteJobs: %s", moduleFullName, restartErr.Error())
+	}
+	// 2. get all the new 910bx2 jobs in session
+	runningJobs910bx2, getRunErr := tp.reHandle.GetRunningJobs(ssn, util.Ascend910bName, util.Card910bx2AcceleratorType)
+	if getRunErr != nil {
+		klog.V(util.LogInfoLev).Infof("%s GetRunningJobs: %s", moduleFullName, getRunErr.Error())
+	}
+	// 3. get nodes of session and fault jobs of 910bx2
+	err := tp.reHandle.AddFaultJobWithSession(runningJobs910bx2, util.NPU910CardName, util.NPU910CardNamePre)
+	if err != nil {
+		klog.V(util.LogErrorLev).Infof("%s AddFaultJobWithSession", moduleFullName)
+	}
+	// 4. restart the fault jobs
+	if restartErr := tp.reHandle.RestartFaultJobs(ssn); restartErr != nil {
+		klog.V(util.LogErrorLev).Infof("%s RestartFaultJobs: %s", moduleFullName, restartErr.Error())
+		return restartErr
+	}
+	// 5. save structure for later allocation process
+	tp.reHandle.GenerateNodeRankIndexTaskMap()
+	klog.V(util.LogInfoLev).Infof("Leaving PreStartAction of %s", moduleFullName)
+	return nil
 }
 
 // PreStopAction post-processing actions for re-scheduling
 func (tp *card910bx2) PreStopAction(env *plugin.ScheduleEnv) error {
-	return tp.PreStopActionCheck(env)
+	moduleFullName := util.NPU910CardName + util.Card910bx2AcceleratorType
+	klog.V(util.LogInfoLev).Infof("enter PreStopAction %s...", moduleFullName)
+	if tp == nil || tp.reHandle == nil || env == nil || tp.FrameAttr.KubeClient == nil {
+		return fmt.Errorf("%s reSchedule not enabled or nil env: %s", moduleFullName, util.ArgumentError)
+	}
+	if err := tp.reHandle.WriteReSchedulerCacheToEnvCache(env, rescheduling.CmFaultJob910bx2Kind); err != nil {
+		return err
+	}
+	klog.V(util.LogInfoLev).Infof("leave PreStopAction %s...", moduleFullName)
+	return nil
 }
 
 // CheckNodeNPUByTask check nod npu meet task req

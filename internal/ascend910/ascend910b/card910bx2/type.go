@@ -21,10 +21,12 @@ package card910bx2
 
 import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910/ascend910b"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/rescheduling"
 )
 
 type card910bx2 struct {
 	ascend910b.Base910b
+	reHandle *rescheduling.ReScheduler
 }
 
 const (
