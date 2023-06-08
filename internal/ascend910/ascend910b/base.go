@@ -196,7 +196,8 @@ func (ab *Base910b) ScoreAscendNPUNodes(task *api.TaskInfo, nodes []*api.NodeInf
 				ab.GetPluginName(), node.Name)
 			continue
 		}
-		sMap[node.Name] = float64(ab.MaxNodeNPUNum * (int(healthyNPUNum/util.NPUHexKilo) - bestScore))
+		sortScore := ab.MaxNodeNPUNum - len(cardIds)
+		sMap[node.Name] = float64(ab.MaxNodeNPUNum*(int(healthyNPUNum/util.NPUHexKilo)-bestScore) + sortScore)
 	}
 	klog.V(util.LogInfoLev).Infof("%s ScoreBestNPUNodes task<%s> sMap<%v>", ab.GetPluginName(),
 		task.Name, sMap)

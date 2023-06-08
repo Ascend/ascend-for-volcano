@@ -111,7 +111,7 @@ func (ab *Base910b) checkJobTrainMode() error {
 	if ab.CheckJobAllowNum(nTaskReqNpuNum) {
 		return nil
 	}
-	return fmt.Errorf("%s checkJobTrainMode %s req npu not in [1,2,4,8,16]", ab.GetPluginName(), ab.Name)
+	return fmt.Errorf("%s checkJobTrainMode %s req npu is invalid", ab.GetPluginName(), ab.Name)
 }
 
 func (ab *Base910b) GetNPUAllocPriorityArray(taskNPUNumber int) ([]int, error) {

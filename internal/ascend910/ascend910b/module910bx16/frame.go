@@ -200,7 +200,8 @@ func (tp *module910bx16) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.Node
 				tp.GetPluginName(), node.Name)
 			continue
 		}
-		sMap[node.Name] = float64(tp.MaxNodeNPUNum * (int(healthyNPUNum/util.NPUHexKilo) - bestScore))
+		sortScore := tp.MaxNodeNPUNum - len(cardIds)
+		sMap[node.Name] = float64(tp.MaxNodeNPUNum*(int(healthyNPUNum/util.NPUHexKilo)-bestScore) + sortScore)
 	}
 	reErr := tp.reHandle.ScoreBestNPUNodes(task, sMap)
 	if reErr != nil {
