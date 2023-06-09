@@ -255,7 +255,7 @@ func (reScheduler ReScheduler) getJobRankIdsFromTasks(fJob *FaultJob, cardName s
 			klog.V(util.LogInfoLev).Infof("%s setJobRankIdsFromTasks convert %#v", fTask.NodeRankIndex, err)
 		}
 		fNode := reScheduler.getFNodeOfGivenNameFromCache(fTask.NodeName)
-		taskUseFaultCards, err := fTask.getTaskUsedFaultCards(fNode)
+		taskUseFaultCards, err := fTask.getTaskUsedFaultCards(fNode, len(fJob.FaultTasks) > 1)
 		if err != nil {
 			klog.V(util.LogErrorLev).Infof("taskUseFaultCards: %#v", err)
 			continue
@@ -275,7 +275,7 @@ func (reScheduler ReScheduler) getJobRankIdsFromTasks(fJob *FaultJob, cardName s
 	return jobRankIds
 }
 
-func (fTask *FaultTask) getTaskUsedFaultCards(fNode *FaultNode) ([]string, error) {
+func (fTask *FaultTask) getTaskUsedFaultCards(fNode *FaultNode, disFlag bool) ([]string, error) {
 	if fTask.faultType == NodeUnhealthy { // node unhealthy returns all cards,
 		// ahead of fNode equals to nil for node not in session
 		klog.V(util.LogDebugLev).Infof("node unhealthy, return all NPUs used by task %s", fTask.TaskName)
@@ -291,9 +291,13 @@ func (fTask *FaultTask) getTaskUsedFaultCards(fNode *FaultNode) ([]string, error
 	klog.V(util.LogDebugLev).Infof("task fault type: %s", fTask.faultType)
 	for _, taskUseCard := range fTask.UseCardName {
 		for _, fCard := range fNode.FaultCards {
-			if taskUseCard == fCard.NPUName && fCard.IsFaultCard {
-				taskUseFaultCard = append(taskUseFaultCard, taskUseCard)
+			if taskUseCard != fCard.NPUName || !fCard.IsFaultCard {
+				continue
 			}
+			if fCard.FaultType == CardNetworkUnhealthy && !disFlag {
+				continue
+			}
+			taskUseFaultCard = append(taskUseFaultCard, taskUseCard)
 		}
 	}
 	return taskUseFaultCard, nil
