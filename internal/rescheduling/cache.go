@@ -313,7 +313,11 @@ func (reCache *DealReSchedulerCache) WriteReSchedulerCacheToEnvCache(env *plugin
 }
 
 func (reCache *DealReSchedulerCache) writeRecoveryCacheToEnv(env *plugin.ScheduleEnv) error {
-	for _, fJob := range reCache.FaultJobs { // configmap for recovery
+	realFaultJob, err := reCache.getRealFaultJobs()
+	if err != nil {
+		return err
+	}
+	for _, fJob := range realFaultJob { // configmap for recovery
 		if fJob.IsFaultJob {
 			env.Cache.Names[JobRecovery] = JobFaultRankIDCMPre + fJob.JobName
 			env.Cache.Namespaces[JobRecovery] = fJob.JobNamespace
