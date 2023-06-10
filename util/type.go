@@ -149,6 +149,8 @@ const (
 	RePropertyCacheName = "re-scheduling"
 	// CmCheckCode Check code key
 	CmCheckCode = "checkCode"
+	// CmName Name of ReSchedulerConfigmap
+	CmName = "vcjob-fault-npu-cm"
 	// JobRecovery keywords for retain
 	JobRecovery = "job-recovery"
 
