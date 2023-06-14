@@ -103,13 +103,15 @@ func UpdateConfigmapIncrementally(kubeClient kubernetes.Interface, ns, name stri
 			}
 		}
 	}
+	if name != CmName {
+		return newData, nil
+	}
 	_, ok := newData[CmCheckCode]
 	if ok {
 		delete(newData, CmCheckCode) // if check code exists, delete and create new
 	}
 	checkCode := MakeDataHash(newData)
 	newData[CmCheckCode] = checkCode
-
 	return newData, nil
 }
 
