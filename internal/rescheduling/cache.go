@@ -319,23 +319,25 @@ func (reCache *DealReSchedulerCache) writeRecoveryCacheToEnv(env *plugin.Schedul
 	}
 	for _, fJob := range realFaultJob { // configmap for recovery
 		if fJob.IsFaultJob {
-			env.Cache.Names[JobRecovery] = JobFaultRankIDCMPre + fJob.ReferenceName
-			env.Cache.Namespaces[JobRecovery] = fJob.JobNamespace
-			env.Cache.UnCreateCM[JobRecovery] = true
 			jobRankIndex, jobRankIndexString, err := reCache.writeJobRankIndexToCMString(&fJob)
 			if err != nil {
-				return err
+				klog.V(util.LogErrorLev).Infof(err.Error())
+				continue
 			}
-			cmRecData, ok := env.Cache.Data[JobRecovery]
+
+			faultCm, ok := env.Cache.FaultConfigMaps[fJob.JobUID]
 			if !ok {
-				cmRecData := make(map[string]string, util.MapInitNum)
-				env.Cache.Data[JobRecovery] = cmRecData
+				faultCm = &plugin.FaultRankIdData{
+					Name:      JobFaultRankIDCMPre + fJob.ReferenceName,
+					Namespace: fJob.JobNamespace,
+				}
 			}
-			cmRecData[JobFaultRankIDCMDataKey] = jobRankIndexString
-			klog.V(util.LogDebugLev).Infof("fault configMap string to calculate checkCode: <%s>", jobRankIndexString)
-			checkCode := util.MakeDataHash(jobRankIndex)
-			klog.V(util.LogDebugLev).Infof("checkCode for fault configMap: %s", checkCode)
-			cmRecData[CmCheckCode] = checkCode
+
+			faultCm.Data = map[string]string{
+				JobFaultRankIDCMDataKey: jobRankIndexString,
+				CmCheckCode:             util.MakeDataHash(jobRankIndex),
+			}
+			env.Cache.FaultConfigMaps[fJob.JobUID] = faultCm
 		}
 	}
 	return nil

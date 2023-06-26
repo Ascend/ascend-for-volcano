@@ -273,8 +273,11 @@ func (sHandle *ScheduleHandler) InitCache() {
 	data := make(map[string]map[string]string, util.MapInitNum)
 	data[util.RePropertyCacheName] = make(map[string]string, util.MapInitNum)
 	data[util.JobRecovery] = make(map[string]string, util.MapInitNum)
-	sHandle.Cache = ScheduleCache{Names: make(map[string]string, util.MapInitNum), Namespaces: make(map[string]string,
-		util.MapInitNum), UnCreateCM: make(map[string]bool, util.MapInitNum), Data: data}
+	sHandle.Cache = ScheduleCache{
+		Names:           make(map[string]string, util.MapInitNum),
+		Namespaces:      make(map[string]string, util.MapInitNum),
+		FaultConfigMaps: map[api.JobID]*FaultRankIdData{},
+		Data:            data}
 }
 
 // PreStartPlugin preStart plugin action.
@@ -304,11 +307,6 @@ func (sHandle *ScheduleHandler) saveCacheToCm() {
 		data, err := util.UpdateConfigmapIncrementally(sHandle.FrameAttr.KubeClient, nameSpace, cmName, data)
 		if err != nil {
 			klog.V(util.LogInfoLev).Infof("get old %s configmap failed: %v, write new data into cm", spName, err)
-			unCreateCM, ok := sHandle.ScheduleEnv.Cache.UnCreateCM[spName]
-			if ok && unCreateCM {
-				klog.V(util.LogDebugLev).Infof("cm <%s-%s> no need create, skip", nameSpace, cmName)
-				continue
-			}
 		}
 		var tmpCM = &v12.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
@@ -319,7 +317,26 @@ func (sHandle *ScheduleHandler) saveCacheToCm() {
 		}
 		if err := util.CreateOrUpdateConfigMap(sHandle.FrameAttr.KubeClient, tmpCM, cmName, nameSpace); err != nil {
 			klog.V(util.LogErrorLev).Infof("CreateOrUpdateConfigMap : %#v.", err)
+		}
+	}
+
+	for _, faultConfig := range sHandle.ScheduleEnv.Cache.FaultConfigMaps {
+		data, err := util.UpdateConfigmapIncrementally(sHandle.FrameAttr.KubeClient, faultConfig.Namespace,
+			faultConfig.Name, faultConfig.Data)
+		if err != nil {
+			klog.V(util.LogInfoLev).Infof("get old %s configmap failed: %v", faultConfig.Name, err)
 			continue
+		}
+		var tmpCM = &v12.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      faultConfig.Name,
+				Namespace: faultConfig.Namespace,
+			},
+			Data: data,
+		}
+		if err = util.CreateOrUpdateConfigMap(sHandle.FrameAttr.KubeClient, tmpCM, faultConfig.Name,
+			faultConfig.Namespace); err != nil {
+			klog.V(util.LogErrorLev).Infof("CreateOrUpdateConfigMap : %#v.", err)
 		}
 	}
 }

@@ -99,7 +99,12 @@ type ScheduleCache struct {
 	// special, name, value
 	Names, Namespaces map[string]string
 	Data              map[string]map[string]string
-	UnCreateCM        map[string]bool
+	FaultConfigMaps   map[api.JobID]*FaultRankIdData
+}
+
+type FaultRankIdData struct {
+	Name, Namespace string
+	Data            map[string]string
 }
 
 // ScheduleEnv for job scheduler context.
