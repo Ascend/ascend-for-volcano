@@ -139,13 +139,13 @@ func GetVCJobReqNPUTypeFromJobInfo(vcJob *api.JobInfo) (string, int, error) {
 		return "", 0.0, errors.New("nil parameter")
 	}
 
-	for k, v := range vcJob.TotalRequest.ScalarResources {
+	for k, v := range vcJob.GetMinResources().ScalarResources {
 		// must contain "huawei.com/"
 		if strings.Contains(string(k), util.HwPreName) {
 			return string(k), int(v / util.NPUHexKilo), nil
 		}
 	}
-	klog.V(util.LogErrorLev).Infof("GetVCJobReqNPUTypeFromJobInfo %+v.", vcJob.TotalRequest.ScalarResources)
+	klog.V(util.LogErrorLev).Infof("GetVCJobReqNPUTypeFromJobInfo %+v.", vcJob.GetMinResources().ScalarResources)
 	return "", 0.0, errors.New("nil NPU")
 }
 
