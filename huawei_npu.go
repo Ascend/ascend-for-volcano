@@ -20,6 +20,9 @@ Package main is using for HuaWei Ascend pin affinity schedule.
 package main
 
 import (
+	"strings"
+
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -78,6 +81,35 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 			}
 		}
 		return score, nil
+	})
+
+	ssn.AddJobEnqueueableFn(tp.Name(), func(job interface{}) int {
+		vcjob, ok := job.(*api.JobInfo)
+		if !ok {
+			return 0
+		}
+		npuName, rNpuNum, _ := plugin.GetVCJobReqNPUTypeFromJobInfo(vcjob)
+		var tNpuNum int
+		for _, node := range ssn.Nodes {
+			vcNode, ok := tp.Scheduler.Nodes[node.Name]
+			if !ok {
+				continue
+			}
+			deviceInfo, ok := vcNode.Annotation[npuName]
+			if !ok {
+				continue
+			}
+			deviceList := strings.Split(deviceInfo, ",")
+			npuNum, ok := vcNode.Idle[v1.ResourceName(npuName)]
+			if !ok || len(deviceList) != int(npuNum/util.NPUHexKilo) {
+				continue
+			}
+			tNpuNum += len(deviceList)
+		}
+		if tNpuNum < rNpuNum {
+			return -1
+		}
+		return 0
 	})
 	// Register event handlers to update task info in PodLister & nodeMap
 	// for support Concurrency
