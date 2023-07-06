@@ -106,7 +106,7 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 			}
 			tNpuNum += len(deviceList)
 		}
-		if tNpuNum < rNpuNum {
+		if tNpuNum < rNpuNum && tNpuNum != 0 && rNpuNum != 0 {
 			return -1
 		}
 		return 0
