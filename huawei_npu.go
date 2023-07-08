@@ -84,11 +84,18 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 	})
 
 	ssn.AddJobEnqueueableFn(tp.Name(), func(job interface{}) int {
+		if tp.Scheduler.NPUPlugins == nil {
+			klog.V(util.LogErrorLev).Infof("AddJobEnqueueableFn : %s", util.ArgumentError)
+			return util.JobEnqueueSkip
+		}
 		vcjob, ok := job.(*api.JobInfo)
 		if !ok {
-			return 0
+			return util.JobEnqueueSkip
 		}
 		npuName, rNpuNum, _ := plugin.GetVCJobReqNPUTypeFromJobInfo(vcjob)
+		if _, ok := tp.Scheduler.NPUPlugins[npuName]; !ok {
+			return util.JobEnqueueSkip
+		}
 		var tNpuNum int
 		for _, node := range ssn.Nodes {
 			vcNode, ok := tp.Scheduler.Nodes[node.Name]
@@ -106,10 +113,10 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 			}
 			tNpuNum += len(deviceList)
 		}
-		if tNpuNum < rNpuNum && tNpuNum != 0 && rNpuNum != 0 {
-			return -1
+		if tNpuNum < rNpuNum {
+			return util.JobNotEnqueue
 		}
-		return 0
+		return util.JobEnqueueSkip
 	})
 	// Register event handlers to update task info in PodLister & nodeMap
 	// for support Concurrency
