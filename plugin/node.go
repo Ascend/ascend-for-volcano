@@ -171,12 +171,19 @@ func (n *NPUNode) InitNPUNodeByNodeInf(npuNode *api.NodeInfo, kubeClient kuberne
 	if n.Annotation == nil {
 		n.Annotation = make(map[string]string, util.MapInitNum)
 	}
+
+	existAnno := make(map[string]string)
+	for annoKey, annoValue := range n.Annotation {
+		if _, ok := npuNode.Node.Annotations[annoKey]; ok {
+			existAnno[annoKey] = annoValue
+		}
+	}
+	n.Annotation = existAnno
+
 	for k, v := range npuNode.Node.Annotations {
 		n.Annotation[k] = v
 	}
-	if setVNPUErr := n.setNodeVNPUInfo(npuNode, vJobTemplate); setVNPUErr != nil {
-		klog.V(util.LogDebugLev).Infof("setNodeVNPUInfo %s %s", npuNode.Name, setVNPUErr)
-	}
+
 	if n.devInfoUpdateTime == data.UpdateTime {
 		klog.V(util.LogDebugLev).Infof("device info is not update, skip refresh cache")
 		return nil
@@ -184,6 +191,10 @@ func (n *NPUNode) InitNPUNodeByNodeInf(npuNode *api.NodeInfo, kubeClient kuberne
 	n.devInfoUpdateTime = data.UpdateTime
 	for k, v := range data.DeviceList {
 		n.Annotation[k] = v
+	}
+
+	if setVNPUErr := n.setNodeVNPUInfo(npuNode, vJobTemplate); setVNPUErr != nil {
+		klog.V(util.LogDebugLev).Infof("setNodeVNPUInfo %s %s", npuNode.Name, setVNPUErr)
 	}
 	return nil
 }
@@ -302,7 +313,7 @@ func (sHandle *ScheduleHandler) InitNodesFromSsn(ssn *framework.Session) {
 			continue
 		}
 		npuNode := NPUNode{}
-		err := node.InitNPUNodeByNodeInf(nodeInf, sHandle.FrameAttr.KubeClient, sHandle.FrameAttr.VJobTemplate)
+		err := npuNode.InitNPUNodeByNodeInf(nodeInf, sHandle.FrameAttr.KubeClient, sHandle.FrameAttr.VJobTemplate)
 		if err != nil {
 			klog.V(util.LogDebugLev).Infof("InitNodesFromSsn %s %s, not put in nodes.", nodeName, err)
 			continue
