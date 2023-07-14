@@ -53,6 +53,7 @@ type NodeDeviceInfoWithDevPlugin struct {
 type NPUNode struct {
 	CommonNode
 	VNode
+	devInfoUpdateTime int64
 }
 
 // CommonNode common npu node properties
@@ -166,15 +167,23 @@ func (n *NPUNode) InitNPUNodeByNodeInf(npuNode *api.NodeInfo, kubeClient kuberne
 	n.Allocate = npuNode.Allocatable.ScalarResources
 	n.Idle = npuNode.Idle.ScalarResources
 	n.Label = npuNode.Node.Labels
-	n.Annotation = make(map[string]string, util.MapInitNum)
-	for k, v := range npuNode.Node.Annotations {
-		n.Annotation[k] = v
+
+	if n.Annotation == nil {
+		n.Annotation = make(map[string]string, util.MapInitNum)
 	}
-	for k, v := range data.DeviceList {
+	for k, v := range npuNode.Node.Annotations {
 		n.Annotation[k] = v
 	}
 	if setVNPUErr := n.setNodeVNPUInfo(npuNode, vJobTemplate); setVNPUErr != nil {
 		klog.V(util.LogDebugLev).Infof("setNodeVNPUInfo %s %s", npuNode.Name, setVNPUErr)
+	}
+	if n.devInfoUpdateTime == data.UpdateTime {
+		klog.V(util.LogDebugLev).Infof("device info is not update, skip refresh cache")
+		return nil
+	}
+	n.devInfoUpdateTime = data.UpdateTime
+	for k, v := range data.DeviceList {
+		n.Annotation[k] = v
 	}
 	return nil
 }
@@ -272,16 +281,36 @@ func (sHandle *ScheduleHandler) InitNodesFromSsn(ssn *framework.Session) {
 	if sHandle == nil || sHandle.FrameAttr.KubeClient == nil {
 		return
 	}
-	sHandle.Nodes = make(map[string]NPUNode, util.MapInitNum)
+	existNodes := make(map[string]NPUNode)
+	for nodeName, nNode := range sHandle.Nodes {
+		if _, exist := ssn.Nodes[nodeName]; exist {
+			existNodes[nodeName] = nNode
+		}
+	}
+	sHandle.Nodes = existNodes
+
+	newNodes := make(map[string]NPUNode)
 	for nodeName, nodeInf := range ssn.Nodes {
+		node, exist := sHandle.Nodes[nodeName]
+		if exist {
+			err := node.InitNPUNodeByNodeInf(nodeInf, sHandle.FrameAttr.KubeClient, sHandle.FrameAttr.VJobTemplate)
+			if err != nil {
+				klog.V(util.LogDebugLev).Infof("InitNodesFromSsn %s %s, not put in nodes.", nodeName, err)
+				continue
+			}
+			newNodes[nodeName] = node
+			continue
+		}
 		npuNode := NPUNode{}
-		err := npuNode.InitNPUNodeByNodeInf(nodeInf, sHandle.FrameAttr.KubeClient, sHandle.FrameAttr.VJobTemplate)
+		err := node.InitNPUNodeByNodeInf(nodeInf, sHandle.FrameAttr.KubeClient, sHandle.FrameAttr.VJobTemplate)
 		if err != nil {
 			klog.V(util.LogDebugLev).Infof("InitNodesFromSsn %s %s, not put in nodes.", nodeName, err)
 			continue
 		}
-		sHandle.Nodes[nodeName] = npuNode
+		newNodes[nodeName] = npuNode
+
 	}
+	sHandle.Nodes = newNodes
 	return
 }
 
