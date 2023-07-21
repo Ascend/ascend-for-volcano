@@ -100,13 +100,17 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 		for _, node := range ssn.Nodes {
 			vcNode, ok := tp.Scheduler.Nodes[node.Name]
 			if !ok {
+				klog.V(util.LogInfoLev).Infof("AddJobEnqueueableFn add node failed,%s is not in cache", node.Name)
 				continue
 			}
 			deviceInfo, ok := vcNode.Annotation[npuName]
 			if !ok {
+				klog.V(util.LogInfoLev).Infof("AddJobEnqueueableFn add node failed,"+
+					"%s deviceList is empty", node.Name)
 				continue
 			}
 			deviceList := strings.Split(deviceInfo, ",")
+			klog.V(util.LogInfoLev).Infof("Add enqueue node %s deviceList is: %#v", vcNode.Name, deviceList)
 			npuNum, ok := vcNode.Idle[v1.ResourceName(npuName)]
 			if !ok || len(deviceList) != int(npuNum/util.NPUHexKilo) {
 				continue
@@ -114,6 +118,8 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 			tNpuNum += len(deviceList)
 		}
 		if tNpuNum < rNpuNum {
+			klog.V(util.LogWarningLev).Infof("Add enqueue failed, require npu num is %v "+
+				"but cluster npu num is %v", rNpuNum, tNpuNum)
 			return util.JobNotEnqueue
 		}
 		return util.JobEnqueueSkip

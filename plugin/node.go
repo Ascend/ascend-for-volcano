@@ -174,6 +174,10 @@ func (n *NPUNode) InitNPUNodeByNodeInf(npuNode *api.NodeInfo, kubeClient kuberne
 
 	existAnno := make(map[string]string)
 	for annoKey, annoValue := range n.Annotation {
+		if strings.Contains(annoKey, util.HwPreName) {
+			existAnno[annoKey] = annoValue
+			continue
+		}
 		if _, ok := npuNode.Node.Annotations[annoKey]; ok {
 			existAnno[annoKey] = annoValue
 		}
