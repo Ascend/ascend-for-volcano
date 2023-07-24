@@ -103,7 +103,7 @@ const (
 	// NodeHealthy represents node is available for scheduling
 	NodeHealthy = "Healthy"
 	// NodeUnhealthy represents node is unhealthy by judging heartbeat
-	NodeUnhealthy = "Unhealthy"
+	NodeUnhealthy = "NodeUnhealthy"
 	// NodeCardUnhealthy represents node is unhealthy because of the card is unhealthy
 	NodeCardUnhealthy = "CardUnhealthy"
 	// NodeCardNetworkUnhealthy represents node is unhealthy because of card is network unhealthy
@@ -111,12 +111,29 @@ const (
 	// NoFaultJobsErr none fault jobs
 	NoFaultJobsErr   = "none fault jobs to be restarted in cache"
 	jobRestartReason = "restart for NPU malfunction"
+	// NoRanksCmPre the configMap's prefix of jobs without rankTable files
+	NoRanksCmPre = "env-config-"
 	// JobFaultRankIDCMPre the job cm name prefix, for retraining
 	JobFaultRankIDCMPre = "fault-config-"
 	// JobFaultRankIDCMDataKey the job cm value key.
 	JobFaultRankIDCMDataKey = "fault-npus"
 	// JobRecovery Name of cm for recovery
 	JobRecovery = "job-recovery"
+	// DeviceFaultCmKey the key of DeviceFault info
+	DeviceFaultCmKey = "huawei.com/Ascend910-Fault"
+)
+
+const (
+	// SeparateNPU fault type Separate NPU
+	SeparateNPU = "SeparateNPU"
+	// NotHandle fault type NotHandle
+	NotHandle = "NotHandle"
+	// EvictType pod Evict statement
+	EvictType = "Evict"
+	// PreSeparateNPU fault type waiting user check
+	PreSeparateNPU = "PreSeparateNPU"
+	// NodeFaultCode fault type nodeUnhealthy
+	NodeFaultCode = "heartbeatTimeOut"
 )
 
 // ReScheduler object for re-scheduling
@@ -163,6 +180,7 @@ type FaultCard struct {
 // FaultNode node object for re-scheduling
 type FaultNode struct {
 	NodeName            string
+	FaultDeviceList     []FaultDeviceList
 	UpdateTime          int64
 	UnhealthyNPU        []string
 	NetworkUnhealthyNPU []string
@@ -177,8 +195,18 @@ type FaultNode struct {
 	UpdateHeartbeatTime int64
 }
 
+// FaultDeviceList is the fault reason of card
+type FaultDeviceList struct {
+	FaultType            string `json:"fault_type"`
+	NPUName              string `json:"npu_name"`
+	FaultLevel           string `json:"fault_level"`
+	LargeModelFaultLevel string `json:"large_model_fault_level"`
+	FaultCode            string `json:"fault_code"`
+}
+
 // FaultTask object dealing with node for rescheduling
 type FaultTask struct {
+	Reason        []FaultReasonList
 	IsFaultTask   bool
 	TaskUID       api.TaskID
 	TaskName      string
@@ -190,6 +218,10 @@ type FaultTask struct {
 	PodCreateTime int64
 	PodUID        types.UID
 	faultType     string
+}
+type FaultReasonList struct {
+	NodeName string `json:"node_name"`
+	FaultDeviceList
 }
 
 // FaultJob job object for re-scheduling

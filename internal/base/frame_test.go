@@ -71,7 +71,7 @@ func TestInitMyJobPlugin(t *testing.T) {
 
 func buildValidNPUJobTestCase01() []itest.ValidNPUJobTestCase {
 	job01 := test.FakeNormalTestJob("job01", 1)
-	test.SetFakeJobResRequest(job01, util.NPU310CardName, "0")
+	test.SetFakeJobResRequest(job01, util.NPU310CardName, "1")
 	attr1 := itest.FakeSchedulerJobAttrByJob(job01)
 	job02 := test.FakeNormalTestJob("job02", 1)
 	test.SetFakeJobResRequest(job02, util.NPU310CardName, "65")

@@ -52,7 +52,7 @@ func TestNew(t *testing.T) {
 
 func buildValidNPUJobTestCase01() []itest.ValidNPUJobTestCase {
 	job01 := test.FakeNormalTestJob("job01", 1)
-	test.SetFakeJobResRequest(job01, util.NPU910CardName, "0")
+	test.SetFakeJobResRequest(job01, util.NPU910CardName, "1")
 	attr1 := itest.FakeSchedulerJobAttrByJob(job01)
 	job02 := test.FakeNormalTestJob("job02", 1)
 	test.SetFakeJobResRequest(job02, util.NPU910CardName, "3")
@@ -62,13 +62,9 @@ func buildValidNPUJobTestCase01() []itest.ValidNPUJobTestCase {
 	attr3 := itest.FakeSchedulerJobAttrByJob(job03)
 	return []itest.ValidNPUJobTestCase{
 		{
-			Name: "01-ValidNPUJob should return error when job request no npu",
-			Attr: attr1,
-			WantErr: &api.ValidateResult{
-				Pass:    false,
-				Reason:  "vcjob/job01 no npu job",
-				Message: "vcjob/job01 no npu job",
-			},
+			Name:    "01-ValidNPUJob should return nil when job request 1 npu",
+			Attr:    attr1,
+			WantErr: nil,
 		},
 		{
 			Name: "02-ValidNPUJob should return error when tasks request is not 1-2-4-8",
@@ -303,10 +299,10 @@ func buildScoreBestNPUNodesTestCases01() []itest.ScoreBestNPUNodesTestCase {
 
 func buildScoreBestNPUNodesTestCases02() []itest.ScoreBestNPUNodesTestCase {
 	const (
-		score232 = 232
-		score240 = 240
-		score248 = 248
-		score256 = 256
+		score263 = 263
+		score246 = 246
+		score236 = 236
+		score253 = 253
 	)
 	return []itest.ScoreBestNPUNodesTestCase{
 		{
@@ -322,7 +318,7 @@ func buildScoreBestNPUNodesTestCases02() []itest.ScoreBestNPUNodesTestCase {
 			Task:     test.FakeTaskWithResReq("pod0", util.NPU910CardName, 1),
 			Nodes:    []*api.NodeInfo{{Name: "node1"}, {Name: "node3"}, {Name: "node11"}, {Name: "node12"}},
 			ScoreMap: map[string]float64{"node1": 0, "node3": 0, "node11": 0, "node12": 0},
-			WantSMap: map[string]float64{"node1": score256, "node3": score248, "node11": score240, "node12": score232},
+			WantSMap: map[string]float64{"node1": score263, "node3": score253, "node11": score246, "node12": score236},
 			WantErr:  nil,
 		},
 		{
@@ -330,7 +326,7 @@ func buildScoreBestNPUNodesTestCases02() []itest.ScoreBestNPUNodesTestCase {
 			Task:     test.FakeTaskWithResReq("pod0", util.NPU910CardName, 1),
 			Nodes:    []*api.NodeInfo{{Name: "node12"}, {Name: "node11"}},
 			ScoreMap: map[string]float64{"node12": 0, "node11": 0},
-			WantSMap: map[string]float64{"node12": score232, "node11": score240},
+			WantSMap: map[string]float64{"node12": score236, "node11": score246},
 			WantErr:  nil,
 		},
 	}

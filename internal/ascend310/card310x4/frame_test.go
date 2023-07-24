@@ -40,7 +40,7 @@ const (
 
 func buildValidNPUJobTestCase01() []itest.ValidNPUJobTestCase {
 	job01 := test.FakeNormalTestJob("job01", 1)
-	test.SetFakeJobResRequest(job01, util.NPU310CardName, "0")
+	test.SetFakeJobResRequest(job01, util.NPU310CardName, "1")
 	attr1 := itest.FakeSchedulerJobAttrByJob(job01)
 	job02 := test.FakeNormalTestJob("job02", 1)
 	test.SetFakeJobResRequest(job02, util.NPU310CardName, "5")
@@ -73,7 +73,7 @@ func buildValidNPUJobTestCase01() []itest.ValidNPUJobTestCase {
 
 func buildValidNPUJobTestCase02() []itest.ValidNPUJobTestCase {
 	job04 := test.FakeNormalTestJob("job04", util.NPUIndex2)
-	test.SetFakeJobResRequest(job04, util.NPU310CardName, "0")
+	test.SetFakeJobResRequest(job04, util.NPU310CardName, "1")
 	attr4 := itest.FakeSchedulerJobAttrByJob(job04)
 	task := util.NPUTask{ReqNPUNum: 1}
 	attr4.Tasks[test.FakeTaskName1] = task

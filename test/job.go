@@ -133,7 +133,7 @@ func SetFakeJobResRequest(fJob *api.JobInfo, name v1.ResourceName, need string) 
 	}
 	for _, task := range fJob.Tasks {
 		task.Resreq = api.NewResource(resources)
-		fJob.TotalRequest.Add(api.NewResource(resources))
+		fJob.PodGroup.Spec.MinResources = &v1.ResourceList{name: resource.MustParse(need)}
 	}
 }
 

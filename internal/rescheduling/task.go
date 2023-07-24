@@ -120,6 +120,7 @@ func (fTask *FaultTask) setNodeRankIndex(value string) {
 
 func newFaultTaskDefault(task *api.TaskInfo, job *api.JobInfo) FaultTask {
 	faultTask := FaultTask{
+		Reason:        []FaultReasonList{},
 		IsFaultTask:   false,
 		TaskName:      task.Name,
 		TaskUID:       task.UID,

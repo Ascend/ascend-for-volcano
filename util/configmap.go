@@ -47,6 +47,14 @@ func GetConfigMapWithRetry(client kubernetes.Interface, namespace, cmName string
 	return cm, nil
 }
 
+func DelConfigMapWithRetry(client kubernetes.Interface, namespace, cmName string) error {
+	var err error
+	if err = client.CoreV1().ConfigMaps(namespace).Delete(context.TODO(), cmName, metav1.DeleteOptions{}); err != nil {
+		return err
+	}
+	return nil
+}
+
 // IsConfigMapChanged judge the cm wither is same. true is no change.
 func IsConfigMapChanged(k8s kubernetes.Interface, cm *v1.ConfigMap, cmName, nameSpace string) bool {
 	cmData, getErr := GetConfigMapWithRetry(k8s, nameSpace, cmName)
