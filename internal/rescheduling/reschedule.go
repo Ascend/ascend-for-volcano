@@ -20,6 +20,7 @@ Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
 package rescheduling
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -111,6 +112,12 @@ func (reScheduler *ReScheduler) createFaultTaskHandler(job *api.JobInfo, cardNam
 		klog.V(util.LogInfoLev).Infof("task %s is fault task: %v, health state: %s", task.Name, isFaultTask,
 			nodeHealthState)
 		faultTask.setIsFaultTask(isFaultTask)
+		if isFaultTask {
+			err = reScheduler.setTaskCardHealthCode(&faultTask)
+			if err != nil {
+				klog.V(util.ErrorInt).Infof("setTaskCardHealthCode task %s err %#v", task.Name, err)
+			}
+		}
 		faultTask.setFaultType(nodeHealthState)
 		faultTasks = append(faultTasks, faultTask)
 	}
@@ -273,6 +280,15 @@ func (reScheduler ReScheduler) getJobRankIdsFromTasks(fJob *FaultJob, cardName s
 	}
 	klog.V(util.LogInfoLev).Infof("job %s rankIds: %#v", fJob.JobName, jobRankIds)
 	return jobRankIds
+}
+
+func GetTaskRestartReason(reasonList []FaultReasonList) string {
+	str, err := json.Marshal(reasonList)
+	if err != nil {
+		klog.V(util.LogInfoLev).Infof("convertToReSchedulerJobsMapFromCM marshal: %#v.", err)
+		return ""
+	}
+	return string(str)
 }
 
 func (fTask *FaultTask) getTaskUsedFaultCards(fNode *FaultNode, disFlag bool) ([]string, error) {
@@ -671,7 +687,7 @@ func (reScheduler *ReScheduler) RestartFaultJobs(ssn *framework.Session) error {
 		}
 		klog.V(util.LogInfoLev).Infof("%s need restart.", restartFaultJob.JobName)
 		if restartErr := restartFaultJob.restartSingleFaultJob(
-			ssn, reScheduler.kubeClient, &schedulerJob, jobRestartReason); restartErr != nil {
+			ssn, reScheduler.kubeClient, &schedulerJob); restartErr != nil {
 			klog.V(util.LogErrorLev).Infof("RestartJob %s %#v.", schedulerJob.Name, restartErr)
 		} else {
 			restartFaultJob.DeleteExecutedFlag = true
@@ -1055,6 +1071,45 @@ func (reScheduler ReScheduler) getLastNodeHeartbeatByNodeNameFromCache(nodeName 
 		}
 	}
 	return 0
+}
+
+func (reScheduler ReScheduler) setTaskCardHealthCode(fTask *FaultTask) error {
+	klog.V(util.LogDebugLev).Infof("task %s setTaskCardHealthCode", fTask.TaskName)
+	var resonList []FaultReasonList
+	realFaultNode := reScheduler.getRealFaultNodes()
+	if fTask.NodeName == "" {
+		return fmt.Errorf("setTaskCardHealthCode fTask %s use node is nil", fTask.TaskName)
+	}
+	for _, fNode := range realFaultNode {
+		if !fNode.IsFaultNode {
+			return nil
+		}
+		if fNode.NodeName != fTask.NodeName {
+			continue
+		}
+		if fNode.NodeHealthState == NodeUnhealthy {
+			var reason FaultReasonList
+			reason.NodeName = fNode.NodeName
+			reason.FaultType = NodeUnhealthy
+			reason.FaultCode = NodeFaultCode
+			reason.LargeModelFaultLevel = PreSeparateNPU
+			resonList = append(resonList, reason)
+			fTask.Reason = resonList
+			return nil
+		}
+		for _, cardName := range fTask.UseCardName {
+			for _, fCard := range fNode.FaultDeviceList {
+				if cardName == fCard.NPUName {
+					var reason FaultReasonList
+					reason.NodeName = fNode.NodeName
+					reason.FaultDeviceList = fCard
+					resonList = append(resonList, reason)
+				}
+			}
+		}
+	}
+	fTask.Reason = resonList
+	return nil
 }
 
 func (reScheduler ReScheduler) getLastNodeHeartUpdateTimeByNodeNameFromCache(nodeName string) int64 {

@@ -45,7 +45,7 @@ type validNPUJobTestCase struct {
 
 func buildValidNPUJobTestCase01() []validNPUJobTestCase {
 	job01 := test.FakeNormalTestJob("job01", 1)
-	test.SetFakeJobResRequest(job01, util.NPU310CardName, "0")
+	test.SetFakeJobResRequest(job01, util.NPU310CardName, "1")
 	attr1 := itest.FakeSchedulerJobAttrByJob(job01)
 	for _, task := range attr1.Tasks {
 		fmt.Println(task.Name)

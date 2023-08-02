@@ -182,7 +182,7 @@ func (reCache DealReSchedulerCache) getRealFaultJobs() ([]FaultJob, error) {
 		if util.IsSliceContain(NodeCardNetworkUnhealthy, fJob.FaultTypes) &&
 			!util.IsSliceContain(NodeCardUnhealthy, fJob.FaultTypes) &&
 			!util.IsSliceContain(NodeUnhealthy, fJob.FaultTypes) &&
-			len(fJob.FaultTasks) < util.NPUIndex2 {
+			fJob.GetJobFaultNPUTaskNum() < util.NPUIndex2 {
 			continue
 		}
 		realFaultJobs = append(realFaultJobs, fJob)

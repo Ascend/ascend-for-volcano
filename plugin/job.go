@@ -178,9 +178,6 @@ func GetJobNPUTasks(vcJob *api.JobInfo) map[api.TaskID]util.NPUTask {
 	resultMap := make(map[api.TaskID]util.NPUTask, util.MapInitNum)
 	for taskID, taskInf := range vcJob.Tasks {
 		name, num := GetVCTaskReqNPUTypeFromTaskInfo(taskInf)
-		if num == 0 {
-			continue
-		}
 		resultMap[taskID] = util.NPUTask{Name: taskInf.Name, NameSpace: taskInf.Namespace, ReqNPUName: name,
 			ReqNPUNum: num,
 			Selector:  GetTaskSelectors(taskInf), Label: GetTaskLabels(taskInf), VTask: &util.VTask{}}
