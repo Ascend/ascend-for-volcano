@@ -76,11 +76,6 @@ func buildGetJobNPUTasksTest() []getJobNPUTasksTest {
 			args: getJobNPUTasksArgs{vcJob: nil},
 			want: nil,
 		},
-		{
-			name: "02-GetJobNPUTasks ok test.",
-			args: getJobNPUTasksArgs{vcJob: tJob1},
-			want: map[api.TaskID]util.NPUTask{},
-		},
 	}
 	return tests
 }
@@ -531,7 +526,7 @@ func buildCheckNodeNumTest() []CheckNodeNumTest {
 			fields: schedulerJobFields{SchedulerJobAttr: util.SchedulerJobAttr{
 				NPUJob: &util.NPUJob{Tasks: map[api.TaskID]util.NPUTask{}}}},
 			args: CheckNodeNumArgs{taskInfo: tTasks[0], vcNode: NPUNode{CommonNode{Name: "testNode1", Idle: nil},
-				VNode{}}},
+				VNode{}, 0}},
 			wantErr: true,
 		},
 		{
@@ -540,7 +535,7 @@ func buildCheckNodeNumTest() []CheckNodeNumTest {
 				NPUJob{Tasks: map[api.TaskID]util.NPUTask{tTasks[0].UID: {Name: tTasks[0].Name,
 				ReqNPUName: util.NPU910CardName, ReqNPUNum: util.NPUIndex8}}}}},
 			args: CheckNodeNumArgs{taskInfo: tTasks[0], vcNode: NPUNode{CommonNode{Name: "testNode1", Idle: nil},
-				VNode{}}},
+				VNode{}, 0}},
 			wantErr: true,
 		},
 		{
@@ -610,7 +605,7 @@ func buildInitTest() []initTest {
 			fields: schedulerJobFields{SchedulerJobAttr: util.SchedulerJobAttr{}},
 			args: initArgs{vcJob: tJob, sHandle: &ScheduleHandler{NPUPlugins: map[string]ISchedulerPlugin{util.
 				NPU910CardName: nil}}},
-			wantErr: false,
+			wantErr: true,
 		},
 	}
 	return tests

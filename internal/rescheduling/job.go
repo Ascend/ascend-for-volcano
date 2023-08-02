@@ -23,7 +23,7 @@ import (
 	"context"
 	"fmt"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -65,6 +65,16 @@ func (fJob *FaultJob) GetJobElasticSchedulingLabel(job *plugin.SchedulerJob) str
 	}
 	klog.V(util.LogInfoLev).Infof("GetJobElasticSchedulingLabel job: %s, label: %s", job.Name, value)
 	return value
+}
+
+func (fJob *FaultJob) GetJobFaultNPUTaskNum() int {
+	var count int
+	for _, fTask := range fJob.FaultTasks {
+		if len(fTask.UseCardName) > 0 {
+			count++
+		}
+	}
+	return count
 }
 
 func (fJob *FaultJob) isJobGraceDeleteSuccess(jobInfo *api.JobInfo) bool {
@@ -109,7 +119,7 @@ func (fJob *FaultJob) CheckJobExistsInKubernetes(ssn *framework.Session) bool {
 	for _, fTask := range fJob.FaultTasks {
 		klog.V(util.LogDebugLev).Infof("check task %s via client-go", fTask.TaskName)
 		realPod, err := ssn.KubeClient().CoreV1().Pods(fTask.TaskNamespace).Get(
-			context.TODO(), fTask.TaskName, v1.GetOptions{})
+			context.TODO(), fTask.TaskName, metav1.GetOptions{})
 		if err != nil || realPod == nil {
 			klog.V(util.LogInfoLev).Infof("pod %s not in kubernetes", fTask.TaskName)
 			continue
@@ -140,7 +150,7 @@ func (fJob *FaultJob) ForceDeleteJob(ssn *framework.Session, schedulerJob *plugi
 }
 
 // GraceDeleteJob grace delete jobs labelled to be deleted gracefully
-func (fJob *FaultJob) GraceDeleteJob(ssn *framework.Session, npuJob *plugin.SchedulerJob, reason string) error {
+func (fJob *FaultJob) GraceDeleteJob(ssn *framework.Session, npuJob *plugin.SchedulerJob) error {
 	if fJob == nil {
 		return fmt.Errorf("getJobFaultRescheduleLabel fJob object does not exist")
 	}
@@ -150,6 +160,13 @@ func (fJob *FaultJob) GraceDeleteJob(ssn *framework.Session, npuJob *plugin.Sche
 	if npuJob == nil {
 		return fmt.Errorf("schedulerJob does not exist")
 	}
+	var reasonList []FaultReasonList
+	for _, fTask := range fJob.FaultTasks {
+		if fTask.Reason != nil {
+			reasonList = append(reasonList, fTask.Reason...)
+		}
+	}
+	reason := GetTaskRestartReason(reasonList)
 	for _, fTask := range fJob.FaultTasks {
 		npuTask, ok := npuJob.Tasks[fTask.TaskUID]
 		if !ok {
@@ -165,35 +182,26 @@ func (fJob *FaultJob) GraceDeleteJob(ssn *framework.Session, npuJob *plugin.Sche
 }
 
 func (fJob *FaultJob) restartSingleFaultJob(ssn *framework.Session,
-	kubeClient kubernetes.Interface, schedulerJob *plugin.SchedulerJob, obj interface{}) error {
-	// 1. get pod pending reason
-	var reason string
-	switch para := obj.(type) {
-	case string:
-		reason = para
-	case map[api.TaskID]*api.FitErrors:
-		for _, nodeErrors := range para {
-			reason += nodeErrors.Error()
-		}
-	case error:
-		reason = para.Error()
-	default:
-		// other type are not allowed
-		return fmt.Errorf("aseert reason(%T) failed", reason)
-	}
+	kubeClient kubernetes.Interface, schedulerJob *plugin.SchedulerJob) error {
 
 	// delete jobs
 	var deleteErr error
+	vcjob, ok := ssn.Jobs[schedulerJob.Name]
+	if !ok {
+		return nil
+	}
 	switch fJob.ReScheduleKey {
 	case JobForceRescheduleLabelValue:
 		deleteErr = fJob.ForceDeleteJob(ssn, schedulerJob)
 	case JobGraceRescheduleLabelValue:
-		deleteErr = fJob.GraceDeleteJob(ssn, schedulerJob, reason)
+		deleteErr = fJob.GraceDeleteJob(ssn, schedulerJob)
 	case JobOffRescheduleLabelValue:
 		deleteErr = fmt.Errorf("job reschedule %s", fJob.ReScheduleKey)
 	default:
 		deleteErr = fmt.Errorf("not support %s to reschedule job", fJob.ReScheduleKey)
 	}
+
+	deleteErr = util.DelConfigMapWithRetry(ssn.KubeClient(), schedulerJob.NameSpace, NoRanksCmPre+vcjob.Name)
 	return deleteErr
 }
 

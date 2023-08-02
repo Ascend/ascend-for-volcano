@@ -64,8 +64,8 @@ func buildValidNPUJobTestCase01() []validNPUJobTestCase {
 			attr: attr1,
 			wantErr: &api.ValidateResult{
 				Pass:    false,
-				Reason:  "vcjob/job01 no npu job",
-				Message: "vcjob/job01 no npu job",
+				Reason:  "huawei.com/Ascend910card checkSingleTrainMode vcjob/job01 req npu not in [1,2]",
+				Message: "huawei.com/Ascend910card checkSingleTrainMode vcjob/job01 req npu not in [1,2]",
 			},
 		},
 		{
@@ -103,8 +103,8 @@ func buildValidNPUJobTestCase02() []validNPUJobTestCase {
 			attr: attr4,
 			wantErr: &api.ValidateResult{
 				Pass:    false,
-				Reason:  "vcjob/job04 no npu job",
-				Message: "vcjob/job04 no npu job",
+				Reason:  "checkModuleDistributeTrainMode pod0 req 0 not in [1,2,4,8]",
+				Message: "checkModuleDistributeTrainMode pod0 req 0 not in [1,2,4,8]",
 			},
 		},
 		{

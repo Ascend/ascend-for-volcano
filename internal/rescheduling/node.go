@@ -20,6 +20,7 @@ Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
 package rescheduling
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -199,6 +200,25 @@ func (fNode *FaultNode) updateFaultNodesFromDeviceInfo(node *plugin.NPUNode, car
 	}
 	fNode.setAllCardList(tmpAllCardsList)
 	klog.V(util.LogInfoLev).Infof("Unallocated and fault cards from device info: %#v", tmpAllCardsList)
+	DeviceFaultReason, err := GetNodeDeviceFaultFromDeviceInfo(node)
+	if err != nil {
+		klog.V(util.LogDebugLev).Infof("GetNodeDeviceFaultFromDeviceInfo: %#v", err)
+	}
+	fNode.setFaultDeviceList(DeviceFaultReason)
+
+}
+
+func GetNodeDeviceFaultFromDeviceInfo(node *plugin.NPUNode) ([]FaultDeviceList, error) {
+	deviceFaultList, ok := node.Annotation[DeviceFaultCmKey]
+	if !ok {
+		return nil, fmt.Errorf("GetNodeDeviceFaultFromDeviceInfo failed")
+	}
+	var deviceFault []FaultDeviceList
+	if unmarshalErr := json.Unmarshal([]byte(deviceFaultList), &deviceFault); unmarshalErr != nil {
+		klog.V(util.LogInfoLev).Infof("convertToDeviceFaultListFromCM Unmarshal: %#v.", unmarshalErr)
+		return nil, unmarshalErr
+	}
+	return deviceFault, nil
 }
 
 // updateFaultNodesAttr update Information from device Info
@@ -363,6 +383,10 @@ func (fNode *FaultNode) setNodeHeartbeatInterval(value int) {
 	fNode.HeartbeatInterval = value
 }
 
+func (fNode *FaultNode) setFaultDeviceList(value []FaultDeviceList) {
+	fNode.FaultDeviceList = value
+}
+
 func newFaultNodeDefault(nodeName string, updateTime int64) FaultNode {
 	faultNode := FaultNode{
 		NodeName:            nodeName,
@@ -377,6 +401,7 @@ func newFaultNodeDefault(nodeName string, updateTime int64) FaultNode {
 		HeartbeatInterval:   0,
 		OldHeartbeatTime:    0,
 		UpdateHeartbeatTime: 0,
+		FaultDeviceList:     []FaultDeviceList{},
 	}
 	return faultNode
 }
