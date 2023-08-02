@@ -201,7 +201,10 @@ func (fJob *FaultJob) restartSingleFaultJob(ssn *framework.Session,
 		deleteErr = fmt.Errorf("not support %s to reschedule job", fJob.ReScheduleKey)
 	}
 
-	deleteErr = util.DelConfigMapWithRetry(ssn.KubeClient(), schedulerJob.NameSpace, NoRanksCmPre+vcjob.Name)
+	err := util.DelConfigMapWithRetry(ssn.KubeClient(), schedulerJob.NameSpace, NoRanksCmPre+vcjob.Name)
+	if err != nil {
+		klog.V(util.LogInfoLev).Infof("DelConfigMapWithRetry err :%#v", err)
+	}
 	return deleteErr
 }
 
