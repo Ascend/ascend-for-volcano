@@ -71,6 +71,7 @@ type NPUTask struct {
 	// Selector the same as job.
 	Selector map[string]string
 	Label    map[string]string
+	NodeName string
 	*VTask
 }
 
