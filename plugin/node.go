@@ -64,6 +64,7 @@ type CommonNode struct {
 	Idle       map[v1.ResourceName]float64
 	Annotation map[string]string
 	Label      map[string]string
+	Address    string
 }
 
 // VNode vnpu node class
@@ -167,6 +168,13 @@ func (n *NPUNode) InitNPUNodeByNodeInf(npuNode *api.NodeInfo, kubeClient kuberne
 	n.Allocate = npuNode.Allocatable.ScalarResources
 	n.Idle = npuNode.Idle.ScalarResources
 	n.Label = npuNode.Node.Labels
+
+	for _, addr := range npuNode.Node.Status.Addresses {
+		if addr.Type == v1.NodeInternalIP {
+			n.Address = addr.Address
+			break
+		}
+	}
 
 	if n.Annotation == nil {
 		n.Annotation = make(map[string]string, util.MapInitNum)
