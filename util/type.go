@@ -199,6 +199,8 @@ const (
 const (
 	// JobNotEnqueue job enqueue failed
 	JobNotEnqueue = -1
+	// JobEnqueue job enqueue success
+	JobEnqueue = 1
 	// JobEnqueueSkip skip the judgement of ascend-volcano-plugin in the job enqueue phase
 	JobEnqueueSkip = 0
 )

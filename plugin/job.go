@@ -20,8 +20,10 @@ Package plugin is using for HuaWei Ascend pin affinity schedule frame.
 package plugin
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"k8s.io/api/core/v1"
@@ -29,6 +31,7 @@ import (
 	"k8s.io/klog"
 	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
+	"volcano.sh/volcano/pkg/scheduler/framework"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
@@ -162,7 +165,7 @@ func GetVCTaskReqNPUTypeFromTaskInfo(vcTask *api.TaskInfo) (string, int) {
 		}
 		continue
 	}
-	klog.V(util.LogErrorLev).Infof("GetVCTaskReqNPUTypeFromTaskInfo %+v.", vcTask.Resreq.ScalarResources)
+	klog.V(util.LogInfoLev).Infof("GetVCTaskReqNPUTypeFromTaskInfo %+v.", vcTask.Resreq.ScalarResources)
 	return "", 0
 }
 
@@ -178,9 +181,16 @@ func GetJobNPUTasks(vcJob *api.JobInfo) map[api.TaskID]util.NPUTask {
 	resultMap := make(map[api.TaskID]util.NPUTask, util.MapInitNum)
 	for taskID, taskInf := range vcJob.Tasks {
 		name, num := GetVCTaskReqNPUTypeFromTaskInfo(taskInf)
-		resultMap[taskID] = util.NPUTask{Name: taskInf.Name, NameSpace: taskInf.Namespace, ReqNPUName: name,
-			ReqNPUNum: num,
-			Selector:  GetTaskSelectors(taskInf), Label: GetTaskLabels(taskInf), VTask: &util.VTask{}}
+		resultMap[taskID] = util.NPUTask{
+			Name:       taskInf.Name,
+			NameSpace:  taskInf.Namespace,
+			ReqNPUName: name,
+			ReqNPUNum:  num,
+			Selector:   GetTaskSelectors(taskInf),
+			Label:      GetTaskLabels(taskInf),
+			VTask:      &util.VTask{},
+			NodeName:   taskInf.NodeName,
+		}
 	}
 	return resultMap
 }
@@ -259,6 +269,7 @@ func (sJob *SchedulerJob) initNPUJob(vcJob *api.JobInfo) {
 }
 
 func (sJob *SchedulerJob) initByJobInfo(vcJob *api.JobInfo) error {
+	sJob.JobReadyTag = true
 	sJob.SchedulerJobAttr.ComJob = util.ComJob{Name: vcJob.UID, NameSpace: vcJob.Namespace,
 		Selector: GetJobSelectorFromVcJob(vcJob),
 		Label:    GetJobLabelFromVcJob(vcJob)}
@@ -320,6 +331,271 @@ func (sJob SchedulerJob) ValidJobFn(vcFrame VolcanoFrame) *api.ValidateResult {
 
 	klog.V(util.LogInfoLev).Infof("%s valid ok.", sJob.Name)
 	return nil
+}
+
+func ValidLargeModelJob(sJob SchedulerJob, sHandler *ScheduleHandler, nodes []*api.NodeInfo) error {
+	if sJob.Status == scheduling.PodGroupRunning || sJob.ServerList != nil {
+		return nil
+	}
+	if sHandler.Tors == nil {
+		return fmt.Errorf("validJobFn [%#v] failed:%#v", sJob.Name, objectNilError)
+	}
+	if sHandler.Tors.Tors == nil {
+		return fmt.Errorf("validJobFn [%#v] failed:%#v", sJob.Name, objectNilError)
+	}
+	if sHandler.Tors.UsedByJob != "" && sHandler.Tors.UsedByJob != sJob.Name {
+		return fmt.Errorf("is used by another job")
+	}
+	sHandler.Tors.UsedByJob = sJob.Name
+	sJob.GetEnableServerList(nodes, sHandler)
+	fullTorNum := sJob.GetFullTorNumFromTorInfo(sHandler)
+	n := sJob.GetNPUTaskNumInJob()
+	sort.Sort(TorLs(sHandler.Tors.Tors))
+	netSliceNum := sHandler.Tors.TorCount
+	if n < netSliceNum {
+		return sJob.SetFillJobServerList(sHandler, n)
+	}
+	logicList := sJob.GetLogicTorList(sHandler, netSliceNum)
+	taskRow, taskColumn := GetTaskRowAndTaskColumn(n, netSliceNum)
+	if taskRow+1 < fullTorNum {
+		sJob.SetJobServerCacheTosHandler(sHandler, sHandler.Tors.Tors, taskRow, taskColumn)
+		return nil
+	}
+	if logicList == nil {
+		return fmt.Errorf("tor check failed logicTorList is nil")
+	}
+	sort.Sort(LogicTorList(logicList))
+
+	if logicList[taskColumn] == nil {
+		return fmt.Errorf("tor check failed not enough resource by not enough Net Slice")
+	}
+
+	if taskRow > 0 && logicList[netSliceNum-1] == nil {
+		return fmt.Errorf("tor check failed not enough resource Net Slice is not full")
+	}
+
+	if taskRow > 0 && len(logicList[netSliceNum-1]) < taskRow-1 {
+		return fmt.Errorf("tor check failed not enough resource by not enough logic Tor")
+	}
+	pyTor, fullTorNum := sJob.GetPhyTosList(sHandler, logicList, taskRow, taskColumn)
+
+	if taskRow+1 < fullTorNum {
+		sJob.SetJobServerCacheTosHandler(sHandler, pyTor, taskRow, taskColumn)
+		return nil
+	}
+
+	if taskRow <= fullTorNum {
+		if len(pyTor[taskRow].Servers) < taskColumn+1 {
+			return fmt.Errorf("tor check failed not enough resource for large module job")
+		}
+		sJob.SetJobServerCacheTosHandler(sHandler, pyTor, taskRow, taskColumn)
+		return nil
+	}
+	return fmt.Errorf("tor check failed not enough resource")
+}
+
+func (sJob SchedulerJob) SetJobServerCacheTosHandler(sHandler *ScheduleHandler, pyTor []*Tor, taskRow, taskColumn int) {
+	sJob.ServerList = pyTor[:taskRow]
+	tmpTor := &Tor{}
+	tmpTor.Servers = append(tmpTor.Servers, pyTor[taskRow].Servers[:taskColumn+1]...)
+	sJob.ServerList = append(sJob.ServerList, tmpTor)
+	sHandler.Jobs[sJob.Name] = sJob
+}
+
+func GetTaskRowAndTaskColumn(nTaskNum int, netSliceNum int) (int, int) {
+	taskRow := nTaskNum / netSliceNum
+	if nTaskNum%netSliceNum == 0 {
+		taskRow = nTaskNum/netSliceNum - 1
+	}
+	taskColumn := (nTaskNum%netSliceNum + netSliceNum - 1) % netSliceNum
+	return taskRow, taskColumn
+}
+
+func (sJob SchedulerJob) GetFullTorNumFromTorInfo(sHandler *ScheduleHandler) int {
+	var fullTorNum int
+	for _, tor := range sHandler.Tors.Tors {
+		count := 0
+		for _, l := range tor.Servers {
+			if l.CurrentJob == sJob.Name {
+				count++
+			}
+		}
+		if count == sHandler.Tors.TorCount {
+			fullTorNum++
+		}
+		tor.FreeServerCount = count
+	}
+	return fullTorNum
+}
+
+func (sJob SchedulerJob) GetPhyTosList(sHandler *ScheduleHandler, logicList [][]*Server, taskRow, taskColumn int) ([]*Tor, int) {
+	var tors []*Tor
+	var fullTor int
+	for i := 0; i <= taskRow; i++ {
+		tmpTor := &Tor{}
+		for j := 0; j < sHandler.Tors.TorCount; j++ {
+			tmpTor.Servers = append(tmpTor.Servers, logicList[j][i])
+			if j == sHandler.Tors.TorCount-1 {
+				fullTor++
+			}
+			if i == taskRow && j == taskColumn {
+				break
+			}
+		}
+		tors = append(tors, tmpTor)
+	}
+	return tors, fullTor
+}
+
+func (sJob SchedulerJob) CreateJobServerListCM(ssn *framework.Session, torCount int) {
+	job, ok := ssn.Jobs[sJob.Name]
+	if !ok {
+		return
+	}
+	if sJob.Status == scheduling.PodGroupRunning || sJob.ServerList == nil {
+		return
+	}
+	serverList := sJob.CreateJobServerList(torCount)
+	tmpByte, err := json.Marshal(serverList)
+	if err != nil {
+		klog.Infof("CreateJobServerListCM err:%#v", err)
+		return
+	}
+	str := ServerListCMPre + job.Name
+	var tmpCM = &v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      str,
+			Namespace: sJob.NameSpace,
+		},
+		Data: map[string]string{
+			ServerListCMKey: string(tmpByte),
+		},
+	}
+	err = util.CreateOrUpdateConfigMap(ssn.KubeClient(), tmpCM, str, sJob.NameSpace)
+	if err != nil {
+		klog.Infof("CreateJobServerListCM err:%#v", err)
+		return
+	}
+}
+
+func (sJob SchedulerJob) SetFillJobServerList(sHandler *ScheduleHandler, taskNum int) error {
+	var count int
+	for i := len(sHandler.Tors.Tors) - 1; i >= 0; i-- {
+		if sHandler.Tors.Tors[i].FreeServerCount >= taskNum {
+			tmpTor := &Tor{}
+			for _, k := range sHandler.Tors.Tors[i].Servers {
+				if k.CurrentJob == sJob.Name {
+					count++
+					tmpTor.Servers = append(tmpTor.Servers, k)
+				}
+				if count == taskNum {
+					break
+				}
+			}
+			sJob.ServerList = append(sJob.ServerList, tmpTor)
+			sHandler.Jobs[sJob.Name] = sJob
+			return nil
+		}
+	}
+	return fmt.Errorf("tor check failed not enough resource for fill job")
+}
+
+func (sJob SchedulerJob) CreateJobServerList(torCount int) TorListInfo {
+	tmpTorList := TorListInfo{}
+	tmpTorList.Version = TorListVersion
+	tmpTorList.TorCount = torCount
+	tmpTorList.ServerCount = sJob.GetNPUTaskNumInJob()
+	for i, k := range sJob.ServerList {
+		tmpServerList := ServerList{}
+		tmpServerList.Id = i
+		var tmpServers []map[string]string
+		for _, v := range k.Servers {
+			m := make(map[string]string)
+			m[ServerIPKey] = v.IP
+			tmpServers = append(tmpServers, m)
+		}
+		tmpServerList.Servers = tmpServers
+		tmpTorList.ServerList = append(tmpTorList.ServerList, tmpServerList)
+	}
+	return tmpTorList
+}
+
+func (sJob SchedulerJob) GetLogicTorList(sHandler *ScheduleHandler, netSliceNum int) [][]*Server {
+	logicTorList := make([][]*Server, netSliceNum)
+	for _, tor := range sHandler.Tors.Tors {
+		for i, server := range tor.Servers {
+			if server.CurrentJob == sJob.Name {
+				logicTorList[i] = append(logicTorList[i], server)
+			}
+		}
+	}
+	return logicTorList
+
+}
+
+func (sJob SchedulerJob) GetEnableServerList(nodes []*api.NodeInfo, sHandler *ScheduleHandler) {
+	if sHandler == nil {
+		return
+	}
+	if sHandler.Tors == nil {
+		return
+	}
+	for _, node := range nodes {
+		for _, tor := range sHandler.Tors.Tors {
+			if tor.HasAcrossJob() {
+				continue
+			}
+			for _, server := range tor.Servers {
+				if server.Name == node.Name && server.CurrentJob == "" {
+					server.CurrentJob = sJob.Name
+				}
+			}
+		}
+	}
+}
+
+type TorLs []*Tor
+
+func (tp TorLs) Len() int {
+	return len(tp)
+}
+
+func (tp TorLs) Less(i, j int) bool {
+	if i > tp.Len() || j > tp.Len() {
+		return false
+	}
+	count1 := tp[i].FreeServerCount
+	count2 := tp[j].FreeServerCount
+	return count1 > count2
+}
+
+func (tp TorLs) Swap(i, j int) {
+	if i > tp.Len() || j > tp.Len() {
+		return
+	}
+	tp[i], tp[j] = tp[j], tp[i]
+}
+
+type LogicTorList [][]*Server
+
+func (tp LogicTorList) Len() int {
+	return len(tp)
+}
+
+func (tp LogicTorList) Less(i, j int) bool {
+	if i > tp.Len() || j > tp.Len() {
+		return false
+	}
+	count1 := len(tp[i])
+	count2 := len(tp[j])
+	return count1 > count2
+}
+
+func (tp LogicTorList) Swap(i, j int) {
+	if i > tp.Len() || j > tp.Len() {
+		return
+	}
+	tp[i], tp[j] = tp[j], tp[i]
 }
 
 func updatePodsPendingReason(job *api.JobInfo, tID api.TaskID, reason string) {

@@ -83,7 +83,9 @@ const (
 // SchedulerJob the plugin define job info
 type SchedulerJob struct {
 	util.SchedulerJobAttr
-	handler ISchedulerPlugin
+	handler     ISchedulerPlugin
+	ServerList  []*Tor
+	JobReadyTag bool
 }
 
 // VolcanoFrame passed in by the volcano frame.
@@ -113,6 +115,7 @@ type ScheduleEnv struct {
 	Nodes     map[string]NPUNode
 	FrameAttr VolcanoFrame
 	Cache     ScheduleCache
+	Tors      *TorList
 }
 
 // ScheduleHandler information for the current plugin

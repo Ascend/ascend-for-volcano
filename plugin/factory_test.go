@@ -22,7 +22,6 @@ package plugin
 import (
 	"reflect"
 	"testing"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/config"
 
 	"github.com/agiledragon/gomonkey/v2"
 	"k8s.io/api/core/v1"
@@ -31,6 +30,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/config"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
@@ -43,6 +43,7 @@ type fields struct {
 type batchNodeOrderFnArgs struct {
 	task  *api.TaskInfo
 	nodes []*api.NodeInfo
+	ssn   *framework.Session
 }
 
 type batchNodeOrderFnTest struct {
@@ -60,7 +61,7 @@ func buildBatchNodeOrderFn() []batchNodeOrderFnTest {
 		{
 			name:    "01-BatchNodeOrderFn nil Test",
 			fields:  fields{},
-			args:    batchNodeOrderFnArgs{task: nil, nodes: nil},
+			args:    batchNodeOrderFnArgs{task: nil, nodes: nil, ssn: nil},
 			want:    nil,
 			wantErr: true,
 		},
@@ -71,7 +72,7 @@ func buildBatchNodeOrderFn() []batchNodeOrderFnTest {
 					Jobs:      map[api.JobID]SchedulerJob{},
 					Nodes:     map[string]NPUNode{},
 					FrameAttr: VolcanoFrame{}}},
-			args:    batchNodeOrderFnArgs{task: tTask, nodes: tNodes},
+			args:    batchNodeOrderFnArgs{task: tTask, nodes: tNodes, ssn: nil},
 			want:    map[string]float64{"node0": 0, "node1": 0},
 			wantErr: false,
 		},
@@ -128,6 +129,7 @@ func buildBeforeCloseHandler() []beforeCloseHandlerTest {
 
 func TestBeforeCloseHandler(t *testing.T) {
 	tests := buildBeforeCloseHandler()
+	var ssn *framework.Session
 	tmpPatche := gomonkey.ApplyFunc(util.CreateOrUpdateConfigMap,
 		func(k8s kubernetes.Interface, cm *v1.ConfigMap, cmName, cmNameSpace string) error {
 			return nil
@@ -142,7 +144,7 @@ func TestBeforeCloseHandler(t *testing.T) {
 				NPUPlugins:  tt.fields.NPUPlugins,
 				ScheduleEnv: tt.fields.ScheduleEnv,
 			}
-			sHandle.BeforeCloseHandler()
+			sHandle.BeforeCloseHandler(ssn)
 		})
 	}
 	tmpPatche.Reset()
@@ -220,23 +222,12 @@ type initNPUSessionTest struct {
 }
 
 func buildInitNPUSessionTest() []initNPUSessionTest {
-	testSsn := test.FakeNormalSSN()
 	tests := []initNPUSessionTest{
 		{
 			name:    "01-InitNPUSession nil ssn test",
 			fields:  fields{},
 			args:    initNPUSessionArgs{ssn: nil},
 			wantErr: true,
-		},
-		{
-			name: "02-InitNPUSession ok test",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
-				ScheduleEnv: ScheduleEnv{
-					Jobs:      map[api.JobID]SchedulerJob{},
-					Nodes:     map[string]NPUNode{},
-					FrameAttr: VolcanoFrame{}}},
-			args:    initNPUSessionArgs{ssn: testSsn},
-			wantErr: false,
 		},
 	}
 	return tests

@@ -53,7 +53,7 @@ func buildValidNPUJobTestCase01() []validNPUJobTestCase {
 	job02 := test.FakeNormalTestJob("job02", 1)
 	test.SetFakeJobResRequest(job02, util.NPU310CardName, "65")
 	attr2 := itest.FakeSchedulerJobAttrByJob(job02)
-	for _, task := range attr1.Tasks {
+	for _, task := range attr2.Tasks {
 		fmt.Println(task.Name)
 	}
 	job03 := test.FakeNormalTestJob("job02", 1)

@@ -83,6 +83,17 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 		return score, nil
 	})
 
+	ssn.AddJobReadyFn(tp.Name(), func(obj interface{}) bool {
+		if tp.Scheduler.Tors == nil {
+			return true
+		}
+		ji := obj.(*api.JobInfo)
+		job, ok := tp.Scheduler.Jobs[ji.UID]
+		if !ok {
+			return true
+		}
+		return job.JobReadyTag
+	})
 	ssn.AddJobEnqueueableFn(tp.Name(), func(job interface{}) int {
 		if tp.Scheduler.NPUPlugins == nil {
 			klog.V(util.LogErrorLev).Infof("AddJobEnqueueableFn : %s", util.ArgumentError)
@@ -122,7 +133,7 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 				"but cluster npu num is %v", rNpuNum, tNpuNum)
 			return util.JobNotEnqueue
 		}
-		return util.JobEnqueueSkip
+		return util.JobEnqueue
 	})
 	// Register event handlers to update task info in PodLister & nodeMap
 	// for support Concurrency
@@ -138,6 +149,9 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 			if event == nil {
 				klog.V(util.LogErrorLev).Infof("DeallocateFunc event nil.")
 				return
+			}
+			if tp.Scheduler.Tors != nil {
+				tp.Scheduler.Tors.UsedByJob = ""
 			}
 			tp.Scheduler.NPUDeallocateFunc(event.Task)
 		},
@@ -163,7 +177,10 @@ func (tp *huaweiNPUPlugin) OnSessionClose(ssn *framework.Session) {
 			tp.Scheduler.SetJobPendReasonByNodesCase(job)
 		}
 	}
-	tp.Scheduler.BeforeCloseHandler()
+	if tp.Scheduler.Tors != nil {
+		tp.Scheduler.Tors.UsedByJob = ""
+	}
+	tp.Scheduler.BeforeCloseHandler(ssn)
 }
 
 // HandlerStart HuaWei NPU plugin start by frame.

@@ -21,6 +21,7 @@ package plugin
 
 import (
 	"errors"
+	"reflect"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -106,6 +107,10 @@ func (sHandle *ScheduleHandler) InitJobsFromSsn(ssn *framework.Session) {
 	}
 	sHandle.Jobs = make(map[api.JobID]SchedulerJob, util.MapInitNum)
 	for jobID, jobInfo := range ssn.Jobs {
+		if !IsJobInitial(jobInfo) {
+			klog.V(util.LogInfoLev).Infof("job<%s> is not initial", jobInfo.UID)
+			continue
+		}
 		sJob := SchedulerJob{}
 		if err := sJob.Init(jobInfo, sHandle); err != nil {
 			klog.V(util.LogInfoLev).Infof("%s InitJobsFromSsn failed: %#v.", jobInfo.Name, err)
@@ -342,10 +347,16 @@ func (sHandle *ScheduleHandler) saveCacheToCm() {
 }
 
 // BeforeCloseHandler do the action before ssn close.
-func (sHandle *ScheduleHandler) BeforeCloseHandler() {
+func (sHandle *ScheduleHandler) BeforeCloseHandler(ssn *framework.Session) {
 	if sHandle == nil {
 		klog.V(util.LogInfoLev).Infof("BeforeCloseHandler failed: %s.", util.ArgumentError)
 		return
+	}
+	for _, job := range sHandle.Jobs {
+		if sHandle.Tors == nil {
+			break
+		}
+		job.CreateJobServerListCM(ssn, sHandle.Tors.TorCount)
 	}
 	for name, plugin := range sHandle.NPUPlugins {
 		if err := plugin.PreStopAction(&sHandle.ScheduleEnv); err != nil {
@@ -371,6 +382,7 @@ func (sHandle *ScheduleHandler) InitNPUSession(ssn *framework.Session) error {
 	sHandle.InitNodesFromSsn(ssn)
 	sHandle.InitJobsFromSsn(ssn)
 
+	sHandle.InitTorNodeInfo(ssn)
 	sHandle.InitJobsPlugin()
 	sHandle.InitCache()
 	sHandle.PreStartPlugin(ssn)
@@ -392,8 +404,7 @@ func (sHandle *ScheduleHandler) GetNPUScheduler(name string) (ISchedulerPlugin, 
 }
 
 // BatchNodeOrderFn Score the selected nodes.
-func (sHandle *ScheduleHandler) BatchNodeOrderFn(task *api.TaskInfo, nodes []*api.NodeInfo) (map[string]float64,
-	error) {
+func (sHandle *ScheduleHandler) BatchNodeOrderFn(task *api.TaskInfo, nodes []*api.NodeInfo) (map[string]float64, error) {
 	klog.V(util.LogInfoLev).Infof("Enter batchNodeOrderFn")
 	defer klog.V(util.LogInfoLev).Infof("leaving batchNodeOrderFn")
 
@@ -401,13 +412,36 @@ func (sHandle *ScheduleHandler) BatchNodeOrderFn(task *api.TaskInfo, nodes []*ap
 		klog.V(util.LogErrorLev).Infof("%s batchNodeOrderFn %s.", PluginName, util.ArgumentError)
 		return nil, errors.New(util.ArgumentError)
 	}
-
+	if !IsNPUTask(task) {
+		return nil, nil
+	}
 	// init score-map
 	var interPodAffinityScore v1.HostPriorityList
 	scoreMap := initScoreMap(nodes, interPodAffinityScore)
 	vcJob, ok := sHandle.Jobs[task.Job]
 	if !ok {
 		klog.V(util.LogDebugLev).Infof("BatchNodeOrderFn %s not req npu.", task.Name)
+		return scoreMap, nil
+	}
+
+	k, ok := vcJob.Label[TorAffinityKey]
+	if !ok {
+		klog.V(util.LogInfoLev).Infof("validNPUJob job is 910x8 module")
+	}
+	if k == LargeModelTag {
+		result := ValidLargeModelJob(vcJob, sHandle, nodes)
+		vcJob = sHandle.Jobs[task.Job]
+		if result != nil {
+			vcJob.JobReadyTag = false
+			sHandle.Jobs[task.Job] = vcJob
+			klog.V(util.LogErrorLev).Infof("%s validNPUJob failed:%#v.", PluginName, result)
+		}
+		errGet := sHandle.ScoreBestNPUNodes(task, nodes, scoreMap)
+		if errGet != nil {
+			// get suitable node failed
+			klog.V(util.LogErrorLev).Infof("batchNodeOrderFn task[%s] failed[%#v].", task.Name, errGet)
+		}
+		klog.V(util.LogInfoLev).Infof("batchNodeOrderFn Get %s for NPU %+v.", task.Name, scoreMap)
 		return scoreMap, nil
 	}
 	// 2.Get the best node and top by A,B,C,D rules and require numbers.
@@ -418,6 +452,30 @@ func (sHandle *ScheduleHandler) BatchNodeOrderFn(task *api.TaskInfo, nodes []*ap
 		return scoreMap, nil
 	}
 	klog.V(util.LogInfoLev).Infof("batchNodeOrderFn Get %s for NPU %+v.", task.Name, scoreMap)
-
 	return scoreMap, nil
+}
+
+func (sHandle *ScheduleHandler) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo, sMap map[string]float64) error {
+	if sHandle == nil || task == nil || len(nodes) == 0 || len(sMap) == 0 {
+		err := errors.New(util.ArgumentError)
+		klog.V(util.LogErrorLev).Infof("ScoreBestNPUNodes %s.", err)
+		return err
+	}
+	vcjob, ok := sHandle.ScheduleEnv.Jobs[task.Job]
+	if !ok {
+		return errors.New(util.ArgumentError)
+	}
+	for _, sl := range vcjob.ServerList {
+		if reflect.ValueOf(sl).IsNil() {
+			continue
+		}
+		for _, server := range sl.Servers {
+			if reflect.ValueOf(server).IsNil() {
+				continue
+			}
+			sMap[server.Name] = float64(200)
+		}
+	}
+	klog.V(util.LogInfoLev).Infof("ScoreBestNPUNodes task<%s> sMap<%v>", task.Name, sMap)
+	return nil
 }
