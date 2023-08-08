@@ -380,3 +380,10 @@ func (asTask *NPUTask) IsVNPUTask() bool {
 func (asTask *NPUTask) IsNPUTask() bool {
 	return strings.Contains(asTask.ReqNPUName, HwPreName)
 }
+
+func ReferenceNameOfTask(task *api.TaskInfo) string {
+	if task != nil && task.Pod != nil && len(task.Pod.OwnerReferences) > 0 {
+		return task.Pod.OwnerReferences[0].Name
+	}
+	return ""
+}
