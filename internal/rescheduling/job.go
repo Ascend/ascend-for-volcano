@@ -216,7 +216,7 @@ func (fJob *FaultJob) isJobInSession(jobs map[api.JobID]plugin.SchedulerJob) boo
 func (fJob *FaultJob) jobInfoInSession(jobs map[api.JobID]*api.JobInfo) *api.JobInfo {
 	for _, job := range jobs {
 		if job.Namespace == fJob.JobNamespace &&
-			(job.Name == fJob.JobName || referenceNameOfJob(job) == fJob.ReferenceName) {
+			(job.Name == fJob.JobName || util.ReferenceNameOfJob(job) == fJob.ReferenceName) {
 			return job
 		}
 	}
@@ -291,21 +291,7 @@ func newFaultJobDefault(job *api.JobInfo, updateTime int64) FaultJob {
 		FaultTypes:          nil,
 		DeleteExecutedFlag:  false,
 		ElasticScheduling:   JobOffElasticScheduling,
-		ReferenceName:       referenceNameOfJob(job),
+		ReferenceName:       util.ReferenceNameOfJob(job),
 	}
 	return faultJob
-}
-
-func referenceNameOfJob(job *api.JobInfo) string {
-	if job != nil && job.PodGroup != nil && len(job.PodGroup.OwnerReferences) > 0 {
-		return job.PodGroup.OwnerReferences[0].Name
-	}
-	return ""
-}
-
-func referenceNameOfTask(task *api.TaskInfo) string {
-	if task != nil && task.Pod != nil && len(task.Pod.OwnerReferences) > 0 {
-		return task.Pod.OwnerReferences[0].Name
-	}
-	return ""
 }

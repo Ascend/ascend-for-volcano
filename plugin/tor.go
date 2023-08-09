@@ -72,6 +72,7 @@ type Tor struct {
 
 // TorListInfo information for the current plugin
 type TorListInfo struct {
+	Status      string       `json:"status"`
 	Version     string       `json:"version"`
 	ServerCount int          `json:"server_count"`
 	TorCount    int          `json:"tor_count"`

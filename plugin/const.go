@@ -33,10 +33,16 @@ const (
 	ServerListCMPre = "server-config-"
 	// TorListVersion the version of tor info configmap
 	TorListVersion = "1.0"
+	// SingleJobTorId the tor id of single job
+	SingleJobTorId = 0
 	// ServerIPKey the key of ServerIP
 	ServerIPKey = "server_ip"
 	// TorAffinityKey the key of tor affinity
 	TorAffinityKey = "tor-affinity"
-	// LargeModelTag the key of large model
+	// LargeModelTag the value of large model
 	LargeModelTag = "large-model-schema"
+	// NullTag the value means not use tor affinity
+	NullTag = "null"
+	// Completed the status of serverList configmap
+	Completed = "completed"
 )

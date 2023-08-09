@@ -195,6 +195,24 @@ func GetJobNPUTasks(vcJob *api.JobInfo) map[api.TaskID]util.NPUTask {
 	return resultMap
 }
 
+// GetJobFirstTasksInfo get NPUTask from jobInfo.
+func GetJobFirstTasksInfo(vcJob *api.JobInfo) *api.TaskInfo {
+	if vcJob == nil {
+		return nil
+	}
+	if len(vcJob.Tasks) == 0 {
+		klog.V(util.LogDebugLev).Infof("GetJobNPUTasks %s not init has no task.", vcJob.Name)
+		return nil
+	}
+	for _, taskInf := range vcJob.Tasks {
+		if !IsNPUTask(taskInf) {
+			continue
+		}
+		return taskInf
+	}
+	return nil
+}
+
 // InitSelfPluginByJobInfo init job's handler, the deal plugin.
 func (sJob *SchedulerJob) InitSelfPluginByJobInfo(sHandle *ScheduleHandler) {
 	if sJob == nil {
@@ -452,16 +470,29 @@ func (sJob SchedulerJob) CreateJobServerListCM(ssn *framework.Session, torCount 
 	if !ok {
 		return
 	}
+	if sJob.GetNPUTaskNumInJob() == 1 {
+		if sJob.Status != scheduling.PodGroupRunning {
+			return
+		}
+		task := GetJobFirstTasksInfo(job)
+		serverList := sJob.CreateSingleJobServerList(ssn, task, torCount)
+		sJob.SaveServerListToCM(ssn, job, serverList)
+		return
+	}
 	if sJob.Status == scheduling.PodGroupRunning || sJob.ServerList == nil {
 		return
 	}
 	serverList := sJob.CreateJobServerList(torCount)
+	sJob.SaveServerListToCM(ssn, job, serverList)
+}
+
+func (sJob SchedulerJob) SaveServerListToCM(ssn *framework.Session, job *api.JobInfo, serverList TorListInfo) {
 	tmpByte, err := json.Marshal(serverList)
 	if err != nil {
 		klog.Infof("CreateJobServerListCM err:%#v", err)
 		return
 	}
-	str := ServerListCMPre + job.Name
+	str := ServerListCMPre + util.ReferenceNameOfJob(job)
 	var tmpCM = &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      str,
@@ -502,6 +533,7 @@ func (sJob SchedulerJob) SetFillJobServerList(sHandler *ScheduleHandler, taskNum
 
 func (sJob SchedulerJob) CreateJobServerList(torCount int) TorListInfo {
 	tmpTorList := TorListInfo{}
+	tmpTorList.Status = Completed
 	tmpTorList.Version = TorListVersion
 	tmpTorList.TorCount = torCount
 	tmpTorList.ServerCount = sJob.GetNPUTaskNumInJob()
@@ -518,6 +550,42 @@ func (sJob SchedulerJob) CreateJobServerList(torCount int) TorListInfo {
 		tmpTorList.ServerList = append(tmpTorList.ServerList, tmpServerList)
 	}
 	return tmpTorList
+}
+
+func (sJob SchedulerJob) CreateSingleJobServerList(ssn *framework.Session, task *api.TaskInfo, torCount int) TorListInfo {
+	tmpTorList := TorListInfo{}
+	tmpTorList.Status = Completed
+	tmpTorList.Version = TorListVersion
+	tmpTorList.TorCount = torCount
+	tmpTorList.ServerCount = sJob.GetNPUTaskNumInJob()
+
+	tmpServerList := ServerList{}
+	tmpServerList.Id = 0
+	var tmpServers []map[string]string
+	m := make(map[string]string)
+	m[ServerIPKey] = GetTaskNodeIpFromSsn(ssn, task)
+	tmpServers = append(tmpServers, m)
+
+	tmpServerList.Servers = tmpServers
+	tmpTorList.ServerList = append(tmpTorList.ServerList, tmpServerList)
+
+	return tmpTorList
+}
+
+func GetTaskNodeIpFromSsn(ssn *framework.Session, task *api.TaskInfo) string {
+	if task.NodeName == "" {
+		return ""
+	}
+	npuNode, ok := ssn.Nodes[task.NodeName]
+	if !ok {
+		return ""
+	}
+	for _, addr := range npuNode.Node.Status.Addresses {
+		if addr.Type == v1.NodeInternalIP {
+			return addr.Address
+		}
+	}
+	return ""
 }
 
 func (sJob SchedulerJob) GetLogicTorList(sHandler *ScheduleHandler, netSliceNum int) [][]*Server {
@@ -542,7 +610,7 @@ func (sJob SchedulerJob) GetEnableServerList(nodes []*api.NodeInfo, sHandler *Sc
 	}
 	for _, node := range nodes {
 		for _, tor := range sHandler.Tors.Tors {
-			if tor.HasAcrossJob() {
+			if tor.HasAcrossJob() && sJob.GetNPUTaskNumInJob() >= sHandler.Tors.TorCount {
 				continue
 			}
 			for _, server := range tor.Servers {

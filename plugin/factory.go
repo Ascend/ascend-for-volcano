@@ -356,6 +356,10 @@ func (sHandle *ScheduleHandler) BeforeCloseHandler(ssn *framework.Session) {
 		if sHandle.Tors == nil {
 			break
 		}
+		k, ok := job.Label[TorAffinityKey]
+		if !ok || k == NullTag {
+			continue
+		}
 		job.CreateJobServerListCM(ssn, sHandle.Tors.TorCount)
 	}
 	for name, plugin := range sHandle.NPUPlugins {

@@ -169,3 +169,10 @@ func (nJob *NPUJob) SetJobStatusByInf(vcJob *api.JobInfo) {
 	}
 	nJob.VJob.Status = vcJob.PodGroup.Status.Phase
 }
+
+func ReferenceNameOfJob(job *api.JobInfo) string {
+	if job != nil && job.PodGroup != nil && len(job.PodGroup.OwnerReferences) > 0 {
+		return job.PodGroup.OwnerReferences[0].Name
+	}
+	return ""
+}
