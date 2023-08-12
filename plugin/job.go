@@ -352,7 +352,7 @@ func (sJob SchedulerJob) ValidJobFn(vcFrame VolcanoFrame) *api.ValidateResult {
 }
 
 func ValidLargeModelJob(sJob SchedulerJob, sHandler *ScheduleHandler, nodes []*api.NodeInfo) error {
-	if sJob.Status == scheduling.PodGroupRunning || sJob.ServerList != nil {
+	if sJob.ServerList != nil {
 		return nil
 	}
 	if sHandler.Tors == nil {
@@ -392,8 +392,11 @@ func ValidLargeModelJob(sJob SchedulerJob, sHandler *ScheduleHandler, nodes []*a
 		return fmt.Errorf("tor check failed not enough resource Net Slice is not full")
 	}
 
-	if taskRow > 0 && len(logicList[netSliceNum-1]) < taskRow-1 {
+	if taskRow > 0 && len(logicList[netSliceNum-1]) < taskRow {
 		return fmt.Errorf("tor check failed not enough resource by not enough logic Tor")
+	}
+	if taskRow > 0 && len(logicList[taskColumn]) < taskRow+1 {
+		return fmt.Errorf("tor check failed not enough resource by last Tor not enough server")
 	}
 	pyTor, fullTorNum := sJob.GetPhyTosList(sHandler, logicList, taskRow, taskColumn)
 
@@ -479,7 +482,7 @@ func (sJob SchedulerJob) CreateJobServerListCM(ssn *framework.Session, torCount 
 		sJob.SaveServerListToCM(ssn, job, serverList)
 		return
 	}
-	if sJob.Status == scheduling.PodGroupRunning || sJob.ServerList == nil {
+	if sJob.ServerList == nil {
 		return
 	}
 	serverList := sJob.CreateJobServerList(torCount)
