@@ -84,10 +84,14 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 	})
 
 	ssn.AddJobReadyFn(tp.Name(), func(obj interface{}) bool {
-		if tp.Scheduler.Tors == nil {
+		ji := obj.(*api.JobInfo)
+		k, ok := ji.PodGroup.Labels[plugin.TorAffinityKey]
+		if !ok || k == plugin.NullTag {
 			return true
 		}
-		ji := obj.(*api.JobInfo)
+		if tp.Scheduler.Tors == nil {
+			return false
+		}
 		job, ok := tp.Scheduler.Jobs[ji.UID]
 		if !ok {
 			return true
