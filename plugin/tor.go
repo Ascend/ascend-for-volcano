@@ -32,7 +32,7 @@ import (
 )
 
 func (sHandle *ScheduleHandler) InitTorNodeInfo(ssn *framework.Session) {
-	cm, err := util.GetConfigMapWithRetry(ssn.KubeClient(), VolcanoNamespace, TorNodeCMName)
+	cm, err := util.GetConfigMapWithRetry(ssn.KubeClient(), util.DevInfoNameSpace, TorNodeCMName)
 	if err != nil {
 		klog.V(util.LogWarningLev).Infof("Get Tor-Node configmap failed, err: %s", err)
 		return

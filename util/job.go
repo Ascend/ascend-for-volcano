@@ -57,10 +57,11 @@ type NPUJob struct {
 
 // ComJob all vcJob has.
 type ComJob struct {
-	Name      api.JobID
-	NameSpace string
-	Selector  map[string]string
-	Label     map[string]string
+	Name          api.JobID
+	ReferenceName string
+	NameSpace     string
+	Selector      map[string]string
+	Label         map[string]string
 }
 
 // SchedulerJobAttr vcJob's attribute.

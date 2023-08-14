@@ -194,8 +194,22 @@ func (reCache DealReSchedulerCache) getRealFaultJobs() ([]FaultJob, error) {
 	return realFaultJobs, nil
 }
 
-// getRealFaultNodes get the nodes whose isFaultNode property takes true value
-func (reCache DealReSchedulerCache) getRealFaultNodes() []FaultNode {
+// IsJobInRealFaultJobs only return true when Job is in FaultJobs
+func (reCache DealReSchedulerCache) IsJobInRealFaultJobs(job api.JobID) bool {
+	fJobs, err := reCache.getRealFaultJobs()
+	if err != nil {
+		return false
+	}
+	for _, fJob := range fJobs {
+		if fJob.JobUID == job {
+			return true
+		}
+	}
+	return false
+}
+
+// GetRealFaultNodes get the nodes whose isFaultNode property takes true value
+func (reCache DealReSchedulerCache) GetRealFaultNodes() []FaultNode {
 	var realFaultNodes []FaultNode
 	for _, fNode := range reCache.FaultNodes {
 		if !fNode.IsFaultNode {
@@ -207,7 +221,7 @@ func (reCache DealReSchedulerCache) getRealFaultNodes() []FaultNode {
 }
 
 func (reCache *DealReSchedulerCache) writeFaultNodesToCMString() (string, error) {
-	realFaultNode := reCache.getRealFaultNodes()
+	realFaultNode := reCache.GetRealFaultNodes()
 	nodeData, err := reCache.marshalCacheDataToString(realFaultNode)
 	if err != nil {
 		return "", fmt.Errorf("writeFaultNodesToCM: %#v", err)

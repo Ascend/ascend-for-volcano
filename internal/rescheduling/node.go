@@ -331,6 +331,16 @@ func (fNode *FaultNode) isNodeInSessionByNpuNodes(nodes map[string]plugin.NPUNod
 	return ok
 }
 
+// IsNodeInFaultNode judge if node is sent in FaultNode
+func IsNodeInFaultNode(fNodes []FaultNode, nodeName string) bool {
+	for _, fn := range fNodes {
+		if fn.NodeName == nodeName {
+			return true
+		}
+	}
+	return false
+}
+
 func (fNode *FaultNode) setNodeDValue(value bool) {
 	fNode.NodeDEnable = value
 }
