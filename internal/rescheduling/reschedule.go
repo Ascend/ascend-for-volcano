@@ -1076,7 +1076,7 @@ func (reScheduler ReScheduler) getLastNodeHeartbeatByNodeNameFromCache(nodeName 
 func (reScheduler ReScheduler) setTaskCardHealthCode(fTask *FaultTask) error {
 	klog.V(util.LogDebugLev).Infof("task %s setTaskCardHealthCode", fTask.TaskName)
 	var resonList []FaultReasonList
-	realFaultNode := reScheduler.getRealFaultNodes()
+	realFaultNode := reScheduler.GetRealFaultNodes()
 	if fTask.NodeName == "" {
 		return fmt.Errorf("setTaskCardHealthCode fTask %s use node is nil", fTask.TaskName)
 	}
@@ -1127,7 +1127,7 @@ func (reScheduler ReScheduler) getLastNodeHeartUpdateTimeByNodeNameFromCache(nod
 func (reScheduler ReScheduler) getTaskHealthState(fTask *FaultTask) (bool, string) {
 	klog.V(util.LogDebugLev).Infof("task %s getTaskHealthState", fTask.TaskName)
 	var nodeUseCardHealthState []string
-	realFaultNode := reScheduler.getRealFaultNodes()
+	realFaultNode := reScheduler.GetRealFaultNodes()
 	if fTask.NodeName == "" {
 		return false, NodeHealthy // tasks has not yet been scheduled
 	}
