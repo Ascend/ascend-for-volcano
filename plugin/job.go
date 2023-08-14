@@ -289,8 +289,9 @@ func (sJob *SchedulerJob) initNPUJob(vcJob *api.JobInfo) {
 func (sJob *SchedulerJob) initByJobInfo(vcJob *api.JobInfo) error {
 	sJob.JobReadyTag = true
 	sJob.SchedulerJobAttr.ComJob = util.ComJob{Name: vcJob.UID, NameSpace: vcJob.Namespace,
-		Selector: GetJobSelectorFromVcJob(vcJob),
-		Label:    GetJobLabelFromVcJob(vcJob)}
+		ReferenceName: util.ReferenceNameOfJob(vcJob),
+		Selector:      GetJobSelectorFromVcJob(vcJob),
+		Label:         GetJobLabelFromVcJob(vcJob)}
 	sJob.SchedulerJobAttr.NPUJob = nil
 	sJob.handler = nil
 	name, num, err := GetVCJobReqNPUTypeFromJobInfo(vcJob)
@@ -763,6 +764,15 @@ func (sHandle *ScheduleHandler) JobValid(obj interface{}) *api.ValidateResult {
 	if !ok {
 		klog.V(util.LogDebugLev).Infof("%s %s not support or init", PluginName, job.Name)
 		return nil
+	}
+
+	k, ok := vcJob.Label[TorAffinityKey]
+	if ok && k != NullTag {
+		if sHandle.Tors == nil {
+			reason := "job tor affinity check failed"
+			return &api.ValidateResult{Pass: false, Reason: reason,
+				Message: fmt.Sprintf("validJobFn [%#v] failed:%#v", obj, reason)}
+		}
 	}
 
 	result := vcJob.ValidJobFn(sHandle.FrameAttr)

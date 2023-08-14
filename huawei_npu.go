@@ -70,7 +70,11 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 	})
 	// if node not meet the task require, the task will be failed. so need to intercept in advance
 	ssn.AddPredicateFn(tp.Name(), func(taskInfo *api.TaskInfo, nodeInfo *api.NodeInfo) error {
-		return tp.Scheduler.NodePredicate(taskInfo, nodeInfo)
+		err := tp.Scheduler.NodePredicate(taskInfo, nodeInfo)
+		if err != nil {
+			klog.V(util.LogErrorLev).Infof("NodePredicate err:%#v", err)
+		}
+		return err
 	})
 
 	ssn.AddBatchNodeOrderFn(tp.Name(), func(task *api.TaskInfo, nodes []*api.NodeInfo) (map[string]float64, error) {
