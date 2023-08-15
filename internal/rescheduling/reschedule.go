@@ -766,6 +766,12 @@ func (reScheduler *ReScheduler) UseAnnotation(task *api.TaskInfo, node *plugin.N
 			"skip volcano rankIndex writing process", task.Name)
 		return nil
 	}
+
+	// if job is ascend job,skip add rankIndex
+	if _, ok := task.Pod.Annotations[podRankIndex]; !ok {
+		return nil
+	}
+
 	nodeRankTimes := reScheduler.AllocNodeRankOccurrenceMap[fJob.JobUID]
 	// 1. if given node is in the nodeRankTime, keep it ,node is used by the fault job before
 	for _, nodeRankTime := range nodeRankTimes {
