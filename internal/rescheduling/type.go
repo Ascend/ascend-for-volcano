@@ -134,6 +134,10 @@ const (
 	PreSeparateNPU = "PreSeparateNPU"
 	// NodeFaultCode fault type nodeUnhealthy
 	NodeFaultCode = "heartbeatTimeOut"
+	// AcJobTag the tag of AcJob
+	AcJobTag = "group-name"
+	// AcJobVersion the api version of AcJob
+	AcJobVersion = "mindxdl.gitee.com"
 )
 
 // ReScheduler object for re-scheduling

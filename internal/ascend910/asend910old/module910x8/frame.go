@@ -145,6 +145,9 @@ func (tp *module910x8) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNod
 		klog.V(util.LogErrorLev).Infof("CheckNodeNPUByTask err: %s", err.Error())
 		return err
 	}
+	if !checkNodeLabelOK(node) {
+		return fmt.Errorf("check node %s ascend 910 label failed", node.Name)
+	}
 	taskNPUNum, err := tp.GetTaskReqNPUNum(task)
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())

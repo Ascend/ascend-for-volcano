@@ -114,6 +114,14 @@ func getNodeHccsArray(nodeTop []int) ([]int, []int) {
 	return leftHccsArray, rightHccsArray
 }
 
+func checkNodeLabelOK(node plugin.NPUNode) bool {
+	k, ok := node.Label[util.AcceleratorType]
+	if !ok || k == util.ModuleAcceleratorType {
+		return true
+	}
+	return false
+}
+
 func (tp *module910x8) getNodeBestScore(taskNPUNum int, npuTop []int) (int, error) {
 	var bestScore = util.AffScore4
 
