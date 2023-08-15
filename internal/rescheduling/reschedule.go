@@ -768,7 +768,7 @@ func (reScheduler *ReScheduler) UseAnnotation(task *api.TaskInfo, node *plugin.N
 	}
 
 	// if job is ascend job,skip add rankIndex
-	if _, ok := task.Pod.Annotations[podRankIndex]; !ok {
+	if k, ok := task.Pod.Labels[AcJobTag]; ok && k == AcJobVersion {
 		return nil
 	}
 
