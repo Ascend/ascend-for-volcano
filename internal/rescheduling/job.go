@@ -77,6 +77,34 @@ func (fJob *FaultJob) GetJobFaultNPUTaskNum() int {
 	return count
 }
 
+func (fJob *FaultJob) IsJobHasPreSeparateNPUKey() bool {
+	if fJob == nil {
+		return false
+	}
+	for _, fTask := range fJob.FaultTasks {
+		for _, reason := range fTask.Reason {
+			if reason.LargeModelFaultLevel == PreSeparateNPU {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (fJob *FaultJob) IsJobFaultTypeHasCardUnhealthy() bool {
+	if fJob == nil {
+		return false
+	}
+	for _, fTask := range fJob.FaultTasks {
+		for _, reason := range fTask.Reason {
+			if reason.FaultType == NodeCardUnhealthy {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (fJob *FaultJob) isJobGraceDeleteSuccess(jobInfo *api.JobInfo) bool {
 	if jobInfo == nil {
 		klog.V(util.LogErrorLev).Infof("jobInfo is nil: %#v", jobInfo)
