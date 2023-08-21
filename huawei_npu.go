@@ -158,9 +158,6 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 				klog.V(util.LogErrorLev).Infof("DeallocateFunc event nil.")
 				return
 			}
-			if tp.Scheduler.Tors != nil {
-				tp.Scheduler.Tors.UsedByJob = ""
-			}
 			tp.Scheduler.NPUDeallocateFunc(event.Task)
 		},
 	})
@@ -184,9 +181,6 @@ func (tp *huaweiNPUPlugin) OnSessionClose(ssn *framework.Session) {
 			// if all nodes not meet job require failed
 			tp.Scheduler.SetJobPendReasonByNodesCase(job)
 		}
-	}
-	if tp.Scheduler.Tors != nil {
-		tp.Scheduler.Tors.UsedByJob = ""
 	}
 	tp.Scheduler.BeforeCloseHandler(ssn)
 }
