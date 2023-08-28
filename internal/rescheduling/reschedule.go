@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/api/core/v1"
 	"k8s.io/klog"
 	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -532,8 +533,9 @@ func (reScheduler *ReScheduler) SynCacheFaultJobWithSession(
 		}
 		// 2. cache Jobs turned normal in session should be deleted ,meaning it has been restarted
 		if faultJob.isJobGraceDeleteSuccess(jobInfo) {
+			task := plugin.GetJobFirstTasksInfo(jobInfo)
 			klog.V(util.LogDebugLev).Infof("%s grace deleted successful.", faultJob.JobName)
-			if jobInfo.PodGroup.Status.Phase == scheduling.PodGroupRunning { // new job successfully running
+			if task.Pod.Status.Phase == v1.PodRunning { // new job successfully running
 				klog.V(util.LogInfoLev).Infof("job %s new pods running, delete from cache", jobInfo.Name)
 				continue
 			}

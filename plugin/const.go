@@ -41,8 +41,16 @@ const (
 	TorAffinityKey = "tor-affinity"
 	// LargeModelTag the value of large model
 	LargeModelTag = "large-model-schema"
+	// NormalSchema the value of normal tor affinity
+	NormalSchema = "normal-schema"
 	// NullTag the value means not use tor affinity
 	NullTag = "null"
 	// Completed the status of serverList configmap
 	Completed = "completed"
+	// SliceId the id of server's network slice
+	SliceId = "slot"
+	// PtMaserKey the key of pytorch master label
+	PtMaserKey = "replica-type"
+	// PtMasterValue the value of pytorch master label
+	PtMasterValue = "master"
 )

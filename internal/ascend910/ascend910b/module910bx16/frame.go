@@ -20,11 +20,9 @@ Package module910bx16 is using for HuaWei Ascend910B A+X pin affinity schedule.
 package module910bx16
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
-	"strings"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/klog"
@@ -73,83 +71,7 @@ func New(name string) base.AscendHandler {
 
 // ValidNPUJob check job req npu num and mode
 func (tp *module910bx16) ValidNPUJob() *api.ValidateResult {
-	result := tp.Valid910bNPUJob()
-	if result != nil {
-		return result
-	}
-	k, ok := tp.Label[plugin.TorAffinityKey]
-	if !ok {
-		klog.V(util.LogInfoLev).Infof("validNPUJob job is 910x8 module")
-		return nil
-	}
-	if k == plugin.LargeModelTag {
-		if err := tp.ValidRestartNPUJob(); err != nil {
-			return &api.ValidateResult{Pass: false, Reason: err.Error(), Message: err.Error()}
-		}
-	}
-	return nil
-}
-
-func (tp *module910bx16) ValidRestartNPUJob() error {
-	if tp.reHandle == nil {
-		return nil
-	}
-	reCache := tp.reHandle.DealReSchedulerCache
-	fNodes := reCache.GetRealFaultNodes()
-	if !reCache.IsJobInRealFaultJobs(tp.Name) {
-		return nil
-	}
-	err := fmt.Errorf("vaild job err")
-	cm, getErr := util.GetConfigMapWithRetry(tp.FrameAttr.KubeClient, tp.NameSpace, plugin.ServerListCMPre+tp.ReferenceName)
-	if getErr != nil {
-		return nil
-	}
-	vcjob, ok := tp.Jobs[tp.Name]
-	if !ok {
-		return err
-	}
-	cmdata, ok := cm.Data[plugin.ServerListCMKey]
-	if !ok {
-		return nil
-	}
-	serverListInfo := plugin.TorListInfo{}
-	marErr := json.Unmarshal([]byte(cmdata), &serverListInfo)
-	if marErr != nil {
-		return marErr
-	}
-	if serverListInfo.Status != plugin.Completed {
-		return nil
-	}
-	serverList := serverListInfo.ServerList
-	npuName := tp.GetAnnoName()
-	for _, tor := range serverList {
-		for _, server := range tor.Servers {
-			ip, ok := server[plugin.ServerIPKey]
-			if !ok {
-				continue
-			}
-			for nodeName, node := range tp.Nodes {
-				if ip != node.Address || rescheduling.IsNodeInFaultNode(fNodes, nodeName) {
-					continue
-				}
-				nodeA, aOK := node.Annotation[npuName]
-				if !aOK {
-					return err
-				}
-				sSlice := strings.Split(nodeA, ",")
-				length := len(sSlice)
-				if length == 1 && sSlice[0] == "" {
-					length = 0
-				}
-				checkErr := node.CheckNPUResourceStable(vcjob)
-
-				if checkErr != nil || length < tp.ReqNPUNum/vcjob.GetNPUTaskNumInJob() {
-					return fmt.Errorf("check Node %s err %#v and deviceInfo is %v", nodeName, checkErr, length)
-				}
-			}
-		}
-	}
-	return nil
+	return tp.Valid910bNPUJob()
 }
 
 // PreStartAction pre-processing actions for rescheduling

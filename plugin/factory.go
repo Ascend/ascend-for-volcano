@@ -430,25 +430,11 @@ func (sHandle *ScheduleHandler) BatchNodeOrderFn(task *api.TaskInfo, nodes []*ap
 	}
 
 	k, ok := vcJob.Label[TorAffinityKey]
-	if !ok {
-		klog.V(util.LogInfoLev).Infof("validNPUJob job is 910x8 module")
+	if ok && (k == LargeModelTag || k == NormalSchema) {
+		klog.V(util.LogInfoLev).Infof("validNPUJob job is not use tor affinity")
+		return sHandle.SetTorAffinityJobNodesScore(task, nodes, vcJob, k, scoreMap)
 	}
-	if k == LargeModelTag {
-		result := ValidLargeModelJob(vcJob, sHandle, nodes)
-		vcJob = sHandle.Jobs[task.Job]
-		if result != nil {
-			vcJob.JobReadyTag = false
-			sHandle.Jobs[task.Job] = vcJob
-			klog.V(util.LogErrorLev).Infof("%s validNPUJob failed:%#v.", PluginName, result)
-		}
-		errGet := sHandle.ScoreBestNPUNodes(task, nodes, scoreMap)
-		if errGet != nil {
-			// get suitable node failed
-			klog.V(util.LogErrorLev).Infof("batchNodeOrderFn task[%s] failed[%#v].", task.Name, errGet)
-		}
-		klog.V(util.LogInfoLev).Infof("batchNodeOrderFn Get %s for NPU %+v.", task.Name, scoreMap)
-		return scoreMap, nil
-	}
+
 	// 2.Get the best node and top by A,B,C,D rules and require numbers.
 	errGet := vcJob.handler.ScoreBestNPUNodes(task, nodes, scoreMap)
 	if errGet != nil {
@@ -458,6 +444,35 @@ func (sHandle *ScheduleHandler) BatchNodeOrderFn(task *api.TaskInfo, nodes []*ap
 	}
 	klog.V(util.LogInfoLev).Infof("batchNodeOrderFn Get %s for NPU %+v.", task.Name, scoreMap)
 
+	return scoreMap, nil
+}
+
+func (sHandle *ScheduleHandler) SetTorAffinityJobNodesScore(task *api.TaskInfo, nodes []*api.NodeInfo,
+	vcJob SchedulerJob, label string, scoreMap map[string]float64) (map[string]float64, error) {
+	if sHandle == nil || task == nil || len(nodes) == 0 || len(scoreMap) == 0 {
+		err := errors.New(util.ArgumentError)
+		klog.V(util.LogErrorLev).Infof("ScoreBestNPUNodes %s.", err)
+		return scoreMap, err
+	}
+	result := CheckNetSliceIsMeetJobRequire(vcJob, sHandle, nodes)
+	vcJob = sHandle.Jobs[task.Job]
+	if result != nil {
+		switch label {
+		case LargeModelTag:
+			vcJob.JobReadyTag = false
+		case NormalSchema:
+			vcJob.SetNormalJobServerList(sHandle)
+		default:
+			return scoreMap, nil
+		}
+		sHandle.Jobs[task.Job] = vcJob
+	}
+	errGet := sHandle.ScoreBestNPUNodes(task, nodes, scoreMap)
+	if errGet != nil {
+		// get suitable node failed
+		klog.V(util.LogErrorLev).Infof("batchNodeOrderFn task[%s] failed[%#v].", task.Name, errGet)
+	}
+	klog.V(util.LogInfoLev).Infof("batchNodeOrderFn Get %s for NPU %+v.", task.Name, scoreMap)
 	return scoreMap, nil
 }
 
@@ -471,6 +486,8 @@ func (sHandle *ScheduleHandler) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*a
 	if !ok {
 		return errors.New(util.ArgumentError)
 	}
+	vcjob.ServerList = vcjob.SortJobServerListBySliceId()
+
 	for _, sl := range vcjob.ServerList {
 		if reflect.ValueOf(sl).IsNil() {
 			continue
@@ -479,9 +496,20 @@ func (sHandle *ScheduleHandler) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*a
 			if reflect.ValueOf(server).IsNil() {
 				continue
 			}
-			sMap[server.Name] = float64(200)
+			for _, node := range nodes {
+				if server.Name != node.Name {
+					continue
+				}
+				sMap[server.Name] = float64(200)
+				break
+			}
 		}
 	}
+	sMap[vcjob.GetFirstRankNodeName()] = float64(100)
+	if k, ok := task.Pod.Labels[PtMaserKey]; ok && k == PtMasterValue {
+		sMap[vcjob.GetFirstRankNodeName()] = float64(248)
+	}
+
 	klog.V(util.LogInfoLev).Infof("ScoreBestNPUNodes task<%s> sMap<%v>", task.Name, sMap)
 	return nil
 }

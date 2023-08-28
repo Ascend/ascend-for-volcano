@@ -32,6 +32,7 @@ import (
 )
 
 func (sHandle *ScheduleHandler) InitTorNodeInfo(ssn *framework.Session) {
+	sHandle.Tors = nil
 	cm, err := util.GetConfigMapWithRetry(ssn.KubeClient(), util.DevInfoNameSpace, TorNodeCMName)
 	if err != nil {
 		klog.V(util.LogWarningLev).Infof("Get Tor-Node configmap failed, err: %s", err)
@@ -55,17 +56,15 @@ func (sHandle *ScheduleHandler) InitTorNodeInfo(ssn *framework.Session) {
 
 // TorList tor info about nodes
 type TorList struct {
-	UsedByJob api.JobID `json:"-"`
-	Version   string    `json:"version"`
-	TorCount  int       `json:"tor_count"`
-	Tors      []*Tor    `json:"server_list"`
+	Version  string `json:"version"`
+	TorCount int    `json:"tor_count"`
+	Tors     []*Tor `json:"server_list"`
 }
 
 type Tor struct {
 	FreeServerCount int       `json:"-"`
-	AcrossJob       api.JobID `json:"-"`
-	Id              int       `json:"tor_id,omitempty"`
-	IP              string    `json:"tor_ip,omitempty"`
+	Id              int       `json:"tor_id"`
+	IP              string    `json:"tor_ip"`
 	Servers         []*Server `json:"server"`
 	Jobs            map[api.JobID]SchedulerJob
 }
@@ -80,8 +79,8 @@ type TorListInfo struct {
 }
 
 type ServerList struct {
-	Id      int                 `json:"tor_id"`
-	Servers []map[string]string `json:"server"`
+	Id      int                      `json:"tor_id"`
+	Servers []map[string]interface{} `json:"server"`
 }
 
 type Slice struct {
@@ -91,11 +90,12 @@ type Slice struct {
 }
 
 type Server struct {
-	IP         string `json:"server_ip"`
-	Count      int    `json:"npu_count"`
-	SliceId    int    `json:"slice_id"`
-	Jobs       map[api.JobID]SchedulerJob
-	CurrentJob api.JobID
+	IsUsedByMulJob bool   `json:"-"`
+	IP             string `json:"server_ip"`
+	Count          int    `json:"npu_count"`
+	SliceId        int    `json:"slice_id"`
+	Jobs           map[api.JobID]SchedulerJob
+	CurrentJob     api.JobID
 	NPUNode
 }
 
@@ -186,6 +186,11 @@ func (t *Tor) GetNodeByNodeIP(ip string) *Server {
 }
 
 func (t *Tor) HasAcrossJob() bool {
+	for _, tNode := range t.Servers {
+		if tNode.IsUsedByMulJob {
+			return true
+		}
+	}
 	for _, job := range t.Jobs {
 		if job.Status != scheduling.PodGroupRunning {
 			continue
