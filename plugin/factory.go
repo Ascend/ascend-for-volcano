@@ -382,6 +382,7 @@ func (sHandle *ScheduleHandler) InitNPUSession(ssn *framework.Session) error {
 		klog.V(util.LogErrorLev).Infof("%s checkSession : %s.", PluginName, err)
 		return err
 	}
+
 	sHandle.InitVolcanoFrameFromSsn(ssn)
 	sHandle.InitNodesFromSsn(ssn)
 	sHandle.InitJobsFromSsn(ssn)
@@ -456,6 +457,7 @@ func (sHandle *ScheduleHandler) BatchNodeOrderFn(task *api.TaskInfo, nodes []*ap
 		return scoreMap, nil
 	}
 	klog.V(util.LogInfoLev).Infof("batchNodeOrderFn Get %s for NPU %+v.", task.Name, scoreMap)
+
 	return scoreMap, nil
 }
 
