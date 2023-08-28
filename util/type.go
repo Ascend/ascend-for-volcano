@@ -106,6 +106,8 @@ const (
 	Module910bx8AcceleratorType = "module-910b-8"
 	// Card910bx2AcceleratorType for module mode.
 	Card910bx2AcceleratorType = "card-910b-2"
+	// Card910bx2InferAcceleratorType for infer mode.
+	Card910bx2InferAcceleratorType = "card-910b-infer"
 	// ModuleAcceleratorType for module mode.
 	ModuleAcceleratorType = "module"
 	// ChipAcceleratorType for chip mode.
