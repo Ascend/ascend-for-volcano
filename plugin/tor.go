@@ -35,14 +35,14 @@ func (sHandle *ScheduleHandler) InitTorNodeInfo(ssn *framework.Session) {
 	sHandle.Tors = nil
 	cm, err := util.GetConfigMapWithRetry(ssn.KubeClient(), util.DevInfoNameSpace, TorNodeCMName)
 	if err != nil {
-		klog.V(util.LogWarningLev).Infof("Get Tor-Node configmap failed, err: %s", err)
+		klog.V(util.LogInfoLev).Infof("Get Tor-Node configmap failed, err: %s", err)
 		return
 	}
 
 	torList := &TorList{}
 
 	if err = torList.ParseFromString(cm.Data[TorInfoCMKey]); err != nil {
-		klog.V(util.LogErrorLev).Infof("Unmarshal FaultNodes from cache failed")
+		klog.V(util.LogInfoLev).Infof("Unmarshal FaultNodes from cache failed")
 		return
 	}
 
