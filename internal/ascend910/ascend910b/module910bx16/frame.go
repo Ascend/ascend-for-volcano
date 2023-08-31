@@ -45,8 +45,8 @@ func New(name string) base.AscendHandler {
 	m.SetMaxNodeNPUNum(nodeNPUNumber)
 	m.SetAcceleratorValue(util.JobKind910BValue)
 	m.SetArch(util.HuaweiArchX86)
-	m.SetNpuNumInvalidMap(map[int]struct{}{util.NPUIndex9: {}, util.NPUIndex10: {}, util.NPUIndex11: {},
-		util.NPUIndex12: {}, util.NPUIndex13: {}, util.NPUIndex14: {}, util.NPUIndex15: {}})
+	m.SetNpuNumInvalidMap(map[int]struct{}{util.NPUIndex9: {}, util.NPUIndex11: {}, util.NPUIndex13: {},
+		util.NPUIndex15: {}})
 	m.netUnhealthyKey = networkUnhealthyNPU
 	m.AffScoreList = [][]int{
 		{util.AffScore0, util.AffScore1, util.AffScore2, util.AffScore3, util.AffScore4, util.AffScore5,
@@ -267,13 +267,16 @@ func (tp *module910bx16) selectNPUFromNode(task *api.TaskInfo, node plugin.NPUNo
 	klog.V(util.LogInfoLev).Infof("%s selectNPUFromNode %s[%d] priority:%v in %v.", tp.GetPluginName(),
 		task.Name, taskNPUNum, priorityArray, nodeTop)
 
-	leftHccsArray, rightHccsArray := tp.GetNodeHccsArray(nodeTop)
+	leftHccsArray, rightHccsArray, samePlaceHccsArray := tp.GetNodeHccsArray(nodeTop)
 	for _, priority := range priorityArray {
 		if priority == len(leftHccsArray) {
 			return leftHccsArray[:taskNPUNum], nil
 		}
 		if priority == len(rightHccsArray) {
 			return rightHccsArray[:taskNPUNum], nil
+		}
+		if priority == len(samePlaceHccsArray) {
+			return samePlaceHccsArray[:taskNPUNum], nil
 		}
 	}
 	err = fmt.Errorf("node<%s> top<%v> can not meet task req<%d>", node.Name, len(nodeTop), taskNPUNum)
@@ -284,4 +287,58 @@ func (tp *module910bx16) selectNPUFromNode(task *api.TaskInfo, node plugin.NPUNo
 // ReleaseAnnotation Release used resource.
 func (tp *module910bx16) ReleaseAnnotation(_ *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
 	return &node
+}
+
+func (tp *module910bx16) GetNPUAllocPriorityArray(taskNPUNumber int) ([]int, error) {
+	var priorityArray []int
+	var err error
+	if !tp.CheckJobAllowNum(taskNPUNumber) {
+		err = fmt.Errorf("illegal request npu number: %d", taskNPUNumber)
+		klog.V(util.LogErrorLev).Infof("%s %s.", tp.GetPluginName(), err)
+		return nil, err
+	}
+
+	if taskNPUNumber == tp.MaxNodeNPUNum {
+		return []int{tp.MaxNodeNPUNum}, nil
+	}
+	if taskNPUNumber <= tp.MaxNodeNPUNum/util.NPUIndex2 {
+		for i := taskNPUNumber; i <= tp.MaxNodeNPUNum/util.NPUIndex2; i++ {
+			priorityArray = append(priorityArray, i)
+		}
+		return priorityArray, nil
+	}
+	if taskNPUNumber > tp.MaxNodeNPUNum/util.NPUIndex2 {
+		for i := taskNPUNumber; i <= tp.MaxNodeNPUNum; i = i + util.NPUIndex2 {
+			priorityArray = append(priorityArray, i)
+		}
+		return priorityArray, nil
+	}
+	return priorityArray, nil
+}
+
+func (tp *module910bx16) GetNodeHccsArray(nodeTop []int) ([]int, []int, []int) {
+	var leftHccsArray []int
+	var rightHccsArray []int
+	var samePlaceHccsArray []int
+
+	idCutNum := tp.MaxNodeNPUNum / util.NPUIndex2
+	for _, v := range nodeTop {
+		if v < idCutNum {
+			leftHccsArray = append(leftHccsArray, v)
+			continue
+		}
+		rightHccsArray = append(rightHccsArray, v)
+	}
+
+	for _, leftCardID := range leftHccsArray {
+		for _, rightCardID := range rightHccsArray {
+			if leftCardID+idCutNum == rightCardID {
+				samePlaceHccsArray = append(samePlaceHccsArray, leftCardID)
+				samePlaceHccsArray = append(samePlaceHccsArray, rightCardID)
+				break
+			}
+		}
+	}
+
+	return leftHccsArray, rightHccsArray, samePlaceHccsArray
 }
