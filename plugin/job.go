@@ -229,7 +229,7 @@ func (sJob *SchedulerJob) InitSelfPluginByJobInfo(sHandle *ScheduleHandler) {
 		return
 	}
 
-	sJob.handler = plugin
+	sJob.handler = plugin(pluginName)
 }
 
 // IsJobInitial Determine if the task is ready.

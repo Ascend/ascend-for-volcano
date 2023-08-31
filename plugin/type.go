@@ -121,6 +121,6 @@ type ScheduleEnv struct {
 
 // ScheduleHandler information for the current plugin
 type ScheduleHandler struct {
-	NPUPlugins map[string]ISchedulerPlugin
+	NPUPlugins map[string]NPUBuilder
 	ScheduleEnv
 }
