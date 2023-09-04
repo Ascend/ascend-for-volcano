@@ -103,7 +103,7 @@ func (tp *card910bx2infer) ValidNPUJob() *api.ValidateResult {
 	nTaskNum := tp.GetNPUTaskNumInJob()
 
 	if nTaskNum != 1 {
-		klog.V(util.LogErrorLev).Infof("GetVTaskNumInVJob %s has %d npu tasks, only support 1.", nTaskNum)
+		klog.V(util.LogErrorLev).Infof("GetVTaskNumInVJob %s has %d npu tasks, only support 1.", tp.Name, nTaskNum)
 		return &api.ValidateResult{
 			Pass:    false,
 			Reason:  "ValidNPUJob failed",

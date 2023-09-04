@@ -333,14 +333,14 @@ func buildJobValidTest() []jobValidTest {
 		},
 		{
 			name: "03-JobValid job not in jobs test.",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{Jobs: map[api.JobID]SchedulerJob{}}},
 			args: jobValidArgs{obj: tJob},
 			want: nil,
 		},
 		{
 			name: "04-JobValid job no selector test.",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{Jobs: map[api.JobID]SchedulerJob{tJob.
 					UID: {SchedulerJobAttr: util.SchedulerJobAttr{ComJob: util.ComJob{Name: tJob.UID}}}}}},
 			args: jobValidArgs{obj: tJob},
@@ -383,7 +383,7 @@ func buildSetJobPendReasonByNodesCaseTest() []setJobPendReasonByNodesCaseTest {
 	tests := []setJobPendReasonByNodesCaseTest{
 		{
 			name: "01-SetJobPendReasonByNodesCase job no error test.",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Jobs:      map[api.JobID]SchedulerJob{},
 					Nodes:     map[string]NPUNode{},
@@ -392,7 +392,7 @@ func buildSetJobPendReasonByNodesCaseTest() []setJobPendReasonByNodesCaseTest {
 		},
 		{
 			name: "02-SetJobPendReasonByNodesCase test ok.",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Jobs:      map[api.JobID]SchedulerJob{},
 					Nodes:     map[string]NPUNode{},
@@ -433,7 +433,7 @@ func buildSetJobPendingReasonTest() []setJobPendingReasonTest {
 	tests := []setJobPendingReasonTest{
 		{
 			name: "01-SetJobPendingReason nil test.",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Jobs:      map[api.JobID]SchedulerJob{},
 					Nodes:     map[string]NPUNode{},
@@ -443,7 +443,7 @@ func buildSetJobPendingReasonTest() []setJobPendingReasonTest {
 		},
 		{
 			name: "02-SetJobPendingReason not support type test.",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Jobs:      map[api.JobID]SchedulerJob{},
 					Nodes:     map[string]NPUNode{},
@@ -453,7 +453,7 @@ func buildSetJobPendingReasonTest() []setJobPendingReasonTest {
 		},
 		{
 			name: "03-SetJobPendingReason string type test.",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Jobs:      map[api.JobID]SchedulerJob{},
 					Nodes:     map[string]NPUNode{},
@@ -463,7 +463,7 @@ func buildSetJobPendingReasonTest() []setJobPendingReasonTest {
 		},
 		{
 			name: "04-SetJobPendingReason nodeErrors test.",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Jobs:      map[api.JobID]SchedulerJob{},
 					Nodes:     map[string]NPUNode{},
@@ -603,7 +603,7 @@ func buildInitTest() []initTest {
 		{
 			name:   "03-Init ok test.",
 			fields: schedulerJobFields{SchedulerJobAttr: util.SchedulerJobAttr{}},
-			args: initArgs{vcJob: tJob, sHandle: &ScheduleHandler{NPUPlugins: map[string]ISchedulerPlugin{util.
+			args: initArgs{vcJob: tJob, sHandle: &ScheduleHandler{NPUPlugins: map[string]NPUBuilder{util.
 				NPU910CardName: nil}}},
 			wantErr: true,
 		},

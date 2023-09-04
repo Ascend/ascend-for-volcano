@@ -55,7 +55,7 @@ func buildNPUAllocateFuncTest() []npuAllocateFuncTest {
 		},
 		{
 			name: "02-NPUAllocateFunc no job test.",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Jobs:      map[api.JobID]SchedulerJob{},
 					Nodes:     map[string]NPUNode{},
@@ -65,7 +65,7 @@ func buildNPUAllocateFuncTest() []npuAllocateFuncTest {
 		},
 		{
 			name: "03-NPUAllocateFunc no node test",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Jobs: map[api.JobID]SchedulerJob{task.Job: {SchedulerJobAttr: util.SchedulerJobAttr{
 						NPUJob: &util.NPUJob{
@@ -79,7 +79,7 @@ func buildNPUAllocateFuncTest() []npuAllocateFuncTest {
 		},
 		{
 			name: "04-NPUAllocateFunc UseAnnotation failed test.",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Jobs: map[api.JobID]SchedulerJob{task.Job: {SchedulerJobAttr: util.SchedulerJobAttr{
 						NPUJob: &util.NPUJob{
@@ -142,7 +142,7 @@ func makeNPUDeallocateFuncTest01(_ *api.TaskInfo) npuDeallocateFuncTest {
 func makeNPUDeallocateFuncTest02(vTask *api.TaskInfo) npuDeallocateFuncTest {
 	return npuDeallocateFuncTest{
 		name: "02-NPUAllocateFunc no job test.",
-		fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+		fields: fields{NPUPlugins: map[string]NPUBuilder{},
 			ScheduleEnv: ScheduleEnv{Jobs: map[api.JobID]SchedulerJob{}}},
 		args: npuDeallocateFuncArgs{task: vTask}, want: "Ascend910-4",
 	}
@@ -151,7 +151,7 @@ func makeNPUDeallocateFuncTest02(vTask *api.TaskInfo) npuDeallocateFuncTest {
 func makeNPUDeallocateFuncTest03(vTask *api.TaskInfo) npuDeallocateFuncTest {
 	return npuDeallocateFuncTest{
 		name: "03-NPUAllocateFunc no node test",
-		fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+		fields: fields{NPUPlugins: map[string]NPUBuilder{},
 			ScheduleEnv: ScheduleEnv{
 				Jobs:  map[api.JobID]SchedulerJob{vTask.Job: {}},
 				Nodes: map[string]NPUNode{}}},
@@ -162,7 +162,7 @@ func makeNPUDeallocateFuncTest03(vTask *api.TaskInfo) npuDeallocateFuncTest {
 func makeNPUDeallocateFuncTest04(vTask *api.TaskInfo) npuDeallocateFuncTest {
 	return npuDeallocateFuncTest{
 		name: "04-NPUAllocateFunc UseAnnotation failed test.",
-		fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+		fields: fields{NPUPlugins: map[string]NPUBuilder{},
 			ScheduleEnv: ScheduleEnv{
 				Jobs: map[api.JobID]SchedulerJob{
 					vTask.Job: {SchedulerJobAttr: util.SchedulerJobAttr{NPUJob: &util.NPUJob{Tasks: nil}}}},
@@ -174,7 +174,7 @@ func makeNPUDeallocateFuncTest04(vTask *api.TaskInfo) npuDeallocateFuncTest {
 func makeNPUDeallocateFuncTest05(vTask *api.TaskInfo) npuDeallocateFuncTest {
 	return npuDeallocateFuncTest{
 		name: "05-NPUAllocateFunc pod no req test.",
-		fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+		fields: fields{NPUPlugins: map[string]NPUBuilder{},
 			ScheduleEnv: ScheduleEnv{
 				Jobs: map[api.JobID]SchedulerJob{
 					vTask.Job: {
@@ -197,7 +197,7 @@ func makeNPUDeallocateFuncTest06(vTask *api.TaskInfo) npuDeallocateFuncTest {
 
 	return npuDeallocateFuncTest{
 		name: "06-NPUAllocateFunc pod req num not meet test.",
-		fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+		fields: fields{NPUPlugins: map[string]NPUBuilder{},
 			ScheduleEnv: ScheduleEnv{
 				Jobs: map[api.JobID]SchedulerJob{
 					vTask.Job: {
@@ -221,7 +221,7 @@ func makeNPUDeallocateFuncTest07(vTask *api.TaskInfo) npuDeallocateFuncTest {
 	}
 	return npuDeallocateFuncTest{
 		name: "07-NPUAllocateFunc node no annotation value test.",
-		fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+		fields: fields{NPUPlugins: map[string]NPUBuilder{},
 			ScheduleEnv: ScheduleEnv{
 				Jobs: map[api.JobID]SchedulerJob{
 					vTask.Job: {SchedulerJobAttr: tmpSchedulerJobAttr},
@@ -246,7 +246,7 @@ func makeNPUDeallocateFuncTest08(vTask *api.TaskInfo) npuDeallocateFuncTest {
 	}
 	return npuDeallocateFuncTest{
 		name: "08-NPUAllocateFunc node has empty annotation value test.",
-		fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+		fields: fields{NPUPlugins: map[string]NPUBuilder{},
 			ScheduleEnv: ScheduleEnv{
 				Jobs: map[api.JobID]SchedulerJob{vTask.Job: {SchedulerJobAttr: tmpSchedulerJobAttr,
 					handler: New(testPluginName)}},
@@ -269,7 +269,7 @@ func makeNPUDeallocateFuncTest09(vTask *api.TaskInfo) npuDeallocateFuncTest {
 	}
 	return npuDeallocateFuncTest{
 		name: "09-NPUAllocateFunc ok test.",
-		fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+		fields: fields{NPUPlugins: map[string]NPUBuilder{},
 			ScheduleEnv: ScheduleEnv{
 				Jobs: map[api.JobID]SchedulerJob{vTask.Job: {SchedulerJobAttr: tmpSchedulerJobAttr,
 					handler: New(testPluginName)}},

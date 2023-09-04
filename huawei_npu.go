@@ -188,7 +188,7 @@ func (tp *huaweiNPUPlugin) OnSessionClose(ssn *framework.Session) {
 // HandlerStart HuaWei NPU plugin start by frame.
 func HandlerStart() *plugin.ScheduleHandler {
 	scheduleHandler := &plugin.ScheduleHandler{
-		NPUPlugins: map[string]plugin.ISchedulerPlugin{},
+		NPUPlugins: map[string]plugin.NPUBuilder{},
 		ScheduleEnv: plugin.ScheduleEnv{
 			Jobs:      map[api.JobID]plugin.SchedulerJob{},
 			Nodes:     map[string]plugin.NPUNode{},
