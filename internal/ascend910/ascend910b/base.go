@@ -97,19 +97,27 @@ func (ab *Base910b) initSelectNodeInf(npuTop []int) SelectNodeInf {
 			rightHccsTop = append(rightHccsTop, cardID)
 		}
 	}
-	for _, leftCardID := range leftHccsTop {
-		for _, rightCardID := range rightHccsTop {
-			if leftCardID+numHCCS == rightCardID {
-				sNodeInf.SamePlaceNPUNum = sNodeInf.SamePlaceNPUNum + 2
-				break
-			}
-		}
-	}
 
 	sNodeInf.LeftNPUNum = len(leftHccsTop)
 	sNodeInf.RightNPUNum = len(rightHccsTop)
 	sNodeInf.AllNPUNum = sNodeInf.LeftNPUNum + sNodeInf.RightNPUNum
 
+	if ab.GetNPUTaskNumInJob() > 1 {
+		minLen := len(leftHccsTop)
+		if minLen > len(rightHccsTop) {
+			minLen = len(rightHccsTop)
+		}
+		sNodeInf.crossNPUNum = minLen * util.NPUIndex2
+		return sNodeInf
+	}
+	for _, leftCardID := range leftHccsTop {
+		for _, rightCardID := range rightHccsTop {
+			if leftCardID+numHCCS == rightCardID {
+				sNodeInf.crossNPUNum = sNodeInf.crossNPUNum + util.NPUIndex2
+				break
+			}
+		}
+	}
 	return sNodeInf
 }
 
@@ -131,7 +139,7 @@ func (ab *Base910b) Judge910BNodeAndTaskNPU(taskNPU int, nodeTop []int) error {
 
 	if ab.CheckJobAllowNum(taskNPU) {
 		return dealReturnValue((sNodeInf.LeftNPUNum >= taskNPU) || (sNodeInf.RightNPUNum >= taskNPU) ||
-			(taskNPU > ab.MaxNodeNPUNum/util.NPUIndex2 && taskNPU <= sNodeInf.SamePlaceNPUNum))
+			(taskNPU > ab.MaxNodeNPUNum/util.NPUIndex2 && taskNPU <= sNodeInf.crossNPUNum))
 	}
 	return dealReturnValue(false)
 }
@@ -155,7 +163,7 @@ func (ab *Base910b) GetNodeBestScore(taskNPUNum int, npuTop []int) (int, error) 
 
 	switch {
 	case taskNPUNum > ab.MaxNodeNPUNum/util.NPUIndex2:
-		bestScore = ab.AffScoreList[(taskNPUNum/util.NPUIndex2)-1][(sNodeInf.SamePlaceNPUNum/util.NPUIndex2)-1]
+		bestScore = ab.AffScoreList[(taskNPUNum/util.NPUIndex2)-1][(sNodeInf.crossNPUNum/util.NPUIndex2)-1]
 	case sNodeInf.RightNPUNum == 0:
 		bestScore = ab.AffScoreList[taskNPUNum-1][sNodeInf.LeftNPUNum-1]
 	case sNodeInf.LeftNPUNum == 0:
