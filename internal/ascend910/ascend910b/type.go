@@ -23,10 +23,10 @@ import "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/
 
 // SelectNodeInf for node hccs.
 type SelectNodeInf struct {
-	AllNPUNum       int
-	LeftNPUNum      int
-	RightNPUNum     int
-	SamePlaceNPUNum int
+	AllNPUNum   int
+	LeftNPUNum  int
+	RightNPUNum int
+	crossNPUNum int
 }
 
 // Base910b for Ascend 910B base.

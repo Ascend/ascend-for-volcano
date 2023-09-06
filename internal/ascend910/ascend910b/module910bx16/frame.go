@@ -267,7 +267,7 @@ func (tp *module910bx16) selectNPUFromNode(task *api.TaskInfo, node plugin.NPUNo
 	klog.V(util.LogInfoLev).Infof("%s selectNPUFromNode %s[%d] priority:%v in %v.", tp.GetPluginName(),
 		task.Name, taskNPUNum, priorityArray, nodeTop)
 
-	leftHccsArray, rightHccsArray, samePlaceHccsArray := tp.GetNodeHccsArray(nodeTop)
+	leftHccsArray, rightHccsArray, samePlaceHccsArray := tp.GetNodeHccsArray(nodeTop, nTaskNum > 1)
 	for _, priority := range priorityArray {
 		if priority == len(leftHccsArray) {
 			return leftHccsArray[:taskNPUNum], nil
@@ -316,10 +316,9 @@ func (tp *module910bx16) GetNPUAllocPriorityArray(taskNPUNumber int) ([]int, err
 	return priorityArray, nil
 }
 
-func (tp *module910bx16) GetNodeHccsArray(nodeTop []int) ([]int, []int, []int) {
+func (tp *module910bx16) GetNodeHccsArray(nodeTop []int, isMultNpuReplica bool) ([]int, []int, []int) {
 	var leftHccsArray []int
 	var rightHccsArray []int
-	var samePlaceHccsArray []int
 
 	idCutNum := tp.MaxNodeNPUNum / util.NPUIndex2
 	for _, v := range nodeTop {
@@ -329,16 +328,34 @@ func (tp *module910bx16) GetNodeHccsArray(nodeTop []int) ([]int, []int, []int) {
 		}
 		rightHccsArray = append(rightHccsArray, v)
 	}
+	crossHccsArray := getCrossHccsArray(leftHccsArray, rightHccsArray, isMultNpuReplica, idCutNum)
+	return leftHccsArray, rightHccsArray, crossHccsArray
+}
 
-	for _, leftCardID := range leftHccsArray {
-		for _, rightCardID := range rightHccsArray {
-			if leftCardID+idCutNum == rightCardID {
-				samePlaceHccsArray = append(samePlaceHccsArray, leftCardID)
-				samePlaceHccsArray = append(samePlaceHccsArray, rightCardID)
-				break
+func getCrossHccsArray(leftHccsArray, rightHccsArray []int, isMultNpuReplica bool, idCutNum int) []int {
+	var crossHccsArray []int
+	if isMultNpuReplica {
+		minLen := len(leftHccsArray)
+		if minLen > len(rightHccsArray) {
+			minLen = len(rightHccsArray)
+		}
+		for i := 0; i < minLen; i++ {
+			crossHccsArray = append(crossHccsArray, leftHccsArray[i], rightHccsArray[i])
+		}
+	} else {
+		for _, leftCardID := range leftHccsArray {
+			for _, rightCardID := range rightHccsArray {
+				if leftCardID+idCutNum == rightCardID {
+					crossHccsArray = append(crossHccsArray, leftCardID, rightCardID)
+					break
+				}
 			}
 		}
 	}
 
-	return leftHccsArray, rightHccsArray, samePlaceHccsArray
+	// npu num must bigger than hccs's npu number, if task is cross hccs
+	if len(crossHccsArray) <= idCutNum {
+		crossHccsArray = []int{}
+	}
+	return crossHccsArray
 }
