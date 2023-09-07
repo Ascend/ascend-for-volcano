@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -263,20 +264,14 @@ func (reScheduler ReScheduler) getJobRankIdsFromTasks(fJob *FaultJob, cardName s
 			klog.V(util.LogInfoLev).Infof("%s setJobRankIdsFromTasks convert %#v", fTask.NodeRankIndex, err)
 		}
 		fNode := reScheduler.getFNodeOfGivenNameFromCache(fTask.NodeName)
-		taskUseFaultCards, err := fTask.getTaskUsedFaultCards(fNode, len(fJob.FaultTasks) > 1)
+		taskUseFaultCards, logicIds, err := fTask.getTaskUsedFaultCards(fNode, cardName, len(fJob.FaultTasks) > 1)
 		if err != nil {
 			klog.V(util.LogErrorLev).Infof("taskUseFaultCards: %#v", err)
 			continue
 		}
 		klog.V(util.LogDebugLev).Infof("taskUseFaultCards: %#v", taskUseFaultCards)
-		for _, taskUseFaultCard := range taskUseFaultCards {
-			taskUseCardID, err := strconv.Atoi(strings.TrimPrefix(taskUseFaultCard, cardName))
-			klog.V(util.LogInfoLev).Infof("task %s used card Ids: %#v", fTask.TaskName, taskUseCardID)
-			if err != nil {
-				klog.V(util.LogErrorLev).Infof("convert card ID %s to int failed", taskUseFaultCard)
-				continue
-			}
-			jobRankIds = append(jobRankIds, strconv.Itoa(taskUseCardID+nodeRankIndex*util.NPUIndex8))
+		for _, logicId := range logicIds {
+			jobRankIds = append(jobRankIds, strconv.Itoa(logicId+nodeRankIndex*len(fTask.UseCardName)))
 		}
 	}
 	klog.V(util.LogInfoLev).Infof("job %s rankIds: %#v", fJob.JobName, jobRankIds)
@@ -292,17 +287,35 @@ func GetTaskRestartReason(reasonList []FaultReasonList) string {
 	return string(str)
 }
 
-func (fTask *FaultTask) getTaskUsedFaultCards(fNode *FaultNode, disFlag bool) ([]string, error) {
+func (fTask *FaultTask) getTaskUsedFaultCards(fNode *FaultNode, cardName string, disFlag bool) ([]string, []int,
+	error) {
+
+	var cardIds []int
+	for _, card := range fTask.UseCardName {
+		taskUseCardID, err := strconv.Atoi(strings.TrimPrefix(card, cardName))
+		if err != nil {
+			klog.V(util.LogErrorLev).Infof("convert card ID %s to int failed", card)
+			continue
+		}
+		cardIds = append(cardIds, taskUseCardID)
+	}
+
+	sort.Ints(cardIds)
+
+	var logicIds []int
 	if fTask.faultType == NodeUnhealthy { // node unhealthy returns all cards,
 		// ahead of fNode equals to nil for node not in session
 		klog.V(util.LogDebugLev).Infof("node unhealthy, return all NPUs used by task %s", fTask.TaskName)
-		return fTask.UseCardName, nil
+		for index := range fTask.UseCardName {
+			logicIds = append(logicIds, index)
+		}
+		return fTask.UseCardName, logicIds, nil
 	}
 	if fNode == nil {
-		return nil, fmt.Errorf("node is nil")
+		return nil, nil, fmt.Errorf("node is nil")
 	}
 	if fTask.NodeName != fNode.NodeName {
-		return nil, fmt.Errorf("fNode %s is not fTask %s's occupying node", fNode.NodeName, fTask.NodeName)
+		return nil, nil, fmt.Errorf("fNode %s is not fTask %s's occupying node", fNode.NodeName, fTask.NodeName)
 	}
 	var taskUseFaultCard []string
 	klog.V(util.LogDebugLev).Infof("task fault type: %s", fTask.faultType)
@@ -317,7 +330,19 @@ func (fTask *FaultTask) getTaskUsedFaultCards(fNode *FaultNode, disFlag bool) ([
 			taskUseFaultCard = append(taskUseFaultCard, taskUseCard)
 		}
 	}
-	return taskUseFaultCard, nil
+	for _, faultCard := range taskUseFaultCard {
+		taskUseCardID, err := strconv.Atoi(strings.TrimPrefix(faultCard, cardName))
+		if err != nil {
+			klog.V(util.LogErrorLev).Infof("convert card ID %s to int failed", faultCard)
+			continue
+		}
+		for index, cardId := range cardIds {
+			if cardId == taskUseCardID {
+				logicIds = append(logicIds, index)
+			}
+		}
+	}
+	return taskUseFaultCard, logicIds, nil
 }
 
 // getGraceDeleteFaultJobs get jobs needed to be deleted gracefully, only fault jobs with grace label would be selected
