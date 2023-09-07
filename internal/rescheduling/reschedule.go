@@ -339,6 +339,7 @@ func (fTask *FaultTask) getTaskUsedFaultCards(fNode *FaultNode, cardName string,
 		for index, cardId := range cardIds {
 			if cardId == taskUseCardID {
 				logicIds = append(logicIds, index)
+				break
 			}
 		}
 	}
