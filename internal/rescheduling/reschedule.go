@@ -98,6 +98,10 @@ func (reScheduler *ReScheduler) createFaultTaskHandler(job *api.JobInfo, cardNam
 	var faultTasks []FaultTask
 	for _, task := range job.Tasks {
 		faultTask := newFaultTaskDefault(task, job)
+		if !plugin.IsNPUTask(task) {
+			faultTasks = append(faultTasks, faultTask)
+			continue
+		}
 		// 2. updateNodeRankIndex by pod.Annotation
 		tmpNodeRankIndex, err := faultTask.getNodeRankIndex(task)
 		if err != nil {
@@ -567,6 +571,8 @@ func (reScheduler *ReScheduler) SynCacheFaultJobWithSession(
 				continue
 			}
 		}
+		vcjob := ssn.Jobs[faultJob.JobUID]
+		vcjob.PodGroup.Labels[plugin.JobDeleteFlag] = plugin.JobDelete
 		updatedFaultJobs = append(updatedFaultJobs, faultJob)
 	}
 	reScheduler.setFaultJobs(updatedFaultJobs)
@@ -759,10 +765,30 @@ func (reScheduler *ReScheduler) ScoreBestNPUNodes(task *api.TaskInfo, scoreMap m
 		klog.V(util.LogInfoLev).Infof("no old node, no modifications on scoreMap")
 		return nil
 	}
+
 	for nodeName := range scoreMap {
 		scoreMap[nodeName] = float64(0)
 		for _, jobUseNode := range fJob.NodeNames {
 			if nodeName == jobUseNode {
+				klog.V(util.LogDebugLev).Infof("assign high score to old node %s", nodeName)
+				scoreMap[nodeName] = float64(util.NPUIndex8 * util.NPUIndex8)
+				break
+			}
+		}
+	}
+	// if job is not ascend job, skip score node by rankIndex
+	if k, ok := task.Pod.Labels[AcJobTag]; !ok || k != AcJobVersion {
+		return nil
+	}
+	nodeRankTimes := reScheduler.AllocNodeRankOccurrenceMap[fJob.JobUID]
+	for nodeName := range scoreMap {
+		scoreMap[nodeName] = float64(48)
+		for _, nt := range nodeRankTimes {
+			if nodeName != nt.NodeName {
+				continue
+			}
+			scoreMap[nodeName] = float64(0)
+			if nt.RankIndex == task.Pod.Annotations[podRankIndex] {
 				klog.V(util.LogDebugLev).Infof("assign high score to old node %s", nodeName)
 				scoreMap[nodeName] = float64(util.NPUIndex8 * util.NPUIndex8)
 				break

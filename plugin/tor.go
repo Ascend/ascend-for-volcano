@@ -91,6 +91,7 @@ type Slice struct {
 
 type Server struct {
 	IsUsedByMulJob bool   `json:"-"`
+	NodeRank       string `json:"-"`
 	IP             string `json:"server_ip"`
 	Count          int    `json:"npu_count"`
 	SliceId        int    `json:"slice_id"`

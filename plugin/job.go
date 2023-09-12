@@ -20,10 +20,10 @@ Package plugin is using for HuaWei Ascend pin affinity schedule frame.
 package plugin
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"k8s.io/api/core/v1"
@@ -31,8 +31,6 @@ import (
 	"k8s.io/klog"
 	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	"volcano.sh/volcano/pkg/scheduler/framework"
-
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
@@ -488,50 +486,6 @@ func (sJob SchedulerJob) GetPhyTosList(sHandler *ScheduleHandler, logicList [][]
 	return tors, fullTor
 }
 
-func (sJob SchedulerJob) CreateJobServerListCM(ssn *framework.Session, torCount int) {
-	job, ok := ssn.Jobs[sJob.Name]
-	if !ok {
-		return
-	}
-	if sJob.GetNPUTaskNumInJob() == 1 {
-		if sJob.Status != scheduling.PodGroupRunning {
-			return
-		}
-		task := GetJobFirstTasksInfo(job)
-		serverList := sJob.CreateSingleJobServerList(ssn, task, torCount)
-		sJob.SaveServerListToCM(ssn, job, serverList)
-		return
-	}
-	if sJob.ServerList == nil {
-		return
-	}
-	serverList := sJob.CreateJobServerList(torCount)
-	sJob.SaveServerListToCM(ssn, job, serverList)
-}
-
-func (sJob SchedulerJob) SaveServerListToCM(ssn *framework.Session, job *api.JobInfo, serverList TorListInfo) {
-	tmpByte, err := json.Marshal(serverList)
-	if err != nil {
-		klog.Infof("CreateJobServerListCM err:%#v", err)
-		return
-	}
-	str := ServerListCMPre + util.ReferenceNameOfJob(job)
-	var tmpCM = &v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      str,
-			Namespace: sJob.NameSpace,
-		},
-		Data: map[string]string{
-			ServerListCMKey: string(tmpByte),
-		},
-	}
-	err = util.CreateOrUpdateConfigMap(ssn.KubeClient(), tmpCM, str, sJob.NameSpace)
-	if err != nil {
-		klog.Infof("CreateJobServerListCM err:%#v", err)
-		return
-	}
-}
-
 func (sJob SchedulerJob) SetFillJobServerList(sHandler *ScheduleHandler, taskNum int) error {
 	var count int
 	for i := len(sHandler.Tors.Tors) - 1; i >= 0; i-- {
@@ -582,65 +536,6 @@ func (sJob *SchedulerJob) SetNormalJobServerList(sHandler *ScheduleHandler) {
 	}
 }
 
-func (sJob SchedulerJob) CreateJobServerList(torCount int) TorListInfo {
-	tmpTorList := TorListInfo{}
-	tmpTorList.Status = Completed
-	tmpTorList.Version = TorListVersion
-	tmpTorList.TorCount = torCount
-	tmpTorList.ServerCount = sJob.GetNPUTaskNumInJob()
-	for i, k := range sJob.ServerList {
-		tmpServerList := ServerList{}
-		tmpServerList.Id = i
-		var tmpServers []map[string]interface{}
-		for _, v := range k.Servers {
-			m := make(map[string]interface{})
-			m[ServerIPKey] = v.IP
-			m[SliceId] = v.SliceId
-			tmpServers = append(tmpServers, m)
-		}
-		tmpServerList.Servers = tmpServers
-		tmpTorList.ServerList = append(tmpTorList.ServerList, tmpServerList)
-	}
-	return tmpTorList
-}
-
-func (sJob SchedulerJob) CreateSingleJobServerList(ssn *framework.Session, task *api.TaskInfo, torCount int) TorListInfo {
-	tmpTorList := TorListInfo{}
-	tmpTorList.Status = Completed
-	tmpTorList.Version = TorListVersion
-	tmpTorList.TorCount = torCount
-	tmpTorList.ServerCount = sJob.GetNPUTaskNumInJob()
-
-	tmpServerList := ServerList{}
-	tmpServerList.Id = 0
-	var tmpServers []map[string]interface{}
-	m := make(map[string]interface{})
-	m[ServerIPKey] = GetTaskNodeIpFromSsn(ssn, task)
-	m[SliceId] = 0
-	tmpServers = append(tmpServers, m)
-
-	tmpServerList.Servers = tmpServers
-	tmpTorList.ServerList = append(tmpTorList.ServerList, tmpServerList)
-
-	return tmpTorList
-}
-
-func GetTaskNodeIpFromSsn(ssn *framework.Session, task *api.TaskInfo) string {
-	if task.NodeName == "" {
-		return ""
-	}
-	npuNode, ok := ssn.Nodes[task.NodeName]
-	if !ok {
-		return ""
-	}
-	for _, addr := range npuNode.Node.Status.Addresses {
-		if addr.Type == v1.NodeInternalIP {
-			return addr.Address
-		}
-	}
-	return ""
-}
-
 func (sJob SchedulerJob) GetLogicTorList(sHandler *ScheduleHandler, netSliceNum int) [][]*Server {
 	logicTorList := make([][]*Server, netSliceNum)
 	for _, tor := range sHandler.Tors.Tors {
@@ -680,6 +575,20 @@ func (sJob SchedulerJob) SortJobServerListBySliceId() []*Tor {
 		sort.Sort(JobServers(tor.Servers))
 	}
 	return sJob.ServerList
+}
+
+func (sJob *SchedulerJob) SetJobRankIndex() {
+	var rankIndex int
+	for _, tor := range sJob.ServerList {
+		for _, server := range tor.Servers {
+			if server.NodeRank != "" {
+				return
+			}
+			server.NodeRank = strconv.Itoa(rankIndex)
+			rankIndex++
+		}
+	}
+	return
 }
 
 func (sJob SchedulerJob) GetFirstRankNodeName() string {

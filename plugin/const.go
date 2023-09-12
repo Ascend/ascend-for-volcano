@@ -53,4 +53,8 @@ const (
 	PtMaserKey = "replica-type"
 	// PtMasterValue the value of pytorch master label
 	PtMasterValue = "master"
+	// JobDeleteFlag the flag mark job is deleted
+	JobDeleteFlag = "fault-job-delete"
+	// JobDelete the value of mark job is deleted
+	JobDelete = "deleted"
 )
