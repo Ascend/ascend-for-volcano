@@ -235,7 +235,8 @@ func (reScheduler *ReScheduler) AddFaultJobWithSession(
 		klog.V(util.LogDebugLev).Infof("ReSchedulerCache considering job %s", jobInfo.Name)
 		flagInCache := false
 		for _, fJob := range reScheduler.FaultJobs {
-			if fJob.JobName == jobInfo.Name {
+			if fJob.JobUID == jobInfo.UID ||
+				(fJob.JobNamespace == jobInfo.Namespace && fJob.ReferenceName == util.ReferenceNameOfJob(jobInfo)) {
 				flagInCache = true
 				break
 			}
@@ -737,7 +738,7 @@ func (reScheduler *ReScheduler) ScoreBestNPUNodes(task *api.TaskInfo, scoreMap m
 	klog.V(util.LogDebugLev).Infof("enter rescheduling ScoreBestNPUNodes %s...", task.Name)
 	klog.V(util.LogDebugLev).Infof("node score map before add rescheduling weights %#v", scoreMap)
 	defer klog.V(util.LogDebugLev).Infof("leave rescheduling ScoreBestNPUNodes ...")
-	curfTask := reScheduler.getFaultTaskOfGivenTaskNameFromCache(task.Name) // 1. get faultTask object
+	curfTask := reScheduler.getFaultTaskOfGivenTaskNameFromCache(task.Namespace, task.Name) // 1. get faultTask object
 	if curfTask == nil {
 		return fmt.Errorf("task %s is not in rescheduler cache", task.Name)
 	}
@@ -914,13 +915,11 @@ func (reScheduler *ReScheduler) CheckNodeNPUByTask(task *api.TaskInfo, vcNode pl
 	if err := reScheduler.checkNodeCurNodeIsFault(vcNode, task); err != nil {
 		return err
 	}
-	curFTask := reScheduler.getFaultTaskOfGivenTaskNameFromCache(task.Name)
-	curFJob := reScheduler.getFaultJobOfGivenTaskInfoFromCache(task)
-	curSchedulerJob := reScheduler.getSchedulerJobOfGivenUIDFromReScheduler(task.Job)
-	if curFTask == nil {
+	if curFTask := reScheduler.getFaultTaskOfGivenTaskNameFromCache(task.Namespace, task.Name); curFTask == nil {
 		klog.V(util.LogDebugLev).Infof("task %s not in reschedule cache", task.Name)
 		return nil // cannot return error, or will be stuck for new job scheduling
 	}
+	curFJob := reScheduler.getFaultJobOfGivenTaskInfoFromCache(task)
 	if curFJob == nil {
 		return fmt.Errorf("task %s does not have corresponding job in cache", task.Name)
 	}
@@ -929,6 +928,7 @@ func (reScheduler *ReScheduler) CheckNodeNPUByTask(task *api.TaskInfo, vcNode pl
 			curFJob.JobName, vcNode.Name)
 		return nil
 	}
+	curSchedulerJob := reScheduler.getSchedulerJobOfGivenUIDFromReScheduler(task.Job)
 	// 0. if fTask's corresponding faultJobs' previously used normal nodes haven't be released,
 	// stuck the task scheduling process
 	if err := reScheduler.checkNodeFJobNormNodeRelease(curFJob, curSchedulerJob); err != nil {
@@ -1060,10 +1060,13 @@ func (reScheduler *ReScheduler) checkFJobFNodeRankIndexAllAllocated(curFJob *Fau
 	return nil
 }
 
-func (reScheduler ReScheduler) getFaultTaskOfGivenTaskNameFromCache(taskName string) *FaultTask {
+func (reScheduler ReScheduler) getFaultTaskOfGivenTaskNameFromCache(namespace, name string) *FaultTask {
 	for _, fJob := range reScheduler.FaultJobs {
+		if fJob.JobNamespace != namespace {
+			continue
+		}
 		for _, fTask := range fJob.FaultTasks {
-			if fTask.TaskName == taskName {
+			if fTask.TaskName == name {
 				return &fTask
 			}
 		}
