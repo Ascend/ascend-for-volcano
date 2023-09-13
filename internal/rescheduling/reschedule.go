@@ -572,7 +572,11 @@ func (reScheduler *ReScheduler) SynCacheFaultJobWithSession(
 			}
 		}
 		vcjob := ssn.Jobs[faultJob.JobUID]
-		vcjob.PodGroup.Labels[plugin.JobDeleteFlag] = plugin.JobDelete
+		str, err := json.Marshal(reScheduler.AllocNodeRankOccurrenceMap[faultJob.JobUID])
+		if err != nil {
+			klog.V(util.LogInfoLev).Infof("Marshal %s NodeRankOccurrence failed %s", faultJob.JobName, err)
+		}
+		vcjob.PodGroup.Annotations[plugin.JobDeleteFlag] = string(str)
 		updatedFaultJobs = append(updatedFaultJobs, faultJob)
 	}
 	reScheduler.setFaultJobs(updatedFaultJobs)
@@ -912,6 +916,7 @@ func (reScheduler *ReScheduler) GenerateNodeRankIndexTaskMap() {
 				nodeRankTime := AllocNodeRankOccurrence{
 					NodeName:   fTask.NodeName,
 					RankIndex:  fTask.NodeRankIndex,
+					IsFault:    fTask.IsFaultTask,
 					Occurrence: 0,
 				}
 				nodeRankTimes = append(nodeRankTimes, nodeRankTime)

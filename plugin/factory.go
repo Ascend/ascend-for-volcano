@@ -416,7 +416,7 @@ func (sHandle *ScheduleHandler) BatchNodeOrderFn(task *api.TaskInfo, nodes []*ap
 	}
 
 	k, ok := vcJob.Label[TorAffinityKey]
-	if ok && (k == LargeModelTag || k == NormalSchema) && vcJob.Label[JobDeleteFlag] != JobDelete {
+	if ok && (k == LargeModelTag || k == NormalSchema) {
 		klog.V(util.LogInfoLev).Infof("validNPUJob job is not use tor affinity")
 		return sHandle.SetTorAffinityJobNodesScore(task, nodes, vcJob, k, scoreMap)
 	}
@@ -473,6 +473,12 @@ func (sHandle *ScheduleHandler) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*a
 		return errors.New(util.ArgumentError)
 	}
 	vcjob.ServerList = vcjob.SortJobServerListBySliceId()
+	for nodeName, index := range vcjob.HealthTorRankIndex {
+		if index == task.Pod.Annotations[podRankIndex] {
+			sMap[nodeName] = maxTorAffinityNodeScore
+			return nil
+		}
+	}
 	vcjob.SetJobRankIndex()
 	for _, sl := range vcjob.ServerList {
 		if reflect.ValueOf(sl).IsNil() {
@@ -486,7 +492,7 @@ func (sHandle *ScheduleHandler) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*a
 				if server.Name != node.Name || server.NodeRank != task.Pod.Annotations[podRankIndex] {
 					continue
 				}
-				sMap[server.Name] = float64(200)
+				sMap[server.Name] = maxTorAffinityNodeScore
 				break
 			}
 		}
