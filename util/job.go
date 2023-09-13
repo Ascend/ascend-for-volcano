@@ -60,6 +60,7 @@ type ComJob struct {
 	Name          api.JobID
 	ReferenceName string
 	NameSpace     string
+	Annotation    map[string]string
 	Selector      map[string]string
 	Label         map[string]string
 }

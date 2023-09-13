@@ -172,6 +172,7 @@ type DealReSchedulerConfigmap struct {
 type AllocNodeRankOccurrence struct {
 	NodeName   string
 	RankIndex  string
+	IsFault    bool
 	Occurrence int
 }
 

@@ -20,6 +20,7 @@ Package plugin is using for HuaWei Ascend pin affinity schedule frame.
 package plugin
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -286,10 +287,12 @@ func (sJob *SchedulerJob) initNPUJob(vcJob *api.JobInfo) {
 
 func (sJob *SchedulerJob) initByJobInfo(vcJob *api.JobInfo) error {
 	sJob.JobReadyTag = true
+	sJob.HealthTorRankIndex = map[string]string{}
 	sJob.SchedulerJobAttr.ComJob = util.ComJob{Name: vcJob.UID, NameSpace: vcJob.Namespace,
 		ReferenceName: util.ReferenceNameOfJob(vcJob),
 		Selector:      GetJobSelectorFromVcJob(vcJob),
-		Label:         GetJobLabelFromVcJob(vcJob)}
+		Label:         GetJobLabelFromVcJob(vcJob),
+		Annotation:    vcJob.PodGroup.Annotations}
 	sJob.SchedulerJobAttr.NPUJob = nil
 	sJob.handler = nil
 	name, num, err := GetVCJobReqNPUTypeFromJobInfo(vcJob)
@@ -366,7 +369,7 @@ func CheckNetSliceIsMeetJobRequire(sJob SchedulerJob, sHandler *ScheduleHandler,
 	}
 	sJob.GetEnableServerList(nodes, sHandler)
 	fullTorNum := sJob.GetFullTorNumFromTorInfo(sHandler)
-	n := sJob.GetNPUTaskNumInJob()
+	n := sJob.GetNPUTaskNumInJob() - len(sJob.HealthTorRankIndex)
 	sort.Sort(TorLs(sHandler.Tors.Tors))
 	netSliceNum := sHandler.Tors.TorCount
 	if n < netSliceNum {
@@ -450,7 +453,7 @@ func GetTaskRowAndTaskColumn(nTaskNum int, netSliceNum int) (int, int) {
 	return taskRow, taskColumn
 }
 
-func (sJob SchedulerJob) GetFullTorNumFromTorInfo(sHandler *ScheduleHandler) int {
+func (sJob *SchedulerJob) GetFullTorNumFromTorInfo(sHandler *ScheduleHandler) int {
 	var fullTorNum int
 	for _, tor := range sHandler.Tors.Tors {
 		count := 0
@@ -549,25 +552,59 @@ func (sJob SchedulerJob) GetLogicTorList(sHandler *ScheduleHandler, netSliceNum 
 
 }
 
-func (sJob SchedulerJob) GetEnableServerList(nodes []*api.NodeInfo, sHandler *ScheduleHandler) {
+func (sJob *SchedulerJob) GetEnableServerList(nodes []*api.NodeInfo, sHandler *ScheduleHandler) {
 	if sHandler == nil {
 		return
 	}
 	if sHandler.Tors == nil {
 		return
 	}
+	sJob.getNormalTorListBeforeRestart(sHandler.Tors.TorCount)
 	for _, node := range nodes {
 		for _, tor := range sHandler.Tors.Tors {
 			if tor.HasAcrossJob() && sJob.GetNPUTaskNumInJob() >= sHandler.Tors.TorCount {
 				continue
 			}
 			for _, server := range tor.Servers {
-				if server.Name == node.Name {
+				if server.Name == node.Name && sJob.HealthTorRankIndex[node.Name] == "" {
 					server.CurrentJob = sJob.Name
 				}
 			}
 		}
 	}
+}
+
+func (sJob *SchedulerJob) getNormalTorListBeforeRestart(torCount int) {
+	m := make(map[string]string)
+	var faultIndex, faultIndexEnd int
+	if nrt, ok := sJob.Annotation[JobDeleteFlag]; ok {
+		var rts []AllocNodeRankOccurrence
+		err := json.Unmarshal([]byte(nrt), &rts)
+		if err != nil {
+			klog.V(util.LogInfoLev).Infof("Unmarshal job %s AllocNodeRankOccurrence failed:%s", sJob.Name, err)
+		}
+		for _, rt := range rts {
+			if rt.IsFault {
+				i, err := strconv.Atoi(rt.RankIndex)
+				if err != nil {
+					klog.V(util.LogInfoLev).Infof("getNormalTorListBeforeRestart change RankIndex to int failed")
+					return
+				}
+				faultIndex = i / torCount * torCount
+				faultIndexEnd = faultIndex + torCount
+				break
+			}
+		}
+		for _, rt := range rts {
+			i, _ := strconv.Atoi(rt.RankIndex)
+			if i >= faultIndex && i < faultIndexEnd {
+				continue
+			}
+			m[rt.NodeName] = rt.RankIndex
+		}
+	}
+	sJob.HealthTorRankIndex = m
+	sJob.FaultIndex = faultIndex
 }
 
 func (sJob SchedulerJob) SortJobServerListBySliceId() []*Tor {
@@ -579,6 +616,7 @@ func (sJob SchedulerJob) SortJobServerListBySliceId() []*Tor {
 
 func (sJob *SchedulerJob) SetJobRankIndex() {
 	var rankIndex int
+	rankIndex = sJob.FaultIndex
 	for _, tor := range sJob.ServerList {
 		for _, server := range tor.Servers {
 			if server.NodeRank != "" {
