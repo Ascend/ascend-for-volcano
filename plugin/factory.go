@@ -443,6 +443,7 @@ func (sHandle *ScheduleHandler) SetTorAffinityJobNodesScore(task *api.TaskInfo, 
 	result := CheckNetSliceIsMeetJobRequire(vcJob, sHandle, nodes)
 	vcJob = sHandle.Jobs[task.Job]
 	if result != nil {
+		klog.V(util.LogErrorLev).Infof("check job %s tor affinity failed: %s", vcJob.Name, result)
 		switch label {
 		case LargeModelTag:
 			vcJob.JobReadyTag = false

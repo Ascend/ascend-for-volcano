@@ -370,7 +370,10 @@ func CheckNetSliceIsMeetJobRequire(sJob SchedulerJob, sHandler *ScheduleHandler,
 	sort.Sort(TorLs(sHandler.Tors.Tors))
 	netSliceNum := sHandler.Tors.TorCount
 	if n < netSliceNum {
-		return sJob.SetFillJobServerList(sHandler, n)
+		err := sJob.SetFillJobServerList(sHandler, sHandler.Tors.Tors, n)
+		if sJob.Label[TorAffinityKey] == LargeModelTag || err == nil {
+			return err
+		}
 	}
 	logicList := sJob.GetLogicTorList(sHandler, netSliceNum)
 	taskRow, taskColumn := GetTaskRowAndTaskColumn(n, netSliceNum)
@@ -398,7 +401,13 @@ func CheckNetSliceIsMeetJobRequire(sJob SchedulerJob, sHandler *ScheduleHandler,
 	if taskRow > 0 && len(logicList[taskColumn]) < taskRow+1 {
 		return fmt.Errorf("tor check failed not enough resource by last Tor not enough server")
 	}
-	pyTor, fullTorNum := sJob.GetPhyTosList(sHandler, logicList, taskRow, taskColumn)
+	pyTor, fullTorNum := sJob.GetPhyTosList(sHandler, logicList)
+
+	if taskRow < 1 {
+		err := sJob.SetFillJobServerList(sHandler, pyTor, n)
+		sJob.MarkMulJobServerList()
+		return err
+	}
 
 	if taskRow+1 < fullTorNum {
 		sJob.SetJobServerCacheTosHandler(sHandler, pyTor, taskRow, taskColumn)
@@ -467,31 +476,32 @@ func (sJob SchedulerJob) GetFullTorNumFromTorInfo(sHandler *ScheduleHandler) int
 	return fullTorNum
 }
 
-func (sJob SchedulerJob) GetPhyTosList(sHandler *ScheduleHandler, logicList [][]*Server, taskRow, taskColumn int) ([]*Tor, int) {
+func (sJob SchedulerJob) GetPhyTosList(sHandler *ScheduleHandler, logicList [][]*Server) ([]*Tor, int) {
 	var tors []*Tor
 	var fullTor int
-	for i := 0; i <= taskRow; i++ {
+	for i := 0; i <= len(logicList[0]); i++ {
 		tmpTor := &Tor{}
 		for j := 0; j < sHandler.Tors.TorCount; j++ {
+			if len(logicList[j]) < i+1 {
+				break
+			}
 			tmpTor.Servers = append(tmpTor.Servers, logicList[j][i])
 			if j == sHandler.Tors.TorCount-1 {
 				fullTor++
 			}
-			if i == taskRow && j == taskColumn {
-				break
-			}
 		}
+		tmpTor.FreeServerCount = len(tmpTor.Servers)
 		tors = append(tors, tmpTor)
 	}
 	return tors, fullTor
 }
 
-func (sJob SchedulerJob) SetFillJobServerList(sHandler *ScheduleHandler, taskNum int) error {
+func (sJob SchedulerJob) SetFillJobServerList(sHandler *ScheduleHandler, Tors []*Tor, taskNum int) error {
 	var count int
-	for i := len(sHandler.Tors.Tors) - 1; i >= 0; i-- {
-		if sHandler.Tors.Tors[i].FreeServerCount >= taskNum {
+	for i := len(Tors) - 1; i >= 0; i-- {
+		if Tors[i].FreeServerCount >= taskNum {
 			tmpTor := &Tor{}
-			for _, k := range sHandler.Tors.Tors[i].Servers {
+			for _, k := range Tors[i].Servers {
 				if k.CurrentJob == sJob.Name {
 					count++
 					tmpTor.Servers = append(tmpTor.Servers, k)
