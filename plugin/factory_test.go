@@ -36,7 +36,7 @@ import (
 )
 
 type fields struct {
-	NPUPlugins  map[string]ISchedulerPlugin
+	NPUPlugins  map[string]NPUBuilder
 	ScheduleEnv ScheduleEnv
 }
 
@@ -67,7 +67,7 @@ func buildBatchNodeOrderFn() []batchNodeOrderFnTest {
 		},
 		{
 			name: "02-BatchNodeOrderFn ScoreBestNPUNodes ok Test",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Jobs:      map[api.JobID]SchedulerJob{},
 					Nodes:     map[string]NPUNode{},
@@ -109,7 +109,7 @@ func buildBeforeCloseHandler() []beforeCloseHandlerTest {
 	tests := []beforeCloseHandlerTest{
 		{
 			name: "01-BeforeCloseHandler no cache test",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Jobs:      map[api.JobID]SchedulerJob{},
 					Nodes:     map[string]NPUNode{},
@@ -117,7 +117,7 @@ func buildBeforeCloseHandler() []beforeCloseHandlerTest {
 		},
 		{
 			name: "02-BeforeCloseHandler save cache test",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Cache: ScheduleCache{Names: map[string]string{"fault": "test"},
 						Namespaces: map[string]string{"fault": "hahaNameSpace"},
@@ -167,7 +167,7 @@ func buildGetNPUSchedulerTest() []getNPUSchedulerTest {
 	tests := []getNPUSchedulerTest{
 		{
 			name: "01-GetNPUScheduler not found test",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Jobs:      map[api.JobID]SchedulerJob{},
 					Nodes:     map[string]NPUNode{},
@@ -178,7 +178,7 @@ func buildGetNPUSchedulerTest() []getNPUSchedulerTest {
 		},
 		{
 			name: "02-GetNPUScheduler found test",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{"testPlugin": nil},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{"testPlugin": nil},
 				ScheduleEnv: ScheduleEnv{
 					Jobs:      map[api.JobID]SchedulerJob{},
 					Nodes:     map[string]NPUNode{},
@@ -263,7 +263,7 @@ func buildIsPluginRegisteredTest() []isPluginRegisteredTest {
 	tests := []isPluginRegisteredTest{
 		{
 			name: "01-IsPluginRegistered not registered test.",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Jobs:      map[api.JobID]SchedulerJob{},
 					Nodes:     map[string]NPUNode{},
@@ -273,7 +273,7 @@ func buildIsPluginRegisteredTest() []isPluginRegisteredTest {
 		},
 		{
 			name:   "02-IsPluginRegistered registered test.",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{"haha": nil}},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{"haha": nil}},
 			args:   isPluginRegisteredArgs{name: "haha"},
 			want:   true,
 		},
@@ -351,7 +351,7 @@ func buildRegisterNPUSchedulerTest() []registerNPUSchedulerTest {
 		},
 		{
 			name:   "02-RegisterNPUScheduler exist before test.",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{"haha": nil}},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{"haha": nil}},
 			args: registerNPUSchedulerArgs{
 				name: "haha", pc: nil},
 		},
@@ -387,13 +387,13 @@ func buildUnRegisterNPUSchedulerTest() []unRegisterNPUSchedulerTest {
 	tests := []unRegisterNPUSchedulerTest{
 		{
 			name:    "01-UnRegisterNPUScheduler not exist before test.",
-			fields:  fields{NPUPlugins: map[string]ISchedulerPlugin{"hehe": nil}},
+			fields:  fields{NPUPlugins: map[string]NPUBuilder{"hehe": nil}},
 			args:    unRegisterNPUSchedulerArgs{name: "haha"},
 			wantErr: false,
 		},
 		{
 			name:    "02-UnRegisterNPUScheduler exist test.",
-			fields:  fields{NPUPlugins: map[string]ISchedulerPlugin{"haha": nil}},
+			fields:  fields{NPUPlugins: map[string]NPUBuilder{"haha": nil}},
 			args:    unRegisterNPUSchedulerArgs{name: "haha"},
 			wantErr: false,
 		},
