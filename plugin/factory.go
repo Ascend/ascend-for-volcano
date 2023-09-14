@@ -107,10 +107,6 @@ func (sHandle *ScheduleHandler) InitJobsFromSsn(ssn *framework.Session) {
 	}
 	sHandle.Jobs = make(map[api.JobID]SchedulerJob, util.MapInitNum)
 	for jobID, jobInfo := range ssn.Jobs {
-		if !IsJobInitial(jobInfo) {
-			klog.V(util.LogInfoLev).Infof("job<%s> is not initial", jobInfo.UID)
-			continue
-		}
 		sJob := SchedulerJob{}
 		if err := sJob.Init(jobInfo, sHandle); err != nil {
 			klog.V(util.LogInfoLev).Infof("%s InitJobsFromSsn failed: %#v.", jobInfo.Name, err)

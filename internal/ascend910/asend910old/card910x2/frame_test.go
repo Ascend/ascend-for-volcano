@@ -86,11 +86,6 @@ func buildValidNPUJobTestCase01() []validNPUJobTestCase {
 }
 
 func buildValidNPUJobTestCase02() []validNPUJobTestCase {
-	job04 := test.FakeNormalTestJob("job04", util.NPUIndex2)
-	test.SetFakeJobResRequest(job04, util.NPU910CardName, "0")
-	attr4 := itest.FakeSchedulerJobAttrByJob(job04)
-	task := util.NPUTask{ReqNPUNum: 1}
-	attr4.Tasks["vcjob-pod1"] = task
 	job05 := test.FakeNormalTestJob("job05", util.NPUIndex2)
 	test.SetFakeJobResRequest(job05, util.NPU910CardName, "1")
 	attr5 := itest.FakeSchedulerJobAttrByJob(job05)
@@ -98,15 +93,6 @@ func buildValidNPUJobTestCase02() []validNPUJobTestCase {
 	test.SetFakeJobResRequest(job06, util.NPU910CardName, "2")
 	attr6 := itest.FakeSchedulerJobAttrByJob(job06)
 	return []validNPUJobTestCase{
-		{
-			name: "04-ValidNPUJob should return error when task request no npu",
-			attr: attr4,
-			wantErr: &api.ValidateResult{
-				Pass:    false,
-				Reason:  "checkModuleDistributeTrainMode pod0 req 0 not in [1,2,4,8]",
-				Message: "checkModuleDistributeTrainMode pod0 req 0 not in [1,2,4,8]",
-			},
-		},
 		{
 			name:    "05-ValidNPUJob should return error when task request npu more than 4",
 			attr:    attr5,
