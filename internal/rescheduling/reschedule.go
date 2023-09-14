@@ -230,7 +230,7 @@ func (reScheduler *ReScheduler) AddFaultJobWithSession(
 	klog.V(util.LogInfoLev).Infof("enter AddFaultJobWithSession ... ")
 	defer klog.V(util.LogInfoLev).Infof("leave AddFaultJobWithSession ... ")
 	if reScheduler == nil || len(jobs) == 0 {
-		klog.V(util.LogErrorLev).Infof("AddFaultJobWithSession: %s, nil reScheduler or job", util.ArgumentError)
+		klog.V(util.LogDebugLev).Infof("AddFaultJobWithSession: %s, nil reScheduler or job", util.ArgumentError)
 		return errors.New(util.ArgumentError)
 	}
 	klog.V(util.LogDebugLev).Infof("ReSchedulerCache fault jobs before add: %#v", reScheduler.FaultJobs)
@@ -491,7 +491,7 @@ func (reScheduler *ReScheduler) NewCommonReScheduler(jobType string) {
 		return
 	}
 	if setJobErr := reScheduler.DealReSchedulerCache.SetFaultJobsFromCM(jobType); setJobErr != nil {
-		klog.V(util.LogErrorLev).Infof("SetFaultJobsFromCM: %#v", setJobErr)
+		klog.V(util.LogDebugLev).Infof("SetFaultJobsFromCM: %#v", setJobErr)
 	}
 	return
 }
@@ -750,7 +750,8 @@ func (reScheduler *ReScheduler) ScoreBestNPUNodes(task *api.TaskInfo, scoreMap m
 	defer klog.V(util.LogDebugLev).Infof("leave rescheduling ScoreBestNPUNodes ...")
 	curfTask := reScheduler.getFaultTaskOfGivenTaskNameFromCache(task.Namespace, task.Name) // 1. get faultTask object
 	if curfTask == nil {
-		return fmt.Errorf("task %s is not in rescheduler cache", task.Name)
+		klog.V(util.LogInfoLev).Infof("task %s is not in rescheduler cache", task.Name)
+		return nil
 	}
 	fJob := reScheduler.getFaultJobOfGivenTaskInfoFromCache(task) // 2. get faultJob object given the faultTask object
 	if !fJob.IsFaultJob {                                         // skip adding re-scheduling score for normal jobs

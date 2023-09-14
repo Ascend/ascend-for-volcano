@@ -102,7 +102,7 @@ func (tp *half910x4) PreStartAction(ssn *framework.Session) error {
 	tp.reHandle.SynCacheNodeRankOccMapWithSession(ssn)
 	// 1. restart Fault Jobs that are recorded in cache
 	if restartErr := tp.reHandle.RestartNeedForceDeleteJobs(ssn); restartErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s RestartNeedForceDeleteJobs: %s", moduleFullName, restartErr.Error())
+		klog.V(util.LogInfoLev).Infof("%s RestartNeedForceDeleteJobs: %s", moduleFullName, restartErr.Error())
 	}
 	// 2. get all the new jobs in session
 	runningJobs, getRunErr := tp.reHandle.GetRunningJobs(ssn, util.NPU910CardName, util.HalfAcceleratorType)
@@ -112,11 +112,11 @@ func (tp *half910x4) PreStartAction(ssn *framework.Session) error {
 	// 3. get nodes of session and fault jobs
 	err := tp.reHandle.AddFaultJobWithSession(runningJobs, util.NPU910CardName, util.NPU910CardNamePre)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s AddFaultJobWithSession", moduleFullName)
+		klog.V(util.LogInfoLev).Infof("%s AddFaultJobWithSession", moduleFullName)
 	}
 	// 4. restart the fault jobs
 	if restartErr := tp.reHandle.RestartFaultJobs(ssn); restartErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s RestartFaultJobs: %s", moduleFullName, restartErr.Error())
+		klog.V(util.LogInfoLev).Infof("%s RestartFaultJobs: %s", moduleFullName, restartErr.Error())
 		return restartErr
 	}
 	// 5. save structure for later allocation process

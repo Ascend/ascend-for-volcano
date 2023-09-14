@@ -64,7 +64,7 @@ func (tp *card910bx2) PreStartAction(ssn *framework.Session) error {
 	}
 	tp.reHandle = rescheduling.New(&tp.ScheduleEnv, rescheduling.CmFaultJob910bx2Kind)
 	if tp.reHandle == nil {
-		klog.V(util.LogErrorLev).Infof("create new fault handler failed.")
+		klog.V(util.LogInfoLev).Infof("create new fault handler failed.")
 		return fmt.Errorf("%s reSchedule not enabled: %s", moduleFullName, util.ArgumentError)
 	}
 	tp.reHandle.NewCommonReScheduler(rescheduling.CmFaultJob910bx2Kind)
@@ -74,7 +74,7 @@ func (tp *card910bx2) PreStartAction(ssn *framework.Session) error {
 	tp.reHandle.SynCacheNodeRankOccMapWithSession(ssn)
 	// 1. restart Fault Jobs that are recorded in cache
 	if restartErr := tp.reHandle.RestartNeedForceDeleteJobs(ssn); restartErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s RestartNeedForceDeleteJobs: %s", moduleFullName, restartErr.Error())
+		klog.V(util.LogInfoLev).Infof("%s RestartNeedForceDeleteJobs: %s", moduleFullName, restartErr.Error())
 	}
 	// 2. get all the new 910bx2 jobs in session
 	runningJobs910bx2, getRunErr := tp.reHandle.GetRunningJobs(ssn, util.Ascend910bName, util.Card910bx2AcceleratorType)
@@ -84,11 +84,11 @@ func (tp *card910bx2) PreStartAction(ssn *framework.Session) error {
 	// 3. get nodes of session and fault jobs of 910bx2
 	err := tp.reHandle.AddFaultJobWithSession(runningJobs910bx2, util.NPU910CardName, util.NPU910CardNamePre)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s AddFaultJobWithSession", moduleFullName)
+		klog.V(util.LogInfoLev).Infof("%s AddFaultJobWithSession", moduleFullName)
 	}
 	// 4. restart the fault jobs
 	if restartErr := tp.reHandle.RestartFaultJobs(ssn); restartErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s RestartFaultJobs: %s", moduleFullName, restartErr.Error())
+		klog.V(util.LogInfoLev).Infof("%s RestartFaultJobs: %s", moduleFullName, restartErr.Error())
 		return restartErr
 	}
 	// 5. save structure for later allocation process

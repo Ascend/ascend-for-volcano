@@ -72,7 +72,7 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 	ssn.AddPredicateFn(tp.Name(), func(taskInfo *api.TaskInfo, nodeInfo *api.NodeInfo) error {
 		err := tp.Scheduler.NodePredicate(taskInfo, nodeInfo)
 		if err != nil {
-			klog.V(util.LogErrorLev).Infof("NodePredicate err:%#v", err)
+			klog.V(util.LogErrorLev).Infof("NodePredicate failed for task %s err:%s", taskInfo.Name, err)
 		}
 		return err
 	})
@@ -119,12 +119,12 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 		for _, node := range ssn.Nodes {
 			vcNode, ok := tp.Scheduler.Nodes[node.Name]
 			if !ok {
-				klog.V(util.LogInfoLev).Infof("AddJobEnqueueableFn add node failed,%s is not in cache", node.Name)
+				klog.V(util.LogErrorLev).Infof("AddJobEnqueueableFn add node failed,%s is not in cache", node.Name)
 				continue
 			}
 			deviceInfo, ok := vcNode.Annotation[npuName]
 			if !ok {
-				klog.V(util.LogInfoLev).Infof("AddJobEnqueueableFn add node failed,"+
+				klog.V(util.LogErrorLev).Infof("AddJobEnqueueableFn add node failed,"+
 					"%s deviceList is empty", node.Name)
 				continue
 			}

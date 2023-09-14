@@ -59,7 +59,7 @@ func (fJob *FaultJob) GetJobElasticSchedulingLabel(job *plugin.SchedulerJob) str
 	}
 	value, ok := job.SchedulerJobAttr.Label[ElasticSchedulingKey]
 	if !ok {
-		klog.V(util.LogErrorLev).Infof(
+		klog.V(util.LogInfoLev).Infof(
 			"GetJobElasticSchedulingLabel %s. %s no job reschedule label", value, job.Name)
 		return JobOffRescheduleLabelValue
 	}
