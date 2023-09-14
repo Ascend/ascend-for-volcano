@@ -322,7 +322,7 @@ func (asTask *NPUTask) setVTaskAllocated(taskInf *api.TaskInfo) {
 	case TaskStatusAllocate:
 		asTask.VTask.Allocated.NodeName = taskInf.NodeName
 	default:
-		klog.V(LogErrorLev).Infof("setVTaskAllocated %s status %v.", asTask.Name, asTask.Status)
+		klog.V(LogDebugLev).Infof("setVTaskAllocated %s status %v.", asTask.Name, asTask.Status)
 		return
 	}
 	return

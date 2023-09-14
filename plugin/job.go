@@ -601,13 +601,6 @@ func (sJob *SchedulerJob) SetJobRankIndex() {
 	return
 }
 
-func (sJob SchedulerJob) GetFirstRankNodeName() string {
-	if len(sJob.ServerList) == 0 || len(sJob.ServerList[0].Servers) == 0 {
-		return ""
-	}
-	return sJob.ServerList[0].Servers[0].Name
-}
-
 type JobServers []*Server
 
 func (s JobServers) Len() int {

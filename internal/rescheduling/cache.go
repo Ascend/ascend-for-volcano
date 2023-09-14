@@ -52,7 +52,7 @@ func (reCache *DealReSchedulerCache) setNodeRankOccurrenceMap(
 func (reCache DealReSchedulerCache) getFaultNodesFromCM(buffer string) ([]FaultNode, error) {
 	var faultNodes []FaultNode
 	if unmarshalErr := json.Unmarshal([]byte(buffer), &faultNodes); unmarshalErr != nil {
-		klog.V(util.LogErrorLev).Infof("Unmarshal FaultNodes from cache failed")
+		klog.V(util.LogInfoLev).Infof("Unmarshal FaultNodes from cache failed")
 		return nil, fmt.Errorf("faultNodes convert from CM error: %#v", unmarshalErr)
 	}
 	return faultNodes, nil
@@ -61,7 +61,7 @@ func (reCache DealReSchedulerCache) getFaultNodesFromCM(buffer string) ([]FaultN
 func (reCache DealReSchedulerCache) getFaultJobsFromCM(buffer string) ([]FaultJob, error) {
 	var faultJobs []FaultJob
 	if unmarshalErr := json.Unmarshal([]byte(buffer), &faultJobs); unmarshalErr != nil {
-		klog.V(util.LogErrorLev).Infof("Unmarshal FaultJobs from cache failed")
+		klog.V(util.LogInfoLev).Infof("Unmarshal FaultJobs from cache failed")
 		return nil, fmt.Errorf("faultJobs convert from CM failed")
 	}
 	return faultJobs, nil
@@ -70,7 +70,7 @@ func (reCache DealReSchedulerCache) getFaultJobsFromCM(buffer string) ([]FaultJo
 func (reCache DealReSchedulerCache) getNodeHeartbeatFromCM(buffer string) ([]NodeHeartbeat, error) {
 	var nodeHBs []NodeHeartbeat
 	if unmarshalErr := json.Unmarshal([]byte(buffer), &nodeHBs); unmarshalErr != nil {
-		klog.V(util.LogErrorLev).Infof("Unmarshal NodeHeartbeat from cache failed")
+		klog.V(util.LogDebugLev).Infof("Unmarshal NodeHeartbeat from cache failed")
 		return nil, fmt.Errorf("faultNodes convert from CM error: %#v", unmarshalErr)
 	}
 	return nodeHBs, nil
@@ -80,7 +80,7 @@ func (reCache DealReSchedulerCache) getNodeRankOccurrenceMapFromCM(
 	buffer string) (map[api.JobID][]AllocNodeRankOccurrence, error) {
 	var nodeRankOccMap map[api.JobID][]AllocNodeRankOccurrence
 	if unmarshalErr := json.Unmarshal([]byte(buffer), &nodeRankOccMap); unmarshalErr != nil {
-		klog.V(util.LogErrorLev).Infof("Unmarshal AllocNodeRankOccurrence from cache failed")
+		klog.V(util.LogDebugLev).Infof("Unmarshal AllocNodeRankOccurrence from cache failed")
 		return nil, fmt.Errorf("faultNodes convert from CM error: %#v", unmarshalErr)
 	}
 	return nodeRankOccMap, nil
@@ -293,19 +293,19 @@ func (reCache *DealReSchedulerCache) WriteReSchedulerCacheToEnvCache(env *plugin
 	env.Cache.Namespaces[RePropertyName] = CmNameSpace
 	fNodeString, err := reCache.writeFaultNodesToCMString()
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("WriteReSchedulerCacheToEnvCache: %#v", err)
+		klog.V(util.LogDebugLev).Infof("WriteReSchedulerCacheToEnvCache: %#v", err)
 	}
 	fJobString, err := reCache.writeFaultJobsToCMString()
 	if err != nil {
-		klog.V(util.LogInfoLev).Infof("WriteReSchedulerCacheToEnvCache: %#v", err)
+		klog.V(util.LogDebugLev).Infof("WriteReSchedulerCacheToEnvCache: %#v", err)
 	}
 	nodeHBString, err := reCache.writeNodeHeartbeatToCMString()
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("WriteReSchedulerCacheToEnvCache: %#v", err)
+		klog.V(util.LogDebugLev).Infof("WriteReSchedulerCacheToEnvCache: %#v", err)
 	}
 	nodeRankOccurrenceMapString, err := reCache.writeNodeRankOccurrenceMapToCMString()
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("WriteReSchedulerCacheToEnvCache: %#v", err)
+		klog.V(util.LogDebugLev).Infof("WriteReSchedulerCacheToEnvCache: %#v", err)
 	}
 	cmData, ok := env.Cache.Data[RePropertyName]
 	if !ok {
@@ -321,7 +321,7 @@ func (reCache *DealReSchedulerCache) WriteReSchedulerCacheToEnvCache(env *plugin
 		return nil
 	}
 	if err := reCache.writeRecoveryCacheToEnv(env); err != nil {
-		klog.V(util.LogErrorLev).Infof("WriteReSchedulerCacheToEnvCache: %#v", err)
+		klog.V(util.LogDebugLev).Infof("WriteReSchedulerCacheToEnvCache: %#v", err)
 	}
 	return nil
 }
