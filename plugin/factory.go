@@ -48,7 +48,7 @@ func (sHandle *ScheduleHandler) RegisterNPUScheduler(name string, pc NPUBuilder)
 		return
 	}
 
-	sHandle.NPUPlugins[name] = pc(name)
+	sHandle.NPUPlugins[name] = pc
 	klog.V(util.LogInfoLev).Infof("NPU Scheduler[%#v] registered.", name)
 }
 
@@ -291,12 +291,12 @@ func (sHandle *ScheduleHandler) PreStartPlugin(ssn *framework.Session) {
 		klog.V(util.LogInfoLev).Infof("PreStartPlugin failed: %s.", util.ArgumentError)
 		return
 	}
-	for name, plugin := range sHandle.NPUPlugins {
-		if err := plugin.PreStartAction(ssn); err != nil {
+	for _, job := range sHandle.Jobs {
+		if err := job.handler.PreStartAction(ssn); err != nil {
 			if strings.Contains(err.Error(), util.ArgumentError) {
 				continue
 			}
-			klog.V(util.LogErrorLev).Infof("PreStartPlugin %s %s.", name, err)
+			klog.V(util.LogErrorLev).Infof("PreStartPlugin %s %s.", job.Name, err)
 		}
 	}
 }
@@ -362,12 +362,12 @@ func (sHandle *ScheduleHandler) BeforeCloseHandler(ssn *framework.Session) {
 		}
 		job.CreateJobServerListCM(ssn, sHandle.Tors.TorCount)
 	}
-	for name, plugin := range sHandle.NPUPlugins {
-		if err := plugin.PreStopAction(&sHandle.ScheduleEnv); err != nil {
+	for _, job := range sHandle.Jobs {
+		if err := job.handler.PreStopAction(&sHandle.ScheduleEnv); err != nil {
 			if strings.Contains(err.Error(), util.ArgumentError) {
 				continue
 			}
-			klog.V(util.LogErrorLev).Infof("PreStopPlugin %s %#v.", name, err)
+			klog.V(util.LogErrorLev).Infof("PreStopPlugin %s %#v.", job.Name, err)
 		}
 	}
 	sHandle.saveCacheToCm()
@@ -401,7 +401,7 @@ func (sHandle *ScheduleHandler) GetNPUScheduler(name string) (ISchedulerPlugin, 
 	}
 	pb, found := sHandle.NPUPlugins[name]
 	if found && pb != nil {
-		return pb, found
+		return pb(name), found
 	}
 
 	return nil, found
