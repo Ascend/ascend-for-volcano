@@ -107,10 +107,6 @@ func (sHandle *ScheduleHandler) InitJobsFromSsn(ssn *framework.Session) {
 	}
 	sHandle.Jobs = make(map[api.JobID]SchedulerJob, util.MapInitNum)
 	for jobID, jobInfo := range ssn.Jobs {
-		if !IsJobInitial(jobInfo) {
-			klog.V(util.LogInfoLev).Infof("job<%s> is not initial", jobInfo.UID)
-			continue
-		}
 		sJob := SchedulerJob{}
 		if err := sJob.Init(jobInfo, sHandle); err != nil {
 			klog.V(util.LogInfoLev).Infof("%s InitJobsFromSsn failed: %#v.", jobInfo.Name, err)
@@ -353,16 +349,6 @@ func (sHandle *ScheduleHandler) BeforeCloseHandler(ssn *framework.Session) {
 		return
 	}
 	for _, job := range sHandle.Jobs {
-		if sHandle.Tors == nil {
-			break
-		}
-		k, ok := job.Label[TorAffinityKey]
-		if !ok || k == NullTag {
-			continue
-		}
-		job.CreateJobServerListCM(ssn, sHandle.Tors.TorCount)
-	}
-	for _, job := range sHandle.Jobs {
 		if err := job.handler.PreStopAction(&sHandle.ScheduleEnv); err != nil {
 			if strings.Contains(err.Error(), util.ArgumentError) {
 				continue
@@ -457,6 +443,7 @@ func (sHandle *ScheduleHandler) SetTorAffinityJobNodesScore(task *api.TaskInfo, 
 	result := CheckNetSliceIsMeetJobRequire(vcJob, sHandle, nodes)
 	vcJob = sHandle.Jobs[task.Job]
 	if result != nil {
+		klog.V(util.LogErrorLev).Infof("check job %s tor affinity failed: %s", vcJob.Name, result)
 		switch label {
 		case LargeModelTag:
 			vcJob.JobReadyTag = false
@@ -487,7 +474,13 @@ func (sHandle *ScheduleHandler) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*a
 		return errors.New(util.ArgumentError)
 	}
 	vcjob.ServerList = vcjob.SortJobServerListBySliceId()
-
+	for nodeName, index := range vcjob.HealthTorRankIndex {
+		if index == task.Pod.Annotations[podRankIndex] {
+			sMap[nodeName] = maxTorAffinityNodeScore
+			return nil
+		}
+	}
+	vcjob.SetJobRankIndex()
 	for _, sl := range vcjob.ServerList {
 		if reflect.ValueOf(sl).IsNil() {
 			continue
@@ -497,17 +490,13 @@ func (sHandle *ScheduleHandler) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*a
 				continue
 			}
 			for _, node := range nodes {
-				if server.Name != node.Name {
+				if server.Name != node.Name || server.NodeRank != task.Pod.Annotations[podRankIndex] {
 					continue
 				}
-				sMap[server.Name] = float64(200)
+				sMap[server.Name] = maxTorAffinityNodeScore
 				break
 			}
 		}
-	}
-	sMap[vcjob.GetFirstRankNodeName()] = float64(100)
-	if k, ok := task.Pod.Labels[PtMaserKey]; ok && k == PtMasterValue {
-		sMap[vcjob.GetFirstRankNodeName()] = float64(248)
 	}
 
 	klog.V(util.LogInfoLev).Infof("ScoreBestNPUNodes task<%s> sMap<%v>", task.Name, sMap)

@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"k8s.io/api/core/v1"
@@ -31,8 +32,6 @@ import (
 	"k8s.io/klog"
 	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	"volcano.sh/volcano/pkg/scheduler/framework"
-
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
@@ -288,10 +287,12 @@ func (sJob *SchedulerJob) initNPUJob(vcJob *api.JobInfo) {
 
 func (sJob *SchedulerJob) initByJobInfo(vcJob *api.JobInfo) error {
 	sJob.JobReadyTag = true
+	sJob.HealthTorRankIndex = map[string]string{}
 	sJob.SchedulerJobAttr.ComJob = util.ComJob{Name: vcJob.UID, NameSpace: vcJob.Namespace,
 		ReferenceName: util.ReferenceNameOfJob(vcJob),
 		Selector:      GetJobSelectorFromVcJob(vcJob),
-		Label:         GetJobLabelFromVcJob(vcJob)}
+		Label:         GetJobLabelFromVcJob(vcJob),
+		Annotation:    vcJob.PodGroup.Annotations}
 	sJob.SchedulerJobAttr.NPUJob = nil
 	sJob.handler = nil
 	name, num, err := GetVCJobReqNPUTypeFromJobInfo(vcJob)
@@ -368,11 +369,14 @@ func CheckNetSliceIsMeetJobRequire(sJob SchedulerJob, sHandler *ScheduleHandler,
 	}
 	sJob.GetEnableServerList(nodes, sHandler)
 	fullTorNum := sJob.GetFullTorNumFromTorInfo(sHandler)
-	n := sJob.GetNPUTaskNumInJob()
+	n := sJob.GetNPUTaskNumInJob() - len(sJob.HealthTorRankIndex)
 	sort.Sort(TorLs(sHandler.Tors.Tors))
 	netSliceNum := sHandler.Tors.TorCount
 	if n < netSliceNum {
-		return sJob.SetFillJobServerList(sHandler, n)
+		err := sJob.SetFillJobServerList(sHandler, sHandler.Tors.Tors, n)
+		if sJob.Label[TorAffinityKey] == LargeModelTag || err == nil {
+			return err
+		}
 	}
 	logicList := sJob.GetLogicTorList(sHandler, netSliceNum)
 	taskRow, taskColumn := GetTaskRowAndTaskColumn(n, netSliceNum)
@@ -400,7 +404,13 @@ func CheckNetSliceIsMeetJobRequire(sJob SchedulerJob, sHandler *ScheduleHandler,
 	if taskRow > 0 && len(logicList[taskColumn]) < taskRow+1 {
 		return fmt.Errorf("tor check failed not enough resource by last Tor not enough server")
 	}
-	pyTor, fullTorNum := sJob.GetPhyTosList(sHandler, logicList, taskRow, taskColumn)
+	pyTor, fullTorNum := sJob.GetPhyTosList(sHandler, logicList)
+
+	if taskRow < 1 {
+		err := sJob.SetFillJobServerList(sHandler, pyTor, n)
+		sJob.MarkMulJobServerList()
+		return err
+	}
 
 	if taskRow+1 < fullTorNum {
 		sJob.SetJobServerCacheTosHandler(sHandler, pyTor, taskRow, taskColumn)
@@ -452,7 +462,7 @@ func GetTaskRowAndTaskColumn(nTaskNum int, netSliceNum int) (int, int) {
 	return taskRow, taskColumn
 }
 
-func (sJob SchedulerJob) GetFullTorNumFromTorInfo(sHandler *ScheduleHandler) int {
+func (sJob *SchedulerJob) GetFullTorNumFromTorInfo(sHandler *ScheduleHandler) int {
 	var fullTorNum int
 	for _, tor := range sHandler.Tors.Tors {
 		count := 0
@@ -469,75 +479,32 @@ func (sJob SchedulerJob) GetFullTorNumFromTorInfo(sHandler *ScheduleHandler) int
 	return fullTorNum
 }
 
-func (sJob SchedulerJob) GetPhyTosList(sHandler *ScheduleHandler, logicList [][]*Server, taskRow, taskColumn int) ([]*Tor, int) {
+func (sJob SchedulerJob) GetPhyTosList(sHandler *ScheduleHandler, logicList [][]*Server) ([]*Tor, int) {
 	var tors []*Tor
 	var fullTor int
-	for i := 0; i <= taskRow; i++ {
+	for i := 0; i <= len(logicList[0]); i++ {
 		tmpTor := &Tor{}
 		for j := 0; j < sHandler.Tors.TorCount; j++ {
+			if len(logicList[j]) < i+1 {
+				break
+			}
 			tmpTor.Servers = append(tmpTor.Servers, logicList[j][i])
 			if j == sHandler.Tors.TorCount-1 {
 				fullTor++
 			}
-			if i == taskRow && j == taskColumn {
-				break
-			}
 		}
+		tmpTor.FreeServerCount = len(tmpTor.Servers)
 		tors = append(tors, tmpTor)
 	}
 	return tors, fullTor
 }
 
-func (sJob SchedulerJob) CreateJobServerListCM(ssn *framework.Session, torCount int) {
-	job, ok := ssn.Jobs[sJob.Name]
-	if !ok {
-		return
-	}
-	if sJob.GetNPUTaskNumInJob() == 1 {
-		if sJob.Status != scheduling.PodGroupRunning {
-			return
-		}
-		task := GetJobFirstTasksInfo(job)
-		serverList := sJob.CreateSingleJobServerList(ssn, task, torCount)
-		sJob.SaveServerListToCM(ssn, job, serverList)
-		return
-	}
-	if sJob.ServerList == nil {
-		return
-	}
-	serverList := sJob.CreateJobServerList(torCount)
-	sJob.SaveServerListToCM(ssn, job, serverList)
-}
-
-func (sJob SchedulerJob) SaveServerListToCM(ssn *framework.Session, job *api.JobInfo, serverList TorListInfo) {
-	tmpByte, err := json.Marshal(serverList)
-	if err != nil {
-		klog.Infof("CreateJobServerListCM err:%#v", err)
-		return
-	}
-	str := ServerListCMPre + util.ReferenceNameOfJob(job)
-	var tmpCM = &v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      str,
-			Namespace: sJob.NameSpace,
-		},
-		Data: map[string]string{
-			ServerListCMKey: string(tmpByte),
-		},
-	}
-	err = util.CreateOrUpdateConfigMap(ssn.KubeClient(), tmpCM, str, sJob.NameSpace)
-	if err != nil {
-		klog.Infof("CreateJobServerListCM err:%#v", err)
-		return
-	}
-}
-
-func (sJob SchedulerJob) SetFillJobServerList(sHandler *ScheduleHandler, taskNum int) error {
+func (sJob SchedulerJob) SetFillJobServerList(sHandler *ScheduleHandler, Tors []*Tor, taskNum int) error {
 	var count int
-	for i := len(sHandler.Tors.Tors) - 1; i >= 0; i-- {
-		if sHandler.Tors.Tors[i].FreeServerCount >= taskNum {
+	for i := len(Tors) - 1; i >= 0; i-- {
+		if Tors[i].FreeServerCount >= taskNum {
 			tmpTor := &Tor{}
-			for _, k := range sHandler.Tors.Tors[i].Servers {
+			for _, k := range Tors[i].Servers {
 				if k.CurrentJob == sJob.Name {
 					count++
 					tmpTor.Servers = append(tmpTor.Servers, k)
@@ -582,65 +549,6 @@ func (sJob *SchedulerJob) SetNormalJobServerList(sHandler *ScheduleHandler) {
 	}
 }
 
-func (sJob SchedulerJob) CreateJobServerList(torCount int) TorListInfo {
-	tmpTorList := TorListInfo{}
-	tmpTorList.Status = Completed
-	tmpTorList.Version = TorListVersion
-	tmpTorList.TorCount = torCount
-	tmpTorList.ServerCount = sJob.GetNPUTaskNumInJob()
-	for i, k := range sJob.ServerList {
-		tmpServerList := ServerList{}
-		tmpServerList.Id = i
-		var tmpServers []map[string]interface{}
-		for _, v := range k.Servers {
-			m := make(map[string]interface{})
-			m[ServerIPKey] = v.IP
-			m[SliceId] = v.SliceId
-			tmpServers = append(tmpServers, m)
-		}
-		tmpServerList.Servers = tmpServers
-		tmpTorList.ServerList = append(tmpTorList.ServerList, tmpServerList)
-	}
-	return tmpTorList
-}
-
-func (sJob SchedulerJob) CreateSingleJobServerList(ssn *framework.Session, task *api.TaskInfo, torCount int) TorListInfo {
-	tmpTorList := TorListInfo{}
-	tmpTorList.Status = Completed
-	tmpTorList.Version = TorListVersion
-	tmpTorList.TorCount = torCount
-	tmpTorList.ServerCount = sJob.GetNPUTaskNumInJob()
-
-	tmpServerList := ServerList{}
-	tmpServerList.Id = 0
-	var tmpServers []map[string]interface{}
-	m := make(map[string]interface{})
-	m[ServerIPKey] = GetTaskNodeIpFromSsn(ssn, task)
-	m[SliceId] = 0
-	tmpServers = append(tmpServers, m)
-
-	tmpServerList.Servers = tmpServers
-	tmpTorList.ServerList = append(tmpTorList.ServerList, tmpServerList)
-
-	return tmpTorList
-}
-
-func GetTaskNodeIpFromSsn(ssn *framework.Session, task *api.TaskInfo) string {
-	if task.NodeName == "" {
-		return ""
-	}
-	npuNode, ok := ssn.Nodes[task.NodeName]
-	if !ok {
-		return ""
-	}
-	for _, addr := range npuNode.Node.Status.Addresses {
-		if addr.Type == v1.NodeInternalIP {
-			return addr.Address
-		}
-	}
-	return ""
-}
-
 func (sJob SchedulerJob) GetLogicTorList(sHandler *ScheduleHandler, netSliceNum int) [][]*Server {
 	logicTorList := make([][]*Server, netSliceNum)
 	for _, tor := range sHandler.Tors.Tors {
@@ -654,20 +562,21 @@ func (sJob SchedulerJob) GetLogicTorList(sHandler *ScheduleHandler, netSliceNum 
 
 }
 
-func (sJob SchedulerJob) GetEnableServerList(nodes []*api.NodeInfo, sHandler *ScheduleHandler) {
+func (sJob *SchedulerJob) GetEnableServerList(nodes []*api.NodeInfo, sHandler *ScheduleHandler) {
 	if sHandler == nil {
 		return
 	}
 	if sHandler.Tors == nil {
 		return
 	}
+	sJob.getNormalTorListBeforeRestart(sHandler.Tors.TorCount)
 	for _, node := range nodes {
 		for _, tor := range sHandler.Tors.Tors {
 			if tor.HasAcrossJob() && sJob.GetNPUTaskNumInJob() >= sHandler.Tors.TorCount {
 				continue
 			}
 			for _, server := range tor.Servers {
-				if server.Name == node.Name {
+				if server.Name == node.Name && sJob.HealthTorRankIndex[node.Name] == "" {
 					server.CurrentJob = sJob.Name
 				}
 			}
@@ -675,11 +584,59 @@ func (sJob SchedulerJob) GetEnableServerList(nodes []*api.NodeInfo, sHandler *Sc
 	}
 }
 
+func (sJob *SchedulerJob) getNormalTorListBeforeRestart(torCount int) {
+	m := make(map[string]string)
+	var faultIndex, faultIndexEnd int
+	if nrt, ok := sJob.Annotation[JobDeleteFlag]; ok {
+		var rts []AllocNodeRankOccurrence
+		err := json.Unmarshal([]byte(nrt), &rts)
+		if err != nil {
+			klog.V(util.LogInfoLev).Infof("Unmarshal job %s AllocNodeRankOccurrence failed:%s", sJob.Name, err)
+		}
+		for _, rt := range rts {
+			if rt.IsFault {
+				i, err := strconv.Atoi(rt.RankIndex)
+				if err != nil {
+					klog.V(util.LogInfoLev).Infof("getNormalTorListBeforeRestart change RankIndex to int failed")
+					return
+				}
+				faultIndex = i / torCount * torCount
+				faultIndexEnd = faultIndex + torCount
+				break
+			}
+		}
+		for _, rt := range rts {
+			i, _ := strconv.Atoi(rt.RankIndex)
+			if i >= faultIndex && i < faultIndexEnd {
+				continue
+			}
+			m[rt.NodeName] = rt.RankIndex
+		}
+	}
+	sJob.HealthTorRankIndex = m
+	sJob.FaultIndex = faultIndex
+}
+
 func (sJob SchedulerJob) SortJobServerListBySliceId() []*Tor {
 	for _, tor := range sJob.ServerList {
 		sort.Sort(JobServers(tor.Servers))
 	}
 	return sJob.ServerList
+}
+
+func (sJob *SchedulerJob) SetJobRankIndex() {
+	var rankIndex int
+	rankIndex = sJob.FaultIndex
+	for _, tor := range sJob.ServerList {
+		for _, server := range tor.Servers {
+			if server.NodeRank != "" {
+				return
+			}
+			server.NodeRank = strconv.Itoa(rankIndex)
+			rankIndex++
+		}
+	}
+	return
 }
 
 func (sJob SchedulerJob) GetFirstRankNodeName() string {

@@ -78,15 +78,23 @@ const (
 	// Ascend310P 310P template name
 	Ascend310P = "Ascend310P"
 	// Ascend910 910 template name
-	Ascend910 = "Ascend910"
+	Ascend910               = "Ascend910"
+	maxTorAffinityNodeScore = float64(200)
 )
 
 // SchedulerJob the plugin define job info
 type SchedulerJob struct {
 	util.SchedulerJobAttr
+	RankIndexInfo
 	handler     ISchedulerPlugin
 	ServerList  []*Tor
 	JobReadyTag bool
+}
+
+// RankIndexInfo the info of job used rank
+type RankIndexInfo struct {
+	HealthTorRankIndex map[string]string
+	FaultIndex         int
 }
 
 // VolcanoFrame passed in by the volcano frame.
@@ -123,4 +131,12 @@ type ScheduleEnv struct {
 type ScheduleHandler struct {
 	NPUPlugins map[string]NPUBuilder
 	ScheduleEnv
+}
+
+// AllocNodeRankOccurrence object recording node rankIndex and whether index re-allocated to new node
+type AllocNodeRankOccurrence struct {
+	NodeName   string
+	RankIndex  string
+	IsFault    bool
+	Occurrence int
 }
