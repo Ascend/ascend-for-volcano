@@ -652,6 +652,7 @@ func (reScheduler *ReScheduler) AddFaultNodeWithSession(cardName string) {
 		}
 		reScheduler.FaultNodes = append(reScheduler.FaultNodes, faultNode)
 	}
+	reScheduler.RealFaultNodes = reScheduler.GetRealFaultNodes()
 }
 
 // RestartNeedForceDeleteJobs Restart jobs that need to be force deleted
@@ -1017,8 +1018,8 @@ func (reScheduler *ReScheduler) checkNodeCurNodeIsFault(vcNode plugin.NPUNode, t
 		klog.V(util.LogInfoLev).Infof("job %s rescheduling not enabled, skip check node", schedulerJob.Name)
 		return nil
 	}
-	for _, fNode := range reScheduler.FaultNodes {
-		if vcNode.Name == fNode.NodeName && fNode.IsFaultNode && fNode.NodeHealthState == NodeUnhealthy {
+	for _, fNode := range reScheduler.RealFaultNodes {
+		if vcNode.Name == fNode.NodeName && fNode.NodeHealthState == NodeUnhealthy {
 			// none distributed job, npu fault considered in previous ops
 			return fmt.Errorf("task %s cannot be assigned to %s node %s", task.Name, NodeUnhealthy,
 				vcNode.Name)

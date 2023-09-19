@@ -28,12 +28,11 @@ import (
 )
 
 func (tp *card910x2) checkJobTrainMode() error {
-	nTaskNum := tp.GetNPUTaskNumInJob()
-	if nTaskNum == 0 {
+	if tp.NPUTaskNum == 0 {
 		klog.V(util.LogErrorLev).Infof("GetVTaskNumInVJob %s has no npu tasks.", tp.Name)
 		return fmt.Errorf("%s no npu job", tp.Name)
 	}
-	if nTaskNum == 1 {
+	if tp.NPUTaskNum == 1 {
 		if err := tp.checkSingleTrainMode(); err != nil {
 			klog.V(util.LogErrorLev).Infof("%s checkSingleTrainMode %s: %s", tp.GetPluginName(), tp.Name, err)
 			return err

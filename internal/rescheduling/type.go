@@ -147,6 +147,7 @@ type ReScheduler struct {
 type DealReSchedulerCache struct {
 	*DealReSchedulerConfigmap
 	FaultNodes                 []FaultNode
+	RealFaultNodes             []FaultNode `json:"-"`
 	FaultJobs                  []FaultJob
 	NodeHeartbeats             []NodeHeartbeat
 	AllocNodeRankOccurrenceMap map[api.JobID][]AllocNodeRankOccurrence

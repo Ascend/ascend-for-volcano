@@ -101,13 +101,12 @@ func (ab *Base910b) CheckJobArch() error {
 
 // checkJobTrainMode to check job train mode:distribute and single.
 func (ab *Base910b) checkJobTrainMode() error {
-	nTaskNum := ab.GetNPUTaskNumInJob()
-	if nTaskNum == 0 {
+	if ab.NPUTaskNum == 0 {
 		klog.V(util.LogErrorLev).Infof("GetVTaskNumInVJob %s has no npu tasks.", ab.Name)
 		return fmt.Errorf("%s no npu job", ab.Name)
 	}
 	klog.V(util.LogDebugLev).Infof("checkJobTrainMode job(%s) has %d tasks.", ab.Name, len(ab.Tasks))
-	nTaskReqNpuNum := ab.ReqNPUNum / nTaskNum
+	nTaskReqNpuNum := ab.ReqNPUNum / ab.NPUTaskNum
 	if ab.CheckJobAllowNum(nTaskReqNpuNum) {
 		return nil
 	}

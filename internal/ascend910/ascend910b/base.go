@@ -102,7 +102,7 @@ func (ab *Base910b) initSelectNodeInf(npuTop []int) SelectNodeInf {
 	sNodeInf.RightNPUNum = len(rightHccsTop)
 	sNodeInf.AllNPUNum = sNodeInf.LeftNPUNum + sNodeInf.RightNPUNum
 
-	if ab.GetNPUTaskNumInJob() > 1 {
+	if ab.NPUTaskNum > 1 {
 		minLen := len(leftHccsTop)
 		if minLen > len(rightHccsTop) {
 			minLen = len(rightHccsTop)

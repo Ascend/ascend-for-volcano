@@ -301,6 +301,7 @@ func (sJob *SchedulerJob) initByJobInfo(vcJob *api.JobInfo) error {
 	}
 	sJob.SchedulerJobAttr.NPUJob = &util.NPUJob{ReqNPUName: name, ReqNPUNum: num, Tasks: GetJobNPUTasks(vcJob),
 		VJob: &util.VJob{}}
+	sJob.NPUTaskNum = sJob.GetNPUTaskNumInJob()
 	sJob.initNPUJob(vcJob)
 	return nil
 }
@@ -369,7 +370,7 @@ func CheckNetSliceIsMeetJobRequire(sJob SchedulerJob, sHandler *ScheduleHandler,
 	}
 	sJob.GetEnableServerList(nodes, sHandler)
 	fullTorNum := sJob.GetFullTorNumFromTorInfo(sHandler)
-	n := sJob.GetNPUTaskNumInJob() - len(sJob.HealthTorRankIndex)
+	n := sJob.NPUTaskNum - len(sJob.HealthTorRankIndex)
 	sort.Sort(TorLs(sHandler.Tors.Tors))
 	netSliceNum := sHandler.Tors.TorCount
 	if n < netSliceNum {
@@ -524,7 +525,7 @@ func (sJob SchedulerJob) SetFillJobServerList(sHandler *ScheduleHandler, Tors []
 func (sJob *SchedulerJob) SetNormalJobServerList(sHandler *ScheduleHandler) {
 	sJob.ServerList = nil
 	var count int
-	taskNum := sJob.GetNPUTaskNumInJob()
+	taskNum := sJob.NPUTaskNum
 	for _, tor := range sHandler.Tors.Tors {
 		tmpTor := &Tor{}
 		tmpTor.IP = tor.IP
@@ -572,7 +573,7 @@ func (sJob *SchedulerJob) GetEnableServerList(nodes []*api.NodeInfo, sHandler *S
 	sJob.getNormalTorListBeforeRestart(sHandler.Tors.TorCount)
 	for _, node := range nodes {
 		for _, tor := range sHandler.Tors.Tors {
-			if tor.HasAcrossJob() && sJob.GetNPUTaskNumInJob() >= sHandler.Tors.TorCount {
+			if tor.HasAcrossJob() && sJob.NPUTaskNum >= sHandler.Tors.TorCount {
 				continue
 			}
 			for _, server := range tor.Servers {

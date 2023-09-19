@@ -100,10 +100,8 @@ func (tp *card910bx2infer) PreStopAction(env *plugin.ScheduleEnv) error {
 
 //ValidNPUJob check job req npu num and mode
 func (tp *card910bx2infer) ValidNPUJob() *api.ValidateResult {
-	nTaskNum := tp.GetNPUTaskNumInJob()
-
-	if nTaskNum != 1 {
-		klog.V(util.LogErrorLev).Infof("GetVTaskNumInVJob %s has %d npu tasks, only support 1.", tp.Name, nTaskNum)
+	if tp.NPUTaskNum != 1 {
+		klog.V(util.LogErrorLev).Infof("GetVTaskNumInVJob %s has %d npu tasks, only support 1.", tp.Name, tp.NPUTaskNum)
 		return &api.ValidateResult{
 			Pass:    false,
 			Reason:  "ValidNPUJob failed",

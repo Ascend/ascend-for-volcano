@@ -140,8 +140,7 @@ func (tp *module910bx8) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNo
 		klog.V(util.LogErrorLev).Infof("%s GetTaskReqNPUNum err: %s", tp.GetPluginName(), err.Error())
 		return err
 	}
-	nTaskNum := tp.GetNPUTaskNumInJob()
-	nodeTop, err := tp.getUsableTopFromNode(node, nTaskNum > 1)
+	nodeTop, err := tp.getUsableTopFromNode(node, tp.NPUTaskNum > 1)
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("%s getUsableTopFromNode err: %s", tp.GetPluginName(), err.Error())
 		return err
@@ -181,8 +180,7 @@ func (tp *module910bx8) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeI
 				tp.GetPluginName(), task.Name, node.Name)
 			continue
 		}
-		nTaskNum := tp.GetNPUTaskNumInJob()
-		cardIds, err := tp.getUsableTopFromNode(nNode, nTaskNum > 1)
+		cardIds, err := tp.getUsableTopFromNode(nNode, tp.NPUTaskNum > 1)
 		if err != nil {
 			klog.V(util.LogWarningLev).Infof("%s ScoreBestNPUNodes getErr: %s", tp.GetPluginName(), err)
 			continue
@@ -243,8 +241,7 @@ func (tp *module910bx8) selectNPUFromNode(task *api.TaskInfo, node plugin.NPUNod
 		klog.V(util.LogErrorLev).Infof("%s GetTaskReqNPUNum err: %s", tp.GetPluginName(), err.Error())
 		return nil, err
 	}
-	nTaskNum := tp.GetNPUTaskNumInJob()
-	nodeTop, err := tp.getUsableTopFromNode(node, nTaskNum > 1)
+	nodeTop, err := tp.getUsableTopFromNode(node, tp.NPUTaskNum > 1)
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("%s getUsableTopFromNode err: %s", tp.GetPluginName(), err.Error())
 		return nil, err
