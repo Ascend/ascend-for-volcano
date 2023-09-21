@@ -22,6 +22,7 @@ package rescheduling
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -78,15 +79,6 @@ func (fJob *FaultJob) GetJobFaultNPUTaskNum() int {
 }
 
 func (fJob *FaultJob) isJobGraceDeleteSuccess(jobInfo *api.JobInfo) bool {
-	if jobInfo == nil {
-		klog.V(util.LogErrorLev).Infof("jobInfo is nil: %#v", jobInfo)
-		return false
-	}
-	if !plugin.IsJobInitial(jobInfo) {
-		klog.V(util.LogInfoLev).Infof("isJobGraceDeletedSuccess: job %s not initialised.", jobInfo.Name)
-		return false
-	}
-	// 2. judge if the create time of pods in cache and current pod differs
 	restartNum := 0
 	for _, fTask := range fJob.FaultTasks {
 		podCreateTimeRecord := fTask.PodCreateTime // former pods create time
@@ -103,14 +95,9 @@ func (fJob *FaultJob) isJobGraceDeleteSuccess(jobInfo *api.JobInfo) bool {
 			restartNum++
 		}
 	}
-	klog.V(util.LogDebugLev).Infof("<%d/%d> pod of job restarted", restartNum, len(jobInfo.Tasks))
-	if restartNum >= len(jobInfo.Tasks) && plugin.IsJobInitial(
-		jobInfo) { // minAvailable must equal to number of replicas
-		klog.V(util.LogInfoLev).Infof("job %s grace delete success", jobInfo.Name)
-		return true
-	}
-	klog.V(util.LogInfoLev).Infof("job %s not yet restarted", jobInfo.Name)
-	return false
+
+	klog.V(util.LogDebugLev).Infof("<%d/%d> pod of job restarted", restartNum, jobInfo.MinAvailable)
+	return restartNum >= len(fJob.FaultTasks)
 }
 
 // CheckJobExistsInKubernetes check whether job recorded in cache can be traced in kubernetes
@@ -124,7 +111,11 @@ func (fJob *FaultJob) CheckJobExistsInKubernetes(ssn *framework.Session) bool {
 			klog.V(util.LogInfoLev).Infof("pod %s not in kubernetes", fTask.TaskName)
 			continue
 		}
-		existTaskNum += 1
+		for _, ref := range realPod.GetOwnerReferences() {
+			if ref.UID == fJob.UUID {
+				existTaskNum += 1
+			}
+		}
 		klog.V(util.LogDebugLev).Infof("task %s is in kubernetes", fTask.TaskName)
 	}
 	if existTaskNum > 0 {
@@ -207,12 +198,22 @@ func (fJob *FaultJob) isJobInSession(jobs map[api.JobID]plugin.SchedulerJob) boo
 }
 
 func (fJob *FaultJob) jobInfoInSession(jobs map[api.JobID]*api.JobInfo) *api.JobInfo {
-	for _, job := range jobs {
-		if job.Namespace == fJob.JobNamespace &&
-			(job.Name == fJob.JobName || util.ReferenceNameOfJob(job) == fJob.ReferenceName) {
-			return job
+	if fJob.ElasticScheduling == JobOnElasticScheduling {
+		for _, job := range jobs {
+			// consider elastic scheduling which lead job uid/name change
+			if job.Namespace == fJob.JobNamespace &&
+				(job.Name == fJob.JobName || util.ReferenceNameOfJob(job) == fJob.ReferenceName) {
+				return job
+			}
 		}
+		return nil
 	}
+
+	job, ok := jobs[fJob.JobUID]
+	if ok && util.UuidOfJob(job) == fJob.UUID {
+		return job
+	}
+
 	return nil
 }
 
@@ -271,20 +272,42 @@ func (fJob *FaultJob) setIsFaultJob(value bool) {
 func newFaultJobDefault(job *api.JobInfo, updateTime int64) FaultJob {
 	faultJob := FaultJob{
 		ReScheduleKey:       JobOffRescheduleLabelValue, // off/grace/force
-		IsFaultJob:          false,
 		IsInSession:         true,
 		JobName:             job.Name,
 		JobUID:              job.UID,
 		JobNamespace:        job.Namespace,
-		JobRankIds:          nil,
-		NodeNames:           nil,
-		FaultTasks:          nil,
 		UpdateTime:          updateTime,
 		JobRankIdCreateTime: updateTime,
-		FaultTypes:          nil,
-		DeleteExecutedFlag:  false,
+		FaultTypes:          make([]string, 0),
 		ElasticScheduling:   JobOffElasticScheduling,
 		ReferenceName:       util.ReferenceNameOfJob(job),
+		UUID:                util.UuidOfJob(job),
+		FaultRetryTimes:     faultRetryTimeOfJob(job),
 	}
 	return faultJob
+}
+
+func faultRetryTimeOfJob(job *api.JobInfo) (times int) {
+	value := ""
+	ok := false
+	defer func() {
+		if !ok {
+			return
+		}
+		v, err := strconv.Atoi(value)
+		if err != nil {
+			klog.V(util.LogInfoLev).Infof("Failed to convert fault-retry-times <%s> of job <%s> into number",
+				value, job.UID)
+			return
+		}
+		times = v
+		klog.V(util.LogInfoLev).Infof("get job: %s, fault-retry-times: %s", job.Name, value)
+	}()
+
+	value, ok = job.PodGroup.Labels[FaultRetryTimesKey]
+	if ok {
+		klog.V(util.LogInfoLev).Infof("get job<%s> label<%s> failed", job.UID, FaultRetryTimesKey)
+		return
+	}
+	return
 }

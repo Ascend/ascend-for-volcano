@@ -1060,7 +1060,7 @@ func buildReSchedulerUseAnnotationTestArgs(nodeName string) ReSchedulerUseAnnota
 }
 
 func buildReSchedulerUseAnnotationTestFields(faultNode *FaultNode, faultJob0 *FaultJob,
-	allocNodeRankTimeMap map[api.JobID][]AllocNodeRankOccurrence) TestReScheduler {
+	allocNodeRankTimeMap map[api.JobID][]*AllocNodeRankOccurrence) TestReScheduler {
 	reScheduler := TestReScheduler{
 		DealReSchedulerCache: &DealReSchedulerCache{
 			DealReSchedulerConfigmap:   nil,
@@ -1076,8 +1076,8 @@ func buildReSchedulerUseAnnotationTestFields(faultNode *FaultNode, faultJob0 *Fa
 	return reScheduler
 }
 
-func buildReSchedulerUseAnnotationRankIndexMap(nodeName string, rankIndex string, occ int) AllocNodeRankOccurrence {
-	mapData := AllocNodeRankOccurrence{
+func buildReSchedulerUseAnnotationRankIndexMap(nodeName string, rankIndex string, occ int) *AllocNodeRankOccurrence {
+	mapData := &AllocNodeRankOccurrence{
 		NodeName:   nodeName,
 		RankIndex:  rankIndex,
 		Occurrence: occ,
@@ -1091,7 +1091,7 @@ func buildReSchedulerUseAnnotationTests() []ReSchedulerUseAnnotationTests {
 	faultJob0 := fakeTestFaultJob([]string{"node0", "node1"}, []string{"0", "1"}, []FaultTask{*faultTask00,
 		*faultTask01}, "job0", "vcjob")
 	faultNode := fakeTestFaultNodeNodeUnhealthy("node0")
-	allocNodeRankTimeMap := map[api.JobID][]AllocNodeRankOccurrence{
+	allocNodeRankTimeMap := map[api.JobID][]*AllocNodeRankOccurrence{
 		api.JobID("vcjob/job0"): {
 			buildReSchedulerUseAnnotationRankIndexMap("node0", "0", 0),
 			buildReSchedulerUseAnnotationRankIndexMap("node1", "1", 0),
@@ -1109,7 +1109,7 @@ func buildReSchedulerUseAnnotationTests() []ReSchedulerUseAnnotationTests {
 		args:    buildReSchedulerUseAnnotationTestArgs("node2"),
 		wantErr: false,
 	}
-	allocNodeRankTimeMap3 := map[api.JobID][]AllocNodeRankOccurrence{
+	allocNodeRankTimeMap3 := map[api.JobID][]*AllocNodeRankOccurrence{
 		api.JobID("vcjob/job0"): {
 			buildReSchedulerUseAnnotationRankIndexMap("node0", "0", 1),
 			buildReSchedulerUseAnnotationRankIndexMap("node1", "1", 0),

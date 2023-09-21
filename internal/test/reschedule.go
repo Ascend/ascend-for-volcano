@@ -61,14 +61,14 @@ func PatchAddNode() *gomonkey.Patches {
 func PatchSynJob() *gomonkey.Patches {
 	return gomonkey.ApplyMethod(reflect.TypeOf(&rescheduling.ReScheduler{}),
 		"SynCacheFaultJobWithSession",
-		func(_ *rescheduling.ReScheduler, _ *framework.Session, _, _ string) { return })
+		func(_ *rescheduling.ReScheduler, _ *framework.Session) { return })
 }
 
 // PatchForce go monkey patch
 func PatchForce() *gomonkey.Patches {
 	return gomonkey.ApplyMethod(reflect.TypeOf(&rescheduling.ReScheduler{}),
 		"SynCacheFaultJobWithSession",
-		func(_ *rescheduling.ReScheduler, _ *framework.Session, _, _ string) { return })
+		func(_ *rescheduling.ReScheduler, _ *framework.Session) { return })
 }
 
 // PatchGetRun go monkey patch

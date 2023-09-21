@@ -119,7 +119,7 @@ type ReSchedulerCacheWriteReSchedulerCacheToEnvCacheFields struct {
 	FaultNodes                 []FaultNode
 	FaultJobs                  []FaultJob
 	NodeHeartbeats             []NodeHeartbeat
-	AllocNodeRankOccurrenceMap map[api.JobID][]AllocNodeRankOccurrence
+	AllocNodeRankOccurrenceMap map[api.JobID][]*AllocNodeRankOccurrence
 }
 
 type ReSchedulerCacheWriteReSchedulerCacheToEnvCacheArgs struct {
@@ -142,7 +142,7 @@ func buildReSchedulerCacheWriteReSchedulerCacheToEnvCache() []ReSchedulerCacheWr
 			FaultNodes:                 []FaultNode{},
 			FaultJobs:                  []FaultJob{},
 			NodeHeartbeats:             []NodeHeartbeat{},
-			AllocNodeRankOccurrenceMap: map[api.JobID][]AllocNodeRankOccurrence{},
+			AllocNodeRankOccurrenceMap: map[api.JobID][]*AllocNodeRankOccurrence{},
 		},
 		args: ReSchedulerCacheWriteReSchedulerCacheToEnvCacheArgs{
 			env: &plugin.ScheduleEnv{
@@ -165,7 +165,7 @@ func buildReSchedulerCacheWriteReSchedulerCacheToEnvCache() []ReSchedulerCacheWr
 			FaultNodes:                 []FaultNode{},
 			FaultJobs:                  []FaultJob{*faultJob},
 			NodeHeartbeats:             []NodeHeartbeat{},
-			AllocNodeRankOccurrenceMap: map[api.JobID][]AllocNodeRankOccurrence{},
+			AllocNodeRankOccurrenceMap: map[api.JobID][]*AllocNodeRankOccurrence{},
 		},
 		args: ReSchedulerCacheWriteReSchedulerCacheToEnvCacheArgs{
 			env: &plugin.ScheduleEnv{
