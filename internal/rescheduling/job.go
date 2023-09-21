@@ -59,7 +59,7 @@ func (fJob *FaultJob) GetJobElasticSchedulingLabel(job *plugin.SchedulerJob) str
 	}
 	value, ok := job.SchedulerJobAttr.Label[ElasticSchedulingKey]
 	if !ok {
-		klog.V(util.LogErrorLev).Infof(
+		klog.V(util.LogInfoLev).Infof(
 			"GetJobElasticSchedulingLabel %s. %s no job reschedule label", value, job.Name)
 		return JobOffRescheduleLabelValue
 	}
@@ -186,10 +186,7 @@ func (fJob *FaultJob) restartSingleFaultJob(ssn *framework.Session,
 
 	// delete jobs
 	var deleteErr error
-	vcjob, ok := ssn.Jobs[schedulerJob.Name]
-	if !ok {
-		return nil
-	}
+
 	switch fJob.ReScheduleKey {
 	case JobForceRescheduleLabelValue:
 		deleteErr = fJob.ForceDeleteJob(ssn, schedulerJob)
@@ -201,10 +198,6 @@ func (fJob *FaultJob) restartSingleFaultJob(ssn *framework.Session,
 		deleteErr = fmt.Errorf("not support %s to reschedule job", fJob.ReScheduleKey)
 	}
 
-	err := util.DelConfigMapWithRetry(ssn.KubeClient(), schedulerJob.NameSpace, NoRanksCmPre+vcjob.Name)
-	if err != nil {
-		klog.V(util.LogInfoLev).Infof("DelConfigMapWithRetry err :%#v", err)
-	}
 	return deleteErr
 }
 

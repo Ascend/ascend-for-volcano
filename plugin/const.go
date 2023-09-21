@@ -21,22 +21,10 @@ Package plugin is using for HuaWei Ascend pin affinity schedule frame.
 package plugin
 
 const (
-	// VolcanoNamespace the namespace of tor info configmap
-	VolcanoNamespace = "volcano-system"
 	// TorNodeCMName the Name of tor info configmap
 	TorNodeCMName = "basic-tor-node-cm"
 	// TorInfoCMKey the key of tor info in configmap
 	TorInfoCMKey = "tor_info"
-	// ServerListCMKey the key of serverList
-	ServerListCMKey = "serverList"
-	// ServerListCMPre the prefix of serverList configMap
-	ServerListCMPre = "server-config-"
-	// TorListVersion the version of tor info configmap
-	TorListVersion = "1.0"
-	// SingleJobTorId the tor id of single job
-	SingleJobTorId = 0
-	// ServerIPKey the key of ServerIP
-	ServerIPKey = "server_ip"
 	// TorAffinityKey the key of tor affinity
 	TorAffinityKey = "tor-affinity"
 	// LargeModelTag the value of large model
@@ -45,12 +33,8 @@ const (
 	NormalSchema = "normal-schema"
 	// NullTag the value means not use tor affinity
 	NullTag = "null"
-	// Completed the status of serverList configmap
-	Completed = "completed"
-	// SliceId the id of server's network slice
-	SliceId = "slot"
-	// PtMaserKey the key of pytorch master label
-	PtMaserKey = "replica-type"
-	// PtMasterValue the value of pytorch master label
-	PtMasterValue = "master"
+	// JobDeleteFlag the flag mark job is deleted
+	JobDeleteFlag = "fault-job-delete"
+	// JobDelete the value of mark job is deleted
+	JobDelete = "deleted"
 )

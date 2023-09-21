@@ -50,6 +50,7 @@ type VJob struct {
 type NPUJob struct {
 	// the mapKey is taskID, not Name.
 	Tasks      map[api.TaskID]NPUTask
+	NPUTaskNum int
 	ReqNPUName string
 	ReqNPUNum  int
 	*VJob
@@ -60,6 +61,7 @@ type ComJob struct {
 	Name          api.JobID
 	ReferenceName string
 	NameSpace     string
+	Annotation    map[string]string
 	Selector      map[string]string
 	Label         map[string]string
 }

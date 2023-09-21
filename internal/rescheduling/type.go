@@ -111,10 +111,7 @@ const (
 	// NodeCardNetworkUnhealthy represents node is unhealthy because of card is network unhealthy
 	NodeCardNetworkUnhealthy = "CardNetworkUnhealthy"
 	// NoFaultJobsErr none fault jobs
-	NoFaultJobsErr   = "none fault jobs to be restarted in cache"
-	jobRestartReason = "restart for NPU malfunction"
-	// NoRanksCmPre the configMap's prefix of jobs without rankTable files
-	NoRanksCmPre = "env-config-"
+	NoFaultJobsErr = "none fault jobs to be restarted in cache"
 	// JobFaultRankIDCMPre the job cm name prefix, for retraining
 	JobFaultRankIDCMPre = "fault-config-"
 	// JobFaultRankIDCMDataKey the job cm value key.
@@ -126,12 +123,6 @@ const (
 )
 
 const (
-	// SeparateNPU fault type Separate NPU
-	SeparateNPU = "SeparateNPU"
-	// NotHandle fault type NotHandle
-	NotHandle = "NotHandle"
-	// EvictType pod Evict statement
-	EvictType = "Evict"
 	// PreSeparateNPU fault type waiting user check
 	PreSeparateNPU = "PreSeparateNPU"
 	// NodeFaultCode fault type nodeUnhealthy
@@ -156,6 +147,7 @@ type ReScheduler struct {
 type DealReSchedulerCache struct {
 	*DealReSchedulerConfigmap
 	FaultNodes                 []FaultNode
+	RealFaultNodes             []FaultNode `json:"-"`
 	FaultJobs                  []FaultJob
 	NodeHeartbeats             []NodeHeartbeat
 	AllocNodeRankOccurrenceMap map[api.JobID][]AllocNodeRankOccurrence
@@ -172,6 +164,7 @@ type DealReSchedulerConfigmap struct {
 type AllocNodeRankOccurrence struct {
 	NodeName   string
 	RankIndex  string
+	IsFault    bool
 	Occurrence int
 }
 
