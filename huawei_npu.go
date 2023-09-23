@@ -21,6 +21,7 @@ package main
 
 import (
 	"strings"
+	"sync"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
@@ -190,8 +191,12 @@ func HandlerStart() *plugin.ScheduleHandler {
 	scheduleHandler := &plugin.ScheduleHandler{
 		NPUPlugins: map[string]plugin.NPUBuilder{},
 		ScheduleEnv: plugin.ScheduleEnv{
-			Jobs:      map[api.JobID]plugin.SchedulerJob{},
-			Nodes:     map[string]plugin.NPUNode{},
+			Jobs:  map[api.JobID]plugin.SchedulerJob{},
+			Nodes: map[string]plugin.NPUNode{},
+			DeviceInfos: &plugin.DeviceInfosWithMutex{
+				Mutex:   sync.Mutex{},
+				Devices: map[string]plugin.NodeDeviceInfo{},
+			},
 			FrameAttr: plugin.VolcanoFrame{},
 		},
 	}

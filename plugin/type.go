@@ -18,6 +18,8 @@ limitations under the License.
 package plugin
 
 import (
+	"sync"
+
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -120,17 +122,25 @@ type FaultRankIdData struct {
 
 // ScheduleEnv for job scheduler context.
 type ScheduleEnv struct {
-	Jobs      map[api.JobID]SchedulerJob
-	Nodes     map[string]NPUNode
-	FrameAttr VolcanoFrame
-	Cache     ScheduleCache
-	Tors      *TorList
+	Jobs        map[api.JobID]SchedulerJob
+	Nodes       map[string]NPUNode
+	DeviceInfos *DeviceInfosWithMutex
+	FrameAttr   VolcanoFrame
+	Cache       ScheduleCache
+	Tors        *TorList
+}
+
+// DeviceInfosWithMutex information for the current plugin
+type DeviceInfosWithMutex struct {
+	sync.Mutex
+	Devices map[string]NodeDeviceInfo
 }
 
 // ScheduleHandler information for the current plugin
 type ScheduleHandler struct {
 	NPUPlugins map[string]NPUBuilder
 	ScheduleEnv
+	sync.Once
 }
 
 // AllocNodeRankOccurrence object recording node rankIndex and whether index re-allocated to new node
