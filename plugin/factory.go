@@ -443,7 +443,8 @@ func (sHandle *ScheduleHandler) SetTorAffinityJobNodesScore(task *api.TaskInfo, 
 	result := CheckNetSliceIsMeetJobRequire(vcJob, sHandle, nodes)
 	vcJob = sHandle.Jobs[task.Job]
 	if result != nil {
-		klog.V(util.LogErrorLev).Infof("check job %s tor affinity failed: %s", vcJob.Name, result)
+		klog.V(util.LogErrorLev).Infof("check job %s tor affinity failed: %s,"+
+			"used servers is %s", vcJob.Name, result, vcJob.SelectServers)
 		switch label {
 		case LargeModelTag:
 			vcJob.JobReadyTag = false
@@ -460,7 +461,7 @@ func (sHandle *ScheduleHandler) SetTorAffinityJobNodesScore(task *api.TaskInfo, 
 		klog.V(util.LogErrorLev).Infof("batchNodeOrderFn task[%s] failed[%#v].", task.Name, errGet)
 	}
 	klog.V(util.LogInfoLev).Infof("batchNodeOrderFn Get %s for NPU %+v.", task.Name, scoreMap)
-	return scoreMap, nil
+	return scoreMap, result
 }
 
 func (sHandle *ScheduleHandler) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo, sMap map[string]float64) error {
