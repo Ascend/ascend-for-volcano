@@ -99,10 +99,6 @@ func (reScheduler *ReScheduler) createFaultTaskHandler(job *api.JobInfo, cardNam
 	var faultTasks []FaultTask
 	for _, task := range job.Tasks {
 		faultTask := newFaultTaskDefault(task, job)
-		if !plugin.IsNPUTask(task) {
-			faultTasks = append(faultTasks, faultTask)
-			continue
-		}
 		// 2. updateNodeRankIndex by pod.Annotation
 		tmpNodeRankIndex, err := faultTask.getNodeRankIndex(task)
 		if err != nil {
