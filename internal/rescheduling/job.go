@@ -287,27 +287,18 @@ func newFaultJobDefault(job *api.JobInfo, updateTime int64) FaultJob {
 	return faultJob
 }
 
-func faultRetryTimeOfJob(job *api.JobInfo) (times int) {
-	value := ""
-	ok := false
-	defer func() {
-		if !ok {
-			return
-		}
-		v, err := strconv.Atoi(value)
-		if err != nil {
-			klog.V(util.LogInfoLev).Infof("Failed to convert fault-retry-times <%s> of job <%s> into number",
-				value, job.UID)
-			return
-		}
-		times = v
-		klog.V(util.LogInfoLev).Infof("get job: %s, fault-retry-times: %s", job.Name, value)
-	}()
-
-	value, ok = job.PodGroup.Labels[FaultRetryTimesKey]
-	if ok {
+func faultRetryTimeOfJob(job *api.JobInfo) int {
+	value, ok := job.PodGroup.Labels[FaultRetryTimesKey]
+	if !ok {
 		klog.V(util.LogInfoLev).Infof("get job<%s> label<%s> failed", job.UID, FaultRetryTimesKey)
-		return
+		return 0
 	}
-	return
+	v, err := strconv.Atoi(value)
+	if err != nil {
+		klog.V(util.LogInfoLev).Infof("Failed to convert fault-retry-times <%s> of job <%s> into number",
+			value, job.UID)
+		return 0
+	}
+	klog.V(util.LogInfoLev).Infof("get job: %s, fault-retry-times: %s", job.Name, value)
+	return v
 }
