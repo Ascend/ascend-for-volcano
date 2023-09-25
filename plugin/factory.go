@@ -27,6 +27,8 @@ import (
 	"gopkg.in/yaml.v2"
 	v12 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
 	"k8s.io/kube-scheduler/extender/v1"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -368,7 +370,18 @@ func (sHandle *ScheduleHandler) InitNPUSession(ssn *framework.Session) error {
 		klog.V(util.LogErrorLev).Infof("%s checkSession : %s.", PluginName, err)
 		return err
 	}
-
+	sHandle.Do(func() {
+		cmInformer := ssn.InformerFactory().Core().V1().ConfigMaps().Informer()
+		cmInformer.AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: util.CheckConfigMapIsDeviceInfo,
+			Handler: cache.ResourceEventHandlerFuncs{
+				AddFunc:    sHandle.AddConfigMap,
+				UpdateFunc: sHandle.UpdateConfigMap,
+				DeleteFunc: sHandle.DeleteConfigMap,
+			},
+		})
+		ssn.InformerFactory().Start(wait.NeverStop)
+	})
 	sHandle.InitVolcanoFrameFromSsn(ssn)
 	sHandle.InitNodesFromSsn(ssn)
 	sHandle.InitJobsFromSsn(ssn)
@@ -378,6 +391,51 @@ func (sHandle *ScheduleHandler) InitNPUSession(ssn *framework.Session) error {
 	sHandle.InitCache()
 	sHandle.PreStartPlugin(ssn)
 	return nil
+}
+
+// AddConfigMap add deviceInfo to cache
+func (sHandle *ScheduleHandler) AddConfigMap(obj interface{}) {
+	klog.V(util.LogInfoLev).Infof("Add DeviceInfo to cache")
+	sHandle.createOrUpdateDeviceInfo(obj)
+
+}
+
+// UpdateConfigMap update deviceInfo in cache
+func (sHandle *ScheduleHandler) UpdateConfigMap(old, new interface{}) {
+	klog.V(util.LogInfoLev).Infof("Update DeviceInfo to cache")
+	sHandle.createOrUpdateDeviceInfo(new)
+
+}
+
+// DeleteConfigMap del deviceInfo in cache
+func (sHandle *ScheduleHandler) DeleteConfigMap(obj interface{}) {
+	klog.V(util.LogInfoLev).Infof("Del DeviceInfo to cache")
+	cm, ok := obj.(*v12.ConfigMap)
+	if !ok {
+		klog.V(util.LogErrorLev).Infof("Cannot convert to ConfigMap:%#v", obj)
+		return
+	}
+	nodeName := strings.TrimPrefix(cm.Name, util.DevInfoPreName)
+	sHandle.DeviceInfos.Lock()
+	delete(sHandle.DeviceInfos.Devices, nodeName)
+	sHandle.DeviceInfos.Unlock()
+}
+
+func (sHandle *ScheduleHandler) createOrUpdateDeviceInfo(obj interface{}) {
+	cm, ok := obj.(*v12.ConfigMap)
+	if !ok {
+		klog.V(util.LogErrorLev).Infof("Cannot convert to ConfigMap:%#v", obj)
+		return
+	}
+	deviceInfo, err := getNodeDeviceInfoFromCM(cm)
+	if err != nil {
+		klog.V(util.LogWarningLev).Infof("get device info failed:%s", err)
+		return
+	}
+	nodeName := strings.TrimPrefix(cm.Name, util.DevInfoPreName)
+	sHandle.DeviceInfos.Lock()
+	sHandle.DeviceInfos.Devices[nodeName] = deviceInfo
+	sHandle.DeviceInfos.Unlock()
 }
 
 // GetNPUScheduler get the NPU scheduler by name
