@@ -23,7 +23,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -821,7 +820,7 @@ func (reScheduler *ReScheduler) ScoreBestNPUNodes(task *api.TaskInfo, scoreMap m
 		for _, ftask := range fJob.FaultTasks {
 			if _, ok := scoreMap[ftask.NodeName]; ok {
 				klog.V(util.LogDebugLev).Infof("node<%s> score is add", ftask.NodeName)
-				scoreMap[ftask.NodeName] += math.MaxFloat64
+				scoreMap[ftask.NodeName] += util.NPUIndex8 * util.NPUIndex8
 			}
 		}
 		return nil
@@ -837,7 +836,7 @@ func (reScheduler *ReScheduler) ScoreBestNPUNodes(task *api.TaskInfo, scoreMap m
 	if _, ok := scoreMap[curfTask.NodeName]; ok {
 		klog.V(util.LogDebugLev).Infof("fault task<%s> previous used node<%s> score is increase", task.Name,
 			curfTask.NodeName)
-		scoreMap[curfTask.NodeName] += math.MaxFloat64
+		scoreMap[curfTask.NodeName] += util.NPUIndex8 * util.NPUIndex8
 	}
 
 	klog.V(util.LogDebugLev).Infof("node score map after add rescheduling weights %#v", scoreMap)
