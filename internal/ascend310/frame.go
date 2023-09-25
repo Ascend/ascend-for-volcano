@@ -113,7 +113,7 @@ func (tp *asend310) PreStartAction(ssn *framework.Session) error {
 	tp.reHandle.NewCommonReScheduler(rescheduling.CmFaultJob310x4Kind)
 	tp.reHandle.SynCacheFaultNodeWithSession(util.NPU310CardName)
 	tp.reHandle.AddFaultNodeWithSession(util.NPU310CardName)
-	tp.reHandle.SynCacheFaultJobWithSession(ssn, util.NPU310CardName, util.NPU310CardNamePre)
+	tp.reHandle.SynCacheFaultJobWithSession(ssn)
 	// 1. restart Fault Jobs that are recorded in cache
 	if restartErr := tp.reHandle.RestartNeedForceDeleteJobs(ssn); restartErr != nil {
 		klog.V(util.LogInfoLev).Infof("%s RestartNeedForceDeleteJobs: %s",

@@ -22,6 +22,7 @@ package util
 import (
 	"strings"
 
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -177,6 +178,13 @@ func (nJob *NPUJob) SetJobStatusByInf(vcJob *api.JobInfo) {
 func ReferenceNameOfJob(job *api.JobInfo) string {
 	if job != nil && job.PodGroup != nil && len(job.PodGroup.OwnerReferences) > 0 {
 		return job.PodGroup.OwnerReferences[0].Name
+	}
+	return ""
+}
+
+func UuidOfJob(job *api.JobInfo) types.UID {
+	if job != nil && job.PodGroup != nil && len(job.PodGroup.OwnerReferences) > 0 {
+		return job.PodGroup.OwnerReferences[0].UID
 	}
 	return ""
 }
