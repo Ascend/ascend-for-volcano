@@ -569,6 +569,7 @@ func (sJob *SchedulerJob) GetEnableServerList(nodes []*api.NodeInfo, sHandler *S
 	if sHandler.Tors == nil {
 		return
 	}
+	sJob.SelectServers = ""
 	sJob.getNormalTorListBeforeRestart(sHandler.Tors.TorCount)
 	for _, node := range nodes {
 		for _, tor := range sHandler.Tors.Tors {
@@ -578,6 +579,7 @@ func (sJob *SchedulerJob) GetEnableServerList(nodes []*api.NodeInfo, sHandler *S
 			for _, server := range tor.Servers {
 				if server.Name == node.Name && sJob.HealthTorRankIndex[node.Name] == "" {
 					server.CurrentJob = sJob.Name
+					sJob.SelectServers += node.Name + " "
 				}
 			}
 		}

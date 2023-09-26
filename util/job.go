@@ -49,9 +49,10 @@ type VJob struct {
 // NPUJob only npu vcJob have.
 type NPUJob struct {
 	// the mapKey is taskID, not Name.
-	Tasks      map[api.TaskID]NPUTask
-	ReqNPUName string
-	ReqNPUNum  int
+	Tasks         map[api.TaskID]NPUTask
+	SelectServers string
+	ReqNPUName    string
+	ReqNPUNum     int
 	*VJob
 }
 
