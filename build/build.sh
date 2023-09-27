@@ -37,7 +37,7 @@ function parse_version() {
     version_file="${TOP_DIR}"/service_config.ini
     if  [ -f "$version_file" ]; then
       line=$(sed -n '1p' "$version_file" 2>&1)
-      version=${line#*=}
+      version="v"${line#*=}
       echo "${version}"
       return
     fi
