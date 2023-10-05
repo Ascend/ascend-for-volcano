@@ -594,7 +594,9 @@ func (reScheduler *ReScheduler) SynCacheFaultJobWithSession(ssn *framework.Sessi
 		if err != nil {
 			klog.V(util.LogInfoLev).Infof("Marshal %s NodeRankOccurrence failed %s", faultJob.JobName, err)
 		}
-
+		if jobInfo.PodGroup.Annotations == nil {
+			jobInfo.PodGroup.Annotations = make(map[string]string)
+		}
 		jobInfo.PodGroup.Annotations[plugin.JobDeleteFlag] = string(str)
 		updatedFaultJobs = append(updatedFaultJobs, faultJob)
 	}
