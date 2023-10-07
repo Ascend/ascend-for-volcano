@@ -258,138 +258,167 @@
 <h2 id="目录结构文档">目录结构</h2>
 
 ```
-├── build                                                    # CI编译脚本
-│   ├── build.sh                                            # CI构建二进制脚本
-│   └── testBuild.sh                                        # LLT测试启动脚本
-├── doc                                                      # 说明文档
-│   └── figures
-│       ├── Affinity-algorithm-design-process-ch.png
-│       ├── Affinity-algorithm-design-process-en.png
-│       ├── Affinity-program-process-(Volcano-part)-ch.png
-│       ├── Affinity-program-process-(Volcano-part)-en.png
-│       ├── Ascend-910-AI-Processor-interconnection-topology.png
-│       ├── icon-caution.gif
-│       ├── icon-danger.gif
-│       ├── icon-note.gif
-│       ├── icon-notice.gif
-│       ├── icon-tip.gif
-│       └── icon-warning.gif
-├── huawei_npu.go                                         # ascend-volcano-plugin组件入口代码
+├── build                       		# CI编译脚本
+│  ├── build.sh			# CI构建二进制脚本
+│  ├── testBuild.sh			# LLT测试启动脚本
+│  ├── volcano-v1.4.0.yaml
+│  └── volcano-v1.7.0.yaml
+├── config
+│  └── config.go
+├── doc			# 说明文档
+│  └── figures
+│      ├── Affinity-algorithm-design-process-ch.png
+│      ├── Affinity-algorithm-design-process-en.png
+│      ├── Affinity-program-process-(Volcano-part)-ch.png
+│      ├── Affinity-program-process-(Volcano-part)-en.png
+│      ├── Ascend-910-AI-Processor-interconnection-topology.png
+│      ├── icon-caution.gif
+│      ├── icon-danger.gif
+│      ├── icon-note.gif
+│      ├── icon-notice.gif
+│      ├── icon-tip.gif
+│      └── icon-warning.gif
+├── huawei_npu.go		  # ascend-volcano-plugin组件入口代码
 ├── huawei_npu_test.go
 ├── internal
-│   ├── ascend310
-│   │   ├── card310x4                                          # 310卡调度策略代码目录
-│   │   │   ├── frame.go
-│   │   │   ├── frame_test.go
-│   │   │   ├── task.go
-│   │   │   └── type.go
-│   │   ├── chip310x4                                         # 310 芯片调度策略代码目录
-│   │   │   ├── frame.go
-│   │   │   ├── frame_test.go
-│   │   │   ├── node.go
-│   │   │   └── type.go
-│   │   ├── frame.go
-│   │   ├── frame_test.go
-│   │   └── type.go
-│   ├── ascend310p                                            # 310P 卡调度公共代码目录
-│   │   ├── frame.go
-│   │   ├── frame_test.go
-│   │   ├── rescheduling.go
-│   │   ├── type.go
-│   │   ├── vnpu.go
-│   │   └── vnpu_test.go
-│   ├── ascend910
-│   │   ├── card910x2                                          # A300T调度策略代码目录
-│   │   │   ├── frame.go
-│   │   │   ├── frame_test.go
-│   │   │   ├── job.go
-│   │   │   └── type.go
-│   │   ├── frame.go
-│   │   ├── frame_test.go
-│   │   ├── half910x4                                       # 800/9000 4卡调度策略代码目录
-│   │   │   ├── frame.go
-│   │   │   ├── frame_test.go
-│   │   │   ├── job.go
-│   │   │   ├── node.go
-│   │   │   └── type.go
-│   │   ├── module910x8                                       # 800/9000调度策略代码目录
-│   │   │   ├── frame.go
-│   │   │   ├── frame_reschedule_test.go
-│   │   │   ├── frame_test.go
-│   │   │   ├── job.go
-│   │   │   ├── node.go
-│   │   │   ├── task.go
-│   │   │   └── type.go
-│   │   └── type.go
-│   ├── base                                       # 基础调度策略代码目录
-│   │   ├── frame.go
-│   │   ├── frame_test.go
-│   │   ├── node.go
-│   │   ├── task.go
-│   │   └── type.go
-│   ├── rescheduling                                      # 故障调度策略代码目录
-│   │   ├── cache.go
-│   │   ├── cache_test.go
-│   │   ├── configmap.go
-│   │   ├── configmap_test.go
-│   │   ├── frame_reschedule_test.go
-│   │   ├── job.go
-│   │   ├── job_test.go
-│   │   ├── node.go
-│   │   ├── node_test.go
-│   │   ├── reschedule.go
-│   │   ├── reschedule_test.go
-│   │   ├── task.go
-│   │   └── type.go
-│   ├── test                                             # LLT公共代码目录
-│   │   ├── job.go
-│   │   ├── reschedule.go
-│   │   └── type.go
-│   └── vnpu                                             # VNPU调度公共代码目录
-│       ├── frame.go
-│       ├── node.go
-│       ├── pod.go
-│       ├── type.go
-│       ├── vdynamic.go
-│       └── vstatic.go
+│  ├── ascend310			
+│  │  ├── card310x4		# 310卡调度策略代码目录
+│  │  │  ├── frame.go
+│  │  │  ├── frame_test.go
+│  │  │  ├── task.go
+│  │  │  └── type.go
+│  │  ├── chip310x4		# 310 芯片调度策略代码目录
+│  │  │  ├── frame.go
+│  │  │  ├── frame_test.go
+│  │  │  ├── node.go
+│  │  │  └── type.go
+│  │  ├── frame.go
+│  │  ├── frame_test.go
+│  │  └── type.go
+│  ├── ascend310p		# 310P 卡调度公共代码目录
+│  │  ├── frame.go
+│  │  ├── frame_test.go
+│  │  ├── rescheduling.go
+│  │  ├── type.go
+│  │  ├── vnpu.go
+│  │  └── vnpu_test.go
+│  ├── ascend910
+│  │  ├── ascend910b
+│  │  │  ├── base.go
+│  │  │  ├── card910bx2		 # A300T A2调度策略代码目录
+│  │  │  │  ├── frame.go
+│  │  │  │  └── type.go
+│  │  │  ├── card910bx2infer	# A300I A2调度策略代码目录
+│  │  │  │  ├── frame.go
+│  │  │  │  └── type.go
+│  │  │  ├── job.go
+│  │  │  ├── module910bx16	# A200T A2 Box16调度策略代码目录
+│  │  │  │  ├── frame.go
+│  │  │  │  ├── node.go
+│  │  │  │  └── type.go
+│  │  │  ├── module910bx8	# A800T A2 调度策略代码目录
+│  │  │  │  ├── frame.go
+│  │  │  │  ├── job.go
+│  │  │  │  ├── node.go
+│  │  │  │  └── type.go
+│  │  │  ├── node.go
+│  │  │  └── type.go
+│  │  ├── asend910old
+│  │  │  ├── card910x2		# A300T调度策略代码目录
+│  │  │  │  ├── frame.go
+│  │  │  │  ├── frame_test.go
+│  │  │  │  ├── job.go
+│  │  │  │  └── type.go
+│  │  │  ├── half910x4		# 800/9000 4卡调度策略代码目录
+│  │  │  │  ├── frame.go
+│  │  │  │  ├── frame_test.go
+│  │  │  │  ├── job.go
+│  │  │  │  ├── node.go
+│  │  │  │  └── type.go
+│  │  │  └── module910x8		# 800/9000调度策略代码目录
+│  │  │      ├── frame.go
+│  │  │      ├── frame_reschedule_test.go
+│  │  │      ├── frame_test.go
+│  │  │      ├── job.go
+│  │  │      ├── node.go
+│  │  │      ├── task.go
+│  │  │      └── type.go
+│  │  ├── frame.go
+│  │  ├── frame_test.go
+│  │  └── type.go
+│  ├── base			 # 基础调度策略代码目录
+│  │  ├── frame.go
+│  │  ├── frame_test.go
+│  │  ├── node.go
+│  │  ├── task.go
+│  │  └── type.go
+│  ├── rescheduling		# 故障调度策略代码目录
+│  │  ├── cache.go
+│  │  ├── cache_test.go
+│  │  ├── configmap.go
+│  │  ├── configmap_test.go
+│  │  ├── frame_reschedule_test.go
+│  │  ├── job.go
+│  │  ├── job_test.go
+│  │  ├── node.go
+│  │  ├── node_test.go
+│  │  ├── reschedule.go
+│  │  ├── reschedule_test.go
+│  │  ├── task.go
+│  │  └── type.go
+│  ├── test		# LLT公共代码目录
+│  │  ├── job.go
+│  │  ├── reschedule.go
+│  │  └── type.go
+│  └── vnpu		 # VNPU调度公共代码目录
+│      ├── frame.go
+│      ├── frame_test.go
+│      ├── node.go
+│      ├── pod.go
+│      ├── type.go
+│      ├── vdynamic.go
+│      └── vstatic.go
 ├── LICENSE
-├── output                                                # CI编译结果目录
-│   ├── Dockerfile-controller
-│   ├── Dockerfile-scheduler
-│   └── volcano-v1.4.0.yaml
+├── output		 # CI编译结果目录
+│  ├── Dockerfile-controller
+│  └── Dockerfile-scheduler
 ├── OWNERS
-├── plugin                                                 # 插件适配代码目录
-│   ├── device_info.go
-│   ├── device_info_test.go
-│   ├── factory.go
-│   ├── factory_test.go
-│   ├── job.go
-│   ├── job_test.go
-│   ├── node.go
-│   ├── node_test.go
-│   ├── plugin.go
-│   ├── plugin_test.go
-│   ├── task.go
-│   ├── task_test.go
-│   ├── type.go
-│   └── vnode.go
+├── plugin			 # 插件适配代码目录
+│  ├── const.go
+│  ├── device_info.go
+│  ├── device_info_test.go
+│  ├── factory.go
+│  ├── factory_test.go
+│  ├── job.go
+│  ├── job_test.go
+│  ├── node.go
+│  ├── node_test.go
+│  ├── plugin.go
+│  ├── plugin_test.go
+│  ├── task.go
+│  ├── task_test.go
+│  ├── tor.go
+│  ├── type.go
+│  └── vnode.go
 ├── README.md
-├── test                                                   # llt公共基础代码目录
-│   ├── frame.go
-│   ├── job.go
-│   ├── node.go
-│   ├── pod.go
-│   ├── reschedule.go
-│   └── type.go
-├── tree.txt
+├── test				# llt公共基础代码目录
+│  ├── frame.go
+│  ├── job.go
+│  ├── node.go
+│  ├── pod.go
+│  ├── reschedule.go
+│  └── type.go
 ├── type.go
-└── util                                              # 调度策略公共代码目录
+└── util				# 调度策略公共代码目录
     ├── configmap.go
+    ├── configmap_test.go
     ├── job.go
     ├── job_test.go
     ├── task.go
+    ├── task_test.go
     ├── type.go
     └── util.go
+
 ```
 
 <h2 id="编译说明文档">编译说明</h2>
