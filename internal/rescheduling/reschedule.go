@@ -1262,11 +1262,20 @@ func (reScheduler ReScheduler) getJobsToBeRestarted(realFaultJobs []FaultJob) []
 			continue
 		}
 
-		if fJob.faultReason == PodFailed &&
-			(fJob.FaultRetryTimes == 0 || reScheduler.JobRemainRetryTimes[fJob.JobUID].Times <= 0) {
-			klog.V(util.LogInfoLev).Infof("job<%s> remain retry times: %d", fJob.JobUID,
-				reScheduler.JobRemainRetryTimes[fJob.JobUID].Times)
-			continue
+		if fJob.faultReason == PodFailed {
+			if fJob.FaultRetryTimes == 0 {
+				klog.V(util.LogInfoLev).Infof("job<%s> retry times is 0", fJob.JobUID)
+				continue
+			}
+			remain, ok := reScheduler.JobRemainRetryTimes[fJob.JobUID]
+			if !ok || remain == nil {
+				continue
+			}
+			if remain.Times <= 0 {
+				klog.V(util.LogInfoLev).Infof("job<%s> remain retry times: %d", fJob.JobUID,
+					reScheduler.JobRemainRetryTimes[fJob.JobUID].Times)
+				continue
+			}
 		}
 
 		restartFaultJobs = append(restartFaultJobs, fJob)
