@@ -20,6 +20,7 @@ Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
 package rescheduling
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 
@@ -910,7 +911,7 @@ type ReSchedulerCheckNodeNPUByTaskTests struct {
 	npuName string
 	fields  TestReScheduler
 	args    ReSchedulerCheckNodeNPUByTaskArgs
-	wantErr bool
+	wantErr error
 }
 
 func buildReSchedulerCheckNodeNPUByTaskTests() []ReSchedulerCheckNodeNPUByTaskTests {
@@ -946,7 +947,7 @@ func buildReSchedulerCheckNodeNPUByTaskTests() []ReSchedulerCheckNodeNPUByTaskTe
 		npuName: util.NPU910CardName,
 		fields:  field1,
 		args:    arg1,
-		wantErr: true,
+		wantErr: errors.New("task pod1 corresponding job not in session"),
 	}
 	tests := []ReSchedulerCheckNodeNPUByTaskTests{
 		test1,
@@ -960,7 +961,8 @@ func TestReSchedulerCheckNodeNPUByTask(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			reScheduler := fakeTestTTReScheduler(tt.fields)
-			if err := reScheduler.CheckNodeNPUByTask(tt.args.task, tt.args.vcNode, tt.npuName); (err != nil) != tt.wantErr {
+			if err := reScheduler.CheckNodeNPUByTask(tt.args.task, tt.args.vcNode, tt.npuName); !reflect.DeepEqual(err,
+				tt.wantErr) {
 				t.Errorf("CheckNodeNPUByTask() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

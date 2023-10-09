@@ -82,6 +82,8 @@ const (
 	// Ascend910 910 template name
 	Ascend910               = "Ascend910"
 	maxTorAffinityNodeScore = float64(200)
+	cardHealthySuffix       = ""
+	unhealthyCardSuffix     = "-Unhealthy"
 )
 
 // SchedulerJob the plugin define job info
