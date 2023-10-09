@@ -226,3 +226,11 @@ func ConvertErrSliceToError(reErrors []error) error {
 
 	return reE
 }
+
+// SafePrint safe print error
+func SafePrint(args ...interface{}) string {
+	msg := fmt.Sprint(args...)
+	trimMsg := strings.Replace(msg, "\r", " ", -1)
+	trimMsg = strings.Replace(trimMsg, "\n", " ", -1)
+	return trimMsg
+}

@@ -125,8 +125,9 @@ func (n *NPUNode) setTotalResAndChipNumByTemplates() error {
 	n.VNode.TotalRes.Aicore = int(totalCore / util.NPUHexKilo)
 
 	numCorePerChip, err := n.getVChipCoreNum()
-	if err != nil {
-		return fmt.Errorf("getTotalChipNum error: %v", err)
+	if err != nil || numCorePerChip == 0 {
+		return fmt.Errorf("getTotalChipNum error: %v or numCorePerChip zero number: %d", 
+			util.SafePrint(err), numCorePerChip)
 	}
 	n.AiCorePerChip = numCorePerChip
 
@@ -163,7 +164,7 @@ func (n NPUNode) getCpuNumPerChip(templates []util.VTemplate) int {
 func (n *NPUNode) initVChips(ni *api.NodeInfo, taskTemplate map[string]map[string]util.VResource) error {
 	chipTotalRes := n.VNode.getVChipTotalRes()
 	if err := n.createNodeNewVChips(chipTotalRes); err != nil {
-		klog.V(util.LogDebugLev).Infof("vNode %s %s.", n.Name, err)
+		klog.V(util.LogDebugLev).Infof("vNode %s %s.", n.Name, util.SafePrint(err))
 	} // 3. create new VChip by freeCardID whole card
 
 	for _, ti := range ni.Tasks {
@@ -179,7 +180,7 @@ func (n *NPUNode) initVChips(ni *api.NodeInfo, taskTemplate map[string]map[strin
 func (n NPUNode) createNodeNewVChips(chipTotalRes util.VResource) error {
 	healthyCardIDs, getErr := n.getHealthyCardIDsFromNodeAndDeviceInfo()
 	if getErr != nil {
-		return fmt.Errorf("getFreeCardIDsFromDeviceInfo %s", getErr)
+		return fmt.Errorf("getFreeCardIDsFromDeviceInfo %s", util.SafePrint(getErr))
 	}
 	klog.V(util.LogDebugLev).Infof("createNodeNewVChips healthy chips: %#v", healthyCardIDs)
 	for _, freeCardID := range healthyCardIDs {
@@ -564,7 +565,8 @@ func (vNode *VNode) selectChipFromNodeSegment(vChip []*VChip, vRes util.VResourc
 		}
 		chipID, err := GetWholeCardIDFromAscendReal(chip.Name)
 		if err != nil {
-			return "", fmt.Errorf("selectChipFromNodeSegment chip name <%s> err: %s", chip.Name, err)
+			return "", fmt.Errorf("selectChipFromNodeSegment chip name <%s> err: %s", chip.Name,
+				util.SafePrint(err))
 		}
 		return strconv.Itoa(chipID), nil
 	}
@@ -593,7 +595,8 @@ func (vNode *VNode) selectChipFromNodeWhole(vChips []*VChip, vRes util.VResource
 		}
 		chipID, err := GetWholeCardIDFromAscendReal(chip.Name)
 		if err != nil {
-			return "", fmt.Errorf("selectChipFromNodeWhole chip name <%s> err: %s", chip.Name, err)
+			return "", fmt.Errorf("selectChipFromNodeWhole chip name <%s> err: %s", chip.Name,
+				util.SafePrint(err))
 		}
 		cardNames = append(cardNames, strconv.Itoa(chipID))
 		allocCardNum += 1
@@ -608,8 +611,8 @@ func (vNode *VNode) selectChipFromNodeWhole(vChips []*VChip, vRes util.VResource
 // IsResourceWholeCard judge if resource is whole card by node total resource
 func (vNode *VNode) IsResourceWholeCard(aiCore int) bool {
 	chipCoreNum, err := vNode.getVChipCoreNum()
-	if err != nil {
-		klog.V(util.LogWarningLev).Infof("IsResourceWholeCard get chipCoreNum failed")
+	if err != nil || chipCoreNum == 0 {
+		klog.V(util.LogWarningLev).Infof("IsResourceWholeCard get chipCoreNum failed or zero number")
 		return false
 	}
 	return aiCore%chipCoreNum == 0

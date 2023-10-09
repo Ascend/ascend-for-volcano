@@ -312,6 +312,10 @@ func (tp *DynamicVNPU) UpdateNodeInfoSegment(node plugin.NPUNode, allocChipID st
 
 // UpdateNodeInfoWhole vnpu update npuNode after allocation for whole card tasks
 func (tp *DynamicVNPU) UpdateNodeInfoWhole(node plugin.NPUNode, allocChipIDs string) *plugin.NPUNode {
+	if node.TotalChipNum == 0 {
+		klog.V(util.LogErrorLev).Infof("UpdateNodeInfoWhole node <%s> total chip number equal zero", node.Name)
+		return &node
+	}
 	chipRes := util.VResource{
 		Aicore: node.AiCorePerChip,
 		Aicpu:  node.TotalRes.Aicpu / node.TotalChipNum,

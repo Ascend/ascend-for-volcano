@@ -35,7 +35,7 @@ func (sHandle *ScheduleHandler) InitTorNodeInfo(ssn *framework.Session) {
 	sHandle.Tors = nil
 	cm, err := util.GetConfigMapWithRetry(ssn.KubeClient(), util.DevInfoNameSpace, TorNodeCMName)
 	if err != nil {
-		klog.V(util.LogInfoLev).Infof("Get Tor-Node configmap failed, err: %s", err)
+		klog.V(util.LogInfoLev).Infof("Get Tor-Node configmap failed, err: %s", util.SafePrint(err))
 		return
 	}
 
@@ -46,7 +46,6 @@ func (sHandle *ScheduleHandler) InitTorNodeInfo(ssn *framework.Session) {
 		return
 	}
 
-	//torList.InitSlices()
 	torList.SyncBySsnNodes(sHandle.Nodes)
 	torList.SyncBySsnJobs(sHandle.Jobs)
 
