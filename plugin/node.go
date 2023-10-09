@@ -72,6 +72,8 @@ type VNode struct {
 	Chips map[int]*VChip
 	// ChipKind Ascend910/310/310p
 	ChipKind string
+	// UnhealthyChipIds the card unhealthy chip ids in this node
+	UnhealthyChipIds map[int]struct{}
 	// ServerType Ascend310p-10-dual cardType-cardCoreNum-duo
 	ServerType string
 	// TotalChipNum num of total chips, get from capacity
