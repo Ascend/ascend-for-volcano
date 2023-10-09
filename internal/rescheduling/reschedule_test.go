@@ -907,6 +907,7 @@ type ReSchedulerCheckNodeNPUByTaskArgs struct {
 
 type ReSchedulerCheckNodeNPUByTaskTests struct {
 	name    string
+	npuName string
 	fields  TestReScheduler
 	args    ReSchedulerCheckNodeNPUByTaskArgs
 	wantErr bool
@@ -942,6 +943,7 @@ func buildReSchedulerCheckNodeNPUByTaskTests() []ReSchedulerCheckNodeNPUByTaskTe
 	}
 	test1 := ReSchedulerCheckNodeNPUByTaskTests{
 		name:    "01-CheckNodeNPUByTaskTests()-old task bind to new pod should be abandoned",
+		npuName: util.NPU910CardName,
 		fields:  field1,
 		args:    arg1,
 		wantErr: true,
@@ -958,7 +960,7 @@ func TestReSchedulerCheckNodeNPUByTask(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			reScheduler := fakeTestTTReScheduler(tt.fields)
-			if err := reScheduler.CheckNodeNPUByTask(tt.args.task, tt.args.vcNode); (err != nil) != tt.wantErr {
+			if err := reScheduler.CheckNodeNPUByTask(tt.args.task, tt.args.vcNode, tt.npuName); (err != nil) != tt.wantErr {
 				t.Errorf("CheckNodeNPUByTask() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

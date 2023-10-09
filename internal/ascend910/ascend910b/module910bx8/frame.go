@@ -153,7 +153,7 @@ func (tp *module910bx8) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNo
 	}
 
 	if tp.reHandle != nil {
-		if reErr := tp.reHandle.CheckNodeNPUByTask(task, node); reErr != nil {
+		if reErr := tp.reHandle.CheckNodeNPUByTask(task, node, tp.ReqNPUName); reErr != nil {
 			return fmt.Errorf("rescheduling CheckNodeNPUByTask %s", reErr.Error())
 		}
 	}

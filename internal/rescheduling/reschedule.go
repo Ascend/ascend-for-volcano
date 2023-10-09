@@ -940,7 +940,7 @@ func (reScheduler *ReScheduler) GenerateNodeRankIndexTaskMap() {
 }
 
 // CheckNodeNPUByTask used in the predicate process of task and node
-func (reScheduler *ReScheduler) CheckNodeNPUByTask(task *api.TaskInfo, vcNode plugin.NPUNode) error {
+func (reScheduler *ReScheduler) CheckNodeNPUByTask(task *api.TaskInfo, vcNode plugin.NPUNode, npuName string) error {
 	klog.V(util.LogDebugLev).Infof("enter rescheduling CheckNodeNPUByTask ...(%s, %s)", task.Name, vcNode.Name)
 	defer klog.V(util.LogDebugLev).Infof("leave rescheduling CheckNodeNPUByTask ...(%s, %s)",
 		task.Name, vcNode.Name)
@@ -961,7 +961,7 @@ func (reScheduler *ReScheduler) CheckNodeNPUByTask(task *api.TaskInfo, vcNode pl
 	if curFJob == nil {
 		return fmt.Errorf("task %s does not have corresponding job in cache", task.Name)
 	}
-	if !curFJob.IsFaultJob || curFJob.ReScheduleKey == JobOffRescheduleLabelValue {
+	if !curFJob.IsFaultJob || curFJob.ReScheduleKey == JobOffRescheduleLabelValue || npuName != util.NPU910CardName {
 		klog.V(util.LogDebugLev).Infof("CheckNodeNPUByTask job %s is not fault job, node %s check over",
 			curFJob.JobName, vcNode.Name)
 		return nil
