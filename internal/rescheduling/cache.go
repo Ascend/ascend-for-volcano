@@ -205,16 +205,10 @@ func (reCache DealReSchedulerCache) getRealFaultJobs() ([]FaultJob, error) {
 		if !fJob.IsFaultJob || fJob.ReScheduleKey == JobOffRescheduleLabelValue {
 			continue // only save real-fault and reschedule-enabled jobs
 		}
-		// if and only if the task is distributional would a network unhealthy card trigger re-scheduling
-		if util.IsSliceContain(NodeCardNetworkUnhealthy, fJob.FaultTypes) &&
-			!util.IsSliceContain(NodeCardUnhealthy, fJob.FaultTypes) &&
-			!util.IsSliceContain(NodeUnhealthy, fJob.FaultTypes) &&
-			fJob.GetJobFaultNPUTaskNum() < util.NPUIndex2 {
-			continue
-		}
+
 		faultReason := PodFailed
 		for _, faultType := range fJob.FaultTypes {
-			if faultType == NodeUnhealthy || faultType == NodeCardUnhealthy || faultType == NodeCardNetworkUnhealthy {
+			if faultType == NodeUnhealthy || faultType == NodeCardUnhealthy {
 				faultReason = faultType
 				break
 			}
