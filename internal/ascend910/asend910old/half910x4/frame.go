@@ -159,12 +159,13 @@ func (tp *half910x4) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode)
 
 	if err = tp.judgeNodeAndTaskNPU(taskNPUNum, nodeTop); err != nil {
 		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err)
-		return fmt.Errorf("checkNodeNPUByTask %s err: %s", util.NodeNotMeetTopologyWarning, err)
+		return fmt.Errorf("npu topology not meet job require,network unhealthy card is [ %s ]",
+			node.Annotation[tp.netUnhealthyKey])
 	}
 
 	if tp.reHandle != nil {
 		if reErr := tp.reHandle.CheckNodeNPUByTask(task, node); reErr != nil {
-			return fmt.Errorf("rescheduling CheckNodeNPUByTask %s", reErr)
+			return fmt.Errorf("rescheduling %s", reErr)
 		}
 	}
 	return nil
