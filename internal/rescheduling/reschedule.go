@@ -1239,11 +1239,6 @@ func (reScheduler *ReScheduler) getTaskHealthStateByNode(fTask *FaultTask) (bool
 			NodeCardUnhealthy, NodeCardUnhealthy)
 		return true, NodeCardUnhealthy
 	}
-	if util.IsSliceContain(NodeCardNetworkUnhealthy, nodeUseCardHealthState) { // if has networkUnhealthy npu, return
-		klog.V(util.LogInfoLev).Infof("task %s use %s node, thus task sets %s", fTask.TaskName,
-			NodeCardNetworkUnhealthy, NodeCardNetworkUnhealthy)
-		return true, NodeCardNetworkUnhealthy
-	}
 	klog.V(util.LogInfoLev).Infof("task %s all nodes healthy, thus task sets %s", fTask.TaskName, NodeHealthy)
 	return false, NodeHealthy
 }

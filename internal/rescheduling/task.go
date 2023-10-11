@@ -95,9 +95,6 @@ func (fTask *FaultTask) getTaskUseFaultCardHealthState(fNode *FaultNode) []strin
 			nodeUseCardHealthState = append(nodeUseCardHealthState, NodeCardUnhealthy)
 			continue
 		}
-		if util.IsSliceContain(taskUseCard, fNode.NetworkUnhealthyNPU) {
-			nodeUseCardHealthState = append(nodeUseCardHealthState, NodeCardNetworkUnhealthy)
-		}
 	}
 	return nodeUseCardHealthState
 }
