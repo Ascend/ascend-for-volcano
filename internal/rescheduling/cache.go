@@ -202,7 +202,7 @@ func (reCache *DealReSchedulerCache) marshalCacheDataToString(data interface{}) 
 func (reCache DealReSchedulerCache) getRealFaultJobs() ([]FaultJob, error) {
 	var realFaultJobs []FaultJob
 	for _, fJob := range reCache.FaultJobs {
-		if !fJob.IsFaultJob || fJob.ReScheduleKey == JobOffRescheduleLabelValue {
+		if (!fJob.IsFaultJob && !fJob.IsJobHasPreSeparateNPUKey()) || fJob.ReScheduleKey == JobOffRescheduleLabelValue {
 			continue // only save real-fault and reschedule-enabled jobs
 		}
 

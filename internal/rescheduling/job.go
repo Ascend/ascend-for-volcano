@@ -245,6 +245,20 @@ func (fJob *FaultJob) checkJobNodeRankIndexValid() bool {
 	return true
 }
 
+func (fJob *FaultJob) IsJobHasPreSeparateNPUKey() bool {
+	if fJob == nil {
+		return false
+	}
+	for _, fTask := range fJob.FaultTasks {
+		for _, reason := range fTask.Reason {
+			if reason.LargeModelFaultLevel == PreSeparateNPU {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (fJob *FaultJob) setJobFaultReScheduleLabel(value string) {
 	fJob.ReScheduleKey = value
 }
