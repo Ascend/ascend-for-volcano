@@ -259,20 +259,6 @@ func (fJob *FaultJob) IsJobHasPreSeparateNPUKey() bool {
 	return false
 }
 
-func (fJob *FaultJob) IsJobFaultTypeHasCardUnhealthy() bool {
-	if fJob == nil {
-		return false
-	}
-	for _, fTask := range fJob.FaultTasks {
-		for _, reason := range fTask.Reason {
-			if reason.FaultType == NodeCardUnhealthy {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 func (fJob *FaultJob) setJobFaultReScheduleLabel(value string) {
 	fJob.ReScheduleKey = value
 }
