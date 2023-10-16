@@ -114,11 +114,9 @@ func (reScheduler *ReScheduler) createFaultTaskHandler(job *api.JobInfo, cardNam
 		klog.V(util.LogInfoLev).Infof("task %s is fault task: %v, health state: %s", task.Name, isFaultTask,
 			healthState)
 		faultTask.setIsFaultTask(isFaultTask)
-		if isFaultTask {
-			err = reScheduler.setTaskCardHealthCode(&faultTask)
-			if err != nil {
-				klog.V(util.ErrorInt).Infof("setTaskCardHealthCode task %s err %#v", task.Name, err)
-			}
+		err = reScheduler.setTaskCardHealthCode(&faultTask)
+		if err != nil {
+			klog.V(util.ErrorInt).Infof("setTaskCardHealthCode task %s err %#v", task.Name, err)
 		}
 		faultTask.setFaultType(healthState)
 		faultTasks = append(faultTasks, faultTask)
@@ -245,18 +243,15 @@ func (reScheduler *ReScheduler) AddFaultJobWithSession(
 	nowTime := time.Now().Unix()
 	for _, jobInfo := range jobs {
 		klog.V(util.LogDebugLev).Infof("ReSchedulerCache considering job %s", jobInfo.Name)
-		flagInCache := false
-		for _, fJob := range reScheduler.FaultJobs {
+
+		for i, fJob := range reScheduler.FaultJobs {
 			if fJob.JobUID == jobInfo.UID ||
 				(fJob.JobNamespace == jobInfo.Namespace && fJob.ReferenceName == util.ReferenceNameOfJob(jobInfo)) {
-				flagInCache = true
+				reScheduler.FaultJobs = append(reScheduler.FaultJobs[:i], reScheduler.FaultJobs[i+1:]...)
 				break
 			}
 		}
-		// 1. jobs already in cache: go through the continue logic
-		if flagInCache {
-			continue
-		}
+
 		// 2. create FaultJob objects for jobs not in cache but sent by session
 		klog.V(util.LogDebugLev).Infof("Add job %s to cache", jobInfo.Name)
 		faultJob := newFaultJobDefault(jobInfo, nowTime)
@@ -1155,11 +1150,10 @@ func (reScheduler ReScheduler) getLastNodeHeartbeatByNodeNameFromCache(nodeName 
 func (reScheduler ReScheduler) setTaskCardHealthCode(fTask *FaultTask) error {
 	klog.V(util.LogDebugLev).Infof("task %s setTaskCardHealthCode", fTask.TaskName)
 	var resonList []FaultReasonList
-	realFaultNode := reScheduler.GetRealFaultNodes()
 	if fTask.NodeName == "" {
 		return fmt.Errorf("setTaskCardHealthCode fTask %s use node is nil", fTask.TaskName)
 	}
-	for _, fNode := range realFaultNode {
+	for _, fNode := range reScheduler.FaultNodes {
 		if !fNode.IsFaultNode {
 			return nil
 		}
@@ -1173,8 +1167,6 @@ func (reScheduler ReScheduler) setTaskCardHealthCode(fTask *FaultTask) error {
 			reason.FaultCode = NodeFaultCode
 			reason.LargeModelFaultLevel = PreSeparateNPU
 			resonList = append(resonList, reason)
-			fTask.Reason = resonList
-			return nil
 		}
 		for _, cardName := range fTask.UseCardName {
 			for _, fCard := range fNode.FaultDeviceList {
