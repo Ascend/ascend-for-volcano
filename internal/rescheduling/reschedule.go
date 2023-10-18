@@ -1151,12 +1151,10 @@ func (reScheduler ReScheduler) setTaskCardHealthCode(fTask *FaultTask) error {
 	klog.V(util.LogDebugLev).Infof("task %s setTaskCardHealthCode", fTask.TaskName)
 	var resonList []FaultReasonList
 	if fTask.NodeName == "" {
+		fTask.Reason = resonList
 		return fmt.Errorf("setTaskCardHealthCode fTask %s use node is nil", fTask.TaskName)
 	}
 	for _, fNode := range reScheduler.FaultNodes {
-		if !fNode.IsFaultNode {
-			return nil
-		}
 		if fNode.NodeName != fTask.NodeName {
 			continue
 		}
