@@ -70,9 +70,9 @@ func (tp *NPUHandler) GetCardNumGroupsFromTop(nodeNPUTopology []int) [][]int {
 
 // UpdateNodeInfo update node info
 func (tp *NPUHandler) UpdateNodeInfo(node plugin.NPUNode, usedTop []int) *plugin.NPUNode {
-	if len(usedTop) > tp.MaxNodeNPUNum {
-		klog.V(util.LogErrorLev).Infof("%s UpdateNodeInfo err: used npu num<%d> is invalid",
-			tp.GetPluginName(), len(usedTop))
+	if tp == nil || len(usedTop) > tp.MaxNodeNPUNum {
+		klog.V(util.LogErrorLev).Infof("NPUHandler is <%#v> or UpdateNodeInfo err: used npu num<%d> is invalid",
+			tp, len(usedTop))
 		return nil
 	}
 	klog.V(util.LogDebugLev).Infof("%s before UpdateNodeInfo node<%s> Annotation: %#v",

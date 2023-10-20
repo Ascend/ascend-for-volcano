@@ -89,7 +89,11 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 	})
 
 	ssn.AddJobReadyFn(tp.Name(), func(obj interface{}) bool {
-		ji := obj.(*api.JobInfo)
+		ji, ok := obj.(*api.JobInfo)
+		if !ok {
+			klog.V(util.LogErrorLev).Info("obj assertion failed.")
+			return false
+		}
 		k, ok := ji.PodGroup.Labels[plugin.TorAffinityKey]
 		if !ok || k == plugin.NullTag {
 			return true

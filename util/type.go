@@ -72,6 +72,8 @@ const (
 	Base10 = 10
 	// BitSize64 for const 64
 	BitSize64 = 64
+	// MaxSliceNum max slice number
+	MaxSliceNum = 128
 	// NPUHexKilo for const 1000,volcano frame used.
 	NPUHexKilo = 1000
 	// HwPreName pre name

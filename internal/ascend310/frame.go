@@ -182,7 +182,7 @@ func (tp *asend310) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo,
 
 // UseAnnotation select npu for task from node
 func (tp *asend310) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
-	if tp == nil || len(node.Annotation) == 0 {
+	if tp == nil || task == nil || len(node.Annotation) == 0 {
 		err := errors.New(util.ArgumentError)
 		klog.V(util.LogErrorLev).Infof("%s UseAnnotation err: %s", PluginName, err.Error())
 		return nil

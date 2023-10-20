@@ -32,6 +32,10 @@ import (
 
 // GetTaskResource get vTask used resource.
 func (tp *VirtualNPU) GetTaskResource(task *api.TaskInfo, node plugin.NPUNode) (util.VResource, error) {
+	if tp == nil || task == nil {
+		klog.V(util.LogDebugLev).Infof("GetTaskResource failed:%s", util.ArgumentError)
+		return util.VResource{}, errors.New(util.ArgumentError)
+	}
 	klog.V(util.LogDebugLev).Infof("enter task<%s> GetTaskResource", task.Name)
 	coreNum, err := getAiCoreNumFromTask(task)
 	if err != nil {

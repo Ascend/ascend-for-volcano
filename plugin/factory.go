@@ -103,7 +103,7 @@ func (sHandle *ScheduleHandler) checkSession(ssn *framework.Session) error {
 
 // InitJobsFromSsn init all jobs in ssn.
 func (sHandle *ScheduleHandler) InitJobsFromSsn(ssn *framework.Session) {
-	if sHandle == nil {
+	if sHandle == nil || ssn == nil {
 		klog.V(util.LogInfoLev).Infof("InitJobsFromSsn failed: %s.", util.ArgumentError)
 		return
 	}
@@ -166,6 +166,10 @@ func (vf *VolcanoFrame) AddDefaultSchedulerSelectorConfig() {
 
 // CheckVNPUSegmentEnableByConfig Check VNPU segmentEnable by init plugin parameters, return true if static
 func (vf *VolcanoFrame) CheckVNPUSegmentEnableByConfig() bool {
+	if vf == nil {
+		klog.V(util.LogDebugLev).Infof("CheckVNPUSegmentEnableByConfig failed: %s.", util.ArgumentError)
+		return false
+	}
 	configuration, err := util.GetConfigFromSchedulerConfigMap(util.CMInitParamKey, vf.Confs)
 	if err != nil {
 		klog.V(util.LogDebugLev).Info("cannot get configuration, segmentEnable.")
@@ -363,6 +367,10 @@ func (sHandle *ScheduleHandler) BeforeCloseHandler(ssn *framework.Session) {
 
 // InitNPUSession init npu plugin and nodes.
 func (sHandle *ScheduleHandler) InitNPUSession(ssn *framework.Session) error {
+	if sHandle == nil || ssn == nil {
+		klog.V(util.LogDebugLev).Infof("InitNPUSession failed: %s.", util.ArgumentError)
+		return errors.New(util.ArgumentError)
+	}
 	klog.V(util.LogDebugLev).Infof("enter %s InitNPUSession.", PluginName)
 	defer klog.V(util.LogDebugLev).Infof("leave %s InitNPUSession.", PluginName)
 
@@ -395,6 +403,10 @@ func (sHandle *ScheduleHandler) InitNPUSession(ssn *framework.Session) error {
 
 // AddConfigMap add deviceInfo to cache
 func (sHandle *ScheduleHandler) AddConfigMap(obj interface{}) {
+	if sHandle == nil {
+		klog.V(util.LogDebugLev).Infof("AddConfigMap failed: %s.", util.ArgumentError)
+		return
+	}
 	klog.V(util.LogInfoLev).Infof("Add DeviceInfo to cache")
 	sHandle.createOrUpdateDeviceInfo(obj)
 
@@ -402,6 +414,10 @@ func (sHandle *ScheduleHandler) AddConfigMap(obj interface{}) {
 
 // UpdateConfigMap update deviceInfo in cache
 func (sHandle *ScheduleHandler) UpdateConfigMap(old, new interface{}) {
+	if sHandle == nil {
+		klog.V(util.LogDebugLev).Infof("UpdateConfigMap failed: %s.", util.ArgumentError)
+		return
+	}
 	klog.V(util.LogInfoLev).Infof("Update DeviceInfo to cache")
 	sHandle.createOrUpdateDeviceInfo(new)
 
@@ -409,6 +425,10 @@ func (sHandle *ScheduleHandler) UpdateConfigMap(old, new interface{}) {
 
 // DeleteConfigMap del deviceInfo in cache
 func (sHandle *ScheduleHandler) DeleteConfigMap(obj interface{}) {
+	if sHandle == nil {
+		klog.V(util.LogDebugLev).Infof("DeleteConfigMap failed: %s.", util.ArgumentError)
+		return
+	}
 	klog.V(util.LogInfoLev).Infof("Del DeviceInfo to cache")
 	cm, ok := obj.(*v12.ConfigMap)
 	if !ok {
@@ -454,6 +474,10 @@ func (sHandle *ScheduleHandler) GetNPUScheduler(name string) (ISchedulerPlugin, 
 
 // BatchNodeOrderFn Score the selected nodes.
 func (sHandle *ScheduleHandler) BatchNodeOrderFn(task *api.TaskInfo, nodes []*api.NodeInfo) (map[string]float64, error) {
+	if sHandle == nil || task == nil || len(nodes) == 0 {
+		klog.V(util.LogDebugLev).Infof("BatchNodeOrderFn failed: %s.", util.ArgumentError)
+		return nil, errors.New(util.ArgumentError)
+	}
 	klog.V(util.LogInfoLev).Infof("Enter batchNodeOrderFn")
 	defer klog.V(util.LogInfoLev).Infof("leaving batchNodeOrderFn")
 

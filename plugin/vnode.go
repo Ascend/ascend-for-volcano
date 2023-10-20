@@ -127,7 +127,7 @@ func (n *NPUNode) setTotalResAndChipNumByTemplates() error {
 
 	numCorePerChip, err := n.getVChipCoreNum()
 	if err != nil || numCorePerChip == 0 {
-		return fmt.Errorf("getTotalChipNum error: %v or numCorePerChip zero number: %d", 
+		return fmt.Errorf("getTotalChipNum error: %v or numCorePerChip zero number: %d",
 			util.SafePrint(err), numCorePerChip)
 	}
 	n.AiCorePerChip = numCorePerChip
@@ -247,6 +247,10 @@ func (vNode *VNode) getTotalChipNum() (int, error) {
 
 // NewVChip create new vChip
 func (vNode *VNode) NewVChip(id int, totalRes util.VResource) *VChip {
+	if vNode == nil {
+		klog.V(util.LogDebugLev).Infof("NewVChip failed: %s", util.ArgumentError)
+		return nil
+	}
 	chipName := vNode.ChipKind + "-" + strconv.Itoa(id)
 	vChip := VChip{
 		PodMap:   make(map[string]*v1.Pod, util.MapInitNum),
@@ -414,6 +418,10 @@ func (vChip *VChip) addPodToPodMap(pod *v1.Pod) {
 
 // UpdateDVPP update dvpp according to pod resource
 func (vChip *VChip) UpdateDVPP(podResDVPP string) {
+	if vChip == nil {
+		klog.V(util.LogDebugLev).Infof("UpdateDVPP failed: %s", util.ArgumentError)
+		return
+	}
 	if podResDVPP == AscendDVPPEnabledOn {
 		vChip.UsedRes.DVPP = AscendDVPPEnabledOn
 		vChip.FreeRes.DVPP = AscendDVPPEnabledOff
@@ -473,6 +481,10 @@ func (vNode VNode) isNodeChipResEnoughWholeCard(vRes util.VResource) bool {
 
 // IsChipMeetResReq check chip resource can be allocated as the task requires
 func (vChip *VChip) IsChipMeetResReq(vRes util.VResource) bool {
+	if vChip == nil {
+		klog.V(util.LogDebugLev).Infof("IsChipMeetResReq failed: %s", util.ArgumentError)
+		return false
+	}
 	if !vChip.isChipResourceEnough(vRes) {
 		klog.V(util.LogDebugLev).Infof("vChip %s resource <%#v> not enough", vChip.Name, vChip.FreeRes)
 		return false
@@ -563,6 +575,10 @@ func (vChip *VChip) isChipDVPPValid(vRes util.VResource) bool {
 
 // SelectChipFromNode get chip with least resource that meets vRes requirements
 func (vNode *VNode) SelectChipFromNode(vRes util.VResource) (string, error) {
+	if vNode == nil {
+		klog.V(util.LogDebugLev).Infof("SelectChipFromNode failed: %s", util.ArgumentError)
+		return "", errors.New(util.ArgumentError)
+	}
 	var vChipSlice []*VChip
 	for _, Chip := range vNode.Chips {
 		vChipSlice = append(vChipSlice, Chip)
@@ -633,6 +649,10 @@ func (vNode *VNode) selectChipFromNodeWhole(vChips []*VChip, vRes util.VResource
 
 // IsResourceWholeCard judge if resource is whole card by node total resource
 func (vNode *VNode) IsResourceWholeCard(aiCore int) bool {
+	if vNode == nil {
+		klog.V(util.LogDebugLev).Infof("IsResourceWholeCard failed: %s", util.ArgumentError)
+		return false
+	}
 	chipCoreNum, err := vNode.getVChipCoreNum()
 	if err != nil || chipCoreNum == 0 {
 		klog.V(util.LogWarningLev).Infof("IsResourceWholeCard get chipCoreNum failed or zero number")
