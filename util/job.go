@@ -22,6 +22,7 @@ package util
 import (
 	"strings"
 
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -49,10 +50,11 @@ type VJob struct {
 // NPUJob only npu vcJob have.
 type NPUJob struct {
 	// the mapKey is taskID, not Name.
-	Tasks      map[api.TaskID]NPUTask
-	NPUTaskNum int
-	ReqNPUName string
-	ReqNPUNum  int
+	Tasks         map[api.TaskID]NPUTask
+	SelectServers string
+	NPUTaskNum    int
+	ReqNPUName    string
+	ReqNPUNum     int
 	*VJob
 }
 
@@ -176,6 +178,13 @@ func (nJob *NPUJob) SetJobStatusByInf(vcJob *api.JobInfo) {
 func ReferenceNameOfJob(job *api.JobInfo) string {
 	if job != nil && job.PodGroup != nil && len(job.PodGroup.OwnerReferences) > 0 {
 		return job.PodGroup.OwnerReferences[0].Name
+	}
+	return ""
+}
+
+func UuidOfJob(job *api.JobInfo) types.UID {
+	if job != nil && job.PodGroup != nil && len(job.PodGroup.OwnerReferences) > 0 {
+		return job.PodGroup.OwnerReferences[0].UID
 	}
 	return ""
 }

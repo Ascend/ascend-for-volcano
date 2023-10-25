@@ -21,6 +21,7 @@ package main
 
 import (
 	"strings"
+	"sync"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
@@ -88,7 +89,11 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 	})
 
 	ssn.AddJobReadyFn(tp.Name(), func(obj interface{}) bool {
-		ji := obj.(*api.JobInfo)
+		ji, ok := obj.(*api.JobInfo)
+		if !ok {
+			klog.V(util.LogErrorLev).Info("obj assertion failed.")
+			return false
+		}
 		k, ok := ji.PodGroup.Labels[plugin.TorAffinityKey]
 		if !ok || k == plugin.NullTag {
 			return true
@@ -190,8 +195,12 @@ func HandlerStart() *plugin.ScheduleHandler {
 	scheduleHandler := &plugin.ScheduleHandler{
 		NPUPlugins: map[string]plugin.NPUBuilder{},
 		ScheduleEnv: plugin.ScheduleEnv{
-			Jobs:      map[api.JobID]plugin.SchedulerJob{},
-			Nodes:     map[string]plugin.NPUNode{},
+			Jobs:  map[api.JobID]plugin.SchedulerJob{},
+			Nodes: map[string]plugin.NPUNode{},
+			DeviceInfos: &plugin.DeviceInfosWithMutex{
+				Mutex:   sync.Mutex{},
+				Devices: map[string]plugin.NodeDeviceInfo{},
+			},
 			FrameAttr: plugin.VolcanoFrame{},
 		},
 	}

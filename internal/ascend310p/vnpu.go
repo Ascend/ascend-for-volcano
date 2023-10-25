@@ -23,16 +23,28 @@ import (
 )
 
 func (tp *ascend310P) GetVNPUTemplate() {
+	if tp == nil {
+		klog.V(util.LogDebugLev).Infof("GetVNPUTemplate failed:%s", util.ArgumentError)
+		return
+	}
 	tp.vHandle.VT = vnpu.VTemplate{
 		Data: tp.FrameAttr.VJobTemplate[plugin.Ascend310P],
 	}
 }
 
 func (tp *ascend310P) GetPresetVirtualDevices() {
+	if tp == nil {
+		klog.V(util.LogDebugLev).Infof("GetPresetVirtualDevices failed:%s", util.ArgumentError)
+		return
+	}
 	tp.vHandle.StaticByConf = tp.FrameAttr.CheckVNPUSegmentEnableByConfig()
 }
 
 func (tp *ascend310P) InitVNPU() {
+	if tp == nil {
+		klog.V(util.LogDebugLev).Infof("InitVNPU failed:%s", util.ArgumentError)
+		return
+	}
 	tp.vHandle = &vnpu.VirtualNPU{
 		DynamicVNPU: vnpu.DynamicVNPU{
 			DowngradeCache: make(map[string][]string, util.MapInitNum),

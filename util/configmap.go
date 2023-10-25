@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -121,6 +122,19 @@ func UpdateConfigmapIncrementally(kubeClient kubernetes.Interface, ns, name stri
 	checkCode := MakeDataHash(newData)
 	newData[CmCheckCode] = checkCode
 	return newData, nil
+}
+
+// CheckConfigMapIsDeviceInfo check configmap is device info
+func CheckConfigMapIsDeviceInfo(obj interface{}) bool {
+	cm, ok := obj.(*v1.ConfigMap)
+	if !ok {
+		klog.V(LogErrorLev).Infof("Cannot convert to ConfigMap:%#v", obj)
+		return false
+	}
+	if cm.Namespace != DevInfoNameSpace || !strings.HasPrefix(cm.Name, DevInfoPreName) {
+		return false
+	}
+	return true
 }
 
 // MakeDataHash check code for configmap

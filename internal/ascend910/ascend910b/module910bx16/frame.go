@@ -90,7 +90,7 @@ func (tp *module910bx16) PreStartAction(ssn *framework.Session) error {
 	tp.reHandle.NewCommonReScheduler(rescheduling.CmFaultJob910bx16Kind)
 	tp.reHandle.SynCacheFaultNodeWithSession(util.NPU910CardName)
 	tp.reHandle.AddFaultNodeWithSession(util.NPU910CardName)
-	tp.reHandle.SynCacheFaultJobWithSession(ssn, util.NPU910CardName, util.NPU910CardNamePre)
+	tp.reHandle.SynCacheFaultJobWithSession(ssn)
 	tp.reHandle.SynCacheNodeRankOccMapWithSession(ssn)
 	// 1. restart Fault Jobs that are recorded in cache
 	if restartErr := tp.reHandle.RestartNeedForceDeleteJobs(ssn); restartErr != nil {
@@ -150,12 +150,13 @@ func (tp *module910bx16) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUN
 
 	if err = tp.Judge910BNodeAndTaskNPU(taskNPUNum, nodeTop); err != nil {
 		klog.V(util.LogErrorLev).Infof("%s Judge910BNodeAndTaskNPU err: %s", tp.GetPluginName(), err.Error())
-		return fmt.Errorf("checkNodeNPUByTask %s err: %s", util.NodeNotMeetTopologyWarning, err.Error())
+		return fmt.Errorf("npu topology not meet job require,network unhealthy card is [ %s ]",
+			node.Annotation[tp.netUnhealthyKey])
 	}
 
 	if tp.reHandle != nil {
-		if reErr := tp.reHandle.CheckNodeNPUByTask(task, node); reErr != nil {
-			return fmt.Errorf("rescheduling CheckNodeNPUByTask %s", reErr.Error())
+		if reErr := tp.reHandle.CheckNodeNPUByTask(task, node, tp.ReqNPUName); reErr != nil {
+			return fmt.Errorf("rescheduling %s", reErr.Error())
 		}
 	}
 	return nil

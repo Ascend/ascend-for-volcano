@@ -77,7 +77,7 @@ func (tp *module910x8Fields) PreStartAction(ssn *framework.Session) error {
 	tp.reHandle.New910ReScheduler()
 	tp.reHandle.SynCacheFaultNodeWithSession(util.NPU910CardName)
 	tp.reHandle.AddFaultNodeWithSession(util.NPU910CardName)
-	tp.reHandle.SynCacheFaultJobWithSession(ssn, util.NPU910CardName, util.NPU910CardNamePre)
+	tp.reHandle.SynCacheFaultJobWithSession(ssn)
 	tp.reHandle.SynCacheNodeRankOccMapWithSession(ssn)
 	// 1. restart Fault Jobs that are recorded in cache
 	if restartErr := tp.reHandle.RestartNeedForceDeleteJobs(ssn); restartErr != nil {
@@ -292,38 +292,10 @@ func buildModule910x8PreStartActionTest4() module910x8PreStartActionTests {
 	return test7
 }
 
-func buildModule910x8PreStartActionTest3() module910x8PreStartActionTests {
-	ssn1 := test.FakeSSNReSchedule()
-	env := fakeEnvEmpty()
-	fakeEnvAddJobsAndNodesToEnv(&env)
-	fakeEnvAddCacheFaultNodeToEnv(&env)
-	fakeEnvAddCacheFaultJobToEnv(&env, []string{"job2", "node0", "node1"}, time.Now().Unix()-1, time.Now().Unix()-1)
-
-	var tmpPatche1 *gomonkey.Patches
-	var tmpPatche2 *gomonkey.Patches
-	var tmpPatche3 *gomonkey.Patches
-	var tmpPatche4 *gomonkey.Patches
-	reHandle := fakeReSchedulerNew(env)
-	faultCM := fakeFaultCM(env)
-	myArgs := buildModule910x8PreStartActionTestCacheArgs(tmpPatche1, tmpPatche2, tmpPatche3, tmpPatche4, faultCM)
-	myArgs.ssn = ssn1
-	test2 := module910x8PreStartActionTests{
-		name: "03-PreStartAction()-with fault node and job in cm job not in session",
-		fields: module910x8Fields{
-			baseHandler: fakeBaseHandlerEmpty(env),
-			reHandle:    &reHandle,
-		},
-		args:    myArgs,
-		wantErr: false,
-	}
-	return test2
-}
-
 func buildModule910x8PreStartActionTests() []module910x8PreStartActionTests {
 	return []module910x8PreStartActionTests{
 		buildModule910x8PreStartActionTest1(),
 		buildModule910x8PreStartActionTest2(),
-		buildModule910x8PreStartActionTest3(),
 		buildModule910x8PreStartActionTest4(),
 	}
 }

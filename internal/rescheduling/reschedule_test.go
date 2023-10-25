@@ -20,6 +20,7 @@ Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
 package rescheduling
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 
@@ -907,9 +908,10 @@ type ReSchedulerCheckNodeNPUByTaskArgs struct {
 
 type ReSchedulerCheckNodeNPUByTaskTests struct {
 	name    string
+	npuName string
 	fields  TestReScheduler
 	args    ReSchedulerCheckNodeNPUByTaskArgs
-	wantErr bool
+	wantErr error
 }
 
 func buildReSchedulerCheckNodeNPUByTaskTests() []ReSchedulerCheckNodeNPUByTaskTests {
@@ -942,9 +944,10 @@ func buildReSchedulerCheckNodeNPUByTaskTests() []ReSchedulerCheckNodeNPUByTaskTe
 	}
 	test1 := ReSchedulerCheckNodeNPUByTaskTests{
 		name:    "01-CheckNodeNPUByTaskTests()-old task bind to new pod should be abandoned",
+		npuName: util.NPU910CardName,
 		fields:  field1,
 		args:    arg1,
-		wantErr: true,
+		wantErr: errors.New("task pod1 corresponding job not in session"),
 	}
 	tests := []ReSchedulerCheckNodeNPUByTaskTests{
 		test1,
@@ -958,7 +961,8 @@ func TestReSchedulerCheckNodeNPUByTask(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			reScheduler := fakeTestTTReScheduler(tt.fields)
-			if err := reScheduler.CheckNodeNPUByTask(tt.args.task, tt.args.vcNode); (err != nil) != tt.wantErr {
+			if err := reScheduler.CheckNodeNPUByTask(tt.args.task, tt.args.vcNode, tt.npuName); !reflect.DeepEqual(err,
+				tt.wantErr) {
 				t.Errorf("CheckNodeNPUByTask() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -1060,7 +1064,7 @@ func buildReSchedulerUseAnnotationTestArgs(nodeName string) ReSchedulerUseAnnota
 }
 
 func buildReSchedulerUseAnnotationTestFields(faultNode *FaultNode, faultJob0 *FaultJob,
-	allocNodeRankTimeMap map[api.JobID][]AllocNodeRankOccurrence) TestReScheduler {
+	allocNodeRankTimeMap map[api.JobID][]*AllocNodeRankOccurrence) TestReScheduler {
 	reScheduler := TestReScheduler{
 		DealReSchedulerCache: &DealReSchedulerCache{
 			DealReSchedulerConfigmap:   nil,
@@ -1076,8 +1080,8 @@ func buildReSchedulerUseAnnotationTestFields(faultNode *FaultNode, faultJob0 *Fa
 	return reScheduler
 }
 
-func buildReSchedulerUseAnnotationRankIndexMap(nodeName string, rankIndex string, occ int) AllocNodeRankOccurrence {
-	mapData := AllocNodeRankOccurrence{
+func buildReSchedulerUseAnnotationRankIndexMap(nodeName string, rankIndex string, occ int) *AllocNodeRankOccurrence {
+	mapData := &AllocNodeRankOccurrence{
 		NodeName:   nodeName,
 		RankIndex:  rankIndex,
 		Occurrence: occ,
@@ -1091,7 +1095,7 @@ func buildReSchedulerUseAnnotationTests() []ReSchedulerUseAnnotationTests {
 	faultJob0 := fakeTestFaultJob([]string{"node0", "node1"}, []string{"0", "1"}, []FaultTask{*faultTask00,
 		*faultTask01}, "job0", "vcjob")
 	faultNode := fakeTestFaultNodeNodeUnhealthy("node0")
-	allocNodeRankTimeMap := map[api.JobID][]AllocNodeRankOccurrence{
+	allocNodeRankTimeMap := map[api.JobID][]*AllocNodeRankOccurrence{
 		api.JobID("vcjob/job0"): {
 			buildReSchedulerUseAnnotationRankIndexMap("node0", "0", 0),
 			buildReSchedulerUseAnnotationRankIndexMap("node1", "1", 0),
@@ -1109,7 +1113,7 @@ func buildReSchedulerUseAnnotationTests() []ReSchedulerUseAnnotationTests {
 		args:    buildReSchedulerUseAnnotationTestArgs("node2"),
 		wantErr: false,
 	}
-	allocNodeRankTimeMap3 := map[api.JobID][]AllocNodeRankOccurrence{
+	allocNodeRankTimeMap3 := map[api.JobID][]*AllocNodeRankOccurrence{
 		api.JobID("vcjob/job0"): {
 			buildReSchedulerUseAnnotationRankIndexMap("node0", "0", 1),
 			buildReSchedulerUseAnnotationRankIndexMap("node1", "1", 0),

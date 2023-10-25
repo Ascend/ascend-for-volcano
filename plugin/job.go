@@ -381,6 +381,9 @@ func CheckNetSliceIsMeetJobRequire(sJob SchedulerJob, sHandler *ScheduleHandler,
 	}
 	logicList := sJob.GetLogicTorList(sHandler, netSliceNum)
 	taskRow, taskColumn := GetTaskRowAndTaskColumn(n, netSliceNum)
+	if taskRow == -1 && taskColumn == -1 {
+		return fmt.Errorf("taskRow and taskColumn is illegal")
+	}
 	if taskRow+1 < fullTorNum {
 		sJob.SetJobServerCacheTosHandler(sHandler, sHandler.Tors.Tors, taskRow, taskColumn)
 		sJob.MarkMulJobServerList()
@@ -431,6 +434,14 @@ func CheckNetSliceIsMeetJobRequire(sJob SchedulerJob, sHandler *ScheduleHandler,
 }
 
 func (sJob *SchedulerJob) SetJobServerCacheTosHandler(sHandler *ScheduleHandler, pyTor []*Tor, taskRow, taskColumn int) {
+	if sJob == nil || sHandler == nil || len(pyTor) == 0 {
+		klog.V(util.LogDebugLev).Infof("SetJobServerCacheTosHandler failed:%s", util.ArgumentError)
+		return
+	}
+	if taskRow >= len(pyTor) {
+		klog.V(util.LogDebugLev).Infof("invalid taskRow: %d, pyTor length: %d", taskRow, len(pyTor))
+		return
+	}
 	tmpTors := pyTor[:taskRow]
 	tmpTor := &Tor{}
 	tmpTor.Servers = append(tmpTor.Servers, pyTor[taskRow].Servers[:taskColumn+1]...)
@@ -455,6 +466,9 @@ func (sJob *SchedulerJob) MarkMulJobServerList() {
 }
 
 func GetTaskRowAndTaskColumn(nTaskNum int, netSliceNum int) (int, int) {
+	if netSliceNum == 0 {
+		return -1, -1
+	}
 	taskRow := nTaskNum / netSliceNum
 	if nTaskNum%netSliceNum == 0 {
 		taskRow = nTaskNum/netSliceNum - 1
@@ -486,6 +500,10 @@ func (sJob SchedulerJob) GetPhyTosList(sHandler *ScheduleHandler, logicList [][]
 	for i := 0; i <= len(logicList[0]); i++ {
 		tmpTor := &Tor{}
 		for j := 0; j < sHandler.Tors.TorCount; j++ {
+			if j >= len(logicList) {
+				klog.V(util.LogDebugLev).Infof("invalid j: %d, logicList length: %d", j, len(logicList))
+				return tors, fullTor
+			}
 			if len(logicList[j]) < i+1 {
 				break
 			}
@@ -523,6 +541,10 @@ func (sJob SchedulerJob) SetFillJobServerList(sHandler *ScheduleHandler, Tors []
 }
 
 func (sJob *SchedulerJob) SetNormalJobServerList(sHandler *ScheduleHandler) {
+	if sJob == nil || sHandler == nil {
+		klog.V(util.LogDebugLev).Infof("SetNormalJobServerList failed:%s", util.ArgumentError)
+		return
+	}
 	sJob.ServerList = nil
 	var count int
 	taskNum := sJob.NPUTaskNum
@@ -544,17 +566,24 @@ func (sJob *SchedulerJob) SetNormalJobServerList(sHandler *ScheduleHandler) {
 			}
 		}
 		sJob.ServerList = append(sJob.ServerList, tmpTor)
-		if len(sJob.ServerList) > 1 {
-			sJob.MarkMulJobServerList()
-		}
+	}
+	if len(sJob.ServerList) > 1 {
+		sJob.MarkMulJobServerList()
 	}
 }
 
 func (sJob SchedulerJob) GetLogicTorList(sHandler *ScheduleHandler, netSliceNum int) [][]*Server {
+	if netSliceNum > util.MaxSliceNum {
+		klog.V(util.LogDebugLev).Infof("GetLogicTorList failed:%s", util.ArgumentError)
+		return nil
+	}
 	logicTorList := make([][]*Server, netSliceNum)
 	for _, tor := range sHandler.Tors.Tors {
 		for i, server := range tor.Servers {
 			if server.CurrentJob == sJob.Name {
+				if i >= len(logicTorList) {
+					klog.V(util.LogDebugLev).Infof("invalid i: %d, logicTorList length: %d", i, len(logicTorList))
+				}
 				logicTorList[i] = append(logicTorList[i], server)
 			}
 		}
@@ -570,6 +599,7 @@ func (sJob *SchedulerJob) GetEnableServerList(nodes []*api.NodeInfo, sHandler *S
 	if sHandler.Tors == nil {
 		return
 	}
+	sJob.SelectServers = ""
 	sJob.getNormalTorListBeforeRestart(sHandler.Tors.TorCount)
 	for _, node := range nodes {
 		for _, tor := range sHandler.Tors.Tors {
@@ -579,6 +609,7 @@ func (sJob *SchedulerJob) GetEnableServerList(nodes []*api.NodeInfo, sHandler *S
 			for _, server := range tor.Servers {
 				if server.Name == node.Name && sJob.HealthTorRankIndex[node.Name] == "" {
 					server.CurrentJob = sJob.Name
+					sJob.SelectServers += node.Name + " "
 				}
 			}
 		}
@@ -586,13 +617,19 @@ func (sJob *SchedulerJob) GetEnableServerList(nodes []*api.NodeInfo, sHandler *S
 }
 
 func (sJob *SchedulerJob) getNormalTorListBeforeRestart(torCount int) {
+	if torCount == 0 {
+		klog.V(util.LogInfoLev).Infof("getNormalTorListBeforeRestart torCount is zero number")
+		return
+	}
 	m := make(map[string]string)
 	var faultIndex, faultIndexEnd int
 	if nrt, ok := sJob.Annotation[JobDeleteFlag]; ok {
 		var rts []AllocNodeRankOccurrence
 		err := json.Unmarshal([]byte(nrt), &rts)
 		if err != nil {
-			klog.V(util.LogInfoLev).Infof("Unmarshal job %s AllocNodeRankOccurrence failed:%s", sJob.Name, err)
+			klog.V(util.LogInfoLev).Infof("Unmarshal job %s AllocNodeRankOccurrence failed:%s", sJob.Name,
+				util.SafePrint(err))
+			return
 		}
 		for _, rt := range rts {
 			if rt.IsFault {
@@ -607,7 +644,11 @@ func (sJob *SchedulerJob) getNormalTorListBeforeRestart(torCount int) {
 			}
 		}
 		for _, rt := range rts {
-			i, _ := strconv.Atoi(rt.RankIndex)
+			i, err := strconv.Atoi(rt.RankIndex)
+			if err != nil {
+				klog.V(util.LogInfoLev).Infof("getNormalTorListBeforeRestart change RankIndex to int failed")
+				return
+			}
 			if i >= faultIndex && i < faultIndexEnd {
 				continue
 			}
@@ -626,6 +667,10 @@ func (sJob SchedulerJob) SortJobServerListBySliceId() []*Tor {
 }
 
 func (sJob *SchedulerJob) SetJobRankIndex() {
+	if sJob == nil {
+		klog.V(util.LogDebugLev).Infof("SetJobRankIndex failed:%s", util.ArgumentError)
+		return
+	}
 	var rankIndex int
 	rankIndex = sJob.FaultIndex
 	for _, tor := range sJob.ServerList {

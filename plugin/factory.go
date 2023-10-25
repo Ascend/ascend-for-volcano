@@ -27,6 +27,8 @@ import (
 	"gopkg.in/yaml.v2"
 	v12 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
 	"k8s.io/kube-scheduler/extender/v1"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -101,7 +103,7 @@ func (sHandle *ScheduleHandler) checkSession(ssn *framework.Session) error {
 
 // InitJobsFromSsn init all jobs in ssn.
 func (sHandle *ScheduleHandler) InitJobsFromSsn(ssn *framework.Session) {
-	if sHandle == nil {
+	if sHandle == nil || ssn == nil {
 		klog.V(util.LogInfoLev).Infof("InitJobsFromSsn failed: %s.", util.ArgumentError)
 		return
 	}
@@ -164,6 +166,10 @@ func (vf *VolcanoFrame) AddDefaultSchedulerSelectorConfig() {
 
 // CheckVNPUSegmentEnableByConfig Check VNPU segmentEnable by init plugin parameters, return true if static
 func (vf *VolcanoFrame) CheckVNPUSegmentEnableByConfig() bool {
+	if vf == nil {
+		klog.V(util.LogDebugLev).Infof("CheckVNPUSegmentEnableByConfig failed: %s.", util.ArgumentError)
+		return false
+	}
 	configuration, err := util.GetConfigFromSchedulerConfigMap(util.CMInitParamKey, vf.Confs)
 	if err != nil {
 		klog.V(util.LogDebugLev).Info("cannot get configuration, segmentEnable.")
@@ -361,6 +367,10 @@ func (sHandle *ScheduleHandler) BeforeCloseHandler(ssn *framework.Session) {
 
 // InitNPUSession init npu plugin and nodes.
 func (sHandle *ScheduleHandler) InitNPUSession(ssn *framework.Session) error {
+	if sHandle == nil || ssn == nil {
+		klog.V(util.LogDebugLev).Infof("InitNPUSession failed: %s.", util.ArgumentError)
+		return errors.New(util.ArgumentError)
+	}
 	klog.V(util.LogDebugLev).Infof("enter %s InitNPUSession.", PluginName)
 	defer klog.V(util.LogDebugLev).Infof("leave %s InitNPUSession.", PluginName)
 
@@ -368,7 +378,18 @@ func (sHandle *ScheduleHandler) InitNPUSession(ssn *framework.Session) error {
 		klog.V(util.LogErrorLev).Infof("%s checkSession : %s.", PluginName, err)
 		return err
 	}
-
+	sHandle.Do(func() {
+		cmInformer := ssn.InformerFactory().Core().V1().ConfigMaps().Informer()
+		cmInformer.AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: util.CheckConfigMapIsDeviceInfo,
+			Handler: cache.ResourceEventHandlerFuncs{
+				AddFunc:    sHandle.AddConfigMap,
+				UpdateFunc: sHandle.UpdateConfigMap,
+				DeleteFunc: sHandle.DeleteConfigMap,
+			},
+		})
+		ssn.InformerFactory().Start(wait.NeverStop)
+	})
 	sHandle.InitVolcanoFrameFromSsn(ssn)
 	sHandle.InitNodesFromSsn(ssn)
 	sHandle.InitJobsFromSsn(ssn)
@@ -378,6 +399,63 @@ func (sHandle *ScheduleHandler) InitNPUSession(ssn *framework.Session) error {
 	sHandle.InitCache()
 	sHandle.PreStartPlugin(ssn)
 	return nil
+}
+
+// AddConfigMap add deviceInfo to cache
+func (sHandle *ScheduleHandler) AddConfigMap(obj interface{}) {
+	if sHandle == nil {
+		klog.V(util.LogDebugLev).Infof("AddConfigMap failed: %s.", util.ArgumentError)
+		return
+	}
+	klog.V(util.LogInfoLev).Infof("Add DeviceInfo to cache")
+	sHandle.createOrUpdateDeviceInfo(obj)
+
+}
+
+// UpdateConfigMap update deviceInfo in cache
+func (sHandle *ScheduleHandler) UpdateConfigMap(old, new interface{}) {
+	if sHandle == nil {
+		klog.V(util.LogDebugLev).Infof("UpdateConfigMap failed: %s.", util.ArgumentError)
+		return
+	}
+	klog.V(util.LogInfoLev).Infof("Update DeviceInfo to cache")
+	sHandle.createOrUpdateDeviceInfo(new)
+
+}
+
+// DeleteConfigMap del deviceInfo in cache
+func (sHandle *ScheduleHandler) DeleteConfigMap(obj interface{}) {
+	if sHandle == nil {
+		klog.V(util.LogDebugLev).Infof("DeleteConfigMap failed: %s.", util.ArgumentError)
+		return
+	}
+	klog.V(util.LogInfoLev).Infof("Del DeviceInfo to cache")
+	cm, ok := obj.(*v12.ConfigMap)
+	if !ok {
+		klog.V(util.LogErrorLev).Infof("Cannot convert to ConfigMap:%#v", obj)
+		return
+	}
+	nodeName := strings.TrimPrefix(cm.Name, util.DevInfoPreName)
+	sHandle.DeviceInfos.Lock()
+	delete(sHandle.DeviceInfos.Devices, nodeName)
+	sHandle.DeviceInfos.Unlock()
+}
+
+func (sHandle *ScheduleHandler) createOrUpdateDeviceInfo(obj interface{}) {
+	cm, ok := obj.(*v12.ConfigMap)
+	if !ok {
+		klog.V(util.LogErrorLev).Infof("Cannot convert to ConfigMap:%#v", obj)
+		return
+	}
+	deviceInfo, err := getNodeDeviceInfoFromCM(cm)
+	if err != nil {
+		klog.V(util.LogWarningLev).Infof("get device info failed:%s", err)
+		return
+	}
+	nodeName := strings.TrimPrefix(cm.Name, util.DevInfoPreName)
+	sHandle.DeviceInfos.Lock()
+	sHandle.DeviceInfos.Devices[nodeName] = deviceInfo
+	sHandle.DeviceInfos.Unlock()
 }
 
 // GetNPUScheduler get the NPU scheduler by name
@@ -396,6 +474,10 @@ func (sHandle *ScheduleHandler) GetNPUScheduler(name string) (ISchedulerPlugin, 
 
 // BatchNodeOrderFn Score the selected nodes.
 func (sHandle *ScheduleHandler) BatchNodeOrderFn(task *api.TaskInfo, nodes []*api.NodeInfo) (map[string]float64, error) {
+	if sHandle == nil || task == nil || len(nodes) == 0 {
+		klog.V(util.LogDebugLev).Infof("BatchNodeOrderFn failed: %s.", util.ArgumentError)
+		return nil, errors.New(util.ArgumentError)
+	}
 	klog.V(util.LogInfoLev).Infof("Enter batchNodeOrderFn")
 	defer klog.V(util.LogInfoLev).Infof("leaving batchNodeOrderFn")
 
@@ -443,7 +525,8 @@ func (sHandle *ScheduleHandler) SetTorAffinityJobNodesScore(task *api.TaskInfo, 
 	result := CheckNetSliceIsMeetJobRequire(vcJob, sHandle, nodes)
 	vcJob = sHandle.Jobs[task.Job]
 	if result != nil {
-		klog.V(util.LogErrorLev).Infof("check job %s tor affinity failed: %s", vcJob.Name, result)
+		klog.V(util.LogErrorLev).Infof("check job %s tor affinity failed: %s,"+
+			"used servers is %s", vcJob.Name, result, vcJob.SelectServers)
 		switch label {
 		case LargeModelTag:
 			vcJob.JobReadyTag = false
@@ -460,7 +543,7 @@ func (sHandle *ScheduleHandler) SetTorAffinityJobNodesScore(task *api.TaskInfo, 
 		klog.V(util.LogErrorLev).Infof("batchNodeOrderFn task[%s] failed[%#v].", task.Name, errGet)
 	}
 	klog.V(util.LogInfoLev).Infof("batchNodeOrderFn Get %s for NPU %+v.", task.Name, scoreMap)
-	return scoreMap, nil
+	return scoreMap, result
 }
 
 func (sHandle *ScheduleHandler) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo, sMap map[string]float64) error {

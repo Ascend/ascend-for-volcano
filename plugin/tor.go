@@ -22,6 +22,7 @@ package plugin
 
 import (
 	"encoding/json"
+	"errors"
 
 	"k8s.io/klog"
 	"volcano.sh/apis/pkg/apis/scheduling"
@@ -32,10 +33,14 @@ import (
 )
 
 func (sHandle *ScheduleHandler) InitTorNodeInfo(ssn *framework.Session) {
+	if sHandle == nil || ssn == nil {
+		klog.V(util.LogInfoLev).Infof("InitTorNodeInfo failed, err: %s", util.ArgumentError)
+		return
+	}
 	sHandle.Tors = nil
 	cm, err := util.GetConfigMapWithRetry(ssn.KubeClient(), util.DevInfoNameSpace, TorNodeCMName)
 	if err != nil {
-		klog.V(util.LogInfoLev).Infof("Get Tor-Node configmap failed, err: %s", err)
+		klog.V(util.LogInfoLev).Infof("Get Tor-Node configmap failed, err: %s", util.SafePrint(err))
 		return
 	}
 
@@ -46,7 +51,6 @@ func (sHandle *ScheduleHandler) InitTorNodeInfo(ssn *framework.Session) {
 		return
 	}
 
-	//torList.InitSlices()
 	torList.SyncBySsnNodes(sHandle.Nodes)
 	torList.SyncBySsnJobs(sHandle.Jobs)
 
@@ -108,10 +112,18 @@ type Servers struct {
 }
 
 func (tl *TorList) ParseFromString(info string) error {
+	if tl == nil {
+		klog.V(util.LogInfoLev).Infof("ParseFromString failed, err: %s", util.ArgumentError)
+		return errors.New(util.ArgumentError)
+	}
 	return json.Unmarshal([]byte(info), tl)
 }
 
 func (tl *TorList) SyncBySsnNodes(nodes map[string]NPUNode) {
+	if tl == nil {
+		klog.V(util.LogInfoLev).Infof("SyncBySsnNodes failed, err: %s", util.ArgumentError)
+		return
+	}
 	for _, node := range nodes {
 		if _, tNode := tl.GetTorAndServerByNodeIP(node.Address); tNode != nil {
 			tNode.NPUNode = node
@@ -120,12 +132,20 @@ func (tl *TorList) SyncBySsnNodes(nodes map[string]NPUNode) {
 }
 
 func (tl *TorList) SyncBySsnJobs(jobs map[api.JobID]SchedulerJob) {
+	if tl == nil {
+		klog.V(util.LogInfoLev).Infof("SyncBySsnJobs failed, err: %s", util.ArgumentError)
+		return
+	}
 	for _, job := range jobs {
 		tl.SyncByJob(job)
 	}
 }
 
 func (tl *TorList) SyncByJob(job SchedulerJob) {
+	if tl == nil {
+		klog.V(util.LogInfoLev).Infof("SyncByJob failed, err: %s", util.ArgumentError)
+		return
+	}
 	for _, task := range job.Tasks {
 		if task.NodeName == "" {
 			continue
@@ -147,6 +167,10 @@ func (tl *TorList) SyncByJob(job SchedulerJob) {
 }
 
 func (tl *TorList) GetTorAndServerByNodeIP(ip string) (*Tor, *Server) {
+	if tl == nil {
+		klog.V(util.LogInfoLev).Infof("GetTorAndServerByNodeIP failed: %s", util.ArgumentError)
+		return nil, nil
+	}
 	for _, tor := range tl.Tors {
 		for _, tNode := range tor.Servers {
 			if tNode.IP == ip {
@@ -158,6 +182,10 @@ func (tl *TorList) GetTorAndServerByNodeIP(ip string) (*Tor, *Server) {
 }
 
 func (tl *TorList) GetTorAndServerByNodeName(name string) (*Tor, *Server) {
+	if tl == nil {
+		klog.V(util.LogInfoLev).Infof("GetTorAndServerByNodeName failed: %s", util.ArgumentError)
+		return nil, nil
+	}
 	for _, tor := range tl.Tors {
 		for _, tNode := range tor.Servers {
 			if tNode.Name == name {
@@ -169,6 +197,10 @@ func (tl *TorList) GetTorAndServerByNodeName(name string) (*Tor, *Server) {
 }
 
 func (t *Tor) GetNodeByNodeName(name string) *Server {
+	if t == nil {
+		klog.V(util.LogInfoLev).Infof("GetNodeByNodeName failed: %s", util.ArgumentError)
+		return nil
+	}
 	for _, tNode := range t.Servers {
 		if tNode.Name == name {
 			return tNode
@@ -178,6 +210,10 @@ func (t *Tor) GetNodeByNodeName(name string) *Server {
 }
 
 func (t *Tor) GetNodeByNodeIP(ip string) *Server {
+	if t == nil {
+		klog.V(util.LogInfoLev).Infof("GetNodeByNodeIP failed: %s", util.ArgumentError)
+		return nil
+	}
 	for _, tNode := range t.Servers {
 		if tNode.IP == ip {
 			return tNode
@@ -187,6 +223,10 @@ func (t *Tor) GetNodeByNodeIP(ip string) *Server {
 }
 
 func (t *Tor) HasAcrossJob() bool {
+	if t == nil {
+		klog.V(util.LogInfoLev).Infof("HasAcrossJob failed: %s", util.ArgumentError)
+		return false
+	}
 	for _, tNode := range t.Servers {
 		if tNode.IsUsedByMulJob {
 			return true

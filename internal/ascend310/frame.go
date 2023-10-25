@@ -113,7 +113,7 @@ func (tp *asend310) PreStartAction(ssn *framework.Session) error {
 	tp.reHandle.NewCommonReScheduler(rescheduling.CmFaultJob310x4Kind)
 	tp.reHandle.SynCacheFaultNodeWithSession(util.NPU310CardName)
 	tp.reHandle.AddFaultNodeWithSession(util.NPU310CardName)
-	tp.reHandle.SynCacheFaultJobWithSession(ssn, util.NPU310CardName, util.NPU310CardNamePre)
+	tp.reHandle.SynCacheFaultJobWithSession(ssn)
 	// 1. restart Fault Jobs that are recorded in cache
 	if restartErr := tp.reHandle.RestartNeedForceDeleteJobs(ssn); restartErr != nil {
 		klog.V(util.LogInfoLev).Infof("%s RestartNeedForceDeleteJobs: %s",
@@ -182,7 +182,7 @@ func (tp *asend310) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo,
 
 // UseAnnotation select npu for task from node
 func (tp *asend310) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
-	if tp == nil || len(node.Annotation) == 0 {
+	if tp == nil || task == nil || len(node.Annotation) == 0 {
 		err := errors.New(util.ArgumentError)
 		klog.V(util.LogErrorLev).Infof("%s UseAnnotation err: %s", PluginName, err.Error())
 		return nil

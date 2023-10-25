@@ -83,6 +83,8 @@ const (
 	CmFaultJob310PKind = "fault-job-310P"
 	// CmNodeHeartbeatKind judging node fault needs heartbeat info from former session, so should be recorded
 	CmNodeHeartbeatKind = "node-heartbeat"
+	// CmJobRemainRetryTimes judging node fault needs heartbeat info from former session, so should be recorded
+	CmJobRemainRetryTimes = "remain-retry-times"
 	// CmNodeRankTimeMapKind record map jobUID rankIndex node and times of occurrence
 	CmNodeRankTimeMapKind = "node-rankIndex-Occurrence"
 	// CmCheckCode Check code key
@@ -120,6 +122,13 @@ const (
 	JobRecovery = "job-recovery"
 	// DeviceFaultCmKey the key of DeviceFault info
 	DeviceFaultCmKey = "huawei.com/Ascend910-Fault"
+	// PodFailed the state of failed pod
+	PodFailed = "pod-failed"
+	// PodHealthy the state of healthy pod
+	PodHealthy = "pod-healthy"
+
+	// FaultRetryTimesKey key of fault-retry-times label
+	FaultRetryTimesKey = "fault-retry-times"
 )
 
 const (
@@ -150,7 +159,13 @@ type DealReSchedulerCache struct {
 	RealFaultNodes             []FaultNode `json:"-"`
 	FaultJobs                  []FaultJob
 	NodeHeartbeats             []NodeHeartbeat
-	AllocNodeRankOccurrenceMap map[api.JobID][]AllocNodeRankOccurrence
+	AllocNodeRankOccurrenceMap map[api.JobID][]*AllocNodeRankOccurrence
+	JobRemainRetryTimes        map[api.JobID]*RemainRetryTimes
+}
+
+type RemainRetryTimes struct {
+	UUID  types.UID
+	Times int
 }
 
 // DealReSchedulerConfigmap object with method for re-scheduler configmap
@@ -240,6 +255,9 @@ type FaultJob struct {
 	DeleteExecutedFlag  bool
 	ElasticScheduling   string
 	ReferenceName       string
+	FaultRetryTimes     int
+	faultReason         string
+	UUID                types.UID
 }
 
 // NodeHeartbeat object recording nodes and their heartbeats

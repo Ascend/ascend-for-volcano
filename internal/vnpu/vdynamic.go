@@ -23,6 +23,9 @@ import (
 
 // GetTemplateByResReq get template by resource request.
 func (tp *DynamicVNPU) GetTemplateByResReq(taskResReq util.VResource, vt VTemplate) (string, error) {
+	if tp == nil {
+		return "", fmt.Errorf("GetTemplateByResReq failed:%s", util.ArgumentError)
+	}
 	name := ""
 	for tName, value := range vt.Data {
 		if value.Aicore != taskResReq.Aicore {
@@ -45,6 +48,10 @@ func (tp *DynamicVNPU) GetTemplateByResReq(taskResReq util.VResource, vt VTempla
 // IsNodeHasDifferentUnFinishedTask judge the node wither has the different template unfinished job.
 func (tp *VirtualNPU) IsNodeHasDifferentUnFinishedTask(taskInfo *api.TaskInfo, nodeInf plugin.NPUNode,
 	taskResReq util.VResource) error {
+	if tp == nil || taskInfo == nil {
+		klog.V(util.LogDebugLev).Infof("IsNodeHasDifferentUnFinishedTask failed :%s", util.ArgumentError)
+		return errors.New(util.ArgumentError)
+	}
 	klog.V(util.LogDebugLev).Infof("%s IsNodeHasDifferentUnFinishedTask cache :%#v", taskInfo.Name, tp.ConCache)
 	nodeTempMap, ok := tp.ConCache[nodeInf.Name]
 	if !ok {
@@ -71,6 +78,10 @@ func (tp *VirtualNPU) IsNodeHasDifferentUnFinishedTask(taskInfo *api.TaskInfo, n
 
 // CheckNodeNPUByDyTask check chip on node has enough resource, fault chips are not in list, unstable excluded
 func (tp *VirtualNPU) CheckNodeNPUByDyTask(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource) error {
+	if tp == nil || task == nil {
+		klog.V(util.LogDebugLev).Infof("CheckNodeNPUByDyTask failed: %s", util.ArgumentError)
+		return errors.New(util.ArgumentError)
+	}
 	klog.V(util.LogDebugLev).Infof("check dynamic vNPU %s on %s", task.Name, node.Name)
 	if !node.ValidVNode {
 		klog.V(util.LogInfoLev).Infof("dynamic vNPU node<%s> not valid vNode", node.Name)
@@ -97,6 +108,10 @@ func (tp *VirtualNPU) CheckNodeNPUByDyTask(task *api.TaskInfo, node plugin.NPUNo
 
 // ScoreBestNPUNodes node with the least free resource would be sorted to higher rank
 func (tp *DynamicVNPU) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo, scoreMap map[string]float64) error {
+	if tp == nil || task == nil || len(nodes) == 0 {
+		klog.V(util.LogDebugLev).Infof("ScoreBestNPUNodes failed: %s", util.ArgumentError)
+		return errors.New(util.ArgumentError)
+	}
 	klog.V(util.LogInfoLev).Infof("dynamic vnpu task<%s> ScoreBestNPUNodes", task.Name)
 	if len(scoreMap) == 0 {
 		return errors.New(util.ArgumentError)
@@ -170,6 +185,10 @@ func (tp *DynamicVNPU) releaseTaskInConCache(task *api.TaskInfo, node plugin.NPU
 
 // ReleaseAnnotation release Annotation, in dy is release ConCache.
 func (tp *DynamicVNPU) ReleaseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
+	if tp == nil || task == nil {
+		klog.V(util.LogDebugLev).Infof("ReleaseAnnotation failed: %s", util.ArgumentError)
+		return &node
+	}
 	if releaseERR := tp.releaseTaskInConCache(task, node); releaseERR != nil {
 		klog.V(util.LogErrorLev).Infof("dynamic %s UseAnnotation UpdateNodeInfo:%s.", task.Name, releaseERR)
 	}
@@ -205,6 +224,10 @@ func (tp *DynamicVNPU) addTaskInConCache(task *api.TaskInfo, node plugin.NPUNode
 // UseAnnotation write task use vnpu to pod annotation
 func (tp *DynamicVNPU) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource,
 	chipVTemplate VTemplate) *plugin.NPUNode {
+	if tp == nil || task == nil {
+		klog.V(util.LogDebugLev).Infof("UseAnnotation failed: %s", util.ArgumentError)
+		return &node
+	}
 	klog.V(util.LogDebugLev).Infof("dynamic vnpu UseAnnotation node<%s> task<%s> Labels: %#v\n",
 		node.Name, task.Name, task.Pod.Labels)
 
@@ -262,6 +285,10 @@ func (tp *DynamicVNPU) downgradeTaskAICPU(taskResReq util.VResource) util.VResou
 // SetNPUTopologyToPodFn write chip to pod annotation AscendNPUCore
 func (tp *DynamicVNPU) SetNPUTopologyToPodFn(task *api.TaskInfo, node plugin.NPUNode, taskResReq util.VResource,
 	allocChipID string, chipVTemplate VTemplate) {
+	if tp == nil || task == nil {
+		klog.V(util.LogDebugLev).Infof("SetNPUTopologyToPodFn failed: %s", util.ArgumentError)
+		return
+	}
 	tmp := strconv.FormatInt(time.Now().UnixNano(), util.Base10)
 	task.Pod.Annotations[util.PodPredicateTime] = tmp
 	// 1. whole card
@@ -286,6 +313,10 @@ func (tp *DynamicVNPU) SetNPUTopologyToPodFn(task *api.TaskInfo, node plugin.NPU
 // UpdateNodeInfo vnpu update npuNode after allocation
 func (tp *DynamicVNPU) UpdateNodeInfo(node plugin.NPUNode, allocChipID string,
 	taskResReq util.VResource) *plugin.NPUNode {
+	if tp == nil {
+		klog.V(util.LogDebugLev).Infof("UpdateNodeInfo failed: %s", util.ArgumentError)
+		return &node
+	}
 	if node.IsResourceWholeCard(taskResReq.Aicore) {
 		return tp.UpdateNodeInfoWhole(node, allocChipID)
 	}
@@ -295,6 +326,10 @@ func (tp *DynamicVNPU) UpdateNodeInfo(node plugin.NPUNode, allocChipID string,
 // UpdateNodeInfoSegment vnpu update npuNode after allocation for segmentation tasks
 func (tp *DynamicVNPU) UpdateNodeInfoSegment(node plugin.NPUNode, allocChipID string,
 	taskResReq util.VResource) *plugin.NPUNode {
+	if tp == nil {
+		klog.V(util.LogDebugLev).Infof("UpdateNodeInfoSegment failed: %s", util.ArgumentError)
+		return &node
+	}
 	for chipID, chip := range node.Chips {
 		if strconv.Itoa(chipID) != allocChipID {
 			continue
@@ -312,6 +347,14 @@ func (tp *DynamicVNPU) UpdateNodeInfoSegment(node plugin.NPUNode, allocChipID st
 
 // UpdateNodeInfoWhole vnpu update npuNode after allocation for whole card tasks
 func (tp *DynamicVNPU) UpdateNodeInfoWhole(node plugin.NPUNode, allocChipIDs string) *plugin.NPUNode {
+	if tp == nil {
+		klog.V(util.LogDebugLev).Infof("UpdateNodeInfoWhole failed: %s", util.ArgumentError)
+		return &node
+	}
+	if node.TotalChipNum == 0 {
+		klog.V(util.LogErrorLev).Infof("UpdateNodeInfoWhole node <%s> total chip number equal zero", node.Name)
+		return &node
+	}
 	chipRes := util.VResource{
 		Aicore: node.AiCorePerChip,
 		Aicpu:  node.TotalRes.Aicpu / node.TotalChipNum,

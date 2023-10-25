@@ -95,9 +95,6 @@ func (fTask *FaultTask) getTaskUseFaultCardHealthState(fNode *FaultNode) []strin
 			nodeUseCardHealthState = append(nodeUseCardHealthState, NodeCardUnhealthy)
 			continue
 		}
-		if util.IsSliceContain(taskUseCard, fNode.NetworkUnhealthyNPU) {
-			nodeUseCardHealthState = append(nodeUseCardHealthState, NodeCardNetworkUnhealthy)
-		}
 	}
 	return nodeUseCardHealthState
 }
@@ -121,14 +118,11 @@ func (fTask *FaultTask) setNodeRankIndex(value string) {
 func newFaultTaskDefault(task *api.TaskInfo, job *api.JobInfo) FaultTask {
 	faultTask := FaultTask{
 		Reason:        []FaultReasonList{},
-		IsFaultTask:   false,
 		TaskName:      task.Name,
 		TaskUID:       task.UID,
 		TaskNamespace: task.Namespace,
 		NodeName:      task.NodeName,
 		JobName:       job.Name,
-		NodeRankIndex: "",
-		UseCardName:   nil,
 		PodCreateTime: task.Pod.CreationTimestamp.Unix(),
 		PodUID:        task.Pod.UID,
 		faultType:     NodeHealthy,
