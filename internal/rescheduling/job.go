@@ -68,6 +68,21 @@ func (fJob *FaultJob) GetJobElasticSchedulingLabel(job *plugin.SchedulerJob) str
 	return value
 }
 
+// IsJobHasPreSeparateNPUKey is Job has the key of PreSeparateNPU
+func (fJob *FaultJob) IsJobHasPreSeparateNPUKey() bool {
+	if fJob == nil {
+		return false
+	}
+	for _, fTask := range fJob.FaultTasks {
+		for _, reason := range fTask.Reason {
+			if reason.LargeModelFaultLevel == PreSeparateNPU {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (fJob *FaultJob) GetJobFaultNPUTaskNum() int {
 	var count int
 	for _, fTask := range fJob.FaultTasks {

@@ -566,9 +566,9 @@ func (sJob *SchedulerJob) SetNormalJobServerList(sHandler *ScheduleHandler) {
 			}
 		}
 		sJob.ServerList = append(sJob.ServerList, tmpTor)
-		if len(sJob.ServerList) > 1 {
-			sJob.MarkMulJobServerList()
-		}
+	}
+	if len(sJob.ServerList) > 1 {
+		sJob.MarkMulJobServerList()
 	}
 }
 

@@ -114,11 +114,9 @@ func (reScheduler *ReScheduler) createFaultTaskHandler(job *api.JobInfo, cardNam
 		klog.V(util.LogInfoLev).Infof("task %s is fault task: %v, health state: %s", task.Name, isFaultTask,
 			healthState)
 		faultTask.setIsFaultTask(isFaultTask)
-		if isFaultTask {
-			err = reScheduler.setTaskCardHealthCode(&faultTask)
-			if err != nil {
-				klog.V(util.ErrorInt).Infof("setTaskCardHealthCode task %s err %#v", task.Name, err)
-			}
+		err = reScheduler.setTaskCardHealthCode(&faultTask)
+		if err != nil {
+			klog.V(util.ErrorInt).Infof("setTaskCardHealthCode task %s err %#v", task.Name, err)
 		}
 		faultTask.setFaultType(healthState)
 		faultTasks = append(faultTasks, faultTask)
@@ -589,6 +587,9 @@ func (reScheduler *ReScheduler) SynCacheFaultJobWithSession(ssn *framework.Sessi
 		}
 		if faultJob.ElasticScheduling == JobOnElasticScheduling {
 			continue
+		}
+		if !faultJob.DeleteExecutedFlag {
+			reScheduler.updateJobHealthCode(&faultJob)
 		}
 		str, err := json.Marshal(reScheduler.AllocNodeRankOccurrenceMap[faultJob.JobUID])
 		if err != nil {
@@ -1155,14 +1156,11 @@ func (reScheduler ReScheduler) getLastNodeHeartbeatByNodeNameFromCache(nodeName 
 func (reScheduler ReScheduler) setTaskCardHealthCode(fTask *FaultTask) error {
 	klog.V(util.LogDebugLev).Infof("task %s setTaskCardHealthCode", fTask.TaskName)
 	var resonList []FaultReasonList
-	realFaultNode := reScheduler.GetRealFaultNodes()
 	if fTask.NodeName == "" {
+		fTask.Reason = resonList
 		return fmt.Errorf("setTaskCardHealthCode fTask %s use node is nil", fTask.TaskName)
 	}
-	for _, fNode := range realFaultNode {
-		if !fNode.IsFaultNode {
-			return nil
-		}
+	for _, fNode := range reScheduler.FaultNodes {
 		if fNode.NodeName != fTask.NodeName {
 			continue
 		}
@@ -1173,8 +1171,6 @@ func (reScheduler ReScheduler) setTaskCardHealthCode(fTask *FaultTask) error {
 			reason.FaultCode = NodeFaultCode
 			reason.LargeModelFaultLevel = PreSeparateNPU
 			resonList = append(resonList, reason)
-			fTask.Reason = resonList
-			return nil
 		}
 		for _, cardName := range fTask.UseCardName {
 			for _, fCard := range fNode.FaultDeviceList {
@@ -1189,6 +1185,17 @@ func (reScheduler ReScheduler) setTaskCardHealthCode(fTask *FaultTask) error {
 	}
 	fTask.Reason = resonList
 	return nil
+}
+
+func (reScheduler ReScheduler) updateJobHealthCode(fJob *FaultJob) {
+	if fJob == nil {
+		return
+	}
+	for index := range fJob.FaultTasks {
+		if err := reScheduler.setTaskCardHealthCode(&fJob.FaultTasks[index]); err != nil {
+			klog.V(util.LogInfoLev).Infof("setTaskCardHealthCode err:%s", err)
+		}
+	}
 }
 
 func (reScheduler ReScheduler) getLastNodeHeartUpdateTimeByNodeNameFromCache(nodeName string) int64 {
