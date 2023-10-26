@@ -1149,9 +1149,9 @@ func (reScheduler ReScheduler) getLastNodeHeartbeatByNodeNameFromCache(nodeName 
 
 func (reScheduler ReScheduler) setTaskCardHealthCode(fTask *FaultTask) error {
 	klog.V(util.LogDebugLev).Infof("task %s setTaskCardHealthCode", fTask.TaskName)
-	var resonList []FaultReasonList
+	var reasonList []FaultReasonList
 	if fTask.NodeName == "" {
-		fTask.Reason = resonList
+		fTask.Reason = reasonList
 		return fmt.Errorf("setTaskCardHealthCode fTask %s use node is nil", fTask.TaskName)
 	}
 	for _, fNode := range reScheduler.FaultNodes {
@@ -1164,21 +1164,29 @@ func (reScheduler ReScheduler) setTaskCardHealthCode(fTask *FaultTask) error {
 			reason.FaultType = NodeUnhealthy
 			reason.FaultCode = NodeFaultCode
 			reason.LargeModelFaultLevel = PreSeparateNPU
-			resonList = append(resonList, reason)
+			reasonList = append(reasonList, reason)
 		}
-		for _, cardName := range fTask.UseCardName {
-			for _, fCard := range fNode.FaultDeviceList {
-				if cardName == fCard.NPUName {
-					var reason FaultReasonList
-					reason.NodeName = fNode.NodeName
-					reason.FaultDeviceList = fCard
-					resonList = append(resonList, reason)
-				}
+		tmpReason := setTaskFaultReasonByFaultNode(fTask, fNode)
+		reasonList = append(reasonList, tmpReason...)
+		break
+	}
+	fTask.Reason = reasonList
+	return nil
+}
+
+func setTaskFaultReasonByFaultNode(fTask *FaultTask, fNode FaultNode) []FaultReasonList {
+	var reasonList []FaultReasonList
+	for _, cardName := range fTask.UseCardName {
+		for _, fCard := range fNode.FaultDeviceList {
+			if cardName == fCard.NPUName && fCard.LargeModelFaultLevel != NotHandleFault {
+				var reason FaultReasonList
+				reason.NodeName = fNode.NodeName
+				reason.FaultDeviceList = fCard
+				reasonList = append(reasonList, reason)
 			}
 		}
 	}
-	fTask.Reason = resonList
-	return nil
+	return reasonList
 }
 
 func (reScheduler ReScheduler) getLastNodeHeartUpdateTimeByNodeNameFromCache(nodeName string) int64 {
