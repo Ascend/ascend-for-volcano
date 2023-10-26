@@ -189,7 +189,7 @@ func buildCheckNodeNPUByTaskTestCases02() []itest.CheckNodeNPUByTaskTestCase {
 					Annotation: map[string]string{util.NPU910CardName: "Ascend910-0, Ascend910-1"},
 				},
 			},
-			WantErr: errors.New("checkNodeNPUByTask the npus on this node don't satisfy the schedulable topology err: [] not meet req npu(4)"),
+			WantErr: errors.New("npu topology not meet job require,network unhealthy card is [  ]"),
 		},
 		{
 			Name: "05-CheckNodeNPUByTask return err when node has no req npu",
@@ -202,8 +202,7 @@ func buildCheckNodeNPUByTaskTestCases02() []itest.CheckNodeNPUByTaskTestCase {
 					},
 				},
 			},
-			WantErr: errors.New("checkNodeNPUByTask the npus on this node don't satisfy the schedulable topology " +
-				"err: [0 1 4] not meet req npu(4)"),
+			WantErr: errors.New("npu topology not meet job require,network unhealthy card is [  ]"),
 		},
 		{
 			Name: "06-CheckNodeNPUByTask return err when task is nil",
@@ -254,8 +253,7 @@ func buildCheckNodeNPUByTaskTestCases03() []itest.CheckNodeNPUByTaskTestCase {
 						networkUnhealthyNPU: ""},
 				},
 			},
-			WantErr: errors.New("checkNodeNPUByTask the npus on this node don't satisfy the schedulable topology " +
-				"err: [0 1 2] not meet req npu(4)"),
+			WantErr: errors.New("npu topology not meet job require,network unhealthy card is [  ]"),
 		},
 		{
 			Name: "03-CheckNodeNPUByTask return err when node has no enough npu",
@@ -267,8 +265,7 @@ func buildCheckNodeNPUByTaskTestCases03() []itest.CheckNodeNPUByTaskTestCase {
 						networkUnhealthyNPU: "Ascend910-0"},
 				},
 			},
-			WantErr: errors.New("checkNodeNPUByTask the npus on this node don't satisfy the schedulable topology " +
-				"err: [1 2 3] not meet req npu(4)"),
+			WantErr: errors.New("npu topology not meet job require,network unhealthy card is [ Ascend910-0 ]"),
 		},
 	}
 }
