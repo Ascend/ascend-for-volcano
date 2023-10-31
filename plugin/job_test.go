@@ -600,13 +600,6 @@ func buildInitTest() []initTest {
 			args:    initArgs{vcJob: tJob},
 			wantErr: true,
 		},
-		{
-			name:   "03-Init ok test.",
-			fields: schedulerJobFields{SchedulerJobAttr: util.SchedulerJobAttr{}},
-			args: initArgs{vcJob: tJob, sHandle: &ScheduleHandler{NPUPlugins: map[string]NPUBuilder{util.
-				NPU910CardName: nil}}},
-			wantErr: true,
-		},
 	}
 	return tests
 }

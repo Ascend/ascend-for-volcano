@@ -23,7 +23,6 @@ import (
 	"reflect"
 	"testing"
 
-	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 )
 
@@ -150,7 +149,7 @@ type testSetVJobStatusByInfTest struct {
 	name  string
 	nJob  *NPUJob
 	vcJob *api.JobInfo
-	want  scheduling.PodGroupPhase
+	want  string
 }
 
 func buildTestSetVJobStatusByInfTest() []testSetVJobStatusByInfTest {
@@ -159,9 +158,7 @@ func buildTestSetVJobStatusByInfTest() []testSetVJobStatusByInfTest {
 			name:  "01-test SetJobStatusByInf ",
 			nJob:  &NPUJob{VJob: &VJob{}},
 			vcJob: &api.JobInfo{PodGroup: &api.PodGroup{}},
-			want: api.JobInfo{
-				PodGroup: &api.PodGroup{},
-			}.PodGroup.Status.Phase,
+			want:  "",
 		},
 	}
 	return tests
