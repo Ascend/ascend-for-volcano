@@ -28,6 +28,7 @@ import (
 	v12 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
 	"k8s.io/kube-scheduler/extender/v1"
@@ -371,7 +372,8 @@ func (sHandle *ScheduleHandler) InitNPUSession(ssn *framework.Session) error {
 		return err
 	}
 	sHandle.Do(func() {
-		cmInformer := ssn.InformerFactory().Core().V1().ConfigMaps().Informer()
+		informerFactory := informers.NewSharedInformerFactory(ssn.KubeClient(), 0)
+		cmInformer := informerFactory.Core().V1().ConfigMaps().Informer()
 		cmInformer.AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: util.CheckConfigMapIsDeviceInfo,
 			Handler: cache.ResourceEventHandlerFuncs{
@@ -380,7 +382,7 @@ func (sHandle *ScheduleHandler) InitNPUSession(ssn *framework.Session) error {
 				DeleteFunc: sHandle.DeleteConfigMap,
 			},
 		})
-		ssn.InformerFactory().Start(wait.NeverStop)
+		informerFactory.Start(wait.NeverStop)
 	})
 	sHandle.InitVolcanoFrameFromSsn(ssn)
 	sHandle.InitNodesFromSsn(ssn)

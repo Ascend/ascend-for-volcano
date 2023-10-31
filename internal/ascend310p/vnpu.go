@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"k8s.io/klog"
-	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
@@ -120,7 +119,7 @@ func (tp *ascend310P) validDyVNPUJobLabel() error {
 }
 
 func (tp *ascend310P) validDyVNPUJob() *api.ValidateResult {
-	if tp.Status == scheduling.PodGroupRunning {
+	if tp.Status == util.PodGroupRunning {
 		klog.V(util.LogDebugLev).Infof("%s %s's pg is running", PluginName, tp.ComJob.Name)
 		return nil
 	}
