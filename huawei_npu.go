@@ -72,7 +72,7 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 	ssn.AddPredicateFn(tp.Name(), func(taskInfo *api.TaskInfo, nodeInfo *api.NodeInfo) error {
 		err := tp.Scheduler.NodePredicate(taskInfo, nodeInfo)
 		if err != nil {
-			klog.V(util.LogErrorLev).Infof("NodePredicate failed for task %s err:%s", taskInfo.Name, err)
+			klog.V(util.LogDebugLev).Infof("NodePredicate failed for task %s err:%s", taskInfo.Name, err)
 		}
 		return err
 	})
@@ -81,7 +81,7 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 		score, err := tp.Scheduler.BatchNodeOrderFn(task, nodes)
 		if err != nil {
 			if setErr := tp.Scheduler.SetJobPendingReason(ssn.Jobs[task.Job], err.Error()); setErr != nil {
-				klog.V(util.LogErrorLev).Infof("%s setJobFailed err:%#v.", PluginName, setErr)
+				klog.V(util.LogDebugLev).Infof("%s setJobFailed err:%#v.", PluginName, setErr)
 			}
 		}
 		return score, nil
