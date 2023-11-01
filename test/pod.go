@@ -27,7 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 	"volcano.sh/volcano/pkg/scheduler/api"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
@@ -50,7 +49,7 @@ func BuildNPUPod(pod NPUPod) *v1.Pod {
 			Namespace: pod.Namespace,
 			Labels:    pod.Labels,
 			Annotations: map[string]string{
-				v1beta1.KubeGroupNameAnnotationKey: pod.GroupName,
+				kubeGroupNameAnnotationKey: pod.GroupName,
 			},
 		},
 		Status: v1.PodStatus{
