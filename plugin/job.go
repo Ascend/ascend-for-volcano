@@ -137,7 +137,7 @@ func GetJobLabelFromVcJob(job *api.JobInfo) map[string]string {
 // GetVCJobReqNPUTypeFromJobInfo get job request resource, only NPU.
 func GetVCJobReqNPUTypeFromJobInfo(vcJob *api.JobInfo) (string, int, error) {
 	if vcJob == nil || vcJob.TotalRequest == nil {
-		klog.V(util.LogInfoLev).Infof("GetVCJobReqNPUTypeFromJobInfo nil job's parameter.")
+		klog.V(util.LogDebugLev).Infof("GetVCJobReqNPUTypeFromJobInfo nil job's parameter.")
 		return "", 0.0, errors.New("nil parameter")
 	}
 
@@ -604,7 +604,7 @@ func (sJob *SchedulerJob) getNormalTorListBeforeRestart(torCount int) {
 		var rts []AllocNodeRankOccurrence
 		err := json.Unmarshal([]byte(nrt), &rts)
 		if err != nil {
-			klog.V(util.LogInfoLev).Infof("Unmarshal job %s AllocNodeRankOccurrence failed:%s", sJob.Name, 
+			klog.V(util.LogInfoLev).Infof("Unmarshal job %s AllocNodeRankOccurrence failed:%s", sJob.Name,
 				util.SafePrint(err))
 			return
 		}
