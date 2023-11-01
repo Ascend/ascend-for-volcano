@@ -147,7 +147,7 @@ func GetVCJobReqNPUTypeFromJobInfo(vcJob *api.JobInfo) (string, int, error) {
 			return string(k), int(v / util.NPUHexKilo), nil
 		}
 	}
-	klog.V(util.LogErrorLev).Infof("GetVCJobReqNPUTypeFromJobInfo %+v.", vcJob.GetMinResources().ScalarResources)
+	klog.V(util.LogDebugLev).Infof("GetVCJobReqNPUTypeFromJobInfo %+v.", vcJob.GetMinResources().ScalarResources)
 	return "", 0.0, errors.New("nil NPU")
 }
 
