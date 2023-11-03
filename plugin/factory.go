@@ -28,6 +28,7 @@ import (
 	v12 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
 	"k8s.io/kube-scheduler/extender/v1"
@@ -379,7 +380,8 @@ func (sHandle *ScheduleHandler) InitNPUSession(ssn *framework.Session) error {
 		return err
 	}
 	sHandle.Do(func() {
-		cmInformer := ssn.InformerFactory().Core().V1().ConfigMaps().Informer()
+		informerFactory := informers.NewSharedInformerFactory(ssn.KubeClient(), 0)
+		cmInformer := informerFactory.Core().V1().ConfigMaps().Informer()
 		cmInformer.AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: util.CheckConfigMapIsDeviceInfo,
 			Handler: cache.ResourceEventHandlerFuncs{
@@ -388,7 +390,7 @@ func (sHandle *ScheduleHandler) InitNPUSession(ssn *framework.Session) error {
 				DeleteFunc: sHandle.DeleteConfigMap,
 			},
 		})
-		ssn.InformerFactory().Start(wait.NeverStop)
+		informerFactory.Start(wait.NeverStop)
 	})
 	sHandle.InitVolcanoFrameFromSsn(ssn)
 	sHandle.InitNodesFromSsn(ssn)
@@ -478,15 +480,19 @@ func (sHandle *ScheduleHandler) BatchNodeOrderFn(task *api.TaskInfo, nodes []*ap
 		klog.V(util.LogDebugLev).Infof("BatchNodeOrderFn failed: %s.", util.ArgumentError)
 		return nil, errors.New(util.ArgumentError)
 	}
-	klog.V(util.LogInfoLev).Infof("Enter batchNodeOrderFn")
-	defer klog.V(util.LogInfoLev).Infof("leaving batchNodeOrderFn")
+	klog.V(util.LogDebugLev).Infof("Enter batchNodeOrderFn")
+	defer klog.V(util.LogDebugLev).Infof("leaving batchNodeOrderFn")
 
 	if sHandle == nil || task == nil || len(nodes) == 0 {
-		klog.V(util.LogErrorLev).Infof("%s batchNodeOrderFn %s.", PluginName, util.ArgumentError)
+		klog.V(util.LogDebugLev).Infof("%s batchNodeOrderFn %s.", PluginName, util.ArgumentError)
 		return nil, errors.New(util.ArgumentError)
 	}
 	if !IsNPUTask(task) {
 		return nil, nil
+	}
+	if len(sHandle.Nodes) == 0 {
+		klog.V(util.LogDebugLev).Infof("%s batchNodeOrderFn %s.", PluginName, util.ArgumentError)
+		return nil, errors.New(util.ArgumentError)
 	}
 	// init score-map
 	var interPodAffinityScore v1.HostPriorityList
@@ -499,7 +505,7 @@ func (sHandle *ScheduleHandler) BatchNodeOrderFn(task *api.TaskInfo, nodes []*ap
 
 	k, ok := vcJob.Label[TorAffinityKey]
 	if ok && (k == LargeModelTag || k == NormalSchema) {
-		klog.V(util.LogInfoLev).Infof("validNPUJob job is not use tor affinity")
+		klog.V(util.LogDebugLev).Infof("validNPUJob job is not use tor affinity")
 		return sHandle.SetTorAffinityJobNodesScore(task, nodes, vcJob, k, scoreMap)
 	}
 
@@ -519,13 +525,13 @@ func (sHandle *ScheduleHandler) SetTorAffinityJobNodesScore(task *api.TaskInfo, 
 	vcJob SchedulerJob, label string, scoreMap map[string]float64) (map[string]float64, error) {
 	if sHandle == nil || task == nil || len(nodes) == 0 || len(scoreMap) == 0 {
 		err := errors.New(util.ArgumentError)
-		klog.V(util.LogErrorLev).Infof("ScoreBestNPUNodes %s.", err)
+		klog.V(util.LogDebugLev).Infof("ScoreBestNPUNodes %s.", err)
 		return scoreMap, err
 	}
 	result := CheckNetSliceIsMeetJobRequire(vcJob, sHandle, nodes)
 	vcJob = sHandle.Jobs[task.Job]
 	if result != nil {
-		klog.V(util.LogErrorLev).Infof("check job %s tor affinity failed: %s,"+
+		klog.V(util.LogDebugLev).Infof("check job %s tor affinity failed: %s,"+
 			"used servers is %s", vcJob.Name, result, vcJob.SelectServers)
 		switch label {
 		case LargeModelTag:
@@ -540,9 +546,9 @@ func (sHandle *ScheduleHandler) SetTorAffinityJobNodesScore(task *api.TaskInfo, 
 	errGet := sHandle.ScoreBestNPUNodes(task, nodes, scoreMap)
 	if errGet != nil {
 		// get suitable node failed
-		klog.V(util.LogErrorLev).Infof("batchNodeOrderFn task[%s] failed[%#v].", task.Name, errGet)
+		klog.V(util.LogDebugLev).Infof("batchNodeOrderFn task[%s] failed[%#v].", task.Name, errGet)
 	}
-	klog.V(util.LogInfoLev).Infof("batchNodeOrderFn Get %s for NPU %+v.", task.Name, scoreMap)
+	klog.V(util.LogDebugLev).Infof("batchNodeOrderFn Get %s for NPU %+v.", task.Name, scoreMap)
 	return scoreMap, result
 }
 

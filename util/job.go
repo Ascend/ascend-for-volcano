@@ -24,7 +24,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
-	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 )
 
@@ -44,7 +43,7 @@ const (
 type VJob struct {
 	// type: JobTypeWhole, JobTypeDycut, JobTypeStcut.
 	Type   int
-	Status scheduling.PodGroupPhase
+	Status string
 }
 
 // NPUJob only npu vcJob have.
@@ -172,7 +171,7 @@ func (nJob *NPUJob) SetJobStatusByInf(vcJob *api.JobInfo) {
 	if nJob == nil {
 		return
 	}
-	nJob.VJob.Status = vcJob.PodGroup.Status.Phase
+	nJob.VJob.Status = string(vcJob.PodGroup.Status.Phase)
 }
 
 func ReferenceNameOfJob(job *api.JobInfo) string {

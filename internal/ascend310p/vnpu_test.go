@@ -25,7 +25,6 @@ import (
 	"testing"
 
 	"github.com/agiledragon/gomonkey/v2"
-	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
@@ -313,17 +312,17 @@ func buildTestValidDyVNPUJobTest() []TestValidDyVNPUJobTest {
 	tests := []TestValidDyVNPUJobTest{
 		{
 			Name: "01-test ValidDyVNPUJob will return nil when VJob status is Running",
-			VJob: &util.VJob{Status: scheduling.PodGroupRunning},
+			VJob: &util.VJob{Status: util.PodGroupRunning},
 			Want: nil,
 		},
 		{
 			Name: "02-test ValidDyVNPUJob will return when check VJob Request is invalid",
-			VJob: &util.VJob{Status: scheduling.PodGroupUnknown},
+			VJob: &util.VJob{Status: util.PodGroupUnknown},
 			Want: &api.ValidateResult{Pass: false, Reason: " not VirtualNPU job", Message: " not VirtualNPU job"},
 		},
 		{
 			Name: "03-test ValidDyVNPUJob will return when validDyVNPUJobLabel is invalid",
-			VJob: &util.VJob{Status: scheduling.PodGroupUnknown},
+			VJob: &util.VJob{Status: util.PodGroupUnknown},
 			Want: &api.ValidateResult{Pass: false, Reason: " not VirtualNPU job", Message: " not VirtualNPU job"},
 		},
 	}
