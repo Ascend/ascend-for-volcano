@@ -206,10 +206,10 @@ func (reCache DealReSchedulerCache) getRealFaultJobs() ([]FaultJob, error) {
 			continue // only save real-fault and reschedule-enabled jobs
 		}
 
-		faultReason := PodFailed
+		var faultReason string
 		for _, faultType := range fJob.FaultTypes {
+			faultReason = faultType
 			if faultType == NodeUnhealthy || faultType == NodeCardUnhealthy {
-				faultReason = faultType
 				break
 			}
 		}
