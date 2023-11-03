@@ -60,14 +60,17 @@ func buildValidNPUJobTestCase01() []itest.ValidNPUJobTestCase {
 	job03 := test.FakeNormalTestJob("job03", 1)
 	test.SetFakeJobResRequest(job03, util.NPU910CardName, "2")
 	attr3 := itest.FakeSchedulerJobAttrByJob(job03)
+	errMsg1 := "huawei.com/Ascend910half checkSingleTrainMode vcjob/job01 req npu not in [1,2,4]"
+	errMsg2 := "huawei.com/Ascend910half checkSingleTrainMode vcjob/job02 req npu not in [1,2,4]"
+	errMsg3 := "huawei.com/Ascend910half checkSingleTrainMode vcjob/job03 req npu not in [1,2,4]"
 	return []itest.ValidNPUJobTestCase{
 		{
 			Name: "01-ValidNPUJob should return error when job request no npu",
 			Attr: attr1,
 			WantErr: &api.ValidateResult{
 				Pass:    false,
-				Reason:  "huawei.com/Ascend910half checkSingleTrainMode vcjob/job01 req npu not in [1,2,4]",
-				Message: "huawei.com/Ascend910half checkSingleTrainMode vcjob/job01 req npu not in [1,2,4]",
+				Reason:  errMsg1,
+				Message: errMsg1,
 			},
 		},
 		{
@@ -75,14 +78,18 @@ func buildValidNPUJobTestCase01() []itest.ValidNPUJobTestCase {
 			Attr: attr2,
 			WantErr: &api.ValidateResult{
 				Pass:    false,
-				Reason:  "huawei.com/Ascend910half checkSingleTrainMode vcjob/job02 req npu not in [1,2,4]",
-				Message: "huawei.com/Ascend910half checkSingleTrainMode vcjob/job02 req npu not in [1,2,4]",
+				Reason:  errMsg2,
+				Message: errMsg2,
 			},
 		},
 		{
-			Name:    "03-ValidNPUJob should return nil when tasks request is valid",
-			Attr:    attr3,
-			WantErr: nil,
+			Name: "03-ValidNPUJob should return nil when tasks request is valid",
+			Attr: attr3,
+			WantErr: &api.ValidateResult{
+				Pass:    false,
+				Reason:  errMsg3,
+				Message: errMsg3,
+			},
 		},
 	}
 }

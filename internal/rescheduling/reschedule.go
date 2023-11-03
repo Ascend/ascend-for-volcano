@@ -30,7 +30,6 @@ import (
 
 	"k8s.io/api/core/v1"
 	"k8s.io/klog"
-	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
@@ -138,8 +137,8 @@ func (reScheduler *ReScheduler) GetRunningJobs(
 	}
 	var myJobs = make(map[api.JobID]*api.JobInfo, util.MapInitNum)
 	for _, jobInfo := range ssn.Jobs {
-		if (jobInfo.PodGroup.Status.Phase != scheduling.PodGroupRunning) &&
-			(jobInfo.PodGroup.Status.Phase != scheduling.PodGroupUnknown) { // pending jobs would not be put into cache
+		if (jobInfo.PodGroup.Status.Phase != util.PodGroupRunning) &&
+			(jobInfo.PodGroup.Status.Phase != util.PodGroupUnknown) { // pending jobs would not be put into cache
 			klog.V(util.LogDebugLev).Infof("job %s pod group is not running but %s, skip",
 				jobInfo.Name, jobInfo.PodGroup.Status.Phase)
 			continue

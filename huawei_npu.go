@@ -25,7 +25,6 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
-	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
@@ -73,7 +72,7 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 	ssn.AddPredicateFn(tp.Name(), func(taskInfo *api.TaskInfo, nodeInfo *api.NodeInfo) error {
 		err := tp.Scheduler.NodePredicate(taskInfo, nodeInfo)
 		if err != nil {
-			klog.V(util.LogErrorLev).Infof("NodePredicate failed for task %s err:%s", taskInfo.Name, err)
+			klog.V(util.LogDebugLev).Infof("NodePredicate failed for task %s err:%s", taskInfo.Name, err)
 		}
 		return err
 	})
@@ -82,7 +81,7 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 		score, err := tp.Scheduler.BatchNodeOrderFn(task, nodes)
 		if err != nil {
 			if setErr := tp.Scheduler.SetJobPendingReason(ssn.Jobs[task.Job], err.Error()); setErr != nil {
-				klog.V(util.LogErrorLev).Infof("%s setJobFailed err:%#v.", PluginName, setErr)
+				klog.V(util.LogDebugLev).Infof("%s setJobFailed err:%#v.", PluginName, setErr)
 			}
 		}
 		return score, nil
@@ -177,8 +176,8 @@ func (tp *huaweiNPUPlugin) OnSessionClose(ssn *framework.Session) {
 	// 3、Handle other post-dispatch issues.
 	for _, job := range ssn.Jobs {
 		// deal pending job
-		if job.PodGroup.Status.Phase == scheduling.PodGroupInqueue ||
-			job.PodGroup.Status.Phase == scheduling.PodGroupPending {
+		if job.PodGroup.Status.Phase == util.PodGroupInqueue ||
+			job.PodGroup.Status.Phase == util.PodGroupPending {
 			// if all nodes not meet job require failed
 			tp.Scheduler.SetJobPendReasonByNodesCase(job)
 		}

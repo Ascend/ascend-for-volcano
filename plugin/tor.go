@@ -24,7 +24,6 @@ import (
 	"encoding/json"
 
 	"k8s.io/klog"
-	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
@@ -192,7 +191,7 @@ func (t *Tor) HasAcrossJob() bool {
 		}
 	}
 	for _, job := range t.Jobs {
-		if job.Status != scheduling.PodGroupRunning {
+		if job.Status != util.PodGroupRunning {
 			continue
 		}
 		for _, task := range job.Tasks {

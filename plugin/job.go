@@ -30,8 +30,8 @@ import (
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
-	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
+
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
@@ -141,13 +141,13 @@ func GetVCJobReqNPUTypeFromJobInfo(vcJob *api.JobInfo) (string, int, error) {
 		return "", 0.0, errors.New("nil parameter")
 	}
 
-	for k, v := range vcJob.GetMinResources().ScalarResources {
+	for k, v := range vcJob.TotalRequest.ScalarResources {
 		// must contain "huawei.com/"
 		if strings.Contains(string(k), util.HwPreName) {
 			return string(k), int(v / util.NPUHexKilo), nil
 		}
 	}
-	klog.V(util.LogErrorLev).Infof("GetVCJobReqNPUTypeFromJobInfo %+v.", vcJob.GetMinResources().ScalarResources)
+	klog.V(util.LogDebugLev).Infof("GetVCJobReqNPUTypeFromJobInfo %+v.", vcJob.TotalRequest.ScalarResources)
 	return "", 0.0, errors.New("nil NPU")
 }
 
@@ -238,7 +238,7 @@ func IsJobInitial(job *api.JobInfo) bool {
 
 // IsJobRestarted used for rescheduling, judge if job restarted
 func IsJobRestarted(job *api.JobInfo) bool {
-	return IsJobInitial(job) && job.PodGroup.Status.Phase == scheduling.PodGroupRunning
+	return IsJobInitial(job) && job.PodGroup.Status.Phase == util.PodGroupRunning
 }
 
 // Init the SchedulerJob's init.
@@ -550,9 +550,9 @@ func (sJob *SchedulerJob) SetNormalJobServerList(sHandler *ScheduleHandler) {
 			}
 		}
 		sJob.ServerList = append(sJob.ServerList, tmpTor)
-		if len(sJob.ServerList) > 1 {
-			sJob.MarkMulJobServerList()
-		}
+	}
+	if len(sJob.ServerList) > 1 {
+		sJob.MarkMulJobServerList()
 	}
 }
 
@@ -604,7 +604,7 @@ func (sJob *SchedulerJob) getNormalTorListBeforeRestart(torCount int) {
 		var rts []AllocNodeRankOccurrence
 		err := json.Unmarshal([]byte(nrt), &rts)
 		if err != nil {
-			klog.V(util.LogInfoLev).Infof("Unmarshal job %s AllocNodeRankOccurrence failed:%s", sJob.Name, 
+			klog.V(util.LogInfoLev).Infof("Unmarshal job %s AllocNodeRankOccurrence failed:%s", sJob.Name,
 				util.SafePrint(err))
 			return
 		}
@@ -738,29 +738,6 @@ func updatePodsPendingReason(job *api.JobInfo, tID api.TaskID, reason string) {
 	}
 }
 
-func (sHandle *ScheduleHandler) updatePodGroupPendingReason(job *api.JobInfo, reason string) {
-	job.JobFitErrors = reason
-
-	jc := scheduling.PodGroupCondition{
-		Type:               scheduling.PodGroupUnschedulableType,
-		Status:             v1.ConditionTrue,
-		LastTransitionTime: metav1.Now(),
-		TransitionID:       string(sHandle.FrameAttr.UID),
-		Reason:             reason,
-		Message:            reason,
-	}
-
-	for k, value := range job.PodGroup.Status.Conditions {
-		if strings.Contains(value.Message, reason) {
-			job.PodGroup.Status.Conditions[k].LastTransitionTime = jc.LastTransitionTime
-			job.PodGroup.Status.Conditions[k].TransitionID = jc.TransitionID
-			return
-		}
-	}
-
-	job.PodGroup.Status.Conditions = append(job.PodGroup.Status.Conditions, jc)
-}
-
 // SetJobPendingReason set the pod and podGroup pending reason.
 func (sHandle *ScheduleHandler) SetJobPendingReason(vcJob *api.JobInfo, reason interface{}) error {
 	if sHandle == nil || vcJob == nil {
@@ -789,6 +766,32 @@ func (sHandle *ScheduleHandler) SetJobPendingReason(vcJob *api.JobInfo, reason i
 	// for write pending reason into vcjob
 	sHandle.updatePodGroupPendingReason(vcJob, reasonTmp)
 	return nil
+}
+
+func (sHandle *ScheduleHandler) updatePodGroupPendingReason(job *api.JobInfo, reason string) {
+	job.JobFitErrors = reason
+
+	if len(job.PodGroup.Status.Conditions) == 0 {
+		return
+	}
+
+	jc := job.PodGroup.Status.Conditions[0].DeepCopy()
+	jc.Type = util.PodGroupUnschedulableType
+	jc.Status = v1.ConditionTrue
+	jc.LastTransitionTime = metav1.Now()
+	jc.TransitionID = string(sHandle.FrameAttr.UID)
+	jc.Reason = reason
+	jc.Message = reason
+
+	for k, value := range job.PodGroup.Status.Conditions {
+		if strings.Contains(value.Message, reason) {
+			job.PodGroup.Status.Conditions[k].LastTransitionTime = jc.LastTransitionTime
+			job.PodGroup.Status.Conditions[k].TransitionID = jc.TransitionID
+			return
+		}
+	}
+
+	job.PodGroup.Status.Conditions = append(job.PodGroup.Status.Conditions, *jc)
 }
 
 // JobValid the job valid, used by volcano frame.

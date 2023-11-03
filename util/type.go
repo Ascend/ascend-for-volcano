@@ -202,6 +202,16 @@ const (
 	JobEnqueue = 1
 	// JobEnqueueSkip skip the judgement of ascend-volcano-plugin in the job enqueue phase
 	JobEnqueueSkip = 0
+	// PodGroupInqueue the pg Inqueue status
+	PodGroupInqueue = "Inqueue"
+	// PodGroupPending the pg Pending status
+	PodGroupPending = "Pending"
+	// PodGroupRunning the pg Running status
+	PodGroupRunning = "Running"
+	// PodGroupUnknown the pg Unknown status
+	PodGroupUnknown = "Unknown"
+	// PodGroupUnschedulableType the pg Unschedulable Condition
+	PodGroupUnschedulableType = "Unschedulable"
 )
 
 // VTemplate for vNode resource
