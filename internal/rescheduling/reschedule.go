@@ -782,7 +782,7 @@ func (reScheduler *ReScheduler) RestartFaultJobs(ssn *framework.Session) error {
 		}
 		klog.V(util.LogInfoLev).Infof("%s need restart.", restartFaultJob.JobName)
 		if restartErr := restartFaultJob.restartSingleFaultJob(
-			ssn, reScheduler.kubeClient, &schedulerJob); restartErr != nil {
+			ssn, reScheduler, &schedulerJob); restartErr != nil {
 			klog.V(util.LogErrorLev).Infof("RestartJob %s %#v.", schedulerJob.Name, restartErr)
 		} else {
 			restartFaultJob.DeleteExecutedFlag = true
@@ -1269,22 +1269,6 @@ func (reScheduler ReScheduler) getJobsToBeRestarted(realFaultJobs []FaultJob) []
 	for _, fJob := range realFaultJobs {
 		if fJob.DeleteExecutedFlag {
 			continue
-		}
-
-		if fJob.faultReason == PodFailed {
-			if fJob.FaultRetryTimes == 0 {
-				klog.V(util.LogInfoLev).Infof("job<%s> retry times is 0", fJob.JobUID)
-				continue
-			}
-			remain, ok := reScheduler.JobRemainRetryTimes[fJob.JobUID]
-			if !ok || remain == nil {
-				continue
-			}
-			if remain.Times <= 0 {
-				klog.V(util.LogInfoLev).Infof("job<%s> remain retry times: %d", fJob.JobUID,
-					reScheduler.JobRemainRetryTimes[fJob.JobUID].Times)
-				continue
-			}
 		}
 
 		restartFaultJobs = append(restartFaultJobs, fJob)

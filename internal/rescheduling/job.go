@@ -25,7 +25,6 @@ import (
 	"strconv"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
@@ -139,6 +138,18 @@ func (fJob *FaultJob) CheckJobExistsInKubernetes(ssn *framework.Session) bool {
 	return false
 }
 
+// deleteJobWithLabels delete job with labels
+func (fJob *FaultJob) deleteJobWithLabels(ssn *framework.Session, reschedule *ReScheduler, schedulerJob *plugin.SchedulerJob) error {
+	if !fJob.isPodFailedJobCanRestarted(reschedule) {
+		return fmt.Errorf("pod failed job reach max restart time")
+	}
+
+	if fJob.ReScheduleKey == JobForceRescheduleLabelValue {
+		return fJob.ForceDeleteJob(ssn, schedulerJob)
+	}
+	return fJob.GraceDeleteJob(ssn, schedulerJob)
+}
+
 // ForceDeleteJob force delete jobs includes labelled force delete ones and grace delete failed ones
 func (fJob *FaultJob) ForceDeleteJob(ssn *framework.Session, schedulerJob *plugin.SchedulerJob) error {
 	klog.V(util.LogDebugLev).Infof("enter ForceDeleteJob")
@@ -153,6 +164,26 @@ func (fJob *FaultJob) ForceDeleteJob(ssn *framework.Session, schedulerJob *plugi
 		}
 	}
 	return nil
+}
+
+// isPodFailedCanRestarted if the pod status is failed, judge whether job can be restarted
+func (fJob *FaultJob) isPodFailedJobCanRestarted(reScheduler *ReScheduler) bool {
+	if fJob.faultReason == PodFailed {
+		if fJob.FaultRetryTimes == 0 {
+			klog.V(util.LogInfoLev).Infof("job<%s> retry times is 0", fJob.JobUID)
+			return false
+		}
+		remain, ok := reScheduler.JobRemainRetryTimes[fJob.JobUID]
+		if !ok || remain == nil {
+			return false
+		}
+		if remain.Times <= 0 {
+			klog.V(util.LogInfoLev).Infof("job<%s> remain retry times: %d", fJob.JobUID,
+				reScheduler.JobRemainRetryTimes[fJob.JobUID].Times)
+			return false
+		}
+	}
+	return true
 }
 
 // GraceDeleteJob grace delete jobs labelled to be deleted gracefully
@@ -188,16 +219,14 @@ func (fJob *FaultJob) GraceDeleteJob(ssn *framework.Session, npuJob *plugin.Sche
 }
 
 func (fJob *FaultJob) restartSingleFaultJob(ssn *framework.Session,
-	kubeClient kubernetes.Interface, schedulerJob *plugin.SchedulerJob) error {
+	reschedule *ReScheduler, schedulerJob *plugin.SchedulerJob) error {
 
 	// delete jobs
 	var deleteErr error
 
 	switch fJob.ReScheduleKey {
-	case JobForceRescheduleLabelValue:
-		deleteErr = fJob.ForceDeleteJob(ssn, schedulerJob)
-	case JobGraceRescheduleLabelValue:
-		deleteErr = fJob.GraceDeleteJob(ssn, schedulerJob)
+	case JobForceRescheduleLabelValue, JobGraceRescheduleLabelValue:
+		deleteErr = fJob.deleteJobWithLabels(ssn, reschedule, schedulerJob)
 	case JobOffRescheduleLabelValue:
 		deleteErr = fmt.Errorf("job reschedule %s", fJob.ReScheduleKey)
 	default:
