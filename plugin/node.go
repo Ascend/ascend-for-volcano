@@ -302,9 +302,13 @@ func (sHandle *ScheduleHandler) InitNodesFromSsn(ssn *framework.Session) {
 	existNodes := make(map[string]NPUNode)
 	deviceInfos := make(map[string]NodeDeviceInfo)
 	for nodeName, nNode := range sHandle.Nodes {
-		if _, exist := ssn.Nodes[nodeName]; exist {
-			existNodes[nodeName] = nNode
+		_, exist := ssn.Nodes[nodeName]
+		if !exist {
+			klog.V(util.LogWarningLev).Infof("node init <%s> is not in session,"+
+				"maybe node is deleted or not ready", nodeName)
+			continue
 		}
+		existNodes[nodeName] = nNode
 	}
 	sHandle.Nodes = existNodes
 
