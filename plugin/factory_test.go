@@ -73,8 +73,8 @@ func buildBatchNodeOrderFn() []batchNodeOrderFnTest {
 					Nodes:     map[string]NPUNode{},
 					FrameAttr: VolcanoFrame{}}},
 			args:    batchNodeOrderFnArgs{task: tTask, nodes: tNodes, ssn: nil},
-			want:    map[string]float64{"node0": 0, "node1": 0},
-			wantErr: false,
+			want:    nil,
+			wantErr: true,
 		},
 	}
 	return tests

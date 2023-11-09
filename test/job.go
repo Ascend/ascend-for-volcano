@@ -27,16 +27,17 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
+
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
-// SetTestJobPodGroupStatus set test job's PodGroupStatus
-func SetTestJobPodGroupStatus(job *api.JobInfo, status scheduling.PodGroupPhase) {
+// SetTestJobPodGroupPendingStatus set test job's PodGroupStatus
+func SetTestJobPodGroupPendingStatus(job *api.JobInfo) {
 	if job.PodGroup == nil {
 		AddTestJobPodGroup(job)
 	}
-	job.PodGroup.Status.Phase = status
+	job.PodGroup.Status.Phase = util.PodGroupPending
 }
 
 // AddTestJobPodGroup set test job pg.
@@ -52,16 +53,6 @@ func AddTestJobPodGroup(job *api.JobInfo) {
 	}
 
 	pg := &api.PodGroup{
-		PodGroup: scheduling.PodGroup{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      job.Name,
-				Namespace: "vcjob",
-			},
-			Spec: scheduling.PodGroupSpec{
-				Queue:        "c1",
-				MinResources: &minRes,
-			},
-		},
 		Version: api.PodGroupVersionV1Beta1,
 	}
 	job.SetPodGroup(pg)
@@ -99,7 +90,7 @@ func FakeNormalTestJobByCreatTime(jobName string, taskNum int, creatTime int64) 
 		task.Job = job.UID
 	}
 	job.PodGroup = new(api.PodGroup)
-	job.PodGroup.Status.Phase = scheduling.PodGroupRunning
+	job.PodGroup.Status.Phase = util.PodGroupRunning
 	job.CreationTimestamp = metav1.Time{Time: time.Unix(time.Now().Unix()+creatTime, 0)}
 	return job
 }
@@ -109,7 +100,7 @@ func SetFakeJobRequestSource(fJob *api.JobInfo, name string, value int) {
 	if fJob.PodGroup == nil {
 		AddTestJobPodGroup(fJob)
 	}
-	SetTestJobPodGroupStatus(fJob, scheduling.PodGroupPending)
+	SetTestJobPodGroupPendingStatus(fJob)
 
 	if len(fJob.TotalRequest.ScalarResources) == 0 {
 		fJob.TotalRequest.ScalarResources = make(map[v1.ResourceName]float64, npuIndex3)
@@ -142,7 +133,7 @@ func SetFakeNPUJobStatusPending(fJob *api.JobInfo) {
 	if fJob == nil {
 		return
 	}
-	fJob.PodGroup.Status.Phase = scheduling.PodGroupPending
+	fJob.PodGroup.Status.Phase = util.PodGroupPending
 	for _, task := range fJob.Tasks {
 		SetFakeNPUTaskStatus(task, api.Pending)
 		SetFakeNPUPodStatus(task.Pod, v1.PodPending)

@@ -302,9 +302,13 @@ func (sHandle *ScheduleHandler) InitNodesFromSsn(ssn *framework.Session) {
 	existNodes := make(map[string]NPUNode)
 	deviceInfos := make(map[string]NodeDeviceInfo)
 	for nodeName, nNode := range sHandle.Nodes {
-		if _, exist := ssn.Nodes[nodeName]; exist {
-			existNodes[nodeName] = nNode
+		_, exist := ssn.Nodes[nodeName]
+		if !exist {
+			klog.V(util.LogWarningLev).Infof("node init <%s> is not in session,"+
+				"maybe node is deleted or not ready", nodeName)
+			continue
 		}
+		existNodes[nodeName] = nNode
 	}
 	sHandle.Nodes = existNodes
 
@@ -345,22 +349,22 @@ func (sHandle *ScheduleHandler) NodePredicate(taskInfo *api.TaskInfo, nodeInfo *
 		klog.V(util.LogErrorLev).Infof("NodePredicate got null parameter(s), which is invalid.")
 		return fmt.Errorf("got null parameter(s)")
 	}
-	klog.V(util.LogInfoLev).Infof("enter node(%s) predicate", nodeInfo.Name)
-	defer klog.V(util.LogInfoLev).Infof("leave node(%s) predicate", nodeInfo.Name)
+	klog.V(util.LogDebugLev).Infof("enter node(%s) predicate", nodeInfo.Name)
+	defer klog.V(util.LogDebugLev).Infof("leave node(%s) predicate", nodeInfo.Name)
 
 	vcJob, ok := sHandle.Jobs[taskInfo.Job]
 	if !ok {
-		klog.V(util.LogInfoLev).Infof("NodePredicate not support job:%#v.", taskInfo.Job)
+		klog.V(util.LogDebugLev).Infof("NodePredicate not support job:%#v.", taskInfo.Job)
 		return nil
 	}
 	// check vcjob is npu job
 	if !vcJob.IsNPUJob() {
-		klog.V(util.LogInfoLev).Infof("NodePredicate vc-job:%#v is not npu job.", vcJob)
+		klog.V(util.LogDebugLev).Infof("NodePredicate vc-job:%#v is not npu job.", vcJob)
 		return nil
 	}
 	vcNode, ok := sHandle.Nodes[nodeInfo.Name]
 	if !ok {
-		klog.V(util.LogInfoLev).Infof("NodePredicate %s not in.", nodeInfo.Name)
+		klog.V(util.LogDebugLev).Infof("NodePredicate %s not in.", nodeInfo.Name)
 		return nil
 	}
 
@@ -382,10 +386,10 @@ func (sHandle *ScheduleHandler) NodePredicate(taskInfo *api.TaskInfo, nodeInfo *
 	}
 	if err := vcJob.handler.CheckNodeNPUByTask(taskInfo, vcNode); err != nil {
 		// node doesn't have enough npu for the task
-		klog.V(util.LogInfoLev).Infof("checkNodeNPUByTask %s:%#v ,cannot be selected.", vcNode.Name, err)
+		klog.V(util.LogDebugLev).Infof("checkNodeNPUByTask %s:%#v ,cannot be selected.", vcNode.Name, err)
 		return fmt.Errorf("checkNodeNPUByTask  %s : %s", vcNode.Name, err)
 	}
-	klog.V(util.LogInfoLev).Infof("%s NodePredicate %s select successes.", PluginName, vcNode.Name)
+	klog.V(util.LogDebugLev).Infof("%s NodePredicate %s select successes.", PluginName, vcNode.Name)
 	return nil
 }
 

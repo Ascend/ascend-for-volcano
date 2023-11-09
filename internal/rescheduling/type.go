@@ -134,6 +134,8 @@ const (
 const (
 	// PreSeparateNPU fault type waiting user check
 	PreSeparateNPU = "PreSeparateNPU"
+	// NotHandleFault fault type not handle
+	NotHandleFault = "NotHandleFault"
 	// NodeFaultCode fault type nodeUnhealthy
 	NodeFaultCode = "heartbeatTimeOut"
 	// AcJobTag the tag of AcJob

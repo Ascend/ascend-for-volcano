@@ -30,7 +30,6 @@ import (
 
 	"k8s.io/api/core/v1"
 	"k8s.io/klog"
-	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
@@ -136,8 +135,8 @@ func (reScheduler *ReScheduler) GetRunningJobs(
 	}
 	var myJobs = make(map[api.JobID]*api.JobInfo, util.MapInitNum)
 	for _, jobInfo := range ssn.Jobs {
-		if (jobInfo.PodGroup.Status.Phase != scheduling.PodGroupRunning) &&
-			(jobInfo.PodGroup.Status.Phase != scheduling.PodGroupUnknown) { // pending jobs would not be put into cache
+		if (jobInfo.PodGroup.Status.Phase != util.PodGroupRunning) &&
+			(jobInfo.PodGroup.Status.Phase != util.PodGroupUnknown) { // pending jobs would not be put into cache
 			klog.V(util.LogDebugLev).Infof("job %s pod group is not running but %s, skip",
 				jobInfo.Name, jobInfo.PodGroup.Status.Phase)
 			continue
@@ -783,7 +782,7 @@ func (reScheduler *ReScheduler) RestartFaultJobs(ssn *framework.Session) error {
 		}
 		klog.V(util.LogInfoLev).Infof("%s need restart.", restartFaultJob.JobName)
 		if restartErr := restartFaultJob.restartSingleFaultJob(
-			ssn, reScheduler.kubeClient, &schedulerJob); restartErr != nil {
+			ssn, reScheduler, &schedulerJob); restartErr != nil {
 			klog.V(util.LogErrorLev).Infof("RestartJob %s %#v.", schedulerJob.Name, restartErr)
 		} else {
 			restartFaultJob.DeleteExecutedFlag = true
@@ -1162,9 +1161,9 @@ func (reScheduler ReScheduler) getLastNodeHeartbeatByNodeNameFromCache(nodeName 
 
 func (reScheduler ReScheduler) setTaskCardHealthCode(fTask *FaultTask) error {
 	klog.V(util.LogDebugLev).Infof("task %s setTaskCardHealthCode", fTask.TaskName)
-	var resonList []FaultReasonList
+	var reasonList []FaultReasonList
 	if fTask.NodeName == "" {
-		fTask.Reason = resonList
+		fTask.Reason = reasonList
 		return fmt.Errorf("setTaskCardHealthCode fTask %s use node is nil", fTask.TaskName)
 	}
 	for _, fNode := range reScheduler.FaultNodes {
@@ -1177,21 +1176,29 @@ func (reScheduler ReScheduler) setTaskCardHealthCode(fTask *FaultTask) error {
 			reason.FaultType = NodeUnhealthy
 			reason.FaultCode = NodeFaultCode
 			reason.LargeModelFaultLevel = PreSeparateNPU
-			resonList = append(resonList, reason)
+			reasonList = append(reasonList, reason)
 		}
-		for _, cardName := range fTask.UseCardName {
-			for _, fCard := range fNode.FaultDeviceList {
-				if cardName == fCard.NPUName {
-					var reason FaultReasonList
-					reason.NodeName = fNode.NodeName
-					reason.FaultDeviceList = fCard
-					resonList = append(resonList, reason)
-				}
+		tmpReason := setTaskFaultReasonByFaultNode(fTask, fNode)
+		reasonList = append(reasonList, tmpReason...)
+		break
+	}
+	fTask.Reason = reasonList
+	return nil
+}
+
+func setTaskFaultReasonByFaultNode(fTask *FaultTask, fNode FaultNode) []FaultReasonList {
+	var reasonList []FaultReasonList
+	for _, cardName := range fTask.UseCardName {
+		for _, fCard := range fNode.FaultDeviceList {
+			if cardName == fCard.NPUName && fCard.LargeModelFaultLevel != NotHandleFault {
+				var reason FaultReasonList
+				reason.NodeName = fNode.NodeName
+				reason.FaultDeviceList = fCard
+				reasonList = append(reasonList, reason)
 			}
 		}
 	}
-	fTask.Reason = resonList
-	return nil
+	return reasonList
 }
 
 func (reScheduler ReScheduler) updateJobHealthCode(fJob *FaultJob) {
@@ -1269,22 +1276,6 @@ func (reScheduler ReScheduler) getJobsToBeRestarted(realFaultJobs []FaultJob) []
 	for _, fJob := range realFaultJobs {
 		if fJob.DeleteExecutedFlag {
 			continue
-		}
-
-		if fJob.faultReason == PodFailed {
-			if fJob.FaultRetryTimes == 0 {
-				klog.V(util.LogInfoLev).Infof("job<%s> retry times is 0", fJob.JobUID)
-				continue
-			}
-			remain, ok := reScheduler.JobRemainRetryTimes[fJob.JobUID]
-			if !ok || remain == nil {
-				continue
-			}
-			if remain.Times <= 0 {
-				klog.V(util.LogInfoLev).Infof("job<%s> remain retry times: %d", fJob.JobUID,
-					reScheduler.JobRemainRetryTimes[fJob.JobUID].Times)
-				continue
-			}
 		}
 
 		restartFaultJobs = append(restartFaultJobs, fJob)
