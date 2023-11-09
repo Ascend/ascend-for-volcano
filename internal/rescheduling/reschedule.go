@@ -219,6 +219,9 @@ func (reScheduler *ReScheduler) updateNewFaultJobAttr(
 		faultJob.setJobRankIds(tmpJobRankIds)
 		_, ok := reScheduler.JobRemainRetryTimes[faultJob.JobUID]
 		if !ok {
+			if reScheduler.JobRemainRetryTimes == nil {
+				reScheduler.JobRemainRetryTimes = make(map[api.JobID]*RemainRetryTimes)
+			}
 			reScheduler.JobRemainRetryTimes[faultJob.JobUID] = &RemainRetryTimes{
 				UUID:  faultJob.UUID,
 				Times: faultJob.FaultRetryTimes,
@@ -788,13 +791,6 @@ func (reScheduler *ReScheduler) RestartFaultJobs(ssn *framework.Session) error {
 			restartFaultJob.DeleteExecutedFlag = true
 			if restartFaultJob.faultReason == PodFailed {
 				reScheduler.JobRemainRetryTimes[restartFaultJob.JobUID].Times -= 1
-				if job, ok := ssn.Jobs[restartFaultJob.JobUID]; ok && job != nil && job.PodGroup != nil {
-					if job.PodGroup.Labels == nil {
-						job.PodGroup.Labels = make(map[string]string)
-					}
-					job.PodGroup.Labels["remain-retry-times"] = strconv.Itoa(reScheduler.
-						JobRemainRetryTimes[restartFaultJob.JobUID].Times)
-				}
 				klog.V(util.LogInfoLev).Infof("job<%s> restart success, remain retry times reduce 1", restartFaultJob.JobUID)
 			}
 			klog.V(util.LogInfoLev).Infof("RestartJob %s execution success, set flag true", schedulerJob.Name)
