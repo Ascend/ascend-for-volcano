@@ -219,6 +219,9 @@ func (reScheduler *ReScheduler) updateNewFaultJobAttr(
 		faultJob.setJobRankIds(tmpJobRankIds)
 		_, ok := reScheduler.JobRemainRetryTimes[faultJob.JobUID]
 		if !ok {
+			if reScheduler.JobRemainRetryTimes == nil {
+				reScheduler.JobRemainRetryTimes = make(map[api.JobID]*RemainRetryTimes)
+			}
 			reScheduler.JobRemainRetryTimes[faultJob.JobUID] = &RemainRetryTimes{
 				UUID:  faultJob.UUID,
 				Times: faultJob.FaultRetryTimes,
