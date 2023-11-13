@@ -1,5 +1,5 @@
 /*
-Copyright(C)2020-2023. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2023. Huawei Technologies Co.,Ltd. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -101,59 +101,22 @@ func (ab *Base910b) CheckJobArch() error {
 
 // checkJobTrainMode to check job train mode:distribute and single.
 func (ab *Base910b) checkJobTrainMode() error {
-	nTaskNum := ab.GetNPUTaskNumInJob()
-	if nTaskNum == 0 {
+	if ab.NPUTaskNum == 0 {
 		klog.V(util.LogErrorLev).Infof("GetVTaskNumInVJob %s has no npu tasks.", ab.Name)
 		return fmt.Errorf("%s no npu job", ab.Name)
 	}
-
-	if nTaskNum == 1 {
-		if err := ab.checkSingleTrainMode(); err != nil {
-			klog.V(util.LogErrorLev).Infof("%s checkSingleTrainMode %s: %s", ab.GetPluginName(), ab.Name, err)
-			return err
-		}
+	klog.V(util.LogDebugLev).Infof("checkJobTrainMode job(%s) has %d tasks.", ab.Name, len(ab.Tasks))
+	nTaskReqNpuNum := ab.ReqNPUNum / ab.NPUTaskNum
+	if ab.CheckJobAllowNum(nTaskReqNpuNum) {
 		return nil
 	}
-
-	if err := ab.checkModuleDistributeTrainMode(); err != nil {
-		klog.V(util.LogErrorLev).Infof("%s check distribute %s err: %s", ab.GetPluginName(), ab.Name, err)
-		return err
-	}
-
-	return nil
+	return fmt.Errorf("%s checkJobTrainMode %s req npu is invalid", ab.GetPluginName(), ab.Name)
 }
 
-// CheckSingleTrainMode Single Train job has only one task.
-func (ab *Base910b) checkSingleTrainMode() error {
-	klog.V(util.LogDebugLev).Infof("checkSingleTrainMode job(%s) has %d tasks.", ab.Name, len(ab.Tasks))
-
-	if ab.CheckSingleAllowNum(ab.ReqNPUNum) {
-		return nil
-	}
-	return fmt.Errorf("%s checkSingleTrainMode %s req npu not in [1,2,4,8,16]", ab.GetPluginName(), ab.Name)
-}
-
-// If job requires more than 8 npu, every task need 8 npu.
-func (ab *Base910b) checkModuleDistributeTrainMode() error {
-	klog.V(util.LogDebugLev).Infof("half DistributeTrainMode %s has %d tasks.", ab.Name, len(ab.Tasks))
-
-	for _, task := range ab.Tasks {
-		if !task.IsNPUTask() {
-			continue
-		}
-
-		if task.ReqNPUNum != ab.MaxNodeNPUNum {
-			return fmt.Errorf("checkModuleDistributeTrainMode %s req %d not %d", task.Name, task.ReqNPUNum,
-				ab.MaxNodeNPUNum)
-		}
-	}
-	return nil
-}
-
-func (ab *Base910b) getNPUAllocPriorityArray(taskNPUNumber int) ([]int, error) {
+func (ab *Base910b) GetNPUAllocPriorityArray(taskNPUNumber int) ([]int, error) {
 	var priorityArray []int
 	var err error
-	if !ab.CheckSingleAllowNum(taskNPUNumber) {
+	if !ab.CheckJobAllowNum(taskNPUNumber) {
 		err = fmt.Errorf("illegal request npu number: %d", taskNPUNumber)
 		klog.V(util.LogErrorLev).Infof("%s %s.", ab.GetPluginName(), err)
 		return nil, err
@@ -195,7 +158,7 @@ func (ab *Base910b) selectNPUFromNode(task *api.TaskInfo, node plugin.NPUNode) (
 		klog.V(util.LogErrorLev).Infof("%s ScoreBestNPUNodes err: %s", ab.GetPluginName(), err)
 		return nil, err
 	}
-	priorityArray, err := ab.getNPUAllocPriorityArray(taskNPUNum)
+	priorityArray, err := ab.GetNPUAllocPriorityArray(taskNPUNum)
 	if err != nil {
 		klog.V(util.LogErrorLev).Info(err)
 		return nil, err
@@ -203,7 +166,7 @@ func (ab *Base910b) selectNPUFromNode(task *api.TaskInfo, node plugin.NPUNode) (
 	klog.V(util.LogInfoLev).Infof("%s selectNPUFromNode %s[%d] priority:%v in %v.", ab.GetPluginName(),
 		task.Name, taskNPUNum, priorityArray, nodeTop)
 
-	leftHCCSArray, rightHCCSArray := ab.getNodeHccsArray(nodeTop)
+	leftHCCSArray, rightHCCSArray := ab.GetNodeHccsArray(nodeTop)
 	for _, priority := range priorityArray {
 		if priority == len(leftHCCSArray) && len(leftHCCSArray) != 0 {
 			return leftHCCSArray[:taskNPUNum], nil

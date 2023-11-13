@@ -119,7 +119,7 @@ type ReSchedulerCacheWriteReSchedulerCacheToEnvCacheFields struct {
 	FaultNodes                 []FaultNode
 	FaultJobs                  []FaultJob
 	NodeHeartbeats             []NodeHeartbeat
-	AllocNodeRankOccurrenceMap map[api.JobID][]AllocNodeRankOccurrence
+	AllocNodeRankOccurrenceMap map[api.JobID][]*AllocNodeRankOccurrence
 }
 
 type ReSchedulerCacheWriteReSchedulerCacheToEnvCacheArgs struct {
@@ -142,15 +142,15 @@ func buildReSchedulerCacheWriteReSchedulerCacheToEnvCache() []ReSchedulerCacheWr
 			FaultNodes:                 []FaultNode{},
 			FaultJobs:                  []FaultJob{},
 			NodeHeartbeats:             []NodeHeartbeat{},
-			AllocNodeRankOccurrenceMap: map[api.JobID][]AllocNodeRankOccurrence{},
+			AllocNodeRankOccurrenceMap: map[api.JobID][]*AllocNodeRankOccurrence{},
 		},
 		args: ReSchedulerCacheWriteReSchedulerCacheToEnvCacheArgs{
 			env: &plugin.ScheduleEnv{
 				Cache: plugin.ScheduleCache{
-					Names:      map[string]string{RePropertyName: CmName},
-					Namespaces: map[string]string{RePropertyName: CmNameSpace},
-					UnCreateCM: map[string]bool{RePropertyName: false},
-					Data:       map[string]map[string]string{RePropertyName: make(map[string]string, util.MapInitNum)},
+					Names:           map[string]string{RePropertyName: CmName},
+					Namespaces:      map[string]string{RePropertyName: CmNameSpace},
+					FaultConfigMaps: map[api.JobID]*plugin.FaultRankIdData{},
+					Data:            map[string]map[string]string{RePropertyName: make(map[string]string, util.MapInitNum)},
 				},
 			},
 			jobType: CmFaultJob910x8Kind,
@@ -165,14 +165,14 @@ func buildReSchedulerCacheWriteReSchedulerCacheToEnvCache() []ReSchedulerCacheWr
 			FaultNodes:                 []FaultNode{},
 			FaultJobs:                  []FaultJob{*faultJob},
 			NodeHeartbeats:             []NodeHeartbeat{},
-			AllocNodeRankOccurrenceMap: map[api.JobID][]AllocNodeRankOccurrence{},
+			AllocNodeRankOccurrenceMap: map[api.JobID][]*AllocNodeRankOccurrence{},
 		},
 		args: ReSchedulerCacheWriteReSchedulerCacheToEnvCacheArgs{
 			env: &plugin.ScheduleEnv{
 				Cache: plugin.ScheduleCache{
-					Names:      map[string]string{RePropertyName: CmName},
-					Namespaces: map[string]string{RePropertyName: CmNameSpace},
-					UnCreateCM: map[string]bool{RePropertyName: false},
+					Names:           map[string]string{RePropertyName: CmName},
+					Namespaces:      map[string]string{RePropertyName: CmNameSpace},
+					FaultConfigMaps: map[api.JobID]*plugin.FaultRankIdData{},
 					Data: map[string]map[string]string{RePropertyName: make(map[string]string, util.MapInitNum),
 						JobRecovery: make(map[string]string, util.MapInitNum)},
 				},

@@ -45,7 +45,7 @@ type validNPUJobTestCase struct {
 
 func buildValidNPUJobTestCase01() []validNPUJobTestCase {
 	job01 := test.FakeNormalTestJob("job01", 1)
-	test.SetFakeJobResRequest(job01, util.NPU310CardName, "0")
+	test.SetFakeJobResRequest(job01, util.NPU310CardName, "1")
 	attr1 := itest.FakeSchedulerJobAttrByJob(job01)
 	for _, task := range attr1.Tasks {
 		fmt.Println(task.Name)
@@ -53,7 +53,7 @@ func buildValidNPUJobTestCase01() []validNPUJobTestCase {
 	job02 := test.FakeNormalTestJob("job02", 1)
 	test.SetFakeJobResRequest(job02, util.NPU310CardName, "65")
 	attr2 := itest.FakeSchedulerJobAttrByJob(job02)
-	for _, task := range attr1.Tasks {
+	for _, task := range attr2.Tasks {
 		fmt.Println(task.Name)
 	}
 	job03 := test.FakeNormalTestJob("job02", 1)
@@ -61,13 +61,9 @@ func buildValidNPUJobTestCase01() []validNPUJobTestCase {
 	attr3 := itest.FakeSchedulerJobAttrByJob(job03)
 	return []validNPUJobTestCase{
 		{
-			name: "01-ValidNPUJob should return error when job request no npu",
-			attr: attr1,
-			wantErr: &api.ValidateResult{
-				Pass:    false,
-				Reason:  "task req npu num is invalid",
-				Message: "task<vcjob/job01-> req npu num<0> is invalid",
-			},
+			name:    "01-ValidNPUJob should return nil when job request no npu",
+			attr:    attr1,
+			wantErr: nil,
 		},
 		{
 			name: "02-ValidNPUJob should return error when tasks request npu more than 64",
@@ -171,7 +167,13 @@ func TestUseAnnotation(t *testing.T) {
 	job := test.FakeNormalTestJob("job", 1)
 	test.SetFakeJobResRequest(job, util.NPU310CardName, "1")
 	attr := itest.FakeSchedulerJobAttrByJob(job)
+	env := plugin.ScheduleEnv{
+		Jobs: map[api.JobID]plugin.SchedulerJob{
+			test.FakeJobName: {SchedulerJobAttr: attr},
+		},
+	}
 	npu.SetSchedulerAttr(attr)
+	npu.SetSchedulerEnv(env)
 	testCases := buildUseAnnotationTestCases()
 	for _, tt := range testCases {
 		t.Run(tt.Name, func(t *testing.T) {

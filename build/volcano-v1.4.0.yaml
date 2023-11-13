@@ -33,7 +33,7 @@ data:
       - name: selector
         arguments: {"host-arch":"huawei-arm|huawei-x86",
         "accelerator":"huawei-Ascend910|nvidia-tesla-v100|nvidia-tesla-p40",
-        "accelerator-type":"card|module|half|module-910b-16|card-910b-2","servertype":"soc"}
+        "accelerator-type":"card|module|half|module-910b-16|module-910b-8|card-910b-2|card-910b-infer","servertype":"soc"}
       - name: init-params
         arguments: {"grace-over-time":"900","presetVirtualDevice":"true"}
 
@@ -102,7 +102,7 @@ rules:
     verbs: ["get", "list", "watch", "delete"]
   - apiGroups: [""]
     resources: ["configmaps"]
-    verbs: ["get", "create", "delete", "update"]
+    verbs: ["get", "create", "delete", "update","list","watch"]
 
 ---
 kind: ClusterRoleBinding
@@ -141,6 +141,8 @@ spec:
       nodeSelector:
         masterselector: dls-master-node
       serviceAccount: volcano-scheduler
+      securityContext:
+        fsGroup: 9000
       containers:
         - name: volcano-scheduler
           image: volcanosh/vc-scheduler:v1.4.0
@@ -297,6 +299,8 @@ spec:
       nodeSelector:
         masterselector: dls-master-node
       serviceAccount: volcano-controllers
+      securityContext:
+        fsGroup: 9000
       containers:
         - name: volcano-controllers
           image: volcanosh/vc-controller-manager:v1.4.0

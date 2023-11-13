@@ -44,6 +44,7 @@ func FakeSchedulerJobAttrByJob(job *api.JobInfo) util.SchedulerJobAttr {
 		ReqNPUNum:  num,
 		Tasks:      plugin.GetJobNPUTasks(job),
 	}
+	NPUJob.NPUTaskNum = NPUJob.GetNPUTaskNumInJob()
 	attr.NPUJob = NPUJob
 	return attr
 }

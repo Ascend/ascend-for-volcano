@@ -17,10 +17,9 @@ limitations under the License.
 /*
 Package card910bx2 is using for HuaWei Ascend 910B(Atlas 300T A2) card pin affinity schedule.
 */
-package card910bx2
+package card910bx2infer
 
 import (
-	"errors"
 	"fmt"
 
 	"k8s.io/klog"
@@ -35,7 +34,7 @@ import (
 
 // New return npu plugin
 func New(name string) base.AscendHandler {
-	m := &card910bx2{}
+	m := &card910bx2infer{}
 	m.SetPluginName(name)
 	m.SetAnnoName(util.NPU910CardName)
 	m.SetAnnoPreVal(util.NPU910CardNamePre)
@@ -43,31 +42,22 @@ func New(name string) base.AscendHandler {
 	m.SetMaxNodeNPUNum(nodeNPUNumber)
 	m.SetAcceleratorValue(util.JobKind910BValue)
 	m.SetArch(util.HuaweiArchX86 + util.HuaweiArchArm)
-	m.AffScoreList = [][]int{
-		{util.AffScore0, util.AffScore1},
-		{util.AffScore2, util.AffScore0},
-	}
 	return m
 }
 
-// ValidNPUJob check job req npu num and mode
-func (tp *card910bx2) ValidNPUJob() *api.ValidateResult {
-	return tp.Valid910bNPUJob()
-}
-
 // PreStartAction pre-processing actions for rescheduling
-func (tp *card910bx2) PreStartAction(ssn *framework.Session) error {
-	moduleFullName := util.NPU910CardName + util.Card910bx2AcceleratorType
+func (tp *card910bx2infer) PreStartAction(ssn *framework.Session) error {
+	moduleFullName := util.NPU910CardName + util.Card910bx2InferAcceleratorType
 	klog.V(util.LogInfoLev).Infof("Entering PreStartAction of %s...", moduleFullName)
 	if tp == nil || ssn == nil || tp.FrameAttr.KubeClient == nil {
 		return fmt.Errorf("%s handler not enabled or ssn is nil: %s", moduleFullName, util.ArgumentError)
 	}
-	tp.reHandle = rescheduling.New(&tp.ScheduleEnv, rescheduling.CmFaultJob910bx2Kind)
+	tp.reHandle = rescheduling.New(&tp.ScheduleEnv, rescheduling.CmFaultJob910bx2InferKind)
 	if tp.reHandle == nil {
-		klog.V(util.LogInfoLev).Infof("create new fault handler failed.")
+		klog.V(util.LogErrorLev).Infof("create new fault handler failed.")
 		return fmt.Errorf("%s reSchedule not enabled: %s", moduleFullName, util.ArgumentError)
 	}
-	tp.reHandle.NewCommonReScheduler(rescheduling.CmFaultJob910bx2Kind)
+	tp.reHandle.NewCommonReScheduler(rescheduling.CmFaultJob910bx2InferKind)
 	tp.reHandle.SynCacheFaultNodeWithSession(util.NPU910CardName)
 	tp.reHandle.AddFaultNodeWithSession(util.NPU910CardName)
 	tp.reHandle.SynCacheFaultJobWithSession(ssn)
@@ -77,7 +67,7 @@ func (tp *card910bx2) PreStartAction(ssn *framework.Session) error {
 		klog.V(util.LogInfoLev).Infof("%s RestartNeedForceDeleteJobs: %s", moduleFullName, restartErr.Error())
 	}
 	// 2. get all the new 910bx2 jobs in session
-	runningJobs910bx2, getRunErr := tp.reHandle.GetRunningJobs(ssn, util.Ascend910bName, util.Card910bx2AcceleratorType)
+	runningJobs910bx2, getRunErr := tp.reHandle.GetRunningJobs(ssn, util.Ascend910bName, util.Card910bx2InferAcceleratorType)
 	if getRunErr != nil {
 		klog.V(util.LogInfoLev).Infof("%s GetRunningJobs: %s", moduleFullName, getRunErr.Error())
 	}
@@ -91,47 +81,53 @@ func (tp *card910bx2) PreStartAction(ssn *framework.Session) error {
 		klog.V(util.LogInfoLev).Infof("%s RestartFaultJobs: %s", moduleFullName, restartErr.Error())
 		return restartErr
 	}
-	// 5. save structure for later allocation process
-	tp.reHandle.GenerateNodeRankIndexTaskMap()
-	klog.V(util.LogInfoLev).Infof("Leaving PreStartAction of %s", moduleFullName)
 	return nil
 }
 
 // PreStopAction post-processing actions for re-scheduling
-func (tp *card910bx2) PreStopAction(env *plugin.ScheduleEnv) error {
-	moduleFullName := util.NPU910CardName + util.Card910bx2AcceleratorType
+func (tp *card910bx2infer) PreStopAction(env *plugin.ScheduleEnv) error {
+	moduleFullName := util.NPU910CardName + util.Card910bx2InferAcceleratorType
 	klog.V(util.LogInfoLev).Infof("enter PreStopAction %s...", moduleFullName)
 	if tp == nil || tp.reHandle == nil || env == nil || tp.FrameAttr.KubeClient == nil {
 		return fmt.Errorf("%s reSchedule not enabled or nil env: %s", moduleFullName, util.ArgumentError)
 	}
-	if err := tp.reHandle.WriteReSchedulerCacheToEnvCache(env, rescheduling.CmFaultJob910bx2Kind); err != nil {
+	if err := tp.reHandle.WriteReSchedulerCacheToEnvCache(env, rescheduling.CmFaultJob910bx2InferKind); err != nil {
 		return err
 	}
 	klog.V(util.LogInfoLev).Infof("leave PreStopAction %s...", moduleFullName)
 	return nil
 }
 
-// CheckNodeNPUByTask check nod npu meet task req
-func (tp *card910bx2) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode) error {
-	if tp == nil || task == nil || len(node.Annotation) == 0 {
-		err := errors.New(util.ArgumentError)
-		klog.V(util.LogErrorLev).Infof("CheckNodeNPUByTask err: %s", err)
-		return err
+//ValidNPUJob check job req npu num and mode
+func (tp *card910bx2infer) ValidNPUJob() *api.ValidateResult {
+	if tp.NPUTaskNum != 1 {
+		klog.V(util.LogErrorLev).Infof("GetVTaskNumInVJob %s has %d npu tasks, only support 1.", tp.Name, tp.NPUTaskNum)
+		return &api.ValidateResult{
+			Pass:    false,
+			Reason:  "ValidNPUJob failed",
+			Message: fmt.Sprintf("%s task num is invalid", tp.Name),
+		}
 	}
-	return nil
+
+	return tp.Valid910bNPUJob()
+}
+
+// CheckNodeNPUByTask check nod npu meet task req
+func (tp *card910bx2infer) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode) error {
+	return tp.NPUHandler.CheckNodeNPUByTask(task, node)
 }
 
 // ScoreBestNPUNodes core node by calculate task req npu num and node npu top
-func (tp *card910bx2) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo, sMap map[string]float64) error {
-	return tp.ScoreAscendNPUNodes(task, nodes, sMap)
+func (tp *card910bx2infer) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo, sMap map[string]float64) error {
+	return tp.NPUHandler.ScoreBestNPUNodes(task, nodes, sMap)
 }
 
 // UseAnnotation select npu for task from node
-func (tp *card910bx2) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
-	return tp.Use910bAnnotation(task, node)
+func (tp *card910bx2infer) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
+	return tp.NPUHandler.UseAnnotation(task, node)
 }
 
 // ReleaseAnnotation Release used resource.
-func (tp *card910bx2) ReleaseAnnotation(_ *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
+func (tp *card910bx2infer) ReleaseAnnotation(_ *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
 	return &node
 }

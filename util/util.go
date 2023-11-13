@@ -26,7 +26,8 @@ import (
 
 	"k8s.io/api/core/v1"
 	"k8s.io/klog"
-	"volcano.sh/volcano/pkg/scheduler/conf"
+
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/config"
 )
 
 // ChangeTopToIntArray Change npu card ids from string to int array.
@@ -85,16 +86,16 @@ func ChangeIntArrToStr(top []int, npuCardPreName string) string {
 }
 
 // GetConfigFromSchedulerConfigMap get config info from yaml
-func GetConfigFromSchedulerConfigMap(configKey string, configurations []conf.Configuration) (*conf.Configuration,
+func GetConfigFromSchedulerConfigMap(configKey string, configurations []config.Configuration) (*config.Configuration,
 	error) {
 	if len(configurations) == 0 {
 		return nil, errors.New("no configurations in scheduler configmap")
 	}
 
 	// in the new version, the configuration is obtained based on the configured name field.
-	if config := getConfigurationByKey(configKey, configurations); config != nil {
+	if cfg := getConfigurationByKey(configKey, configurations); cfg != nil {
 		klog.V(LogDebugLev).Infof("get the configurations by name [%s] successful.", configKey)
-		return config, nil
+		return cfg, nil
 	}
 
 	// compatible with old versions, because of the name field is not configured in the old versions.
@@ -107,7 +108,7 @@ func GetConfigFromSchedulerConfigMap(configKey string, configurations []conf.Con
 }
 
 // getConfigurationByKey called by GetConfigFromSchedulerConfigMap
-func getConfigurationByKey(configKey string, configurations []conf.Configuration) *conf.Configuration {
+func getConfigurationByKey(configKey string, configurations []config.Configuration) *config.Configuration {
 	for _, cf := range configurations {
 		if cf.Name == configKey {
 			return &cf
@@ -118,7 +119,7 @@ func getConfigurationByKey(configKey string, configurations []conf.Configuration
 }
 
 // getConfigurationOldVersion called by GetConfigFromSchedulerConfigMap
-func getConfigurationOldVersion(configurations []conf.Configuration) *conf.Configuration {
+func getConfigurationOldVersion(configurations []config.Configuration) *config.Configuration {
 	// if user removes configuration name and changes the order, will make mistakes.
 	klog.V(LogDebugLev).Info("compatible with old versions, get the selector configuration successful.")
 	return &configurations[0]
@@ -224,4 +225,12 @@ func ConvertErrSliceToError(reErrors []error) error {
 	}
 
 	return reE
+}
+
+// SafePrint safe print error
+func SafePrint(args ...interface{}) string {
+	msg := fmt.Sprint(args...)
+	trimMsg := strings.Replace(msg, "\r", " ", -1)
+	trimMsg = strings.Replace(trimMsg, "\n", " ", -1)
+	return trimMsg
 }

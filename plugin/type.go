@@ -18,11 +18,13 @@ limitations under the License.
 package plugin
 
 import (
+	"sync"
+
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	"volcano.sh/volcano/pkg/scheduler/conf"
 
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/config"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
@@ -78,19 +80,31 @@ const (
 	// Ascend310P 310P template name
 	Ascend310P = "Ascend310P"
 	// Ascend910 910 template name
-	Ascend910 = "Ascend910"
+	Ascend910               = "Ascend910"
+	maxTorAffinityNodeScore = float64(200)
+	cardHealthySuffix       = ""
+	unhealthyCardSuffix     = "-Unhealthy"
 )
 
 // SchedulerJob the plugin define job info
 type SchedulerJob struct {
 	util.SchedulerJobAttr
-	handler ISchedulerPlugin
+	RankIndexInfo
+	handler     ISchedulerPlugin
+	ServerList  []*Tor
+	JobReadyTag bool
+}
+
+// RankIndexInfo the info of job used rank
+type RankIndexInfo struct {
+	HealthTorRankIndex map[string]string
+	FaultIndex         int
 }
 
 // VolcanoFrame passed in by the volcano frame.
 type VolcanoFrame struct {
 	UID          types.UID
-	Conf         []conf.Configuration
+	Confs        []config.Configuration
 	KubeClient   kubernetes.Interface
 	VJobTemplate map[string]map[string]util.VResource
 }
@@ -100,19 +114,41 @@ type ScheduleCache struct {
 	// special, name, value
 	Names, Namespaces map[string]string
 	Data              map[string]map[string]string
-	UnCreateCM        map[string]bool
+	FaultConfigMaps   map[api.JobID]*FaultRankIdData
+}
+
+type FaultRankIdData struct {
+	Name, Namespace string
+	Data            map[string]string
 }
 
 // ScheduleEnv for job scheduler context.
 type ScheduleEnv struct {
-	Jobs      map[api.JobID]SchedulerJob
-	Nodes     map[string]NPUNode
-	FrameAttr VolcanoFrame
-	Cache     ScheduleCache
+	Jobs        map[api.JobID]SchedulerJob
+	Nodes       map[string]NPUNode
+	DeviceInfos *DeviceInfosWithMutex
+	FrameAttr   VolcanoFrame
+	Cache       ScheduleCache
+	Tors        *TorList
+}
+
+// DeviceInfosWithMutex information for the current plugin
+type DeviceInfosWithMutex struct {
+	sync.Mutex
+	Devices map[string]NodeDeviceInfo
 }
 
 // ScheduleHandler information for the current plugin
 type ScheduleHandler struct {
-	NPUPlugins map[string]ISchedulerPlugin
+	NPUPlugins map[string]NPUBuilder
 	ScheduleEnv
+	sync.Once
+}
+
+// AllocNodeRankOccurrence object recording node rankIndex and whether index re-allocated to new node
+type AllocNodeRankOccurrence struct {
+	NodeName   string
+	RankIndex  string
+	IsFault    bool
+	Occurrence int
 }

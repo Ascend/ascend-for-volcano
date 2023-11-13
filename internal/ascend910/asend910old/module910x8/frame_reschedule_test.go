@@ -32,9 +32,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/config"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/base"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/rescheduling"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/plugin"
@@ -205,7 +205,7 @@ func fakeEnvEmpty() plugin.ScheduleEnv {
 		},
 	}
 	frameAttr := plugin.VolcanoFrame{
-		Conf: []conf.Configuration{
+		Confs: []config.Configuration{
 			{
 				Name:      util.CMInitParamKey,
 				Arguments: map[string]string{rescheduling.GraceOverTimeKey: "800"},
@@ -482,7 +482,7 @@ func fakeFaultCM(env plugin.ScheduleEnv) *v1.ConfigMap {
 		env.Cache.Data[rescheduling.RePropertyName][rescheduling.CmFaultJob910x8Kind]
 	cmData[rescheduling.CmNodeHeartbeatKind] = ""
 	cmData[rescheduling.CmNodeRankTimeMapKind] = ""
-	cmData[rescheduling.CmCheckCode] = plugin.MakeDataHash(cmData)
+	cmData[rescheduling.CmCheckCode] = util.MakeDataHash(cmData)
 	var faultCM = &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      rescheduling.CmName,

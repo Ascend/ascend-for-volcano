@@ -20,14 +20,16 @@ Package plugin is using for HuaWei Ascend pin affinity schedule frame.
 package plugin
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
-	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
@@ -145,7 +147,7 @@ func GetVCJobReqNPUTypeFromJobInfo(vcJob *api.JobInfo) (string, int, error) {
 			return string(k), int(v / util.NPUHexKilo), nil
 		}
 	}
-	klog.V(util.LogErrorLev).Infof("GetVCJobReqNPUTypeFromJobInfo %+v.", vcJob.TotalRequest.ScalarResources)
+	klog.V(util.LogDebugLev).Infof("GetVCJobReqNPUTypeFromJobInfo %+v.", vcJob.TotalRequest.ScalarResources)
 	return "", 0.0, errors.New("nil NPU")
 }
 
@@ -162,29 +164,52 @@ func GetVCTaskReqNPUTypeFromTaskInfo(vcTask *api.TaskInfo) (string, int) {
 		}
 		continue
 	}
-	klog.V(util.LogErrorLev).Infof("GetVCTaskReqNPUTypeFromTaskInfo %+v.", vcTask.Resreq.ScalarResources)
+	klog.V(util.LogInfoLev).Infof("GetVCTaskReqNPUTypeFromTaskInfo %+v.", vcTask.Resreq.ScalarResources)
 	return "", 0
 }
 
 // GetJobNPUTasks get NPUTask from jobInfo.
 func GetJobNPUTasks(vcJob *api.JobInfo) map[api.TaskID]util.NPUTask {
-	if vcJob == nil || len(vcJob.Tasks) == 0 {
-		if vcJob == nil {
-			klog.V(util.LogDebugLev).Infof("GetJobNPUTasks %s not init has no task.", vcJob.Name)
-		}
+	if vcJob == nil {
+		return nil
+	}
+	if len(vcJob.Tasks) == 0 {
+		klog.V(util.LogDebugLev).Infof("GetJobNPUTasks %s not init has no task.", vcJob.Name)
 		return nil
 	}
 	resultMap := make(map[api.TaskID]util.NPUTask, util.MapInitNum)
 	for taskID, taskInf := range vcJob.Tasks {
 		name, num := GetVCTaskReqNPUTypeFromTaskInfo(taskInf)
-		if num == 0 {
-			continue
+		resultMap[taskID] = util.NPUTask{
+			Name:       taskInf.Name,
+			NameSpace:  taskInf.Namespace,
+			ReqNPUName: name,
+			ReqNPUNum:  num,
+			Selector:   GetTaskSelectors(taskInf),
+			Label:      GetTaskLabels(taskInf),
+			VTask:      &util.VTask{},
+			NodeName:   taskInf.NodeName,
 		}
-		resultMap[taskID] = util.NPUTask{Name: taskInf.Name, NameSpace: taskInf.Namespace, ReqNPUName: name,
-			ReqNPUNum: num,
-			Selector:  GetTaskSelectors(taskInf), Label: GetTaskLabels(taskInf), VTask: &util.VTask{}}
 	}
 	return resultMap
+}
+
+// GetJobFirstTasksInfo get NPUTask from jobInfo.
+func GetJobFirstTasksInfo(vcJob *api.JobInfo) *api.TaskInfo {
+	if vcJob == nil {
+		return nil
+	}
+	if len(vcJob.Tasks) == 0 {
+		klog.V(util.LogDebugLev).Infof("GetJobNPUTasks %s not init has no task.", vcJob.Name)
+		return nil
+	}
+	for _, taskInf := range vcJob.Tasks {
+		if !IsNPUTask(taskInf) {
+			continue
+		}
+		return taskInf
+	}
+	return nil
 }
 
 // InitSelfPluginByJobInfo init job's handler, the deal plugin.
@@ -203,7 +228,7 @@ func (sJob *SchedulerJob) InitSelfPluginByJobInfo(sHandle *ScheduleHandler) {
 		return
 	}
 
-	sJob.handler = plugin
+	sJob.handler = plugin(pluginName)
 }
 
 // IsJobInitial Determine if the task is ready.
@@ -213,7 +238,7 @@ func IsJobInitial(job *api.JobInfo) bool {
 
 // IsJobRestarted used for rescheduling, judge if job restarted
 func IsJobRestarted(job *api.JobInfo) bool {
-	return IsJobInitial(job) && job.PodGroup.Status.Phase == scheduling.PodGroupRunning
+	return IsJobInitial(job) && job.PodGroup.Status.Phase == util.PodGroupRunning
 }
 
 // Init the SchedulerJob's init.
@@ -261,9 +286,13 @@ func (sJob *SchedulerJob) initNPUJob(vcJob *api.JobInfo) {
 }
 
 func (sJob *SchedulerJob) initByJobInfo(vcJob *api.JobInfo) error {
+	sJob.JobReadyTag = true
+	sJob.HealthTorRankIndex = map[string]string{}
 	sJob.SchedulerJobAttr.ComJob = util.ComJob{Name: vcJob.UID, NameSpace: vcJob.Namespace,
-		Selector: GetJobSelectorFromVcJob(vcJob),
-		Label:    GetJobLabelFromVcJob(vcJob)}
+		ReferenceName: util.ReferenceNameOfJob(vcJob),
+		Selector:      GetJobSelectorFromVcJob(vcJob),
+		Label:         GetJobLabelFromVcJob(vcJob),
+		Annotation:    vcJob.PodGroup.Annotations}
 	sJob.SchedulerJobAttr.NPUJob = nil
 	sJob.handler = nil
 	name, num, err := GetVCJobReqNPUTypeFromJobInfo(vcJob)
@@ -272,6 +301,7 @@ func (sJob *SchedulerJob) initByJobInfo(vcJob *api.JobInfo) error {
 	}
 	sJob.SchedulerJobAttr.NPUJob = &util.NPUJob{ReqNPUName: name, ReqNPUNum: num, Tasks: GetJobNPUTasks(vcJob),
 		VJob: &util.VJob{}}
+	sJob.NPUTaskNum = sJob.GetNPUTaskNumInJob()
 	sJob.initNPUJob(vcJob)
 	return nil
 }
@@ -283,16 +313,16 @@ func (sJob SchedulerJob) IsNPUJob() bool {
 
 // ValidJobSelector validate the job selector.
 func (sJob SchedulerJob) ValidJobSelector(vcFrame VolcanoFrame) error {
-	if len(sJob.Selector) == 0 || len(vcFrame.Conf) == 0 || len(vcFrame.Conf[0].Arguments) == 0 {
+	if len(sJob.Selector) == 0 || len(vcFrame.Confs) == 0 || len(vcFrame.Confs[0].Arguments) == 0 {
 		msg := fmt.Errorf("%s or vcFrame's selectors nil", sJob.Name)
 		klog.V(util.LogErrorLev).Infof("%s.", msg.Error())
 		return msg
 	}
 
 	// check the job selector
-	if !util.IsSelectorMeetJob(sJob.Selector, vcFrame.Conf[0].Arguments) {
+	if !util.IsSelectorMeetJob(sJob.Selector, vcFrame.Confs[0].Arguments) {
 		meetErr := fmt.Errorf("job(%s) selector:%#v not meet scheduler conf:%#v", sJob.Name, sJob.Selector,
-			vcFrame.Conf[0].Arguments)
+			vcFrame.Confs[0].Arguments)
 		klog.V(util.LogErrorLev).Infof(meetErr.Error())
 		return meetErr
 	}
@@ -324,6 +354,403 @@ func (sJob SchedulerJob) ValidJobFn(vcFrame VolcanoFrame) *api.ValidateResult {
 	return nil
 }
 
+func (sJob SchedulerJob) ValidTorInfo(sHandler *ScheduleHandler) error {
+	if sHandler == nil || sHandler.Tors == nil || sHandler.Tors.Tors == nil {
+		return fmt.Errorf("validJobFn [%#v] failed:%#v", sJob.Name, objectNilError)
+	}
+	return nil
+}
+
+func CheckNetSliceIsMeetJobRequire(sJob SchedulerJob, sHandler *ScheduleHandler, nodes []*api.NodeInfo) error {
+	if sJob.ServerList != nil {
+		return nil
+	}
+	if err := sJob.ValidTorInfo(sHandler); err != nil {
+		return err
+	}
+	sJob.GetEnableServerList(nodes, sHandler)
+	fullTorNum := sJob.GetFullTorNumFromTorInfo(sHandler)
+	n := sJob.NPUTaskNum - len(sJob.HealthTorRankIndex)
+	sort.Sort(TorLs(sHandler.Tors.Tors))
+	netSliceNum := sHandler.Tors.TorCount
+	if n < netSliceNum {
+		err := sJob.SetFillJobServerList(sHandler, sHandler.Tors.Tors, n)
+		if sJob.Label[TorAffinityKey] == LargeModelTag || err == nil {
+			return err
+		}
+	}
+	logicList := sJob.GetLogicTorList(sHandler, netSliceNum)
+	taskRow, taskColumn := GetTaskRowAndTaskColumn(n, netSliceNum)
+	if taskRow == -1 && taskColumn == -1 {
+		return fmt.Errorf("taskRow and taskColumn is illegal")
+	}
+	if taskRow+1 < fullTorNum {
+		sJob.SetJobServerCacheTosHandler(sHandler, sHandler.Tors.Tors, taskRow, taskColumn)
+		sJob.MarkMulJobServerList()
+		return nil
+	}
+	if logicList == nil {
+		return fmt.Errorf("tor check failed logicTorList is nil")
+	}
+	sort.Sort(LogicTorList(logicList))
+
+	if logicList[taskColumn] == nil {
+		return fmt.Errorf("tor check failed not enough resource by not enough Net Slice")
+	}
+
+	if taskRow > 0 && logicList[netSliceNum-1] == nil {
+		return fmt.Errorf("tor check failed not enough resource Net Slice is not full")
+	}
+
+	if taskRow > 0 && len(logicList[netSliceNum-1]) < taskRow {
+		return fmt.Errorf("tor check failed not enough resource by not enough logic Tor")
+	}
+	if taskRow > 0 && len(logicList[taskColumn]) < taskRow+1 {
+		return fmt.Errorf("tor check failed not enough resource by last Tor not enough server")
+	}
+	pyTor, fullTorNum := sJob.GetPhyTosList(sHandler, logicList)
+
+	if taskRow < 1 {
+		err := sJob.SetFillJobServerList(sHandler, pyTor, n)
+		sJob.MarkMulJobServerList()
+		return err
+	}
+
+	if taskRow+1 < fullTorNum {
+		sJob.SetJobServerCacheTosHandler(sHandler, pyTor, taskRow, taskColumn)
+		sJob.MarkMulJobServerList()
+		return nil
+	}
+
+	if taskRow <= fullTorNum {
+		if len(pyTor[taskRow].Servers) < taskColumn+1 {
+			return fmt.Errorf("tor check failed not enough resource for large module job")
+		}
+		sJob.SetJobServerCacheTosHandler(sHandler, pyTor, taskRow, taskColumn)
+		sJob.MarkMulJobServerList()
+		return nil
+	}
+	return fmt.Errorf("tor check failed not enough resource")
+}
+
+func (sJob *SchedulerJob) SetJobServerCacheTosHandler(sHandler *ScheduleHandler, pyTor []*Tor, taskRow, taskColumn int) {
+	if sJob == nil || sHandler == nil || len(pyTor) == 0 {
+		klog.V(util.LogDebugLev).Infof("SetJobServerCacheTosHandler failed:%s", util.ArgumentError)
+		return
+	}
+	if taskRow >= len(pyTor) {
+		klog.V(util.LogDebugLev).Infof("invalid taskRow: %d, pyTor length: %d", taskRow, len(pyTor))
+		return
+	}
+	tmpTors := pyTor[:taskRow]
+	tmpTor := &Tor{}
+	tmpTor.Servers = append(tmpTor.Servers, pyTor[taskRow].Servers[:taskColumn+1]...)
+	tmpTors = append(tmpTors, tmpTor)
+	sJob.ServerList = make([]*Tor, taskRow+1)
+	copy(sJob.ServerList, tmpTors)
+	sHandler.Jobs[sJob.Name] = *sJob
+}
+
+func (sJob *SchedulerJob) MarkMulJobServerList() {
+	if sJob.ServerList == nil {
+		return
+	}
+	for _, tor := range sJob.ServerList {
+		if tor.Servers == nil {
+			continue
+		}
+		for _, server := range tor.Servers {
+			server.IsUsedByMulJob = true
+		}
+	}
+}
+
+func GetTaskRowAndTaskColumn(nTaskNum int, netSliceNum int) (int, int) {
+	if netSliceNum == 0 {
+		return -1, -1
+	}
+	taskRow := nTaskNum / netSliceNum
+	if nTaskNum%netSliceNum == 0 {
+		taskRow = nTaskNum/netSliceNum - 1
+	}
+	taskColumn := (nTaskNum%netSliceNum + netSliceNum - 1) % netSliceNum
+	return taskRow, taskColumn
+}
+
+func (sJob *SchedulerJob) GetFullTorNumFromTorInfo(sHandler *ScheduleHandler) int {
+	var fullTorNum int
+	for _, tor := range sHandler.Tors.Tors {
+		count := 0
+		for _, l := range tor.Servers {
+			if l.CurrentJob == sJob.Name {
+				count++
+			}
+		}
+		if count == sHandler.Tors.TorCount {
+			fullTorNum++
+		}
+		tor.FreeServerCount = count
+	}
+	return fullTorNum
+}
+
+func (sJob SchedulerJob) GetPhyTosList(sHandler *ScheduleHandler, logicList [][]*Server) ([]*Tor, int) {
+	var tors []*Tor
+	var fullTor int
+	for i := 0; i <= len(logicList[0]); i++ {
+		tmpTor := &Tor{}
+		for j := 0; j < sHandler.Tors.TorCount; j++ {
+			if j >= len(logicList) {
+				klog.V(util.LogDebugLev).Infof("invalid j: %d, logicList length: %d", j, len(logicList))
+				return tors, fullTor
+			}
+			if len(logicList[j]) < i+1 {
+				break
+			}
+			tmpTor.Servers = append(tmpTor.Servers, logicList[j][i])
+			if j == sHandler.Tors.TorCount-1 {
+				fullTor++
+			}
+		}
+		tmpTor.FreeServerCount = len(tmpTor.Servers)
+		tors = append(tors, tmpTor)
+	}
+	return tors, fullTor
+}
+
+func (sJob SchedulerJob) SetFillJobServerList(sHandler *ScheduleHandler, Tors []*Tor, taskNum int) error {
+	var count int
+	for i := len(Tors) - 1; i >= 0; i-- {
+		if Tors[i].FreeServerCount >= taskNum {
+			tmpTor := &Tor{}
+			for _, k := range Tors[i].Servers {
+				if k.CurrentJob == sJob.Name {
+					count++
+					tmpTor.Servers = append(tmpTor.Servers, k)
+				}
+				if count == taskNum {
+					break
+				}
+			}
+			sJob.ServerList = append(sJob.ServerList, tmpTor)
+			sHandler.Jobs[sJob.Name] = sJob
+			return nil
+		}
+	}
+	return fmt.Errorf("tor check failed not enough resource for fill job")
+}
+
+func (sJob *SchedulerJob) SetNormalJobServerList(sHandler *ScheduleHandler) {
+	if sJob == nil || sHandler == nil {
+		klog.V(util.LogDebugLev).Infof("SetNormalJobServerList failed:%s", util.ArgumentError)
+		return
+	}
+	sJob.ServerList = nil
+	var count int
+	taskNum := sJob.NPUTaskNum
+	for _, tor := range sHandler.Tors.Tors {
+		tmpTor := &Tor{}
+		tmpTor.IP = tor.IP
+		tmpTor.Id = tor.Id
+		for _, server := range tor.Servers {
+			if server.CurrentJob == sJob.Name {
+				tmpTor.Servers = append(tmpTor.Servers, server)
+				count++
+			}
+			if count == taskNum {
+				sJob.ServerList = append(sJob.ServerList, tmpTor)
+				if len(sJob.ServerList) > 1 {
+					sJob.MarkMulJobServerList()
+				}
+				return
+			}
+		}
+		sJob.ServerList = append(sJob.ServerList, tmpTor)
+	}
+	if len(sJob.ServerList) > 1 {
+		sJob.MarkMulJobServerList()
+	}
+}
+
+func (sJob SchedulerJob) GetLogicTorList(sHandler *ScheduleHandler, netSliceNum int) [][]*Server {
+	if netSliceNum > util.MaxSliceNum {
+		klog.V(util.LogDebugLev).Infof("GetLogicTorList failed:%s", util.ArgumentError)
+		return nil
+	}
+	logicTorList := make([][]*Server, netSliceNum)
+	for _, tor := range sHandler.Tors.Tors {
+		for i, server := range tor.Servers {
+			if server.CurrentJob == sJob.Name {
+				if i >= len(logicTorList) {
+					klog.V(util.LogDebugLev).Infof("invalid i: %d, logicTorList length: %d", i, len(logicTorList))
+				}
+				logicTorList[i] = append(logicTorList[i], server)
+			}
+		}
+	}
+	return logicTorList
+
+}
+
+func (sJob *SchedulerJob) GetEnableServerList(nodes []*api.NodeInfo, sHandler *ScheduleHandler) {
+	if sHandler == nil {
+		return
+	}
+	if sHandler.Tors == nil {
+		return
+	}
+	sJob.SelectServers = ""
+	sJob.getNormalTorListBeforeRestart(sHandler.Tors.TorCount)
+	for _, node := range nodes {
+		for _, tor := range sHandler.Tors.Tors {
+			if tor.HasAcrossJob() && sJob.NPUTaskNum >= sHandler.Tors.TorCount {
+				continue
+			}
+			for _, server := range tor.Servers {
+				if server.Name == node.Name && sJob.HealthTorRankIndex[node.Name] == "" {
+					server.CurrentJob = sJob.Name
+					sJob.SelectServers += node.Name + " "
+				}
+			}
+		}
+	}
+}
+
+func (sJob *SchedulerJob) getNormalTorListBeforeRestart(torCount int) {
+	if torCount == 0 {
+		klog.V(util.LogInfoLev).Infof("getNormalTorListBeforeRestart torCount is zero number")
+		return
+	}
+	m := make(map[string]string)
+	var faultIndex, faultIndexEnd int
+	if nrt, ok := sJob.Annotation[JobDeleteFlag]; ok {
+		var rts []AllocNodeRankOccurrence
+		err := json.Unmarshal([]byte(nrt), &rts)
+		if err != nil {
+			klog.V(util.LogInfoLev).Infof("Unmarshal job %s AllocNodeRankOccurrence failed:%s", sJob.Name,
+				util.SafePrint(err))
+			return
+		}
+		for _, rt := range rts {
+			if rt.IsFault {
+				i, err := strconv.Atoi(rt.RankIndex)
+				if err != nil {
+					klog.V(util.LogInfoLev).Infof("getNormalTorListBeforeRestart change RankIndex to int failed")
+					return
+				}
+				faultIndex = i / torCount * torCount
+				faultIndexEnd = faultIndex + torCount
+				break
+			}
+		}
+		for _, rt := range rts {
+			i, err := strconv.Atoi(rt.RankIndex)
+			if err != nil {
+				klog.V(util.LogInfoLev).Infof("getNormalTorListBeforeRestart change RankIndex to int failed")
+				return
+			}
+			if i >= faultIndex && i < faultIndexEnd {
+				continue
+			}
+			m[rt.NodeName] = rt.RankIndex
+		}
+	}
+	sJob.HealthTorRankIndex = m
+	sJob.FaultIndex = faultIndex
+}
+
+func (sJob SchedulerJob) SortJobServerListBySliceId() []*Tor {
+	for _, tor := range sJob.ServerList {
+		sort.Sort(JobServers(tor.Servers))
+	}
+	return sJob.ServerList
+}
+
+func (sJob *SchedulerJob) SetJobRankIndex() {
+	if sJob == nil {
+		klog.V(util.LogDebugLev).Infof("SetJobRankIndex failed:%s", util.ArgumentError)
+		return
+	}
+	var rankIndex int
+	rankIndex = sJob.FaultIndex
+	for _, tor := range sJob.ServerList {
+		for _, server := range tor.Servers {
+			if server.NodeRank != "" {
+				return
+			}
+			server.NodeRank = strconv.Itoa(rankIndex)
+			rankIndex++
+		}
+	}
+	return
+}
+
+type JobServers []*Server
+
+func (s JobServers) Len() int {
+	return len(s)
+}
+
+func (s JobServers) Less(i, j int) bool {
+	if i > s.Len() || j > s.Len() {
+		return false
+	}
+	count1 := s[i].SliceId
+	count2 := s[j].SliceId
+	return count1 < count2
+}
+
+func (s JobServers) Swap(i, j int) {
+	if i > s.Len() || j > s.Len() {
+		return
+	}
+	s[i], s[j] = s[j], s[i]
+}
+
+type TorLs []*Tor
+
+func (tp TorLs) Len() int {
+	return len(tp)
+}
+
+func (tp TorLs) Less(i, j int) bool {
+	if i > tp.Len() || j > tp.Len() {
+		return false
+	}
+	count1 := tp[i].FreeServerCount
+	count2 := tp[j].FreeServerCount
+	return count1 > count2
+}
+
+func (tp TorLs) Swap(i, j int) {
+	if i > tp.Len() || j > tp.Len() {
+		return
+	}
+	tp[i], tp[j] = tp[j], tp[i]
+}
+
+type LogicTorList [][]*Server
+
+func (tp LogicTorList) Len() int {
+	return len(tp)
+}
+
+func (tp LogicTorList) Less(i, j int) bool {
+	if i > tp.Len() || j > tp.Len() {
+		return false
+	}
+	count1 := len(tp[i])
+	count2 := len(tp[j])
+	return count1 > count2
+}
+
+func (tp LogicTorList) Swap(i, j int) {
+	if i > tp.Len() || j > tp.Len() {
+		return
+	}
+	tp[i], tp[j] = tp[j], tp[i]
+}
+
 func updatePodsPendingReason(job *api.JobInfo, tID api.TaskID, reason string) {
 	if tID != "" {
 		if t, ok := job.Tasks[tID]; ok {
@@ -336,29 +763,6 @@ func updatePodsPendingReason(job *api.JobInfo, tID api.TaskID, reason string) {
 	for _, task := range job.Tasks {
 		updatePodPendingReason(task, reason)
 	}
-}
-
-func (sHandle *ScheduleHandler) updatePodGroupPendingReason(job *api.JobInfo, reason string) {
-	job.JobFitErrors = reason
-
-	jc := scheduling.PodGroupCondition{
-		Type:               scheduling.PodGroupUnschedulableType,
-		Status:             v1.ConditionTrue,
-		LastTransitionTime: metav1.Now(),
-		TransitionID:       string(sHandle.FrameAttr.UID),
-		Reason:             reason,
-		Message:            reason,
-	}
-
-	for k, value := range job.PodGroup.Status.Conditions {
-		if strings.Contains(value.Message, reason) {
-			job.PodGroup.Status.Conditions[k].LastTransitionTime = jc.LastTransitionTime
-			job.PodGroup.Status.Conditions[k].TransitionID = jc.TransitionID
-			return
-		}
-	}
-
-	job.PodGroup.Status.Conditions = append(job.PodGroup.Status.Conditions, jc)
 }
 
 // SetJobPendingReason set the pod and podGroup pending reason.
@@ -391,6 +795,32 @@ func (sHandle *ScheduleHandler) SetJobPendingReason(vcJob *api.JobInfo, reason i
 	return nil
 }
 
+func (sHandle *ScheduleHandler) updatePodGroupPendingReason(job *api.JobInfo, reason string) {
+	job.JobFitErrors = reason
+
+	if len(job.PodGroup.Status.Conditions) == 0 {
+		return
+	}
+
+	jc := job.PodGroup.Status.Conditions[0].DeepCopy()
+	jc.Type = util.PodGroupUnschedulableType
+	jc.Status = v1.ConditionTrue
+	jc.LastTransitionTime = metav1.Now()
+	jc.TransitionID = string(sHandle.FrameAttr.UID)
+	jc.Reason = reason
+	jc.Message = reason
+
+	for k, value := range job.PodGroup.Status.Conditions {
+		if strings.Contains(value.Message, reason) {
+			job.PodGroup.Status.Conditions[k].LastTransitionTime = jc.LastTransitionTime
+			job.PodGroup.Status.Conditions[k].TransitionID = jc.TransitionID
+			return
+		}
+	}
+
+	job.PodGroup.Status.Conditions = append(job.PodGroup.Status.Conditions, *jc)
+}
+
 // JobValid the job valid, used by volcano frame.
 func (sHandle *ScheduleHandler) JobValid(obj interface{}) *api.ValidateResult {
 	klog.V(util.LogInfoLev).Infof("enter job valid")
@@ -418,6 +848,22 @@ func (sHandle *ScheduleHandler) JobValid(obj interface{}) *api.ValidateResult {
 	if !ok {
 		klog.V(util.LogDebugLev).Infof("%s %s not support or init", PluginName, job.Name)
 		return nil
+	}
+
+	k, ok := vcJob.Label[TorAffinityKey]
+	if ok && k != NullTag {
+		if sHandle.Tors == nil {
+			reason := "job tor affinity check failed"
+			klog.V(util.LogErrorLev).Infof("%s job(%s) not ready:%#v label is %s.", PluginName, job.Name,
+				reason, k)
+			return &api.ValidateResult{Pass: false, Reason: reason,
+				Message: fmt.Sprintf("validJobFn [%#v] failed:%#v", obj, reason)}
+		}
+	}
+	if ok && k != LargeModelTag && k != NormalSchema && k != NullTag {
+		reason := "job tor affinity label check failed"
+		return &api.ValidateResult{Pass: false, Reason: reason,
+			Message: fmt.Sprintf("validJobFn [%#v] failed:%#v label is %s ", obj, reason, k)}
 	}
 
 	result := vcJob.ValidJobFn(sHandle.FrameAttr)

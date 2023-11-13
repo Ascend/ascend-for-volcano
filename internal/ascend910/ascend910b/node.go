@@ -1,5 +1,5 @@
 /*
-Copyright(C)2020-2023. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2023. Huawei Technologies Co.,Ltd. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -49,7 +49,7 @@ func (ab *Base910b) UpdateNodeInfo(node plugin.NPUNode, usedTop []int) *plugin.N
 	return &node
 }
 
-func (ab *Base910b) getNodeHccsArray(nodeTop []int) ([]int, []int) {
+func (ab *Base910b) GetNodeHccsArray(nodeTop []int) ([]int, []int) {
 	var leftHccsArray []int
 	var rightHccsArray []int
 

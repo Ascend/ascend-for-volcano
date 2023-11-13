@@ -113,25 +113,25 @@ func (tp *asend310) PreStartAction(ssn *framework.Session) error {
 	tp.reHandle.NewCommonReScheduler(rescheduling.CmFaultJob310x4Kind)
 	tp.reHandle.SynCacheFaultNodeWithSession(util.NPU310CardName)
 	tp.reHandle.AddFaultNodeWithSession(util.NPU310CardName)
-	tp.reHandle.SynCacheFaultJobWithSession(ssn, util.NPU310CardName, util.NPU310CardNamePre)
+	tp.reHandle.SynCacheFaultJobWithSession(ssn)
 	// 1. restart Fault Jobs that are recorded in cache
 	if restartErr := tp.reHandle.RestartNeedForceDeleteJobs(ssn); restartErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s RestartNeedForceDeleteJobs: %s",
+		klog.V(util.LogInfoLev).Infof("%s RestartNeedForceDeleteJobs: %s",
 			util.NPU310CardName, restartErr.Error())
 	}
 	// 2. get all the new 310 jobs in session
 	runningJobs310, getRunErr := tp.reHandle.GetRunningJobs(ssn, util.NPU310CardName, "")
 	if getRunErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s GetRunningJobs: %s", util.NPU310CardName, getRunErr.Error())
+		klog.V(util.LogInfoLev).Infof("%s GetRunningJobs: %s", util.NPU310CardName, getRunErr.Error())
 	}
 	// 3. get nodes of session and fault jobs of 310
 	err := tp.reHandle.AddFaultJobWithSession(runningJobs310, util.NPU310CardName, util.NPU310CardNamePre)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s AddFaultJobWithSession", util.NPU310CardName)
+		klog.V(util.LogInfoLev).Infof("%s AddFaultJobWithSession", util.NPU310CardName)
 	}
 	// 4. restart the fault jobs
 	if restartErr := tp.reHandle.RestartFaultJobs(ssn); restartErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s RestartFaultJobs: %s", util.NPU310CardName, restartErr.Error())
+		klog.V(util.LogInfoLev).Infof("%s RestartFaultJobs: %s", util.NPU310CardName, restartErr.Error())
 		return restartErr
 	}
 	return nil
@@ -141,7 +141,7 @@ func (tp *asend310) PreStartAction(ssn *framework.Session) error {
 func (tp *asend310) PreStopAction(env *plugin.ScheduleEnv) error {
 	klog.V(util.LogInfoLev).Infof("enter PreStopAction of %s...", util.NPU310CardName)
 	defer klog.V(util.LogInfoLev).Infof("leave PreStopAction of %s...", util.NPU310CardName)
-	if tp == nil || tp.reHandle == nil || env == nil {
+	if tp == nil || tp.reHandle == nil || env == nil || tp.FrameAttr.KubeClient == nil {
 		return fmt.Errorf("%s reSchedule not enabled or nil env: %s", util.NPU310CardName, util.ArgumentError)
 	}
 	if err := tp.reHandle.WriteReSchedulerCacheToEnvCache(env, rescheduling.CmFaultJob310x4Kind); err != nil {
@@ -182,7 +182,7 @@ func (tp *asend310) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeInfo,
 
 // UseAnnotation select npu for task from node
 func (tp *asend310) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *plugin.NPUNode {
-	if tp == nil || len(node.Annotation) == 0 {
+	if tp == nil || task == nil || len(node.Annotation) == 0 {
 		err := errors.New(util.ArgumentError)
 		klog.V(util.LogErrorLev).Infof("%s UseAnnotation err: %s", PluginName, err.Error())
 		return nil

@@ -63,6 +63,14 @@ const (
 
 	// CmFaultNodeKind key in configmap which saves the FaultNode cache
 	CmFaultNodeKind = "fault-node"
+	// CmFaultJob910bx2Kind key in configmap which saves the 910bx2 FaultJob cache
+	CmFaultJob910bx2Kind = "fault-job-910bx2"
+	// CmFaultJob910bx2InferKind key in configmap which saves the 910bx2-infer FaultJob cache
+	CmFaultJob910bx2InferKind = "fault-job-910bx2-infer"
+	// CmFaultJob910bx8Kind key in configmap which saves the 910bx8 FaultJob cache
+	CmFaultJob910bx8Kind = "fault-job-910bx8"
+	// CmFaultJob910bx16Kind key in configmap which saves the 910bx16 FaultJob cache
+	CmFaultJob910bx16Kind = "fault-job-910bx16"
 	// CmFaultJob910x8Kind key in configmap which saves the 910x8 FaultJob cache
 	CmFaultJob910x8Kind = "fault-job-910x8"
 	// CmFaultJob910x4Kind key in configmap which saves the 910x8 FaultJob cache
@@ -75,6 +83,8 @@ const (
 	CmFaultJob310PKind = "fault-job-310P"
 	// CmNodeHeartbeatKind judging node fault needs heartbeat info from former session, so should be recorded
 	CmNodeHeartbeatKind = "node-heartbeat"
+	// CmJobRemainRetryTimes judging node fault needs heartbeat info from former session, so should be recorded
+	CmJobRemainRetryTimes = "remain-retry-times"
 	// CmNodeRankTimeMapKind record map jobUID rankIndex node and times of occurrence
 	CmNodeRankTimeMapKind = "node-rankIndex-Occurrence"
 	// CmCheckCode Check code key
@@ -97,20 +107,41 @@ const (
 	// NodeHealthy represents node is available for scheduling
 	NodeHealthy = "Healthy"
 	// NodeUnhealthy represents node is unhealthy by judging heartbeat
-	NodeUnhealthy = "Unhealthy"
+	NodeUnhealthy = "NodeUnhealthy"
 	// NodeCardUnhealthy represents node is unhealthy because of the card is unhealthy
 	NodeCardUnhealthy = "CardUnhealthy"
 	// NodeCardNetworkUnhealthy represents node is unhealthy because of card is network unhealthy
 	NodeCardNetworkUnhealthy = "CardNetworkUnhealthy"
 	// NoFaultJobsErr none fault jobs
-	NoFaultJobsErr   = "none fault jobs to be restarted in cache"
-	jobRestartReason = "restart for NPU malfunction"
+	NoFaultJobsErr = "none fault jobs to be restarted in cache"
 	// JobFaultRankIDCMPre the job cm name prefix, for retraining
 	JobFaultRankIDCMPre = "fault-config-"
 	// JobFaultRankIDCMDataKey the job cm value key.
 	JobFaultRankIDCMDataKey = "fault-npus"
 	// JobRecovery Name of cm for recovery
 	JobRecovery = "job-recovery"
+	// DeviceFaultCmKey the key of DeviceFault info
+	DeviceFaultCmKey = "huawei.com/Ascend910-Fault"
+	// PodFailed the state of failed pod
+	PodFailed = "pod-failed"
+	// PodHealthy the state of healthy pod
+	PodHealthy = "pod-healthy"
+
+	// FaultRetryTimesKey key of fault-retry-times label
+	FaultRetryTimesKey = "fault-retry-times"
+)
+
+const (
+	// PreSeparateNPU fault type waiting user check
+	PreSeparateNPU = "PreSeparateNPU"
+	// NotHandleFault fault type not handle
+	NotHandleFault = "NotHandleFault"
+	// NodeFaultCode fault type nodeUnhealthy
+	NodeFaultCode = "heartbeatTimeOut"
+	// AcJobTag the tag of AcJob
+	AcJobTag = "group-name"
+	// AcJobVersion the api version of AcJob
+	AcJobVersion = "mindxdl.gitee.com"
 )
 
 // ReScheduler object for re-scheduling
@@ -127,9 +158,16 @@ type ReScheduler struct {
 type DealReSchedulerCache struct {
 	*DealReSchedulerConfigmap
 	FaultNodes                 []FaultNode
+	RealFaultNodes             []FaultNode `json:"-"`
 	FaultJobs                  []FaultJob
 	NodeHeartbeats             []NodeHeartbeat
-	AllocNodeRankOccurrenceMap map[api.JobID][]AllocNodeRankOccurrence
+	AllocNodeRankOccurrenceMap map[api.JobID][]*AllocNodeRankOccurrence
+	JobRemainRetryTimes        map[api.JobID]*RemainRetryTimes
+}
+
+type RemainRetryTimes struct {
+	UUID  types.UID
+	Times int
 }
 
 // DealReSchedulerConfigmap object with method for re-scheduler configmap
@@ -143,6 +181,7 @@ type DealReSchedulerConfigmap struct {
 type AllocNodeRankOccurrence struct {
 	NodeName   string
 	RankIndex  string
+	IsFault    bool
 	Occurrence int
 }
 
@@ -157,6 +196,7 @@ type FaultCard struct {
 // FaultNode node object for re-scheduling
 type FaultNode struct {
 	NodeName            string
+	FaultDeviceList     []FaultDeviceList
 	UpdateTime          int64
 	UnhealthyNPU        []string
 	NetworkUnhealthyNPU []string
@@ -171,8 +211,18 @@ type FaultNode struct {
 	UpdateHeartbeatTime int64
 }
 
+// FaultDeviceList is the fault reason of card
+type FaultDeviceList struct {
+	FaultType            string `json:"fault_type"`
+	NPUName              string `json:"npu_name"`
+	FaultLevel           string `json:"fault_level"`
+	LargeModelFaultLevel string `json:"large_model_fault_level"`
+	FaultCode            string `json:"fault_code"`
+}
+
 // FaultTask object dealing with node for rescheduling
 type FaultTask struct {
+	Reason        []FaultReasonList
 	IsFaultTask   bool
 	TaskUID       api.TaskID
 	TaskName      string
@@ -184,6 +234,10 @@ type FaultTask struct {
 	PodCreateTime int64
 	PodUID        types.UID
 	faultType     string
+}
+type FaultReasonList struct {
+	NodeName string `json:"node_name"`
+	FaultDeviceList
 }
 
 // FaultJob job object for re-scheduling
@@ -202,6 +256,10 @@ type FaultJob struct {
 	FaultTypes          []string
 	DeleteExecutedFlag  bool
 	ElasticScheduling   string
+	ReferenceName       string
+	FaultRetryTimes     int
+	faultReason         string
+	UUID                types.UID
 }
 
 // NodeHeartbeat object recording nodes and their heartbeats

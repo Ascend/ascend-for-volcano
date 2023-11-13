@@ -1,5 +1,5 @@
 /*
-Copyright(C)2020-2023. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2023. Huawei Technologies Co.,Ltd. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,14 +19,20 @@ Package module910bx16 is using for HuaWei Ascend 910B(A+X) pin affinity schedule
 */
 package module910bx16
 
-import "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910/ascend910b"
+import (
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910/ascend910b"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/rescheduling"
+)
 
 type module910bx16 struct {
 	ascend910b.Base910b
+	reHandle        *rescheduling.ReScheduler
+	netUnhealthyKey string
 }
 
 const (
 	// SchedulerName name of scheduler
-	SchedulerName = "huawei.com/Ascend910module-910b-16"
-	nodeNPUNumber = 16
+	SchedulerName       = "huawei.com/Ascend910module-910b-16"
+	nodeNPUNumber       = 16
+	networkUnhealthyNPU = "huawei.com/Ascend910-NetworkUnhealthy"
 )

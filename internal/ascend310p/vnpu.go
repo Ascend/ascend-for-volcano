@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"k8s.io/klog"
-	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
@@ -23,16 +22,28 @@ import (
 )
 
 func (tp *ascend310P) GetVNPUTemplate() {
+	if tp == nil {
+		klog.V(util.LogDebugLev).Infof("GetVNPUTemplate failed:%s", util.ArgumentError)
+		return
+	}
 	tp.vHandle.VT = vnpu.VTemplate{
 		Data: tp.FrameAttr.VJobTemplate[plugin.Ascend310P],
 	}
 }
 
 func (tp *ascend310P) GetPresetVirtualDevices() {
-	tp.vHandle.DynamicByConf = !tp.FrameAttr.CheckVNPUSegmentEnableByConfig()
+	if tp == nil {
+		klog.V(util.LogDebugLev).Infof("GetPresetVirtualDevices failed:%s", util.ArgumentError)
+		return
+	}
+	tp.vHandle.StaticByConf = tp.FrameAttr.CheckVNPUSegmentEnableByConfig()
 }
 
 func (tp *ascend310P) InitVNPU() {
+	if tp == nil {
+		klog.V(util.LogDebugLev).Infof("InitVNPU failed:%s", util.ArgumentError)
+		return
+	}
 	tp.vHandle = &vnpu.VirtualNPU{
 		DynamicVNPU: vnpu.DynamicVNPU{
 			DowngradeCache: make(map[string][]string, util.MapInitNum),
@@ -41,7 +52,7 @@ func (tp *ascend310P) InitVNPU() {
 }
 
 func (tp *ascend310P) checkStVJobReq() error {
-	if tp.vHandle.DynamicByConf {
+	if !tp.vHandle.StaticByConf {
 		return fmt.Errorf("volcano configuration %s false, only support dynamic vnpu", util.SegmentEnable)
 	}
 	for _, vT := range tp.Tasks {
@@ -66,7 +77,7 @@ func (tp *ascend310P) checkDyVJobReq() error {
 	if !tp.IsVJob() {
 		return fmt.Errorf("%s not VirtualNPU job", tp.Name)
 	}
-	if !tp.vHandle.DynamicByConf {
+	if tp.vHandle.StaticByConf {
 		return fmt.Errorf("volcano configuration %s true, only support static vnpu", util.SegmentEnable)
 	}
 	for _, vT := range tp.Tasks {
@@ -120,7 +131,7 @@ func (tp *ascend310P) validDyVNPUJobLabel() error {
 }
 
 func (tp *ascend310P) validDyVNPUJob() *api.ValidateResult {
-	if tp.Status == scheduling.PodGroupRunning {
+	if tp.Status == util.PodGroupRunning {
 		klog.V(util.LogDebugLev).Infof("%s %s's pg is running", PluginName, tp.ComJob.Name)
 		return nil
 	}

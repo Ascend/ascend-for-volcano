@@ -46,6 +46,20 @@ const (
 	NPUIndex6 = 6
 	// NPUIndex1 the 1 index.
 	NPUIndex1 = 1
+	// NPUIndex9 the 9 index.
+	NPUIndex9 = 9
+	// NPUIndex10 the 10 index.
+	NPUIndex10 = 10
+	// NPUIndex11 the 11 index.
+	NPUIndex11 = 11
+	// NPUIndex12 the 12 index.
+	NPUIndex12 = 12
+	// NPUIndex13 the 13 index.
+	NPUIndex13 = 13
+	// NPUIndex14 the 14 index.
+	NPUIndex14 = 14
+	// NPUIndex15 the 15 index.
+	NPUIndex15 = 15
 	// CoreNum32 32 core 910
 	CoreNum32 = 32
 	// CoreNum30 30 core 910
@@ -58,6 +72,8 @@ const (
 	Base10 = 10
 	// BitSize64 for const 64
 	BitSize64 = 64
+	// MaxSliceNum max slice number
+	MaxSliceNum = 128
 	// NPUHexKilo for const 1000,volcano frame used.
 	NPUHexKilo = 1000
 	// HwPreName pre name
@@ -86,6 +102,14 @@ const (
 	AcceleratorType = "accelerator-type"
 	// CardAcceleratorType for card mode.
 	CardAcceleratorType = "card"
+	// Module910bx16AcceleratorType for module mode.
+	Module910bx16AcceleratorType = "module-910b-16"
+	// Module910bx8AcceleratorType for module mode.
+	Module910bx8AcceleratorType = "module-910b-8"
+	// Card910bx2AcceleratorType for module mode.
+	Card910bx2AcceleratorType = "card-910b-2"
+	// Card910bx2InferAcceleratorType for infer mode.
+	Card910bx2InferAcceleratorType = "card-910b-infer"
 	// ModuleAcceleratorType for module mode.
 	ModuleAcceleratorType = "module"
 	// ChipAcceleratorType for chip mode.
@@ -113,6 +137,8 @@ const (
 	AscendNPUPodRealUse = "huawei.com/AscendReal"
 	// AscendNPUCore for NPU core num, like 56; Records the chip name that the scheduler assigns to the pod.
 	AscendNPUCore = "huawei.com/npu-core"
+	// Ascend910bName for judge Ascend910b npu resource.
+	Ascend910bName = "huawei.com/Ascend910b"
 
 	// SegmentEnable for VNPU segment enable flag. Default is "false".
 	SegmentEnable = "presetVirtualDevice"
@@ -125,6 +151,10 @@ const (
 	DevInfoCMKey = "DeviceInfoCfg"
 	// RePropertyCacheName rescheduling keyword in init env.cache
 	RePropertyCacheName = "re-scheduling"
+	// CmCheckCode Check code key
+	CmCheckCode = "checkCode"
+	// CmName Name of ReSchedulerConfigmap
+	CmName = "vcjob-fault-npu-cm"
 	// JobRecovery keywords for retain
 	JobRecovery = "job-recovery"
 
@@ -165,6 +195,25 @@ const (
 	AffScore7
 	// AffScore8 value 4 for scored.
 	AffScore8
+)
+
+const (
+	// JobNotEnqueue job enqueue failed
+	JobNotEnqueue = -1
+	// JobEnqueue job enqueue success
+	JobEnqueue = 1
+	// JobEnqueueSkip skip the judgement of ascend-volcano-plugin in the job enqueue phase
+	JobEnqueueSkip = 0
+	// PodGroupInqueue the pg Inqueue status
+	PodGroupInqueue = "Inqueue"
+	// PodGroupPending the pg Pending status
+	PodGroupPending = "Pending"
+	// PodGroupRunning the pg Running status
+	PodGroupRunning = "Running"
+	// PodGroupUnknown the pg Unknown status
+	PodGroupUnknown = "Unknown"
+	// PodGroupUnschedulableType the pg Unschedulable Condition
+	PodGroupUnschedulableType = "Unschedulable"
 )
 
 // VTemplate for vNode resource

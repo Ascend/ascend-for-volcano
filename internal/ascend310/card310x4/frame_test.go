@@ -40,7 +40,7 @@ const (
 
 func buildValidNPUJobTestCase01() []itest.ValidNPUJobTestCase {
 	job01 := test.FakeNormalTestJob("job01", 1)
-	test.SetFakeJobResRequest(job01, util.NPU310CardName, "0")
+	test.SetFakeJobResRequest(job01, util.NPU310CardName, "1")
 	attr1 := itest.FakeSchedulerJobAttrByJob(job01)
 	job02 := test.FakeNormalTestJob("job02", 1)
 	test.SetFakeJobResRequest(job02, util.NPU310CardName, "5")
@@ -50,13 +50,9 @@ func buildValidNPUJobTestCase01() []itest.ValidNPUJobTestCase {
 	attr3 := itest.FakeSchedulerJobAttrByJob(job03)
 	return []itest.ValidNPUJobTestCase{
 		{
-			Name: "01-ValidNPUJob should return error when job request no npu",
-			Attr: attr1,
-			WantErr: &api.ValidateResult{
-				Pass:    false,
-				Reason:  "job require npu num is invalid",
-				Message: "task <vcjob/job01-> req npu <0> is invalid",
-			},
+			Name:    "01-ValidNPUJob should return nil when job request no npu",
+			Attr:    attr1,
+			WantErr: nil,
 		},
 		{
 			Name: "02-ValidNPUJob should return error when tasks request npu more than 4",
@@ -77,26 +73,22 @@ func buildValidNPUJobTestCase01() []itest.ValidNPUJobTestCase {
 
 func buildValidNPUJobTestCase02() []itest.ValidNPUJobTestCase {
 	job04 := test.FakeNormalTestJob("job04", util.NPUIndex2)
-	test.SetFakeJobResRequest(job04, util.NPU310CardName, "0")
+	test.SetFakeJobResRequest(job04, util.NPU310CardName, "1")
 	attr4 := itest.FakeSchedulerJobAttrByJob(job04)
 	task := util.NPUTask{ReqNPUNum: 1}
-	attr4.Tasks[`"vcjob"-"pod1"`] = task
+	attr4.Tasks[test.FakeTaskName1] = task
 	job05 := test.FakeNormalTestJob("job05", util.NPUIndex2)
 	test.SetFakeJobResRequest(job05, util.NPU310CardName, "5")
 	attr5 := itest.FakeSchedulerJobAttrByJob(job05)
-	attr5.Tasks[`"vcjob"-"pod1"`] = task
+	attr5.Tasks[test.FakeTaskName1] = task
 	job06 := test.FakeNormalTestJob("job06", util.NPUIndex2)
 	test.SetFakeJobResRequest(job06, util.NPU310CardName, "2")
 	attr6 := itest.FakeSchedulerJobAttrByJob(job06)
 	return []itest.ValidNPUJobTestCase{
 		{
-			Name: "04-ValidNPUJob should return error when task request no npu",
-			Attr: attr4,
-			WantErr: &api.ValidateResult{
-				Pass:    false,
-				Reason:  "job require npu num is invalid",
-				Message: "task <vcjob/job04-> req npu <0> is invalid",
-			},
+			Name:    "04-ValidNPUJob should return nil when task request no npu",
+			Attr:    attr4,
+			WantErr: nil,
 		},
 		{
 			Name: "05-ValidNPUJob should return error when task request npu more than 4",
@@ -167,7 +159,7 @@ func buildCheckNodeNPUByTaskTestCase3() itest.CheckNodeNPUByTaskTestCase {
 				Annotation: map[string]string{util.NPU310PCardName: "Ascend310-0,Ascend310-1,Ascend310-2"},
 			},
 		},
-		WantErr: errors.New("getUsableTopFromNode node<node1> don't have npu<huawei.com/Ascend310>"),
+		WantErr: errors.New("getUsableTopFromNode node1 don't have huawei.com/Ascend310"),
 	}
 }
 
@@ -181,7 +173,8 @@ func buildCheckNodeNPUByTaskTestCase4() itest.CheckNodeNPUByTaskTestCase {
 				Annotation: map[string]string{util.NPU310CardName: "Ascend310-0, Ascend310-1"},
 			},
 		},
-		WantErr: errors.New("getUsableTopFromNode err: top string<Ascend310-0, Ascend310-1> convert faild"),
+		WantErr: errors.New("checkNodeNPUByTask the npus on this node don't satisfy the schedulable topology : req" +
+			" npu(3) illegal not meet node top<[]>"),
 	}
 }
 
@@ -217,6 +210,9 @@ func TestCheckNodeNPUByTask(t *testing.T) {
 	test.SetFakeJobResRequest(job, util.NPU310CardName, "3")
 	attr1 := itest.FakeSchedulerJobAttrByJob(job)
 	npu.SetSchedulerAttr(attr1)
+	npu.SetSchedulerEnv(plugin.ScheduleEnv{
+		Jobs: map[api.JobID]plugin.SchedulerJob{test.FakeJobName: {SchedulerJobAttr: attr1}},
+	})
 	testCases := buildCheckNodeNPUByTaskTestCases()
 	for _, tt := range testCases {
 		t.Run(tt.Name, func(t *testing.T) {
@@ -285,6 +281,7 @@ func TestScoreBestNPUNodes(t *testing.T) {
 	test.SetFakeJobResRequest(job, util.NPU310CardName, "1")
 	attr := itest.FakeSchedulerJobAttrByJob(job)
 	env := plugin.ScheduleEnv{
+		Jobs: map[api.JobID]plugin.SchedulerJob{test.FakeJobName: {SchedulerJobAttr: attr}},
 		Nodes: map[string]plugin.NPUNode{
 			"node1": {CommonNode: plugin.CommonNode{Annotation: map[string]string{util.NPU310CardName: "Ascend310-0"}}},
 			"node2": {CommonNode: plugin.CommonNode{Annotation: map[string]string{util.NPU310CardName: "Ascend310-0," +
@@ -393,6 +390,8 @@ func TestUseAnnotation(t *testing.T) {
 	test.SetFakeJobResRequest(job, util.NPU310CardName, "1")
 	attr := itest.FakeSchedulerJobAttrByJob(job)
 	npu.SetSchedulerAttr(attr)
+	env := plugin.ScheduleEnv{Jobs: map[api.JobID]plugin.SchedulerJob{test.FakeJobName: {SchedulerJobAttr: attr}}}
+	npu.SetSchedulerEnv(env)
 	testCases := buildUseAnnotationTestCases01()
 	testCases = append(testCases, buildUseAnnotationTestCases02()...)
 	for _, tt := range testCases {

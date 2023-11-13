@@ -1,5 +1,5 @@
 /*
-Copyright(C)2020-2023. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2023. Huawei Technologies Co.,Ltd. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -53,15 +53,15 @@ func (ab *Base910b) GetArch() string {
 	return ab.arch
 }
 
-// SetSingleAllowNumsMap Set the single job allow number. eg:A+X 16P:1,2,4,8,16;A+K 1,2,4,8.
-func (ab *Base910b) SetSingleAllowNumsMap(value map[int]struct{}) {
-	ab.singleAllowNumsMap = value
+// SetNpuNumInvalidMap  Set the single job not allow number. eg:A+X 16P:9,10,11,12,13,14,15
+func (ab *Base910b) SetNpuNumInvalidMap(value map[int]struct{}) {
+	ab.NpuNumInvalidMap = value
 }
 
-// CheckSingleAllowNum check the single job require is valid. eg:A+X 16P:1,2,4,8,16;A+K 1,2,4,8.
-func (ab *Base910b) CheckSingleAllowNum(value int) bool {
-	_, ok := ab.singleAllowNumsMap[value]
-	return ok
+// CheckJobAllowNum check the single job require is valid. eg:A+X 16P:1,2,4,8,16;A+K 1,2,4,8.
+func (ab *Base910b) CheckJobAllowNum(value int) bool {
+	_, ok := ab.NpuNumInvalidMap[value]
+	return !ok && value <= ab.MaxNodeNPUNum
 }
 
 // PreStartActionCheck check pre-processing actions for rescheduling
@@ -97,10 +97,27 @@ func (ab *Base910b) initSelectNodeInf(npuTop []int) SelectNodeInf {
 			rightHccsTop = append(rightHccsTop, cardID)
 		}
 	}
+
 	sNodeInf.LeftNPUNum = len(leftHccsTop)
 	sNodeInf.RightNPUNum = len(rightHccsTop)
 	sNodeInf.AllNPUNum = sNodeInf.LeftNPUNum + sNodeInf.RightNPUNum
 
+	if ab.NPUTaskNum > 1 {
+		minLen := len(leftHccsTop)
+		if minLen > len(rightHccsTop) {
+			minLen = len(rightHccsTop)
+		}
+		sNodeInf.crossNPUNum = minLen * util.NPUIndex2
+		return sNodeInf
+	}
+	for _, leftCardID := range leftHccsTop {
+		for _, rightCardID := range rightHccsTop {
+			if leftCardID+numHCCS == rightCardID {
+				sNodeInf.crossNPUNum = sNodeInf.crossNPUNum + util.NPUIndex2
+				break
+			}
+		}
+	}
 	return sNodeInf
 }
 
@@ -120,10 +137,11 @@ func (ab *Base910b) Judge910BNodeAndTaskNPU(taskNPU int, nodeTop []int) error {
 		return dealReturnValue(sNodeInf.AllNPUNum == ab.MaxNodeNPUNum)
 	}
 
-	if ab.CheckSingleAllowNum(taskNPU) {
-		return dealReturnValue((sNodeInf.LeftNPUNum >= taskNPU) || (sNodeInf.RightNPUNum >= taskNPU))
+	if ab.CheckJobAllowNum(taskNPU) {
+		return dealReturnValue((sNodeInf.LeftNPUNum >= taskNPU) || (sNodeInf.RightNPUNum >= taskNPU) ||
+			(taskNPU > ab.MaxNodeNPUNum/util.NPUIndex2 && taskNPU <= sNodeInf.crossNPUNum))
 	}
-	return nil
+	return dealReturnValue(false)
 }
 
 // GetNodeBestScore Get node core
@@ -144,13 +162,15 @@ func (ab *Base910b) GetNodeBestScore(taskNPUNum int, npuTop []int) (int, error) 
 	}
 
 	switch {
+	case taskNPUNum > ab.MaxNodeNPUNum/util.NPUIndex2:
+		bestScore = ab.AffScoreList[(taskNPUNum/util.NPUIndex2)-1][(sNodeInf.crossNPUNum/util.NPUIndex2)-1]
 	case sNodeInf.RightNPUNum == 0:
 		bestScore = ab.AffScoreList[taskNPUNum-1][sNodeInf.LeftNPUNum-1]
 	case sNodeInf.LeftNPUNum == 0:
 		bestScore = ab.AffScoreList[taskNPUNum-1][sNodeInf.RightNPUNum-1]
 	default:
-		bestScore = util.Min(ab.AffScoreList[taskNPUNum-1][sNodeInf.RightNPUNum-1]+sNodeInf.LeftNPUNum,
-			ab.AffScoreList[taskNPUNum-1][sNodeInf.LeftNPUNum-1]+sNodeInf.RightNPUNum)
+		bestScore = util.Min(ab.AffScoreList[taskNPUNum-1][sNodeInf.RightNPUNum-1],
+			ab.AffScoreList[taskNPUNum-1][sNodeInf.LeftNPUNum-1])
 	}
 	if bestScore == len(ab.AffScoreList) {
 		return 0, err
@@ -196,7 +216,8 @@ func (ab *Base910b) ScoreAscendNPUNodes(task *api.TaskInfo, nodes []*api.NodeInf
 				ab.GetPluginName(), node.Name)
 			continue
 		}
-		sMap[node.Name] = float64(ab.MaxNodeNPUNum * (int(healthyNPUNum/util.NPUHexKilo) - bestScore))
+		sortScore := ab.MaxNodeNPUNum - len(cardIds)
+		sMap[node.Name] = float64(ab.MaxNodeNPUNum*(int(healthyNPUNum/util.NPUHexKilo)-bestScore) + sortScore)
 	}
 	klog.V(util.LogInfoLev).Infof("%s ScoreBestNPUNodes task<%s> sMap<%v>", ab.GetPluginName(),
 		task.Name, sMap)

@@ -25,7 +25,6 @@ import (
 	"testing"
 
 	"github.com/agiledragon/gomonkey/v2"
-	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
@@ -45,29 +44,29 @@ type TestCheckStVJobReqTest struct {
 func buildTestCheckStVJobReqTestCase01() []TestCheckStVJobReqTest {
 	tests := []TestCheckStVJobReqTest{
 		{
-			Name:    "01-TestCheckStVJobReq will return err when vHandle.DynamicByConf is true",
-			vHandle: &vnpu.VirtualNPU{DynamicByConf: true},
-			WantErr: errors.New("volcano configuration presetVirtualDevice false, only support dynamic vnpu"),
+			Name:    "01-TestCheckStVJobReq will return nil when vHandle.StaticByConf is true",
+			vHandle: &vnpu.VirtualNPU{StaticByConf: true},
+			WantErr: nil,
 		},
 		{
-			Name:    "02-TestCheckStVJobReq will return err when vHandle.DynamicByConf is true",
-			vHandle: &vnpu.VirtualNPU{DynamicByConf: false},
+			Name:    "02-TestCheckStVJobReq will return err when vHandle.StaticByConf is true",
+			vHandle: &vnpu.VirtualNPU{StaticByConf: false},
 			Tasks: map[api.TaskID]util.NPUTask{
 				"1234": {
 					Name:       "task0",
 					ReqNPUNum:  1,
 					ReqNPUName: "error npu name",
 				}},
-			WantErr: errors.New("task0 req error npu name not in template"),
+			WantErr: errors.New("volcano configuration presetVirtualDevice false, only support dynamic vnpu"),
 		},
 		{
 			Name:    "03-TestCheckStVJobReq will return err when ReqNPUNum is not 1",
-			vHandle: &vnpu.VirtualNPU{DynamicByConf: false},
+			vHandle: &vnpu.VirtualNPU{StaticByConf: false},
 			Tasks: map[api.TaskID]util.NPUTask{"1234": {
 				Name:       "task0",
 				ReqNPUName: PluginName,
 			}},
-			WantErr: errors.New("task0 req 0 not 1"),
+			WantErr: errors.New("volcano configuration presetVirtualDevice false, only support dynamic vnpu"),
 		},
 	}
 	return tests
@@ -105,20 +104,20 @@ func buildTestCheckDyVJobReqTestCase01() []TestCheckDyVJobReqTest {
 		{
 			Name:    "01-TestCheckDyVJobReq will return err when job is not VJob",
 			NPUJob:  &util.NPUJob{ReqNPUName: util.NPU310PCardName},
-			vHandle: &vnpu.VirtualNPU{DynamicByConf: true},
+			vHandle: &vnpu.VirtualNPU{StaticByConf: true},
 			Tasks:   map[api.TaskID]util.NPUTask{"1234": {Name: "task0"}},
 			WantErr: errors.New(" not VirtualNPU job"),
 		},
 		{
-			Name:    "02-TestCheckStVJobReq will return err when vHandle.DynamicByConf is false",
-			vHandle: &vnpu.VirtualNPU{DynamicByConf: false},
+			Name:    "02-TestCheckStVJobReq will return err when vHandle.StaticByConf is false",
+			vHandle: &vnpu.VirtualNPU{StaticByConf: false},
 			NPUJob:  &util.NPUJob{ReqNPUName: util.AscendNPUCore},
 			Tasks:   map[api.TaskID]util.NPUTask{"1234": {Name: "task1"}},
-			WantErr: errors.New("volcano configuration presetVirtualDevice true, only support static vnpu"),
+			WantErr: nil,
 		},
 		{
 			Name:    "03-TestCheckStVJobReq will return err when ReqNPUNum is not 1",
-			vHandle: &vnpu.VirtualNPU{DynamicByConf: true},
+			vHandle: &vnpu.VirtualNPU{StaticByConf: false},
 			NPUJob:  &util.NPUJob{ReqNPUName: util.AscendNPUCore},
 			Tasks: map[api.TaskID]util.NPUTask{"1234": {
 				Name:      "task2",
@@ -313,17 +312,17 @@ func buildTestValidDyVNPUJobTest() []TestValidDyVNPUJobTest {
 	tests := []TestValidDyVNPUJobTest{
 		{
 			Name: "01-test ValidDyVNPUJob will return nil when VJob status is Running",
-			VJob: &util.VJob{Status: scheduling.PodGroupRunning},
+			VJob: &util.VJob{Status: util.PodGroupRunning},
 			Want: nil,
 		},
 		{
 			Name: "02-test ValidDyVNPUJob will return when check VJob Request is invalid",
-			VJob: &util.VJob{Status: scheduling.PodGroupUnknown},
+			VJob: &util.VJob{Status: util.PodGroupUnknown},
 			Want: &api.ValidateResult{Pass: false, Reason: " not VirtualNPU job", Message: " not VirtualNPU job"},
 		},
 		{
 			Name: "03-test ValidDyVNPUJob will return when validDyVNPUJobLabel is invalid",
-			VJob: &util.VJob{Status: scheduling.PodGroupUnknown},
+			VJob: &util.VJob{Status: util.PodGroupUnknown},
 			Want: &api.ValidateResult{Pass: false, Reason: " not VirtualNPU job", Message: " not VirtualNPU job"},
 		},
 	}
