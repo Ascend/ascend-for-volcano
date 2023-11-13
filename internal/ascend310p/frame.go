@@ -65,7 +65,7 @@ func (tp *ascend310P) PreStartAction(ssn *framework.Session) error {
 func (tp *ascend310P) PreStopAction(env *plugin.ScheduleEnv) error {
 	klog.V(util.LogDebugLev).Infof("enter PreStopAction of %s...", util.NPU310PCardName)
 	defer klog.V(util.LogDebugLev).Infof("leave PreStopAction of %s...", util.NPU310PCardName)
-	if tp == nil || tp.reHandle == nil || env == nil {
+	if tp == nil || tp.reHandle == nil || env == nil || tp.FrameAttr.KubeClient == nil {
 		return fmt.Errorf("%s reSchedule not enabled or nil env: %s", util.NPU310PCardName, util.ArgumentError)
 	}
 	if err := tp.reHandle.WriteReSchedulerCacheToEnvCache(env, rescheduling.CmFaultJob310PKind); err != nil {
@@ -104,6 +104,10 @@ func (tp *ascend310P) ValidNPUJob() *api.ValidateResult {
 // CheckNodeNPUByTask check nod npu meet task req
 func (tp *ascend310P) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode) error {
 	klog.V(util.LogDebugLev).Infof("%s CheckNodeNPUByTask job(%s).", tp.GetPluginName(), tp.Name)
+	if task == nil || len(node.Annotation) == 0 {
+		return errors.New(util.ArgumentError)
+	}
+
 	var err error
 	if tp.VJob == nil {
 		// this is the old whole card.
@@ -147,7 +151,7 @@ func (tp *ascend310P) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNode
 		return err
 	}
 
-	if reErr := tp.reHandle.CheckNodeNPUByTask(task, node); reErr != nil {
+	if reErr := tp.reHandle.CheckNodeNPUByTask(task, node, tp.ReqNPUName); reErr != nil {
 		return fmt.Errorf("rescheduling CheckNodeNPUByTask %s", reErr.Error())
 	}
 	return nil

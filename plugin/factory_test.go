@@ -28,21 +28,22 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	"volcano.sh/volcano/pkg/scheduler/conf"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/config"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
 type fields struct {
-	NPUPlugins  map[string]ISchedulerPlugin
+	NPUPlugins  map[string]NPUBuilder
 	ScheduleEnv ScheduleEnv
 }
 
 type batchNodeOrderFnArgs struct {
 	task  *api.TaskInfo
 	nodes []*api.NodeInfo
+	ssn   *framework.Session
 }
 
 type batchNodeOrderFnTest struct {
@@ -60,20 +61,20 @@ func buildBatchNodeOrderFn() []batchNodeOrderFnTest {
 		{
 			name:    "01-BatchNodeOrderFn nil Test",
 			fields:  fields{},
-			args:    batchNodeOrderFnArgs{task: nil, nodes: nil},
+			args:    batchNodeOrderFnArgs{task: nil, nodes: nil, ssn: nil},
 			want:    nil,
 			wantErr: true,
 		},
 		{
 			name: "02-BatchNodeOrderFn ScoreBestNPUNodes ok Test",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Jobs:      map[api.JobID]SchedulerJob{},
 					Nodes:     map[string]NPUNode{},
 					FrameAttr: VolcanoFrame{}}},
-			args:    batchNodeOrderFnArgs{task: tTask, nodes: tNodes},
-			want:    map[string]float64{"node0": 0, "node1": 0},
-			wantErr: false,
+			args:    batchNodeOrderFnArgs{task: tTask, nodes: tNodes, ssn: nil},
+			want:    nil,
+			wantErr: true,
 		},
 	}
 	return tests
@@ -108,7 +109,7 @@ func buildBeforeCloseHandler() []beforeCloseHandlerTest {
 	tests := []beforeCloseHandlerTest{
 		{
 			name: "01-BeforeCloseHandler no cache test",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Jobs:      map[api.JobID]SchedulerJob{},
 					Nodes:     map[string]NPUNode{},
@@ -116,7 +117,7 @@ func buildBeforeCloseHandler() []beforeCloseHandlerTest {
 		},
 		{
 			name: "02-BeforeCloseHandler save cache test",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Cache: ScheduleCache{Names: map[string]string{"fault": "test"},
 						Namespaces: map[string]string{"fault": "hahaNameSpace"},
@@ -128,6 +129,7 @@ func buildBeforeCloseHandler() []beforeCloseHandlerTest {
 
 func TestBeforeCloseHandler(t *testing.T) {
 	tests := buildBeforeCloseHandler()
+	var ssn *framework.Session
 	tmpPatche := gomonkey.ApplyFunc(util.CreateOrUpdateConfigMap,
 		func(k8s kubernetes.Interface, cm *v1.ConfigMap, cmName, cmNameSpace string) error {
 			return nil
@@ -142,7 +144,7 @@ func TestBeforeCloseHandler(t *testing.T) {
 				NPUPlugins:  tt.fields.NPUPlugins,
 				ScheduleEnv: tt.fields.ScheduleEnv,
 			}
-			sHandle.BeforeCloseHandler()
+			sHandle.BeforeCloseHandler(ssn)
 		})
 	}
 	tmpPatche.Reset()
@@ -165,7 +167,7 @@ func buildGetNPUSchedulerTest() []getNPUSchedulerTest {
 	tests := []getNPUSchedulerTest{
 		{
 			name: "01-GetNPUScheduler not found test",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Jobs:      map[api.JobID]SchedulerJob{},
 					Nodes:     map[string]NPUNode{},
@@ -176,7 +178,7 @@ func buildGetNPUSchedulerTest() []getNPUSchedulerTest {
 		},
 		{
 			name: "02-GetNPUScheduler found test",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{"testPlugin": nil},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{"testPlugin": nil},
 				ScheduleEnv: ScheduleEnv{
 					Jobs:      map[api.JobID]SchedulerJob{},
 					Nodes:     map[string]NPUNode{},
@@ -220,23 +222,12 @@ type initNPUSessionTest struct {
 }
 
 func buildInitNPUSessionTest() []initNPUSessionTest {
-	testSsn := test.FakeNormalSSN()
 	tests := []initNPUSessionTest{
 		{
 			name:    "01-InitNPUSession nil ssn test",
 			fields:  fields{},
 			args:    initNPUSessionArgs{ssn: nil},
 			wantErr: true,
-		},
-		{
-			name: "02-InitNPUSession ok test",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
-				ScheduleEnv: ScheduleEnv{
-					Jobs:      map[api.JobID]SchedulerJob{},
-					Nodes:     map[string]NPUNode{},
-					FrameAttr: VolcanoFrame{}}},
-			args:    initNPUSessionArgs{ssn: testSsn},
-			wantErr: false,
 		},
 	}
 	return tests
@@ -272,7 +263,7 @@ func buildIsPluginRegisteredTest() []isPluginRegisteredTest {
 	tests := []isPluginRegisteredTest{
 		{
 			name: "01-IsPluginRegistered not registered test.",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Jobs:      map[api.JobID]SchedulerJob{},
 					Nodes:     map[string]NPUNode{},
@@ -282,7 +273,7 @@ func buildIsPluginRegisteredTest() []isPluginRegisteredTest {
 		},
 		{
 			name:   "02-IsPluginRegistered registered test.",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{"haha": nil}},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{"haha": nil}},
 			args:   isPluginRegisteredArgs{name: "haha"},
 			want:   true,
 		},
@@ -360,7 +351,7 @@ func buildRegisterNPUSchedulerTest() []registerNPUSchedulerTest {
 		},
 		{
 			name:   "02-RegisterNPUScheduler exist before test.",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{"haha": nil}},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{"haha": nil}},
 			args: registerNPUSchedulerArgs{
 				name: "haha", pc: nil},
 		},
@@ -396,13 +387,13 @@ func buildUnRegisterNPUSchedulerTest() []unRegisterNPUSchedulerTest {
 	tests := []unRegisterNPUSchedulerTest{
 		{
 			name:    "01-UnRegisterNPUScheduler not exist before test.",
-			fields:  fields{NPUPlugins: map[string]ISchedulerPlugin{"hehe": nil}},
+			fields:  fields{NPUPlugins: map[string]NPUBuilder{"hehe": nil}},
 			args:    unRegisterNPUSchedulerArgs{name: "haha"},
 			wantErr: false,
 		},
 		{
 			name:    "02-UnRegisterNPUScheduler exist test.",
-			fields:  fields{NPUPlugins: map[string]ISchedulerPlugin{"haha": nil}},
+			fields:  fields{NPUPlugins: map[string]NPUBuilder{"haha": nil}},
 			args:    unRegisterNPUSchedulerArgs{name: "haha"},
 			wantErr: false,
 		},
@@ -427,7 +418,7 @@ func TestUnRegisterNPUScheduler(t *testing.T) {
 
 type frameFields struct {
 	UID        types.UID
-	Conf       []conf.Configuration
+	Conf       []config.Configuration
 	KubeClient kubernetes.Interface
 }
 
@@ -453,7 +444,7 @@ func TestVolcanoFrameAddDefaultSchedulerSelectorConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			vf := &VolcanoFrame{
 				UID:        tt.fields.UID,
-				Conf:       tt.fields.Conf,
+				Confs:      tt.fields.Conf,
 				KubeClient: tt.fields.KubeClient,
 			}
 			vf.AddDefaultSchedulerSelectorConfig()

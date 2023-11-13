@@ -21,8 +21,12 @@ package util
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -42,6 +46,14 @@ func GetConfigMapWithRetry(client kubernetes.Interface, namespace, cmName string
 	}
 
 	return cm, nil
+}
+
+func DelConfigMapWithRetry(client kubernetes.Interface, namespace, cmName string) error {
+	var err error
+	if err = client.CoreV1().ConfigMaps(namespace).Delete(context.TODO(), cmName, metav1.DeleteOptions{}); err != nil {
+		return err
+	}
+	return nil
 }
 
 // IsConfigMapChanged judge the cm wither is same. true is no change.
@@ -100,5 +112,51 @@ func UpdateConfigmapIncrementally(kubeClient kubernetes.Interface, ns, name stri
 			}
 		}
 	}
+	if name != CmName {
+		return newData, nil
+	}
+	_, ok := newData[CmCheckCode]
+	if ok {
+		delete(newData, CmCheckCode) // if check code exists, delete and create new
+	}
+	checkCode := MakeDataHash(newData)
+	newData[CmCheckCode] = checkCode
 	return newData, nil
+}
+
+// CheckConfigMapIsDeviceInfo check configmap is device info
+func CheckConfigMapIsDeviceInfo(obj interface{}) bool {
+	cm, ok := obj.(*v1.ConfigMap)
+	if !ok {
+		klog.V(LogErrorLev).Infof("Cannot convert to ConfigMap:%#v", obj)
+		return false
+	}
+	if cm.Namespace != DevInfoNameSpace || !strings.HasPrefix(cm.Name, DevInfoPreName) {
+		return false
+	}
+	return true
+}
+
+// MakeDataHash check code for configmap
+func MakeDataHash(data interface{}) string {
+	var dataBuffer []byte
+	if dataBuffer = marshalData(data); len(dataBuffer) == 0 {
+		return ""
+	}
+	h := sha256.New()
+	if _, err := h.Write(dataBuffer); err != nil {
+		klog.V(LogErrorLev).Infof("hash data error")
+		return ""
+	}
+	sum := h.Sum(nil)
+	return hex.EncodeToString(sum)
+}
+
+func marshalData(data interface{}) []byte {
+	dataBuffer, err := json.Marshal(data)
+	if err != nil {
+		klog.V(LogErrorLev).Infof("marshal data err: %#v", err)
+		return nil
+	}
+	return dataBuffer
 }

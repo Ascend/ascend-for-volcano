@@ -22,9 +22,9 @@ package rescheduling
 import (
 	"context"
 	"fmt"
+	"strconv"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
@@ -59,7 +59,7 @@ func (fJob *FaultJob) GetJobElasticSchedulingLabel(job *plugin.SchedulerJob) str
 	}
 	value, ok := job.SchedulerJobAttr.Label[ElasticSchedulingKey]
 	if !ok {
-		klog.V(util.LogErrorLev).Infof(
+		klog.V(util.LogInfoLev).Infof(
 			"GetJobElasticSchedulingLabel %s. %s no job reschedule label", value, job.Name)
 		return JobOffRescheduleLabelValue
 	}
@@ -67,16 +67,32 @@ func (fJob *FaultJob) GetJobElasticSchedulingLabel(job *plugin.SchedulerJob) str
 	return value
 }
 
+// IsJobHasPreSeparateNPUKey is Job has the key of PreSeparateNPU
+func (fJob *FaultJob) IsJobHasPreSeparateNPUKey() bool {
+	if fJob == nil {
+		return false
+	}
+	for _, fTask := range fJob.FaultTasks {
+		for _, reason := range fTask.Reason {
+			if reason.LargeModelFaultLevel == PreSeparateNPU {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (fJob *FaultJob) GetJobFaultNPUTaskNum() int {
+	var count int
+	for _, fTask := range fJob.FaultTasks {
+		if len(fTask.UseCardName) > 0 {
+			count++
+		}
+	}
+	return count
+}
+
 func (fJob *FaultJob) isJobGraceDeleteSuccess(jobInfo *api.JobInfo) bool {
-	if jobInfo == nil {
-		klog.V(util.LogErrorLev).Infof("jobInfo is nil: %#v", jobInfo)
-		return false
-	}
-	if !plugin.IsJobInitial(jobInfo) {
-		klog.V(util.LogInfoLev).Infof("isJobGraceDeletedSuccess: job %s not initialised.", jobInfo.Name)
-		return false
-	}
-	// 2. judge if the create time of pods in cache and current pod differs
 	restartNum := 0
 	for _, fTask := range fJob.FaultTasks {
 		podCreateTimeRecord := fTask.PodCreateTime // former pods create time
@@ -93,14 +109,9 @@ func (fJob *FaultJob) isJobGraceDeleteSuccess(jobInfo *api.JobInfo) bool {
 			restartNum++
 		}
 	}
-	klog.V(util.LogDebugLev).Infof("<%d/%d> pod of job restarted", restartNum, len(jobInfo.Tasks))
-	if restartNum >= len(jobInfo.Tasks) && plugin.IsJobInitial(
-		jobInfo) { // minAvailable must equal to number of replicas
-		klog.V(util.LogInfoLev).Infof("job %s grace delete success", jobInfo.Name)
-		return true
-	}
-	klog.V(util.LogInfoLev).Infof("job %s not yet restarted", jobInfo.Name)
-	return false
+
+	klog.V(util.LogDebugLev).Infof("<%d/%d> pod of job restarted", restartNum, jobInfo.MinAvailable)
+	return restartNum >= len(fJob.FaultTasks)
 }
 
 // CheckJobExistsInKubernetes check whether job recorded in cache can be traced in kubernetes
@@ -109,18 +120,34 @@ func (fJob *FaultJob) CheckJobExistsInKubernetes(ssn *framework.Session) bool {
 	for _, fTask := range fJob.FaultTasks {
 		klog.V(util.LogDebugLev).Infof("check task %s via client-go", fTask.TaskName)
 		realPod, err := ssn.KubeClient().CoreV1().Pods(fTask.TaskNamespace).Get(
-			context.TODO(), fTask.TaskName, v1.GetOptions{})
+			context.TODO(), fTask.TaskName, metav1.GetOptions{})
 		if err != nil || realPod == nil {
 			klog.V(util.LogInfoLev).Infof("pod %s not in kubernetes", fTask.TaskName)
 			continue
 		}
-		existTaskNum += 1
+		for _, ref := range realPod.GetOwnerReferences() {
+			if ref.UID == fJob.UUID {
+				existTaskNum += 1
+			}
+		}
 		klog.V(util.LogDebugLev).Infof("task %s is in kubernetes", fTask.TaskName)
 	}
 	if existTaskNum > 0 {
 		return true
 	}
 	return false
+}
+
+// deleteJobWithLabels delete job with labels
+func (fJob *FaultJob) deleteJobWithLabels(ssn *framework.Session, reschedule *ReScheduler, schedulerJob *plugin.SchedulerJob) error {
+	if !fJob.isPodFailedJobCanRestarted(reschedule) {
+		return fmt.Errorf("pod failed job reach max restart time")
+	}
+
+	if fJob.ReScheduleKey == JobForceRescheduleLabelValue {
+		return fJob.ForceDeleteJob(ssn, schedulerJob)
+	}
+	return fJob.GraceDeleteJob(ssn, schedulerJob)
 }
 
 // ForceDeleteJob force delete jobs includes labelled force delete ones and grace delete failed ones
@@ -139,8 +166,28 @@ func (fJob *FaultJob) ForceDeleteJob(ssn *framework.Session, schedulerJob *plugi
 	return nil
 }
 
+// isPodFailedCanRestarted if the pod status is failed, judge whether job can be restarted
+func (fJob *FaultJob) isPodFailedJobCanRestarted(reScheduler *ReScheduler) bool {
+	if fJob.faultReason == PodFailed {
+		if fJob.FaultRetryTimes == 0 {
+			klog.V(util.LogInfoLev).Infof("job<%s> retry times is 0", fJob.JobUID)
+			return false
+		}
+		remain, ok := reScheduler.JobRemainRetryTimes[fJob.JobUID]
+		if !ok || remain == nil {
+			return false
+		}
+		if remain.Times <= 0 {
+			klog.V(util.LogInfoLev).Infof("job<%s> remain retry times: %d", fJob.JobUID,
+				reScheduler.JobRemainRetryTimes[fJob.JobUID].Times)
+			return false
+		}
+	}
+	return true
+}
+
 // GraceDeleteJob grace delete jobs labelled to be deleted gracefully
-func (fJob *FaultJob) GraceDeleteJob(ssn *framework.Session, npuJob *plugin.SchedulerJob, reason string) error {
+func (fJob *FaultJob) GraceDeleteJob(ssn *framework.Session, npuJob *plugin.SchedulerJob) error {
 	if fJob == nil {
 		return fmt.Errorf("getJobFaultRescheduleLabel fJob object does not exist")
 	}
@@ -150,6 +197,13 @@ func (fJob *FaultJob) GraceDeleteJob(ssn *framework.Session, npuJob *plugin.Sche
 	if npuJob == nil {
 		return fmt.Errorf("schedulerJob does not exist")
 	}
+	var reasonList []FaultReasonList
+	for _, fTask := range fJob.FaultTasks {
+		if fTask.Reason != nil {
+			reasonList = append(reasonList, fTask.Reason...)
+		}
+	}
+	reason := GetTaskRestartReason(reasonList)
 	for _, fTask := range fJob.FaultTasks {
 		npuTask, ok := npuJob.Tasks[fTask.TaskUID]
 		if !ok {
@@ -165,41 +219,46 @@ func (fJob *FaultJob) GraceDeleteJob(ssn *framework.Session, npuJob *plugin.Sche
 }
 
 func (fJob *FaultJob) restartSingleFaultJob(ssn *framework.Session,
-	kubeClient kubernetes.Interface, schedulerJob *plugin.SchedulerJob, obj interface{}) error {
-	// 1. get pod pending reason
-	var reason string
-	switch para := obj.(type) {
-	case string:
-		reason = para
-	case map[api.TaskID]*api.FitErrors:
-		for _, nodeErrors := range para {
-			reason += nodeErrors.Error()
-		}
-	case error:
-		reason = para.Error()
-	default:
-		// other type are not allowed
-		return fmt.Errorf("aseert reason(%T) failed", reason)
-	}
+	reschedule *ReScheduler, schedulerJob *plugin.SchedulerJob) error {
 
 	// delete jobs
 	var deleteErr error
+
 	switch fJob.ReScheduleKey {
-	case JobForceRescheduleLabelValue:
-		deleteErr = fJob.ForceDeleteJob(ssn, schedulerJob)
-	case JobGraceRescheduleLabelValue:
-		deleteErr = fJob.GraceDeleteJob(ssn, schedulerJob, reason)
+	case JobForceRescheduleLabelValue, JobGraceRescheduleLabelValue:
+		deleteErr = fJob.deleteJobWithLabels(ssn, reschedule, schedulerJob)
 	case JobOffRescheduleLabelValue:
 		deleteErr = fmt.Errorf("job reschedule %s", fJob.ReScheduleKey)
 	default:
 		deleteErr = fmt.Errorf("not support %s to reschedule job", fJob.ReScheduleKey)
 	}
+
 	return deleteErr
 }
 
 func (fJob *FaultJob) isJobInSession(jobs map[api.JobID]plugin.SchedulerJob) bool {
 	_, ok := jobs[fJob.JobUID]
 	return ok
+}
+
+func (fJob *FaultJob) jobInfoInSession(jobs map[api.JobID]*api.JobInfo) *api.JobInfo {
+	if fJob.ElasticScheduling == JobOnElasticScheduling {
+		for _, job := range jobs {
+			// consider elastic scheduling which lead job uid/name change
+			if job.Namespace == fJob.JobNamespace &&
+				(job.Name == fJob.JobName || util.ReferenceNameOfJob(job) == fJob.ReferenceName) {
+				return job
+			}
+		}
+		return nil
+	}
+
+	job, ok := jobs[fJob.JobUID]
+	if ok && util.UuidOfJob(job) == fJob.UUID {
+		return job
+	}
+
+	return nil
 }
 
 func (fJob *FaultJob) getJobUseNodes() []string {
@@ -254,22 +313,36 @@ func (fJob *FaultJob) setIsFaultJob(value bool) {
 	fJob.IsFaultJob = value
 }
 
-func newFaultJobDefault(jobName, jobNamespace string, jobUID api.JobID, updateTime int64) FaultJob {
+func newFaultJobDefault(job *api.JobInfo, updateTime int64) FaultJob {
 	faultJob := FaultJob{
 		ReScheduleKey:       JobOffRescheduleLabelValue, // off/grace/force
-		IsFaultJob:          false,
 		IsInSession:         true,
-		JobName:             jobName,
-		JobUID:              jobUID,
-		JobNamespace:        jobNamespace,
-		JobRankIds:          nil,
-		NodeNames:           nil,
-		FaultTasks:          nil,
+		JobName:             job.Name,
+		JobUID:              job.UID,
+		JobNamespace:        job.Namespace,
 		UpdateTime:          updateTime,
 		JobRankIdCreateTime: updateTime,
-		FaultTypes:          nil,
-		DeleteExecutedFlag:  false,
+		FaultTypes:          make([]string, 0),
 		ElasticScheduling:   JobOffElasticScheduling,
+		ReferenceName:       util.ReferenceNameOfJob(job),
+		UUID:                util.UuidOfJob(job),
+		FaultRetryTimes:     faultRetryTimeOfJob(job),
 	}
 	return faultJob
+}
+
+func faultRetryTimeOfJob(job *api.JobInfo) int {
+	value, ok := job.PodGroup.Labels[FaultRetryTimesKey]
+	if !ok {
+		klog.V(util.LogInfoLev).Infof("get job<%s> label<%s> failed", job.UID, FaultRetryTimesKey)
+		return 0
+	}
+	v, err := strconv.Atoi(value)
+	if err != nil {
+		klog.V(util.LogInfoLev).Infof("Failed to convert fault-retry-times <%s> of job <%s> into number",
+			value, job.UID)
+		return 0
+	}
+	klog.V(util.LogInfoLev).Infof("get job: %s, fault-retry-times: %s", job.Name, value)
+	return v
 }

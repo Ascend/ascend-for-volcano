@@ -26,7 +26,7 @@ func (tp *ascend310P) preStartRescheduling(ssn *framework.Session) error {
 	tp.reHandle.NewCommonReScheduler(rescheduling.CmFaultJob310PKind)
 	tp.reHandle.SynCacheFaultNodeWithSession(util.NPU310PCardName)
 	tp.reHandle.AddFaultNodeWithSession(util.NPU310PCardName)
-	tp.reHandle.SynCacheFaultJobWithSession(ssn, util.NPU310PCardName, util.NPU310PCardNamePre)
+	tp.reHandle.SynCacheFaultJobWithSession(ssn)
 	// 1. restart Fault Jobs that are recorded in cache
 	if restartErr := tp.reHandle.RestartNeedForceDeleteJobs(ssn); restartErr != nil {
 		klog.V(util.LogInfoLev).Infof("%s RestartNeedForceDeleteJobs: %s",

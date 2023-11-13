@@ -1,5 +1,5 @@
 /*
-Copyright(C)2020-2023. Huawei Technologies Co.,Ltd. All rights reserved.
+Copyright(C)2023. Huawei Technologies Co.,Ltd. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,6 +26,16 @@ type SelectNodeInf struct {
 	AllNPUNum   int
 	LeftNPUNum  int
 	RightNPUNum int
+	crossNPUNum int
+}
+
+// Base910b for Ascend 910B base.
+type Base910b struct {
+	base.NPUHandler
+	AffScoreList     [][]int
+	NpuNumInvalidMap map[int]struct{}
+	acceleratorValue string
+	arch             string
 }
 
 // Base910b for Ascend 910B base.

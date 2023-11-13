@@ -20,6 +20,7 @@ Package rescheduling is using for HuaWei Ascend pin fault rescheduling.
 package rescheduling
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -199,6 +200,25 @@ func (fNode *FaultNode) updateFaultNodesFromDeviceInfo(node *plugin.NPUNode, car
 	}
 	fNode.setAllCardList(tmpAllCardsList)
 	klog.V(util.LogInfoLev).Infof("Unallocated and fault cards from device info: %#v", tmpAllCardsList)
+	DeviceFaultReason, err := GetNodeDeviceFaultFromDeviceInfo(node)
+	if err != nil {
+		klog.V(util.LogDebugLev).Infof("GetNodeDeviceFaultFromDeviceInfo: %#v", err)
+	}
+	fNode.setFaultDeviceList(DeviceFaultReason)
+
+}
+
+func GetNodeDeviceFaultFromDeviceInfo(node *plugin.NPUNode) ([]FaultDeviceList, error) {
+	deviceFaultList, ok := node.Annotation[DeviceFaultCmKey]
+	if !ok {
+		return nil, fmt.Errorf("GetNodeDeviceFaultFromDeviceInfo failed")
+	}
+	var deviceFault []FaultDeviceList
+	if unmarshalErr := json.Unmarshal([]byte(deviceFaultList), &deviceFault); unmarshalErr != nil {
+		klog.V(util.LogInfoLev).Infof("convertToDeviceFaultListFromCM Unmarshal: %#v.", unmarshalErr)
+		return nil, unmarshalErr
+	}
+	return deviceFault, nil
 }
 
 // updateFaultNodesAttr update Information from device Info
@@ -208,11 +228,41 @@ func (fNode *FaultNode) updateFaultNodesAttr(node *plugin.NPUNode) error {
 	tmpFaultCards, err := fNode.createFaultCardHandlers(node)
 	if err != nil {
 		klog.V(util.LogDebugLev).Infof("Getting node card failed: %#v", err)
+		return err
 	}
 	fNode.setFaultCards(tmpFaultCards)
 
-	// 2. judge if node is unhealthy because of card unhealthy
-	for _, card := range tmpFaultCards {
+	fNode.setNodeHealthStateValue(NodeHealthy)
+	fNode.setIsFaultNodeValue(false)
+
+	// 2. judge if node is unhealthy by NodeD
+	fNode.setNodeHealthyByNodeD(node)
+	if fNode.NodeHealthState == NodeUnhealthy {
+		return nil
+	}
+
+	// 3. set node health state by card unhealthy
+	fNode.setNodeHealthyByCardHealth(node)
+	return nil
+}
+
+func (fNode *FaultNode) setNodeHealthyByNodeD(node *plugin.NPUNode) {
+	if !fNode.isNodeDEnabled(node) {
+		klog.V(util.LogInfoLev).Infof("node %s nodeD not enabled", node.Name)
+		fNode.setNodeDValue(false)
+		return
+	}
+	fNode.setNodeDValue(true)
+	// 1. last node heartbeat update time until now being greater than maxInterval indicates unhealthy
+	if !fNode.isNodeHealthyByHeartbeat() {
+		fNode.setIsFaultNodeValue(true)
+		fNode.setNodeHealthStateValue(NodeUnhealthy)
+		klog.V(util.LogInfoLev).Infof("Node %s health state set %s for wrong heartbeat", node.Name, NodeUnhealthy)
+	}
+}
+
+func (fNode *FaultNode) setNodeHealthyByCardHealth(node *plugin.NPUNode) {
+	for _, card := range fNode.FaultCards {
 		if !card.IsFaultCard {
 			continue
 		}
@@ -227,30 +277,7 @@ func (fNode *FaultNode) updateFaultNodesAttr(node *plugin.NPUNode) error {
 		default:
 			klog.V(util.LogInfoLev).Infof("card health state %s illegal", card.FaultType)
 		}
-		return nil
 	}
-	fNode.setNodeHealthStateValue(NodeHealthy)
-	fNode.setIsFaultNodeValue(false)
-
-	// 3. Ensure nodeD enabled to get node heartbeat
-	if !fNode.isNodeDEnabled(node) {
-		klog.V(util.LogInfoLev).Infof("node %s nodeD not enabled", node.Name)
-		fNode.setNodeDValue(false)
-		return nil
-	}
-	fNode.setNodeDValue(true)
-
-	// 4. last node heartbeat update time until now being greater than maxInterval indicates unhealthy
-	if fNode.isNodeHealthyByHeartbeat() {
-		fNode.setIsFaultNodeValue(false)
-		fNode.setNodeHealthStateValue(NodeHealthy)
-		klog.V(util.LogInfoLev).Infof("Node %s health state set to %s", node.Name, NodeHealthy)
-		return nil
-	}
-	fNode.setIsFaultNodeValue(true)
-	fNode.setNodeHealthStateValue(NodeUnhealthy)
-	klog.V(util.LogInfoLev).Infof("Node %s health state set %s for wrong heartbeat", node.Name, NodeUnhealthy)
-	return nil
 }
 
 func (fNode *FaultNode) isNodeDEnabled(node *plugin.NPUNode) bool {
@@ -302,6 +329,16 @@ func (fNode *FaultNode) getFaultCardIds(cardName string) ([]int, error) {
 func (fNode *FaultNode) isNodeInSessionByNpuNodes(nodes map[string]plugin.NPUNode) bool {
 	_, ok := nodes[fNode.NodeName]
 	return ok
+}
+
+// IsNodeInFaultNode judge if node is sent in FaultNode
+func IsNodeInFaultNode(fNodes []FaultNode, nodeName string) bool {
+	for _, fn := range fNodes {
+		if fn.NodeName == nodeName {
+			return true
+		}
+	}
+	return false
 }
 
 func (fNode *FaultNode) setNodeDValue(value bool) {
@@ -356,6 +393,10 @@ func (fNode *FaultNode) setNodeHeartbeatInterval(value int) {
 	fNode.HeartbeatInterval = value
 }
 
+func (fNode *FaultNode) setFaultDeviceList(value []FaultDeviceList) {
+	fNode.FaultDeviceList = value
+}
+
 func newFaultNodeDefault(nodeName string, updateTime int64) FaultNode {
 	faultNode := FaultNode{
 		NodeName:            nodeName,
@@ -370,6 +411,7 @@ func newFaultNodeDefault(nodeName string, updateTime int64) FaultNode {
 		HeartbeatInterval:   0,
 		OldHeartbeatTime:    0,
 		UpdateHeartbeatTime: 0,
+		FaultDeviceList:     []FaultDeviceList{},
 	}
 	return faultNode
 }

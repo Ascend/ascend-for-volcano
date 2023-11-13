@@ -20,8 +20,6 @@ Package test is using for HuaWei Ascend pin scheduling test.
 package test
 
 import (
-	"fmt"
-
 	"github.com/agiledragon/gomonkey/v2"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -37,16 +35,6 @@ import (
 // AddResource add resource into resourceList
 func AddResource(resourceList v1.ResourceList, name v1.ResourceName, need string) {
 	resourceList[name] = resource.MustParse(need)
-}
-
-// PrintError print Error for test
-func PrintError(format string, args ...interface{}) {
-	fmt.Printf("ERROR:"+format+"\n", args...)
-}
-
-// AddNodeIntoFakeSSN Add test node into fake SSN.
-func AddNodeIntoFakeSSN(ssn *framework.Session, info *api.NodeInfo) {
-	ssn.Nodes[info.Name] = info
 }
 
 // AddJobIntoFakeSSN Add test job into fake SSN.

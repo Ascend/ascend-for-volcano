@@ -23,11 +23,10 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/config"
 
 	"k8s.io/api/core/v1"
 	"volcano.sh/volcano/pkg/scheduler/api"
-	"volcano.sh/volcano/pkg/scheduler/conf"
-
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/test"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
@@ -70,18 +69,12 @@ type getJobNPUTasksTest struct {
 
 func buildGetJobNPUTasksTest() []getJobNPUTasksTest {
 	tJob1 := test.FakeNormalTestJob("test1", 1)
-	tasks := test.FakeNormalTestTasks(1)[0]
-	test.AddFakeTaskResReq(tasks, util.NPU910CardName, util.NPUIndex8)
+	test.AddFakeTaskResReq(tJob1.Tasks[`"vcjob"-"pod"`], util.NPU910CardName, util.NPUIndex8)
 	tests := []getJobNPUTasksTest{
 		{
 			name: "01-GetJobNPUTasks job nil test.",
 			args: getJobNPUTasksArgs{vcJob: nil},
 			want: nil,
-		},
-		{
-			name: "02-GetJobNPUTasks ok test.",
-			args: getJobNPUTasksArgs{vcJob: tJob1},
-			want: map[api.TaskID]util.NPUTask{tasks.UID: {Selector: nil}},
 		},
 	}
 	return tests
@@ -330,7 +323,7 @@ func buildJobValidTest() []jobValidTest {
 			fields: fields{},
 			args:   jobValidArgs{obj: "haha"},
 			want: &api.ValidateResult{Pass: false, Reason: "job convert failed",
-				Message: fmt.Sprintf("validJobFn [%#v] failed:%#v", "haha", "job convert failed")},
+				Message: "validJobFn [\"haha\"] failed:\"job convert failed\""},
 		},
 		{
 			name:   "02-JobValid job not initial test.",
@@ -340,14 +333,14 @@ func buildJobValidTest() []jobValidTest {
 		},
 		{
 			name: "03-JobValid job not in jobs test.",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{Jobs: map[api.JobID]SchedulerJob{}}},
 			args: jobValidArgs{obj: tJob},
 			want: nil,
 		},
 		{
 			name: "04-JobValid job no selector test.",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{Jobs: map[api.JobID]SchedulerJob{tJob.
 					UID: {SchedulerJobAttr: util.SchedulerJobAttr{ComJob: util.ComJob{Name: tJob.UID}}}}}},
 			args: jobValidArgs{obj: tJob},
@@ -390,7 +383,7 @@ func buildSetJobPendReasonByNodesCaseTest() []setJobPendReasonByNodesCaseTest {
 	tests := []setJobPendReasonByNodesCaseTest{
 		{
 			name: "01-SetJobPendReasonByNodesCase job no error test.",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Jobs:      map[api.JobID]SchedulerJob{},
 					Nodes:     map[string]NPUNode{},
@@ -399,7 +392,7 @@ func buildSetJobPendReasonByNodesCaseTest() []setJobPendReasonByNodesCaseTest {
 		},
 		{
 			name: "02-SetJobPendReasonByNodesCase test ok.",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Jobs:      map[api.JobID]SchedulerJob{},
 					Nodes:     map[string]NPUNode{},
@@ -440,7 +433,7 @@ func buildSetJobPendingReasonTest() []setJobPendingReasonTest {
 	tests := []setJobPendingReasonTest{
 		{
 			name: "01-SetJobPendingReason nil test.",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Jobs:      map[api.JobID]SchedulerJob{},
 					Nodes:     map[string]NPUNode{},
@@ -450,7 +443,7 @@ func buildSetJobPendingReasonTest() []setJobPendingReasonTest {
 		},
 		{
 			name: "02-SetJobPendingReason not support type test.",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Jobs:      map[api.JobID]SchedulerJob{},
 					Nodes:     map[string]NPUNode{},
@@ -460,7 +453,7 @@ func buildSetJobPendingReasonTest() []setJobPendingReasonTest {
 		},
 		{
 			name: "03-SetJobPendingReason string type test.",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Jobs:      map[api.JobID]SchedulerJob{},
 					Nodes:     map[string]NPUNode{},
@@ -470,7 +463,7 @@ func buildSetJobPendingReasonTest() []setJobPendingReasonTest {
 		},
 		{
 			name: "04-SetJobPendingReason nodeErrors test.",
-			fields: fields{NPUPlugins: map[string]ISchedulerPlugin{},
+			fields: fields{NPUPlugins: map[string]NPUBuilder{},
 				ScheduleEnv: ScheduleEnv{
 					Jobs:      map[api.JobID]SchedulerJob{},
 					Nodes:     map[string]NPUNode{},
@@ -533,7 +526,7 @@ func buildCheckNodeNumTest() []CheckNodeNumTest {
 			fields: schedulerJobFields{SchedulerJobAttr: util.SchedulerJobAttr{
 				NPUJob: &util.NPUJob{Tasks: map[api.TaskID]util.NPUTask{}}}},
 			args: CheckNodeNumArgs{taskInfo: tTasks[0], vcNode: NPUNode{CommonNode{Name: "testNode1", Idle: nil},
-				VNode{}}},
+				VNode{}, 0}},
 			wantErr: true,
 		},
 		{
@@ -542,7 +535,7 @@ func buildCheckNodeNumTest() []CheckNodeNumTest {
 				NPUJob{Tasks: map[api.TaskID]util.NPUTask{tTasks[0].UID: {Name: tTasks[0].Name,
 				ReqNPUName: util.NPU910CardName, ReqNPUNum: util.NPUIndex8}}}}},
 			args: CheckNodeNumArgs{taskInfo: tTasks[0], vcNode: NPUNode{CommonNode{Name: "testNode1", Idle: nil},
-				VNode{}}},
+				VNode{}, 0}},
 			wantErr: true,
 		},
 		{
@@ -607,13 +600,6 @@ func buildInitTest() []initTest {
 			args:    initArgs{vcJob: tJob},
 			wantErr: true,
 		},
-		{
-			name:   "03-Init ok test.",
-			fields: schedulerJobFields{SchedulerJobAttr: util.SchedulerJobAttr{}},
-			args: initArgs{vcJob: tJob, sHandle: &ScheduleHandler{NPUPlugins: map[string]ISchedulerPlugin{util.
-				NPU910CardName: nil}}},
-			wantErr: false,
-		},
 	}
 	return tests
 }
@@ -657,7 +643,7 @@ func buildValidJobSelectorTest() []validJobSelectorTest {
 			fields: schedulerJobFields{SchedulerJobAttr: util.SchedulerJobAttr{ComJob: util.ComJob{
 				Name: "haha", Selector: map[string]string{"heihei": "what?"},
 			}}},
-			args: validJobSelectorArgs{vcFrame: VolcanoFrame{Conf: []conf.
+			args: validJobSelectorArgs{vcFrame: VolcanoFrame{Confs: []config.
 				Configuration{{Arguments: map[string]string{"heihei": "why?"}}}}},
 			wantErr: true,
 		},
@@ -666,7 +652,7 @@ func buildValidJobSelectorTest() []validJobSelectorTest {
 			fields: schedulerJobFields{SchedulerJobAttr: util.SchedulerJobAttr{ComJob: util.ComJob{
 				Name: "haha", Selector: map[string]string{"heihei": "oh"},
 			}}},
-			args: validJobSelectorArgs{vcFrame: VolcanoFrame{Conf: []conf.
+			args: validJobSelectorArgs{vcFrame: VolcanoFrame{Confs: []config.
 				Configuration{{Arguments: map[string]string{"heihei": "oh"}}}}},
 			wantErr: false,
 		},

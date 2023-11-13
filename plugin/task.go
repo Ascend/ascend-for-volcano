@@ -72,6 +72,10 @@ func (sHandle ScheduleHandler) NPUAllocateFunc(task *api.TaskInfo) {
 		klog.V(util.LogDebugLev).Infof("NPUAllocateFunc %s not req npu.", task.Name)
 		return
 	}
+	if !vcJob.JobReadyTag {
+		klog.V(util.LogDebugLev).Infof("NPUAllocateFunc %s not allow allocate npu.", task.Name)
+		return
+	}
 	nodeName := task.NodeName
 	node, found := sHandle.Nodes[nodeName]
 	if !found {

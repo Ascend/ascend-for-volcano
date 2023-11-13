@@ -22,8 +22,8 @@ package util
 import (
 	"strings"
 
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
-	"volcano.sh/apis/pkg/apis/scheduling"
 	"volcano.sh/volcano/pkg/scheduler/api"
 )
 
@@ -43,24 +43,28 @@ const (
 type VJob struct {
 	// type: JobTypeWhole, JobTypeDycut, JobTypeStcut.
 	Type   int
-	Status scheduling.PodGroupPhase
+	Status string
 }
 
 // NPUJob only npu vcJob have.
 type NPUJob struct {
 	// the mapKey is taskID, not Name.
-	Tasks      map[api.TaskID]NPUTask
-	ReqNPUName string
-	ReqNPUNum  int
+	Tasks         map[api.TaskID]NPUTask
+	SelectServers string
+	NPUTaskNum    int
+	ReqNPUName    string
+	ReqNPUNum     int
 	*VJob
 }
 
 // ComJob all vcJob has.
 type ComJob struct {
-	Name      api.JobID
-	NameSpace string
-	Selector  map[string]string
-	Label     map[string]string
+	Name          api.JobID
+	ReferenceName string
+	NameSpace     string
+	Annotation    map[string]string
+	Selector      map[string]string
+	Label         map[string]string
 }
 
 // SchedulerJobAttr vcJob's attribute.
@@ -77,7 +81,6 @@ func IsSelectorMeetJob(jobSelectors, conf map[string]string) bool {
 			klog.V(LogErrorLev).Infof("conf has no job selector key:%s.", jobKey)
 			return false
 		}
-
 		if !strings.Contains(confValue, jobValue) {
 			klog.V(LogErrorLev).Infof("conf has no job selector value:%s.", jobValue)
 			return false
@@ -168,5 +171,19 @@ func (nJob *NPUJob) SetJobStatusByInf(vcJob *api.JobInfo) {
 	if nJob == nil {
 		return
 	}
-	nJob.VJob.Status = vcJob.PodGroup.Status.Phase
+	nJob.VJob.Status = string(vcJob.PodGroup.Status.Phase)
+}
+
+func ReferenceNameOfJob(job *api.JobInfo) string {
+	if job != nil && job.PodGroup != nil && len(job.PodGroup.OwnerReferences) > 0 {
+		return job.PodGroup.OwnerReferences[0].Name
+	}
+	return ""
+}
+
+func UuidOfJob(job *api.JobInfo) types.UID {
+	if job != nil && job.PodGroup != nil && len(job.PodGroup.OwnerReferences) > 0 {
+		return job.PodGroup.OwnerReferences[0].UID
+	}
+	return ""
 }

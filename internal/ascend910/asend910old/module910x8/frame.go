@@ -98,11 +98,12 @@ func (tp *module910x8) PreStartAction(ssn *framework.Session) error {
 	tp.reHandle.New910ReScheduler()
 	tp.reHandle.SynCacheFaultNodeWithSession(util.NPU910CardName)
 	tp.reHandle.AddFaultNodeWithSession(util.NPU910CardName)
-	tp.reHandle.SynCacheFaultJobWithSession(ssn, util.NPU910CardName, util.NPU910CardNamePre)
+	tp.reHandle.SynCacheFaultJobWithSession(ssn)
+	tp.reHandle.SyncJobRemainRetryTimes(ssn)
 	tp.reHandle.SynCacheNodeRankOccMapWithSession(ssn)
 	// 1. restart Fault Jobs that are recorded in cache
 	if restartErr := tp.reHandle.RestartNeedForceDeleteJobs(ssn); restartErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s RestartNeedForceDeleteJobs: %s", moduleFullName, restartErr.Error())
+		klog.V(util.LogDebugLev).Infof("%s RestartNeedForceDeleteJobs: %s", moduleFullName, restartErr.Error())
 	}
 	// 2. get all the new 910x8 jobs in session
 	runningJobs910x8, getRunErr := tp.reHandle.GetRunningJobs(ssn, util.NPU910CardName, util.ModuleAcceleratorType)
@@ -112,11 +113,11 @@ func (tp *module910x8) PreStartAction(ssn *framework.Session) error {
 	// 3. get nodes of session and fault jobs of 910x8
 	err := tp.reHandle.AddFaultJobWithSession(runningJobs910x8, util.NPU910CardName, util.NPU910CardNamePre)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s AddFaultJobWithSession", moduleFullName)
+		klog.V(util.LogInfoLev).Infof("%s AddFaultJobWithSession", moduleFullName)
 	}
 	// 4. restart the fault jobs
 	if restartErr := tp.reHandle.RestartFaultJobs(ssn); restartErr != nil {
-		klog.V(util.LogErrorLev).Infof("%s RestartFaultJobs: %s", moduleFullName, restartErr.Error())
+		klog.V(util.LogInfoLev).Infof("%s RestartFaultJobs: %s", moduleFullName, restartErr.Error())
 		return restartErr
 	}
 	// 5. save structure for later allocation process
@@ -129,7 +130,7 @@ func (tp *module910x8) PreStopAction(env *plugin.ScheduleEnv) error {
 	moduleFullName := util.NPU910CardName + util.ModuleAcceleratorType
 	klog.V(util.LogInfoLev).Infof("enter PreStopAction %s...", moduleFullName)
 	defer klog.V(util.LogInfoLev).Infof("leave PreStopAction %s...", moduleFullName)
-	if tp == nil || tp.reHandle == nil || env == nil {
+	if tp == nil || tp.reHandle == nil || env == nil || tp.FrameAttr.KubeClient == nil {
 		return fmt.Errorf("%s reSchedule not enabled or nil env: %s", moduleFullName, util.ArgumentError)
 	}
 	if err := tp.reHandle.WriteReSchedulerCacheToEnvCache(env, rescheduling.CmFaultJob910x8Kind); err != nil {
@@ -145,6 +146,9 @@ func (tp *module910x8) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNod
 		klog.V(util.LogErrorLev).Infof("CheckNodeNPUByTask err: %s", err.Error())
 		return err
 	}
+	if err := checkNodeLabelOK(node); err != nil {
+		return err
+	}
 	taskNPUNum, err := tp.GetTaskReqNPUNum(task)
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
@@ -156,8 +160,7 @@ func (tp *module910x8) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNod
 		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
 		return err
 	}
-	nTaskNum := tp.GetNPUTaskNumInJob()
-	nodeTop, err := tp.getUsableTopFromNode(node, nTaskNum > 1)
+	nodeTop, err := tp.getUsableTopFromNode(node, tp.NPUTaskNum > 1)
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
 		return err
@@ -165,12 +168,13 @@ func (tp *module910x8) CheckNodeNPUByTask(task *api.TaskInfo, node plugin.NPUNod
 
 	if err = tp.judgeNodeAndTaskNPU(taskNPUNum, nodeTop); err != nil {
 		klog.V(util.LogErrorLev).Infof("%s CheckNodeNPUByTask err: %s", tp.GetPluginName(), err.Error())
-		return fmt.Errorf("checkNodeNPUByTask %s err: %s", util.NodeNotMeetTopologyWarning, err.Error())
+		return fmt.Errorf("npu topology not meet job require,network unhealthy card is [ %s ]",
+			node.Annotation[tp.netUnhealthyKey])
 	}
 
 	if tp.reHandle != nil {
-		if reErr := tp.reHandle.CheckNodeNPUByTask(task, node); reErr != nil {
-			return fmt.Errorf("rescheduling CheckNodeNPUByTask %s", reErr.Error())
+		if reErr := tp.reHandle.CheckNodeNPUByTask(task, node, tp.ReqNPUName); reErr != nil {
+			return fmt.Errorf("rescheduling %s", reErr.Error())
 		}
 	}
 	return nil
@@ -198,8 +202,7 @@ func (tp *module910x8) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeIn
 				tp.GetPluginName(), node.Name)
 			continue
 		}
-		nTaskNum := tp.GetNPUTaskNumInJob()
-		cardIds, err := tp.getUsableTopFromNode(nNode, nTaskNum > 1)
+		cardIds, err := tp.getUsableTopFromNode(nNode, tp.NPUTaskNum > 1)
 		if err != nil {
 			klog.V(util.LogWarningLev).Infof("%s ScoreBestNPUNodes err: %s", tp.GetPluginName(), err.Error())
 			continue
@@ -215,7 +218,9 @@ func (tp *module910x8) ScoreBestNPUNodes(task *api.TaskInfo, nodes []*api.NodeIn
 				tp.GetPluginName(), node.Name)
 			continue
 		}
-		scoreMap[node.Name] = nodeWeight * float64(int(healthyNPUNum/util.NPUHexKilo)*npuNumPerHccs-bestScore)
+		sortScore := tp.MaxNodeNPUNum - len(cardIds)
+		scoreMap[node.Name] = nodeWeight*float64(int(healthyNPUNum/util.NPUHexKilo)*npuNumPerHccs-bestScore) +
+			float64(sortScore)
 	}
 	reErr := tp.reHandle.ScoreBestNPUNodes(task, scoreMap)
 	if reErr != nil {
@@ -258,13 +263,12 @@ func (tp *module910x8) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) *p
 func (tp *module910x8) selectNPUFromNode(task *api.TaskInfo, node plugin.NPUNode) ([]int, error) {
 	taskNPUNum, err := tp.GetTaskReqNPUNum(task)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s ScoreBestNPUNodes err: %s", tp.GetPluginName(), err.Error())
+		klog.V(util.LogErrorLev).Infof("%s GetTaskReqNPUNum err: %s", tp.GetPluginName(), err.Error())
 		return nil, err
 	}
-	nTaskNum := tp.GetNPUTaskNumInJob()
-	nodeTop, err := tp.getUsableTopFromNode(node, nTaskNum > 1)
+	nodeTop, err := tp.getUsableTopFromNode(node, tp.NPUTaskNum > 1)
 	if err != nil {
-		klog.V(util.LogErrorLev).Infof("%s ScoreBestNPUNodes err: %s", tp.GetPluginName(), err.Error())
+		klog.V(util.LogErrorLev).Infof("%s getUsableTopFromNode err: %s", tp.GetPluginName(), err.Error())
 		return nil, err
 	}
 	if taskNPUNum == nodeNPUNumber {
@@ -272,7 +276,7 @@ func (tp *module910x8) selectNPUFromNode(task *api.TaskInfo, node plugin.NPUNode
 			return nodeTop, nil
 		}
 		err = fmt.Errorf("node<%s> top<%v> can not meet task req<%d>", node.Name, nodeTop, taskNPUNum)
-		klog.V(util.LogErrorLev).Infof("%s ScoreBestNPUNodes err: %s", tp.GetPluginName(), err.Error())
+		klog.V(util.LogErrorLev).Infof("%s selectNPUFromNode err: %s", tp.GetPluginName(), err.Error())
 		return nil, err
 	}
 	priorityArray, err := getNPUAllocPriorityArray(taskNPUNum)
@@ -293,7 +297,7 @@ func (tp *module910x8) selectNPUFromNode(task *api.TaskInfo, node plugin.NPUNode
 		}
 	}
 	err = fmt.Errorf("node<%s> top<%v> can not meet task req<%d>", node.Name, len(nodeTop), taskNPUNum)
-	klog.V(util.LogErrorLev).Infof("%s ScoreBestNPUNodes err: %s", tp.GetPluginName(), err.Error())
+	klog.V(util.LogErrorLev).Infof("%s selectNPUFromNode err: %s", tp.GetPluginName(), err.Error())
 	return nil, err
 }
 

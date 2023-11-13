@@ -71,6 +71,7 @@ type NPUTask struct {
 	// Selector the same as job.
 	Selector map[string]string
 	Label    map[string]string
+	NodeName string
 	*VTask
 }
 
@@ -321,7 +322,7 @@ func (asTask *NPUTask) setVTaskAllocated(taskInf *api.TaskInfo) {
 	case TaskStatusAllocate:
 		asTask.VTask.Allocated.NodeName = taskInf.NodeName
 	default:
-		klog.V(LogErrorLev).Infof("setVTaskAllocated %s status %v.", asTask.Name, asTask.Status)
+		klog.V(LogDebugLev).Infof("setVTaskAllocated %s status %v.", asTask.Name, asTask.Status)
 		return
 	}
 	return
@@ -378,4 +379,11 @@ func (asTask *NPUTask) IsVNPUTask() bool {
 // no segmentation: huawei.com/Ascend910.
 func (asTask *NPUTask) IsNPUTask() bool {
 	return strings.Contains(asTask.ReqNPUName, HwPreName)
+}
+
+func ReferenceNameOfTask(task *api.TaskInfo) string {
+	if task != nil && task.Pod != nil && len(task.Pod.OwnerReferences) > 0 {
+		return task.Pod.OwnerReferences[0].Name
+	}
+	return ""
 }

@@ -15,22 +15,23 @@ limitations under the License.
 */
 
 /*
-Package card910bx2 is using for HuaWei Ascend 910B(Atlas 300T A2) card pin affinity schedule.
+Package module910bx8 is using for HuaWei Ascend910Bx8 pin affinity schedule.
 */
-package card910bx2
+package module910bx8
 
 import (
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910/ascend910b"
-	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/rescheduling"
+	"fmt"
+
+	"k8s.io/klog"
+
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
-type card910bx2 struct {
-	ascend910b.Base910b
-	reHandle *rescheduling.ReScheduler
+func (tp *module910bx8) JudgeNodeAndTaskNPU(taskNPU int, nodeTop []int) error {
+	if taskNPU <= len(nodeTop) {
+		return nil
+	}
+	meetErr := fmt.Errorf("%v not meet req npu(%d)", nodeTop, taskNPU)
+	klog.V(util.LogErrorLev).Infof("cardIDs:<%v> not meet task reqNum<%d>.", nodeTop, taskNPU)
+	return meetErr
 }
-
-const (
-	// SchedulerName name of scheduler
-	SchedulerName = "huawei.com/Ascend910card-910b-2"
-	nodeNPUNumber = 2
-)

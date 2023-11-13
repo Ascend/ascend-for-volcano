@@ -29,7 +29,9 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/framework"
 
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910/ascend910b/card910bx2"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910/ascend910b/card910bx2infer"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910/ascend910b/module910bx16"
+	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910/ascend910b/module910bx8"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910/asend910old/card910x2"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910/asend910old/half910x4"
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/internal/ascend910/asend910old/module910x8"
@@ -56,7 +58,9 @@ func New(npuName string) plugin.ISchedulerPlugin {
 	npuPlugin.Kind[module910x8.SchedulerName] = module910x8.New(module910x8.SchedulerName)
 	npuPlugin.Kind[half910x4.SchedulerName] = half910x4.New(half910x4.SchedulerName)
 	npuPlugin.Kind[module910bx16.SchedulerName] = module910bx16.New(module910bx16.SchedulerName)
+	npuPlugin.Kind[module910bx8.SchedulerName] = module910bx8.New(module910bx8.SchedulerName)
 	npuPlugin.Kind[card910bx2.SchedulerName] = card910bx2.New(card910bx2.SchedulerName)
+	npuPlugin.Kind[card910bx2infer.SchedulerName] = card910bx2infer.New(card910bx2infer.SchedulerName)
 	return npuPlugin
 }
 
@@ -193,6 +197,9 @@ func (tp *ascend910) PreStopAction(env *plugin.ScheduleEnv) error {
 				continue
 			}
 			klog.V(util.LogErrorLev).Infof("preStopAction %s error: %v", name, err)
+		}
+		if err := handler.InitMyJobPlugin(util.SchedulerJobAttr{}, plugin.ScheduleEnv{}); err != nil {
+			klog.V(util.LogErrorLev).Infof("PreStartAction init plugin failed, err: %s", err)
 		}
 	}
 	return nil

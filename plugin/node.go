@@ -20,8 +20,6 @@ Package plugin is using for HuaWei Ascend pin affinity schedule frame.
 package plugin
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,7 +28,6 @@ import (
 	"strings"
 
 	"k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	v12 "k8s.io/kube-scheduler/extender/v1"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -55,6 +52,7 @@ type NodeDeviceInfoWithDevPlugin struct {
 type NPUNode struct {
 	CommonNode
 	VNode
+	devInfoUpdateTime int64
 }
 
 // CommonNode common npu node properties
@@ -65,6 +63,7 @@ type CommonNode struct {
 	Idle       map[v1.ResourceName]float64
 	Annotation map[string]string
 	Label      map[string]string
+	Address    string
 }
 
 // VNode vnpu node class
@@ -73,6 +72,8 @@ type VNode struct {
 	Chips map[int]*VChip
 	// ChipKind Ascend910/310/310p
 	ChipKind string
+	// UnhealthyChipIds the card unhealthy chip ids in this node
+	UnhealthyChipIds map[int]struct{}
 	// ServerType Ascend310p-10-dual cardType-cardCoreNum-duo
 	ServerType string
 	// TotalChipNum num of total chips, get from capacity
@@ -115,72 +116,42 @@ func checkNodeDeviceInfo(nodeData *NodeDeviceInfoWithDevPlugin) error {
 	}
 
 	nodeDeviceInfo := nodeData.DeviceInfo
-	if nodeData.CheckCode != MakeDataHash(nodeDeviceInfo) {
+	if nodeData.CheckCode != util.MakeDataHash(nodeDeviceInfo) {
 		return errors.New("checkCode is not match")
 	}
 
 	return nil
 }
 
-// MakeDataHash check code for configmap
-func MakeDataHash(data interface{}) string {
-	var dataBuffer []byte
-	if dataBuffer = marshalData(data); len(dataBuffer) == 0 {
-		return ""
-	}
-	h := sha256.New()
-	if _, err := h.Write(dataBuffer); err != nil {
-		klog.V(util.LogErrorLev).Infof("hash data error")
-		return ""
-	}
-	sum := h.Sum(nil)
-	return hex.EncodeToString(sum)
-}
-
-func marshalData(data interface{}) []byte {
-	dataBuffer, err := json.Marshal(data)
-	if err != nil {
-		klog.V(util.LogErrorLev).Infof("marshal data err: %#v", err)
-		return nil
-	}
-	return dataBuffer
-}
-
-func getNodeDeviceInfoFromCM(kubeClient kubernetes.Interface, node *api.NodeInfo) (*NodeDeviceInfo, error) {
-	cmData, getErr := util.GetConfigMapWithRetry(kubeClient, util.DevInfoNameSpace, util.DevInfoPreName+node.Name)
-	if getErr != nil {
-		klog.V(util.LogErrorLev).Infof("GetConfigMapWithRetry :%#v.", getErr)
-		return nil, getErr
-	}
+func getNodeDeviceInfoFromCM(cmData *v1.ConfigMap) (NodeDeviceInfo, error) {
 
 	devInf := &NodeDeviceInfoWithDevPlugin{}
 	data, ok := cmData.Data[util.DevInfoCMKey]
 	if !ok {
-		return nil, fmt.Errorf("%s device-info no %s", node.Name, util.DevInfoCMKey)
+		return devInf.DeviceInfo, fmt.Errorf("configmap<%s> has no %s", cmData.Name, util.DevInfoCMKey)
 	}
 	if unmarshalErr := json.Unmarshal([]byte(data), &devInf); unmarshalErr != nil {
 		klog.V(util.LogInfoLev).Infof("convertToReSchedulerJobsMapFromCM Unmarshal: %#v.", unmarshalErr)
-		return nil, unmarshalErr
+		return devInf.DeviceInfo, unmarshalErr
 	}
 
 	if checkErr := checkNodeDeviceInfo(devInf); checkErr != nil {
 		klog.V(util.LogInfoLev).Infof("checkNodeDeviceInfo failed :%#v.", checkErr)
-		return nil, checkErr
+		return devInf.DeviceInfo, checkErr
 	}
-	return &devInf.DeviceInfo, nil
+	return devInf.DeviceInfo, nil
 }
 
 // InitNPUNodeByNodeInf init NPU node from node info and cm.
-func (n *NPUNode) InitNPUNodeByNodeInf(npuNode *api.NodeInfo, kubeClient kubernetes.Interface,
+func (n *NPUNode) InitNPUNodeByNodeInf(npuNode *api.NodeInfo, deviceInfos map[string]NodeDeviceInfo,
 	vJobTemplate map[string]map[string]util.VResource) error {
 	if n == nil || npuNode == nil {
 		klog.V(util.LogInfoLev).Infof("InitNPUNodeByNodeInf failed: %s.", util.ArgumentError)
 		return errors.New(util.ArgumentError)
 	}
-	data, getErr := getNodeDeviceInfoFromCM(kubeClient, npuNode)
-	if getErr != nil {
-		klog.V(util.LogDebugLev).Infof("getNodeDeviceInfoFromCM %s %#v", npuNode.Name, getErr)
-		return getErr
+	data, getErr := deviceInfos[npuNode.Name]
+	if !getErr || data.DeviceList == nil {
+		return fmt.Errorf("getNodeDeviceInfoFromCM %s failed", npuNode.Name)
 	}
 	capability := npuNode.Capability.ScalarResources
 	if !util.IsMapHasNPUResource(capability, util.HwPreName) {
@@ -192,13 +163,43 @@ func (n *NPUNode) InitNPUNodeByNodeInf(npuNode *api.NodeInfo, kubeClient kuberne
 	n.Allocate = npuNode.Allocatable.ScalarResources
 	n.Idle = npuNode.Idle.ScalarResources
 	n.Label = npuNode.Node.Labels
-	n.Annotation = make(map[string]string, util.MapInitNum)
+
+	for _, addr := range npuNode.Node.Status.Addresses {
+		if addr.Type == v1.NodeInternalIP {
+			n.Address = addr.Address
+			break
+		}
+	}
+
+	if n.Annotation == nil {
+		n.Annotation = make(map[string]string, util.MapInitNum)
+	}
+
+	existAnno := make(map[string]string)
+	for annoKey, annoValue := range n.Annotation {
+		if strings.Contains(annoKey, util.HwPreName) {
+			existAnno[annoKey] = annoValue
+			continue
+		}
+		if _, ok := npuNode.Node.Annotations[annoKey]; ok {
+			existAnno[annoKey] = annoValue
+		}
+	}
+	n.Annotation = existAnno
+
 	for k, v := range npuNode.Node.Annotations {
 		n.Annotation[k] = v
 	}
+
+	if n.devInfoUpdateTime == data.UpdateTime {
+		klog.V(util.LogDebugLev).Infof("device info is not update, skip refresh cache")
+		return nil
+	}
+	n.devInfoUpdateTime = data.UpdateTime
 	for k, v := range data.DeviceList {
 		n.Annotation[k] = v
 	}
+
 	if setVNPUErr := n.setNodeVNPUInfo(npuNode, vJobTemplate); setVNPUErr != nil {
 		klog.V(util.LogDebugLev).Infof("setNodeVNPUInfo %s %s", npuNode.Name, setVNPUErr)
 	}
@@ -298,16 +299,47 @@ func (sHandle *ScheduleHandler) InitNodesFromSsn(ssn *framework.Session) {
 	if sHandle == nil || sHandle.FrameAttr.KubeClient == nil {
 		return
 	}
-	sHandle.Nodes = make(map[string]NPUNode, util.MapInitNum)
+	existNodes := make(map[string]NPUNode)
+	deviceInfos := make(map[string]NodeDeviceInfo)
+	for nodeName, nNode := range sHandle.Nodes {
+		_, exist := ssn.Nodes[nodeName]
+		if !exist {
+			klog.V(util.LogWarningLev).Infof("node init <%s> is not in session,"+
+				"maybe node is deleted or not ready", nodeName)
+			continue
+		}
+		existNodes[nodeName] = nNode
+	}
+	sHandle.Nodes = existNodes
+
+	sHandle.DeviceInfos.Lock()
+	for nodeName := range ssn.Nodes {
+		deviceInfos[nodeName] = sHandle.DeviceInfos.Devices[nodeName]
+	}
+	sHandle.DeviceInfos.Unlock()
+
+	newNodes := make(map[string]NPUNode)
 	for nodeName, nodeInf := range ssn.Nodes {
+		node, exist := sHandle.Nodes[nodeName]
+		if exist {
+			err := node.InitNPUNodeByNodeInf(nodeInf, deviceInfos, sHandle.FrameAttr.VJobTemplate)
+			if err != nil {
+				klog.V(util.LogDebugLev).Infof("InitNodesFromSsn %s %s, not put in nodes.", nodeName, err)
+				continue
+			}
+			newNodes[nodeName] = node
+			continue
+		}
 		npuNode := NPUNode{}
-		err := npuNode.InitNPUNodeByNodeInf(nodeInf, sHandle.FrameAttr.KubeClient, sHandle.FrameAttr.VJobTemplate)
+		err := npuNode.InitNPUNodeByNodeInf(nodeInf, deviceInfos, sHandle.FrameAttr.VJobTemplate)
 		if err != nil {
 			klog.V(util.LogDebugLev).Infof("InitNodesFromSsn %s %s, not put in nodes.", nodeName, err)
 			continue
 		}
-		sHandle.Nodes[nodeName] = npuNode
+		newNodes[nodeName] = npuNode
+
 	}
+	sHandle.Nodes = newNodes
 	return
 }
 
@@ -317,24 +349,25 @@ func (sHandle *ScheduleHandler) NodePredicate(taskInfo *api.TaskInfo, nodeInfo *
 		klog.V(util.LogErrorLev).Infof("NodePredicate got null parameter(s), which is invalid.")
 		return fmt.Errorf("got null parameter(s)")
 	}
-	klog.V(util.LogInfoLev).Infof("enter node(%s) predicate", nodeInfo.Name)
-	defer klog.V(util.LogInfoLev).Infof("leave node(%s) predicate", nodeInfo.Name)
+	klog.V(util.LogDebugLev).Infof("enter node(%s) predicate", nodeInfo.Name)
+	defer klog.V(util.LogDebugLev).Infof("leave node(%s) predicate", nodeInfo.Name)
 
 	vcJob, ok := sHandle.Jobs[taskInfo.Job]
 	if !ok {
-		klog.V(util.LogInfoLev).Infof("NodePredicate not support job:%#v.", taskInfo.Job)
+		klog.V(util.LogDebugLev).Infof("NodePredicate not support job:%#v.", taskInfo.Job)
 		return nil
 	}
 	// check vcjob is npu job
 	if !vcJob.IsNPUJob() {
-		klog.V(util.LogInfoLev).Infof("NodePredicate vc-job:%#v is not npu job.", vcJob)
+		klog.V(util.LogDebugLev).Infof("NodePredicate vc-job:%#v is not npu job.", vcJob)
 		return nil
 	}
 	vcNode, ok := sHandle.Nodes[nodeInfo.Name]
 	if !ok {
-		klog.V(util.LogInfoLev).Infof("NodePredicate %s not in.", nodeInfo.Name)
+		klog.V(util.LogDebugLev).Infof("NodePredicate %s not in.", nodeInfo.Name)
 		return nil
 	}
+
 	// task and frame conf has check before in job valid.
 	if !util.IsSelectorMeetJob(vcJob.Selector, vcNode.Label) {
 		meetErr := fmt.Errorf("job(%s) selector:%#v not meet node<%s> label or selector:%#v", vcJob.Name,
@@ -353,10 +386,10 @@ func (sHandle *ScheduleHandler) NodePredicate(taskInfo *api.TaskInfo, nodeInfo *
 	}
 	if err := vcJob.handler.CheckNodeNPUByTask(taskInfo, vcNode); err != nil {
 		// node doesn't have enough npu for the task
-		klog.V(util.LogInfoLev).Infof("checkNodeNPUByTask %s:%#v ,cannot be selected.", vcNode.Name, err)
-		return fmt.Errorf("checkNodeNPUByTask  %s : %s %#v", vcNode.Name, nodesNoMeetNPUReqError, err)
+		klog.V(util.LogDebugLev).Infof("checkNodeNPUByTask %s:%#v ,cannot be selected.", vcNode.Name, err)
+		return fmt.Errorf("checkNodeNPUByTask  %s : %s", vcNode.Name, err)
 	}
-	klog.V(util.LogInfoLev).Infof("%s NodePredicate %s select successes.", PluginName, vcNode.Name)
+	klog.V(util.LogDebugLev).Infof("%s NodePredicate %s select successes.", PluginName, vcNode.Name)
 	return nil
 }
 
