@@ -188,25 +188,6 @@ func (vf *VolcanoFrame) CheckVNPUSegmentEnableByConfig() bool {
 	return false
 }
 
-// CheckVNPUSegmentEnableByConfig Check VNPU segmentEnable by init plugin parameters, return true if static
-func (vf *VolcanoFrame) CheckVNPUSegmentEnableByConfig() bool {
-	configuration, err := util.GetConfigFromSchedulerConfigMap(util.CMInitParamKey, vf.Conf)
-	if err != nil {
-		klog.V(util.LogDebugLev).Info("cannot get configuration, segmentEnable.")
-		return false
-	}
-	// get segmentEnable by user configuration
-	segmentEnable, ok := configuration.Arguments[util.SegmentEnable]
-	if !ok {
-		klog.V(util.LogDebugLev).Info("checkVNPUSegmentEnable doesn't exist presetVirtualDevice.")
-		return false
-	}
-	if segmentEnable == "true" {
-		return true
-	}
-	return false
-}
-
 func addConf(configs, value string) string {
 	for _, cfg := range strings.Split(value, "|") {
 		if !isSelectorContains(configs, cfg) {

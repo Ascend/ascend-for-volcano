@@ -37,12 +37,3 @@ type Base910b struct {
 	acceleratorValue string
 	arch             string
 }
-
-// Base910b for Ascend 910B base.
-type Base910b struct {
-	base.NPUHandler
-	AffScoreList       [][]int
-	singleAllowNumsMap map[int]struct{}
-	acceleratorValue   string
-	arch               string
-}
