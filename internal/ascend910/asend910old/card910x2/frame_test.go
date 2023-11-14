@@ -80,13 +80,9 @@ func buildValidNPUJobTestCase01() []validNPUJobTestCase {
 			},
 		},
 		{
-			name: "03-ValidNPUJob should return nil when tasks request is valid",
-			attr: attr3,
-			wantErr: &api.ValidateResult{
-				Pass:    false,
-				Reason:  errMsg2,
-				Message: errMsg2,
-			},
+			name:    "03-ValidNPUJob should return nil when tasks request is valid",
+			attr:    attr3,
+			wantErr: nil,
 		},
 	}
 }
