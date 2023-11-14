@@ -141,7 +141,7 @@ func GetVCJobReqNPUTypeFromJobInfo(vcJob *api.JobInfo) (string, int, error) {
 		return "", 0.0, errors.New("nil parameter")
 	}
 
-	for k, v := range vcJob.TotalRequest.ScalarResources {
+	for k, v := range getVcjobMinResource(vcJob).ScalarResources {
 		// must contain "huawei.com/"
 		if strings.Contains(string(k), util.HwPreName) {
 			return string(k), int(v / util.NPUHexKilo), nil
@@ -149,6 +149,13 @@ func GetVCJobReqNPUTypeFromJobInfo(vcJob *api.JobInfo) (string, int, error) {
 	}
 	klog.V(util.LogDebugLev).Infof("GetVCJobReqNPUTypeFromJobInfo %+v.", vcJob.TotalRequest.ScalarResources)
 	return "", 0.0, errors.New("nil NPU")
+}
+
+func getVcjobMinResource(job *api.JobInfo) *api.Resource {
+	if job.PodGroup.Spec.MinResources == nil {
+		return api.EmptyResource()
+	}
+	return api.NewResource(*job.PodGroup.Spec.MinResources)
 }
 
 // GetVCTaskReqNPUTypeFromTaskInfo get task request resource, only NPU.
