@@ -492,7 +492,7 @@ func (sHandle *ScheduleHandler) BatchNodeOrderFn(task *api.TaskInfo, nodes []*ap
 	}
 	if len(sHandle.Nodes) == 0 {
 		klog.V(util.LogDebugLev).Infof("%s batchNodeOrderFn %s.", PluginName, util.ArgumentError)
-		return nil, errors.New(util.ArgumentError)
+		return nil, nil
 	}
 	// init score-map
 	var interPodAffinityScore v1.HostPriorityList
@@ -523,11 +523,12 @@ func (sHandle *ScheduleHandler) BatchNodeOrderFn(task *api.TaskInfo, nodes []*ap
 
 func (sHandle *ScheduleHandler) SetTorAffinityJobNodesScore(task *api.TaskInfo, nodes []*api.NodeInfo,
 	vcJob SchedulerJob, label string, scoreMap map[string]float64) (map[string]float64, error) {
-	if sHandle == nil || task == nil || len(nodes) == 0 || len(scoreMap) == 0 {
+	if sHandle == nil || task == nil || len(nodes) == 0 || len(scoreMap) == 0 || !vcJob.JobReadyTag {
 		err := errors.New(util.ArgumentError)
 		klog.V(util.LogDebugLev).Infof("ScoreBestNPUNodes %s.", err)
-		return scoreMap, err
+		return scoreMap, nil
 	}
+
 	result := CheckNetSliceIsMeetJobRequire(vcJob, sHandle, nodes)
 	vcJob = sHandle.Jobs[task.Job]
 	if result != nil {

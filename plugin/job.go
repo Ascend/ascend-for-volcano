@@ -375,6 +375,10 @@ func CheckNetSliceIsMeetJobRequire(sJob SchedulerJob, sHandler *ScheduleHandler,
 	if err := sJob.ValidTorInfo(sHandler); err != nil {
 		return err
 	}
+	if len(nodes) < sJob.NPUTaskNum {
+		return fmt.Errorf("tor check failed not enough resource by "+
+			"node num %d is not meet job require %d", len(nodes), sJob.NPUTaskNum)
+	}
 	sJob.GetEnableServerList(nodes, sHandler)
 	fullTorNum := sJob.GetFullTorNumFromTorInfo(sHandler)
 	n := sJob.NPUTaskNum - len(sJob.HealthTorRankIndex)
@@ -386,7 +390,6 @@ func CheckNetSliceIsMeetJobRequire(sJob SchedulerJob, sHandler *ScheduleHandler,
 			return err
 		}
 	}
-	logicList := sJob.GetLogicTorList(sHandler, netSliceNum)
 	taskRow, taskColumn := GetTaskRowAndTaskColumn(n, netSliceNum)
 	if taskRow == -1 && taskColumn == -1 {
 		return fmt.Errorf("taskRow and taskColumn is illegal")
@@ -396,25 +399,26 @@ func CheckNetSliceIsMeetJobRequire(sJob SchedulerJob, sHandler *ScheduleHandler,
 		sJob.MarkMulJobServerList()
 		return nil
 	}
+
+	logicList := sJob.GetLogicTorList(sHandler, netSliceNum)
 	if logicList == nil {
 		return fmt.Errorf("tor check failed logicTorList is nil")
 	}
 	sort.Sort(LogicTorList(logicList))
 
-	if logicList[taskColumn] == nil {
-		return fmt.Errorf("tor check failed not enough resource by not enough Net Slice")
-	}
-
-	if taskRow > 0 && logicList[netSliceNum-1] == nil {
-		return fmt.Errorf("tor check failed not enough resource Net Slice is not full")
+	// judge the node num in slice x is enough for job request
+	// for example: a job has 22 npu task , netSliceNum is 4. taskRow = 4, taskColumn = 1
+	// slice 1 must have 5 nodes
+	if len(logicList[taskColumn]) < taskRow+1 {
+		return fmt.Errorf("tor check failed not enough resource by netslice <%d> server num <%d> is not enough "+
+			"for job require %d", getNetSliceId(logicList[taskColumn]), len(logicList[taskColumn]), taskRow+1)
 	}
 
 	if taskRow > 0 && len(logicList[netSliceNum-1]) < taskRow {
-		return fmt.Errorf("tor check failed not enough resource by not enough logic Tor")
+		return fmt.Errorf("tor check failed not enough resource by "+
+			"logicTor full tor num <%d> is not enough for job require <%d>", len(logicList[netSliceNum-1]), taskRow)
 	}
-	if taskRow > 0 && len(logicList[taskColumn]) < taskRow+1 {
-		return fmt.Errorf("tor check failed not enough resource by last Tor not enough server")
-	}
+
 	pyTor, fullTorNum := sJob.GetPhyTosList(sHandler, logicList)
 
 	if taskRow < 1 {
@@ -423,21 +427,9 @@ func CheckNetSliceIsMeetJobRequire(sJob SchedulerJob, sHandler *ScheduleHandler,
 		return err
 	}
 
-	if taskRow+1 < fullTorNum {
-		sJob.SetJobServerCacheTosHandler(sHandler, pyTor, taskRow, taskColumn)
-		sJob.MarkMulJobServerList()
-		return nil
-	}
-
-	if taskRow <= fullTorNum {
-		if len(pyTor[taskRow].Servers) < taskColumn+1 {
-			return fmt.Errorf("tor check failed not enough resource for large module job")
-		}
-		sJob.SetJobServerCacheTosHandler(sHandler, pyTor, taskRow, taskColumn)
-		sJob.MarkMulJobServerList()
-		return nil
-	}
-	return fmt.Errorf("tor check failed not enough resource")
+	sJob.SetJobServerCacheTosHandler(sHandler, pyTor, taskRow, taskColumn)
+	sJob.MarkMulJobServerList()
+	return nil
 }
 
 func (sJob *SchedulerJob) SetJobServerCacheTosHandler(sHandler *ScheduleHandler, pyTor []*Tor, taskRow, taskColumn int) {
@@ -552,7 +544,7 @@ func (sJob *SchedulerJob) SetNormalJobServerList(sHandler *ScheduleHandler) {
 		klog.V(util.LogDebugLev).Infof("SetNormalJobServerList failed:%s", util.ArgumentError)
 		return
 	}
-	sJob.ServerList = nil
+	sJob.ServerList = []*Tor{}
 	var count int
 	taskNum := sJob.NPUTaskNum
 	for _, tor := range sHandler.Tors.Tors {

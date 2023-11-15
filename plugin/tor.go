@@ -246,3 +246,14 @@ func (t *Tor) HasAcrossJob() bool {
 	}
 	return false
 }
+
+// getNetSliceId get net slice num by first server's SliceId
+func getNetSliceId(servers []*Server) int {
+	for _, server := range servers {
+		if server == nil {
+			continue
+		}
+		return server.SliceId
+	}
+	return -1
+}

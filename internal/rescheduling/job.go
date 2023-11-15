@@ -141,7 +141,7 @@ func (fJob *FaultJob) CheckJobExistsInKubernetes(ssn *framework.Session) bool {
 // deleteJobWithLabels delete job with labels
 func (fJob *FaultJob) deleteJobWithLabels(ssn *framework.Session, reschedule *ReScheduler, schedulerJob *plugin.SchedulerJob) error {
 	if !fJob.isPodFailedJobCanRestarted(reschedule) {
-		return fmt.Errorf("pod failed job reach max restart time")
+		return fmt.Errorf("job <%s> is not fault job or pod failed job reach max restart time", fJob.JobName)
 	}
 
 	if fJob.ReScheduleKey == JobForceRescheduleLabelValue {
@@ -168,6 +168,9 @@ func (fJob *FaultJob) ForceDeleteJob(ssn *framework.Session, schedulerJob *plugi
 
 // isPodFailedCanRestarted if the pod status is failed, judge whether job can be restarted
 func (fJob *FaultJob) isPodFailedJobCanRestarted(reScheduler *ReScheduler) bool {
+	if !fJob.IsFaultJob {
+		return false
+	}
 	if fJob.faultReason == PodFailed {
 		if fJob.FaultRetryTimes == 0 {
 			klog.V(util.LogInfoLev).Infof("job<%s> retry times is 0", fJob.JobUID)

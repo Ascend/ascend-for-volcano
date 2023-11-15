@@ -74,7 +74,7 @@ func buildBatchNodeOrderFn() []batchNodeOrderFnTest {
 					FrameAttr: VolcanoFrame{}}},
 			args:    batchNodeOrderFnArgs{task: tTask, nodes: tNodes, ssn: nil},
 			want:    nil,
-			wantErr: true,
+			wantErr: false,
 		},
 	}
 	return tests
