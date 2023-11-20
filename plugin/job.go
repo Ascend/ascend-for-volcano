@@ -343,7 +343,7 @@ func (sJob SchedulerJob) preCheckJob(vcFrame VolcanoFrame) error {
 // ValidJobFn valid job.
 func (sJob SchedulerJob) ValidJobFn(vcFrame VolcanoFrame) *api.ValidateResult {
 	if errPreCheck := sJob.preCheckJob(vcFrame); errPreCheck != nil {
-		klog.V(util.LogErrorLev).Infof("%s %s, err: %#v.", PluginName, sJob.Name, errPreCheck)
+		klog.V(util.LogErrorLev).Infof("%s %s, err: %s.", PluginName, sJob.Name, util.SafePrint(errPreCheck))
 
 		msg := "Job selector error"
 		return &api.ValidateResult{
@@ -353,7 +353,7 @@ func (sJob SchedulerJob) ValidJobFn(vcFrame VolcanoFrame) *api.ValidateResult {
 		}
 	}
 	if result := sJob.handler.ValidNPUJob(); result != nil {
-		klog.V(util.LogErrorLev).Infof("%s validNPUJob failed:%#v.", PluginName, result.Message)
+		klog.V(util.LogErrorLev).Infof("%s validNPUJob failed:%s.", PluginName, result.Message)
 		return result
 	}
 
@@ -363,7 +363,7 @@ func (sJob SchedulerJob) ValidJobFn(vcFrame VolcanoFrame) *api.ValidateResult {
 
 func (sJob SchedulerJob) ValidTorInfo(sHandler *ScheduleHandler) error {
 	if sHandler == nil || sHandler.Tors == nil || sHandler.Tors.Tors == nil {
-		return fmt.Errorf("validJobFn [%#v] failed:%#v", sJob.Name, objectNilError)
+		return fmt.Errorf("validJobFn [%s] failed:%s", sJob.Name, objectNilError)
 	}
 	return nil
 }
@@ -827,21 +827,21 @@ func (sHandle *ScheduleHandler) JobValid(obj interface{}) *api.ValidateResult {
 
 	if sHandle == nil {
 		return &api.ValidateResult{Pass: false, Reason: objectNilError,
-			Message: fmt.Sprintf("validJobFn [%#v] failed:%#v", obj, objectNilError)}
+			Message: fmt.Sprintf("validJobFn [%#v] failed:%s", obj, objectNilError)}
 	}
 	job, ok := obj.(*api.JobInfo)
 	if !ok {
 		reason := "job convert failed"
 		klog.V(util.LogErrorLev).Infof("%s :%#v.", reason, obj)
 		return &api.ValidateResult{Pass: false, Reason: reason,
-			Message: fmt.Sprintf("validJobFn [%#v] failed:%#v", obj, reason)}
+			Message: fmt.Sprintf("validJobFn [%#v] failed:%s", obj, reason)}
 	}
 	if !IsJobInitial(job) {
 		reason := "job is not ready"
-		klog.V(util.LogErrorLev).Infof("%s job(%s) not ready:%#v.", PluginName, job.Name,
+		klog.V(util.LogErrorLev).Infof("%s job(%s) not ready:%s.", PluginName, job.Name,
 			job.PodGroup.Status.Phase)
 		return &api.ValidateResult{Pass: false, Reason: reason,
-			Message: fmt.Sprintf("validJobFn [%#v] failed:%#v", obj, reason)}
+			Message: fmt.Sprintf("validJobFn [%#v] failed:%s", obj, reason)}
 	}
 	vcJob, ok := sHandle.Jobs[job.UID]
 	if !ok {
@@ -853,22 +853,22 @@ func (sHandle *ScheduleHandler) JobValid(obj interface{}) *api.ValidateResult {
 	if ok && k != NullTag {
 		if sHandle.Tors == nil {
 			reason := "job tor affinity check failed"
-			klog.V(util.LogErrorLev).Infof("%s job(%s) not ready:%#v label is %s.", PluginName, job.Name,
+			klog.V(util.LogErrorLev).Infof("%s job(%s) not ready:%s label is %s.", PluginName, job.Name,
 				reason, k)
 			return &api.ValidateResult{Pass: false, Reason: reason,
-				Message: fmt.Sprintf("validJobFn [%#v] failed:%#v", obj, reason)}
+				Message: fmt.Sprintf("validJobFn [%#v] failed:%s", obj, reason)}
 		}
 	}
 	if ok && k != LargeModelTag && k != NormalSchema && k != NullTag {
 		reason := "job tor affinity label check failed"
 		return &api.ValidateResult{Pass: false, Reason: reason,
-			Message: fmt.Sprintf("validJobFn [%#v] failed:%#v label is %s ", obj, reason, k)}
+			Message: fmt.Sprintf("validJobFn [%#v] failed:%s label is %s ", obj, reason, k)}
 	}
 
 	result := vcJob.ValidJobFn(sHandle.FrameAttr)
 	if result != nil {
 		if setErr := sHandle.SetJobPendingReason(job, result.Message); setErr != nil {
-			klog.V(util.LogErrorLev).Infof("%s setJobFailed err: %#v.", PluginName, setErr)
+			klog.V(util.LogErrorLev).Infof("%s setJobFailed err: %s.", PluginName, util.SafePrint(setErr))
 		}
 		return result
 	}
@@ -902,7 +902,7 @@ func (sJob *SchedulerJob) CheckNodeNum(taskInfo *api.TaskInfo, vcNode NPUNode) e
 		return fmt.Errorf("%s not have %s", vcNode.Name, vcTask.ReqNPUName)
 	}
 	if int(nodeNPUNum/util.NPUHexKilo) < vcTask.ReqNPUNum {
-		return fmt.Errorf("%s not meet %s's %s:%#v",
+		return fmt.Errorf("%s not meet %s's %s:%d",
 			vcNode.Name, vcTask.Name, vcTask.ReqNPUName, vcTask.ReqNPUNum)
 	}
 	return nil

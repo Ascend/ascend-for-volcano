@@ -219,8 +219,8 @@ func (tp *module910bx16) UseAnnotation(task *api.TaskInfo, node plugin.NPUNode) 
 		klog.V(util.LogErrorLev).Infof("UseAnnotation %s.", err)
 		return nil
 	}
-	klog.V(util.LogDebugLev).Infof("%s UseAnnotation task<%s> node<%s> resource<%s> Annotation: %#v",
-		tp.GetPluginName(), task.Name, node.Name, tp.GetAnnoName(), node.Annotation)
+	klog.V(util.LogDebugLev).Infof("%s UseAnnotation task<%s> node<%s> resource<%s> Annotation: %s",
+		tp.GetPluginName(), task.Name, node.Name, tp.GetAnnoName(), util.SafePrint(node.Annotation))
 	selectedNPU, err := tp.selectNPUFromNode(task, node)
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("%s UseAnnotation err:%s.", tp.GetPluginName(), err)

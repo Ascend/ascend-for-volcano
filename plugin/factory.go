@@ -47,12 +47,12 @@ func (sHandle *ScheduleHandler) RegisterNPUScheduler(name string, pc NPUBuilder)
 		return
 	}
 	if _, ok := sHandle.NPUPlugins[name]; ok {
-		klog.V(util.LogInfoLev).Infof("NPU Scheduler[%#v] has been registered before.", name)
+		klog.V(util.LogInfoLev).Infof("NPU Scheduler[%s] has been registered before.", name)
 		return
 	}
 
 	sHandle.NPUPlugins[name] = pc
-	klog.V(util.LogInfoLev).Infof("NPU Scheduler[%#v] registered.", name)
+	klog.V(util.LogInfoLev).Infof("NPU Scheduler[%s] registered.", name)
 }
 
 // UnRegisterNPUScheduler unRegister the plugin
@@ -63,9 +63,9 @@ func (sHandle *ScheduleHandler) UnRegisterNPUScheduler(name string) error {
 	if _, ok := sHandle.NPUPlugins[name]; ok {
 		sHandle.NPUPlugins[name] = nil
 		delete(sHandle.NPUPlugins, name)
-		klog.V(util.LogErrorLev).Infof("NPU Scheduler[%#v] delete.", name)
+		klog.V(util.LogErrorLev).Infof("NPU Scheduler[%s] delete.", name)
 	}
-	klog.V(util.LogDebugLev).Infof("NPU Scheduler[%#v] unRegistered.", name)
+	klog.V(util.LogDebugLev).Infof("NPU Scheduler[%s] unRegistered.", name)
 	return nil
 }
 
@@ -112,7 +112,7 @@ func (sHandle *ScheduleHandler) InitJobsFromSsn(ssn *framework.Session) {
 	for jobID, jobInfo := range ssn.Jobs {
 		sJob := SchedulerJob{}
 		if err := sJob.Init(jobInfo, sHandle); err != nil {
-			klog.V(util.LogInfoLev).Infof("%s InitJobsFromSsn failed: %#v.", jobInfo.Name, err)
+			klog.V(util.LogInfoLev).Infof("%s InitJobsFromSsn failed: %s.", jobInfo.Name, util.SafePrint(err))
 			continue
 		}
 		sHandle.Jobs[jobID] = sJob
@@ -324,7 +324,7 @@ func (sHandle *ScheduleHandler) saveCacheToCm() {
 			Data: data,
 		}
 		if err := util.CreateOrUpdateConfigMap(sHandle.FrameAttr.KubeClient, tmpCM, cmName, nameSpace); err != nil {
-			klog.V(util.LogErrorLev).Infof("CreateOrUpdateConfigMap : %#v.", err)
+			klog.V(util.LogErrorLev).Infof("CreateOrUpdateConfigMap : %s.", util.SafePrint(err))
 		}
 	}
 
@@ -344,7 +344,7 @@ func (sHandle *ScheduleHandler) saveCacheToCm() {
 		}
 		if err = util.CreateOrUpdateConfigMap(sHandle.FrameAttr.KubeClient, tmpCM, faultConfig.Name,
 			faultConfig.Namespace); err != nil {
-			klog.V(util.LogErrorLev).Infof("CreateOrUpdateConfigMap : %#v.", err)
+			klog.V(util.LogErrorLev).Infof("CreateOrUpdateConfigMap : %s.", util.SafePrint(err))
 		}
 	}
 }
@@ -360,7 +360,7 @@ func (sHandle *ScheduleHandler) BeforeCloseHandler(ssn *framework.Session) {
 			if strings.Contains(err.Error(), util.ArgumentError) {
 				continue
 			}
-			klog.V(util.LogErrorLev).Infof("PreStopPlugin %s %#v.", job.Name, err)
+			klog.V(util.LogErrorLev).Infof("PreStopPlugin %s %s.", job.Name, util.SafePrint(err))
 		}
 	}
 	sHandle.saveCacheToCm()
@@ -513,7 +513,7 @@ func (sHandle *ScheduleHandler) BatchNodeOrderFn(task *api.TaskInfo, nodes []*ap
 	errGet := vcJob.handler.ScoreBestNPUNodes(task, nodes, scoreMap)
 	if errGet != nil {
 		// get suitable node failed
-		klog.V(util.LogErrorLev).Infof("batchNodeOrderFn task[%s] failed[%#v].", task.Name, errGet)
+		klog.V(util.LogErrorLev).Infof("batchNodeOrderFn task[%s] failed[%s].", task.Name, util.SafePrint(errGet))
 		return scoreMap, nil
 	}
 	klog.V(util.LogInfoLev).Infof("batchNodeOrderFn Get %s for NPU %+v.", task.Name, scoreMap)
@@ -547,7 +547,7 @@ func (sHandle *ScheduleHandler) SetTorAffinityJobNodesScore(task *api.TaskInfo, 
 	errGet := sHandle.ScoreBestNPUNodes(task, nodes, scoreMap)
 	if errGet != nil {
 		// get suitable node failed
-		klog.V(util.LogDebugLev).Infof("batchNodeOrderFn task[%s] failed[%#v].", task.Name, errGet)
+		klog.V(util.LogDebugLev).Infof("batchNodeOrderFn task[%s] failed[%s].", task.Name, util.SafePrint(errGet))
 	}
 	klog.V(util.LogDebugLev).Infof("batchNodeOrderFn Get %s for NPU %+v.", task.Name, scoreMap)
 	return scoreMap, result

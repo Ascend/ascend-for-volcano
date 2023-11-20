@@ -36,16 +36,16 @@ func (ab *Base910b) UpdateNodeInfo(node plugin.NPUNode, usedTop []int) *plugin.N
 			ab.GetPluginName(), len(usedTop))
 		return nil
 	}
-	klog.V(util.LogDebugLev).Infof("%s before UpdateNodeInfo node<%s> Annotation: %#v",
-		ab.GetPluginName(), node.Name, node.Annotation)
+	klog.V(util.LogDebugLev).Infof("%s before UpdateNodeInfo node<%s> Annotation: %s",
+		ab.GetPluginName(), node.Name, util.SafePrint(node.Annotation))
 	healthyAnno, err := node.GetNewNPUNodeAnnotation(usedTop, ab.GetAnnoName(), ab.GetAnnoPreVal())
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("%s UpdateNodeInfo err: %s", ab.GetPluginName(), err)
 		return nil
 	}
 	node.Annotation[ab.GetAnnoName()] = healthyAnno
-	klog.V(util.LogDebugLev).Infof("%s after UpdateNodeInfo node<%s> Annotation: %#v",
-		ab.GetPluginName(), node.Name, node.Annotation)
+	klog.V(util.LogDebugLev).Infof("%s after UpdateNodeInfo node<%s> Annotation: %s",
+		ab.GetPluginName(), node.Name, util.SafePrint(node.Annotation))
 	return &node
 }
 

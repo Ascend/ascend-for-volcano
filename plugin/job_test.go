@@ -323,7 +323,7 @@ func buildJobValidTest() []jobValidTest {
 			fields: fields{},
 			args:   jobValidArgs{obj: "haha"},
 			want: &api.ValidateResult{Pass: false, Reason: "job convert failed",
-				Message: "validJobFn [\"haha\"] failed:\"job convert failed\""},
+				Message: `validJobFn ["haha"] failed:job convert failed`},
 		},
 		{
 			name:   "02-JobValid job not initial test.",

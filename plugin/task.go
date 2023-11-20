@@ -87,7 +87,7 @@ func (sHandle ScheduleHandler) NPUAllocateFunc(task *api.TaskInfo) {
 		// update node.
 		sHandle.Nodes[nodeName] = *vcNode
 	}
-	klog.V(util.LogDebugLev).Infof("%s %#v useAnnotation node [%s]'s top.", PluginName, task.Name, nodeName)
+	klog.V(util.LogDebugLev).Infof("%s %s useAnnotation node [%s]'s top.", PluginName, util.SafePrint(task.Name), nodeName)
 }
 
 func (sHandle *ScheduleHandler) releaseAnnotation(task *api.TaskInfo, vcJob SchedulerJob, vcNode NPUNode) {
@@ -156,7 +156,7 @@ func (sHandle *ScheduleHandler) NPUDeallocateFunc(task *api.TaskInfo) {
 		return
 	}
 	sHandle.releaseAnnotation(task, vcJob, node)
-	klog.V(util.LogDebugLev).Infof("%s %#v NPUDeallocateFunc node [%s]'s top.", PluginName, task.Name, nodeName)
+	klog.V(util.LogDebugLev).Infof("%s %s NPUDeallocateFunc node [%s]'s top.", PluginName, util.SafePrint(task.Name), nodeName)
 }
 
 func updatePodPendingReason(task *api.TaskInfo, reasonTmp string) {

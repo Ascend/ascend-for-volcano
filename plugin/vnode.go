@@ -221,7 +221,7 @@ func (n *NPUNode) getCardIDsFromNodeAndDeviceInfo(cardHealthTypeSuffix string) (
 		strID := strings.TrimPrefix(chip, n.VNode.ChipKind+"-")
 		chipID, aErr := strconv.Atoi(strID)
 		if aErr != nil {
-			klog.V(util.LogDebugLev).Infof("%s %s covert to int %#v", chip, strID, aErr)
+			klog.V(util.LogDebugLev).Infof("%s %s covert to int %s", chip, strID, util.SafePrint(aErr))
 			continue
 		}
 		CardIDs = append(CardIDs, chipID)

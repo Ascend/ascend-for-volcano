@@ -44,9 +44,9 @@ const (
 	// FakeJobName fake job namespace/name
 	FakeJobName = "vcjob/job"
 	// FakeTaskName0 fake task name
-	FakeTaskName0 = `"vcjob"-"pod0"`
+	FakeTaskName0 = "vcjob-pod0"
 	// FakeTaskName1 fake task name
-	FakeTaskName1              = `"vcjob"-"pod1"`
+	FakeTaskName1              = "vcjob-pod1"
 	kubeGroupNameAnnotationKey = "scheduling.k8s.io/group-name"
 )
 

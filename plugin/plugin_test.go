@@ -69,8 +69,8 @@ func (tp *ascendTest) Name() string {
 func (tp *ascendTest) InitMyJobPlugin(attr util.SchedulerJobAttr, env ScheduleEnv) error {
 	fmt.Printf("enter %s InitMyJobPlugin", util.NPU910CardName)
 	if tp == nil {
-		mgs := fmt.Errorf("nil plugin %#v", PluginName)
-		fmt.Printf("InitMyJobPlugin %#v.", mgs)
+		mgs := fmt.Errorf("nil plugin %s", PluginName)
+		fmt.Printf("InitMyJobPlugin %s.", util.SafePrint(mgs))
 		return mgs
 	}
 	tp.SchedulerJobAttr = attr
@@ -156,7 +156,7 @@ func fakeDeviceInfoCMDataByMap(testNodeMap map[string]*api.NodeInfo, cmName stri
 	nodeName := strings.TrimPrefix(cmName, util.DevInfoPreName)
 	testNode, ok := testNodeMap[nodeName]
 	if !ok {
-		fmt.Printf("%#v no %#v in nodeMap\n", cmName, nodeName)
+		fmt.Printf("%s no %s in nodeMap\n", util.SafePrint(cmName), util.SafePrint(nodeName))
 		return nil
 	}
 	return fakeDeviceInfoCMDataByNode(testNode, cmName)

@@ -47,7 +47,7 @@ func TestHandlerStart(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := HandlerStart(); got == nil {
-				t.Errorf("HandlerStart() = %#v, want %#v", got, tt.want)
+				t.Errorf("HandlerStart() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -68,7 +68,7 @@ func TestName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.tp.Name(); got != tt.want {
-				t.Errorf("Name() = %#v, want %#v", got, tt.want)
+				t.Errorf("Name() = %v, want %v", got, tt.want)
 			}
 		})
 	}

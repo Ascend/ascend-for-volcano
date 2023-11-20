@@ -67,7 +67,7 @@ func TestIsConfigMapChanged(t *testing.T) {
 		tt.args.k8s = client
 		t.Run(tt.name, func(t *testing.T) {
 			if got := IsConfigMapChanged(tt.args.k8s, tt.args.cm, tt.args.cmName, tt.args.nameSpace); got != tt.want {
-				t.Errorf("IsConfigMapChanged() = %#v, want %#v", got, tt.want)
+				t.Errorf("IsConfigMapChanged() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -126,7 +126,7 @@ func TestCreateOrUpdateConfigMap(t *testing.T) {
 
 			if err := CreateOrUpdateConfigMap(tt.args.k8s, tt.args.cm, tt.args.cmName,
 				tt.args.nameSpace); (err != nil) != tt.wantErr {
-				t.Errorf("CreateOrUpdateConfigMap() error = %#v, wantErr %#v", err, tt.wantErr)
+				t.Errorf("CreateOrUpdateConfigMap() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -204,11 +204,11 @@ func TestUpdateConfigmapIncrementally(t *testing.T) {
 
 			got, err := UpdateConfigmapIncrementally(tt.args.kubeClient, tt.args.ns, tt.args.name, tt.args.newData)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("UpdateConfigmapIncrementally() error = %#v, wantErr %#v", err, tt.wantErr)
+				t.Errorf("UpdateConfigmapIncrementally() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("UpdateConfigmapIncrementally() got = %#v, want %#v", got, tt.want)
+				t.Errorf("UpdateConfigmapIncrementally() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

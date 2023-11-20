@@ -160,7 +160,7 @@ func (fJob *FaultJob) ForceDeleteJob(ssn *framework.Session, schedulerJob *plugi
 	for _, fTask := range fJob.FaultTasks {
 		err := fTask.DeleteRealPodByTask(ssn, 0)
 		if err != nil {
-			klog.V(util.LogDebugLev).Infof("ForceDeleteFaultPod %s: %#v.", fTask.TaskName, err)
+			klog.V(util.LogDebugLev).Infof("ForceDeleteFaultPod %s: %s.", fTask.TaskName, util.SafePrint(err))
 		}
 	}
 	return nil

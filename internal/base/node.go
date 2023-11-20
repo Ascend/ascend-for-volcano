@@ -75,15 +75,15 @@ func (tp *NPUHandler) UpdateNodeInfo(node plugin.NPUNode, usedTop []int) *plugin
 			tp, len(usedTop))
 		return nil
 	}
-	klog.V(util.LogDebugLev).Infof("%s before UpdateNodeInfo node<%s> Annotation: %#v",
-		tp.GetPluginName(), node.Name, node.Annotation)
+	klog.V(util.LogDebugLev).Infof("%s before UpdateNodeInfo node<%s> Annotation: %s",
+		tp.GetPluginName(), node.Name, util.SafePrint(node.Annotation))
 	healthyAnno, err := node.GetNewNPUNodeAnnotation(usedTop, tp.GetAnnoName(), tp.GetAnnoPreVal())
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("%s UpdateNodeInfo err: %s", tp.GetPluginName(), err.Error())
 		return nil
 	}
 	node.Annotation[tp.GetAnnoName()] = healthyAnno
-	klog.V(util.LogDebugLev).Infof("%s after UpdateNodeInfo node<%s> Annotation: %#v",
-		tp.GetPluginName(), node.Name, node.Annotation)
+	klog.V(util.LogDebugLev).Infof("%s after UpdateNodeInfo node<%s> Annotation: %s",
+		tp.GetPluginName(), node.Name, util.SafePrint(node.Annotation))
 	return &node
 }

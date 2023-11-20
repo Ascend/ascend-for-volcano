@@ -83,7 +83,7 @@ func (asTask *NPUTask) GetRealPodByTask(ssn *framework.Session) (*v1.Pod, error)
 	}
 	taskInfo, getErr := GetTaskInfoByNameFromSSN(ssn, asTask.Name)
 	if getErr != nil {
-		klog.V(LogErrorLev).Infof("GetRealPodByTask %s: %#v", asTask.Name, getErr)
+		klog.V(LogErrorLev).Infof("GetRealPodByTask %s: %s", asTask.Name, SafePrint(getErr))
 		return nil, getErr
 	}
 
@@ -91,12 +91,12 @@ func (asTask *NPUTask) GetRealPodByTask(ssn *framework.Session) (*v1.Pod, error)
 		context.TODO(), asTask.Name, metav1.GetOptions{})
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			klog.V(LogErrorLev).Infof("Failed to get pod %s in %s: %#v",
-				taskInfo.Namespace, asTask.Name, err)
+			klog.V(LogErrorLev).Infof("Failed to get pod %s in %s: %s",
+				taskInfo.Namespace, asTask.Name, SafePrint(err))
 			return nil, err
 		}
-		klog.V(LogErrorLev).Infof("pod %v in%v not found: %#v",
-			taskInfo.Namespace, asTask.Name, err)
+		klog.V(LogErrorLev).Infof("pod %v in%v not found: %s",
+			taskInfo.Namespace, asTask.Name, SafePrint(err))
 		return nil, err
 	}
 	return pod, nil
@@ -110,7 +110,7 @@ func (asTask *NPUTask) DeleteRealPodByTask(ssn *framework.Session, waitTime int6
 	}
 	taskInfo, getErr := GetTaskInfoByNameFromSSN(ssn, asTask.Name)
 	if getErr != nil {
-		klog.V(LogErrorLev).Infof("%s GetTaskInfoByNameFromSSN: %#v", asTask.Name, getErr)
+		klog.V(LogErrorLev).Infof("%s GetTaskInfoByNameFromSSN: %s", asTask.Name, SafePrint(getErr))
 	}
 	if taskInfo == nil || taskInfo.Pod == nil {
 		klog.V(LogInfoLev).Infof("DeleteRealPodByTask pod does not exist")
@@ -125,7 +125,7 @@ func (asTask *NPUTask) DeleteRealPodByTask(ssn *framework.Session, waitTime int6
 	err := ssn.KubeClient().CoreV1().Pods(taskInfo.Pod.Namespace).Delete(
 		context.TODO(), taskInfo.Pod.Name, deleteOptions)
 	if err != nil {
-		klog.V(LogErrorLev).Infof("Failed to delete %s: %#v", taskInfo.Pod.UID, err)
+		klog.V(LogErrorLev).Infof("Failed to delete %s: %s", taskInfo.Pod.UID, SafePrint(err))
 		return err
 	}
 
@@ -146,17 +146,17 @@ func (asTask *NPUTask) EvictJobByTask(ssn *framework.Session, reason string, tas
 	}
 	taskInfo, getErr := GetTaskInfoByNameFromSSN(ssn, taskName)
 	if getErr != nil {
-		klog.V(LogErrorLev).Infof("%s GetTaskInfoByNameFromSSN: %#v", taskName, getErr)
+		klog.V(LogErrorLev).Infof("%s GetTaskInfoByNameFromSSN: %s", taskName, SafePrint(getErr))
 	}
 	err := ssn.Evict(taskInfo, reason)
 	if err != nil {
-		klog.V(LogErrorLev).Infof("Failed to restart %s : %#v", taskName, err)
+		klog.V(LogErrorLev).Infof("Failed to restart %s : %s", taskName, SafePrint(err))
 		if updateErr := asTask.UpdatePodPendingReason(taskInfo, err.Error()); updateErr != nil {
 			return updateErr
 		}
 		return err
 	}
-	klog.V(LogInfoLev).Infof("Evict %s : %#v", taskName, taskInfo.UID)
+	klog.V(LogInfoLev).Infof("Evict %s : %s", taskName, SafePrint(taskInfo.UID))
 	if updateErr := asTask.UpdatePodPendingReason(taskInfo, reason); updateErr != nil {
 		return updateErr
 	}
@@ -214,7 +214,7 @@ func (asTask *NPUTask) ForceDeletePodByTaskInf(ssn *framework.Session, reason st
 			asTask.VTask.Allocated.NodeName)
 		deleteErr := asTask.DeleteRealPodByTask(ssn, 0)
 		if deleteErr != nil {
-			klog.V(LogErrorLev).Infof("GraceDeleteFaultJob %s: %#v.", asTask.Name, deleteErr)
+			klog.V(LogErrorLev).Infof("GraceDeleteFaultJob %s: %s.", asTask.Name, SafePrint(deleteErr))
 		}
 		return deleteErr
 	}

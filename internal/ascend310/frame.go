@@ -58,7 +58,7 @@ func New(npuName string) plugin.ISchedulerPlugin {
 // InitMyJobPlugin for 310 job init
 func (tp *asend310) InitMyJobPlugin(attr util.SchedulerJobAttr, env plugin.ScheduleEnv) error {
 	if tp == nil {
-		mgs := fmt.Errorf("nil plugin %#v", PluginName)
+		mgs := fmt.Errorf("nil plugin %s", PluginName)
 		klog.V(util.LogInfoLev).Infof("InitMyJobPlugin %v.", mgs)
 		return mgs
 	}
