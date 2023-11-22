@@ -100,7 +100,11 @@ func UpdateConfigmapIncrementally(kubeClient kubernetes.Interface, ns, name stri
 	}
 	oldCM, err := GetConfigMapWithRetry(kubeClient, ns, name)
 	if err != nil || oldCM == nil {
-		return newData, fmt.Errorf("get old configmap from kubernetes failed")
+		upCmErr := fmt.Errorf("get old configmap from kubernetes failed err:%s", SafePrint(err))
+		if name != CmName {
+			return newData, upCmErr
+		}
+		return updateFaultCMCheckCode(newData), upCmErr
 	}
 	oldCMData := oldCM.Data
 	if oldCMData != nil {
@@ -115,13 +119,7 @@ func UpdateConfigmapIncrementally(kubeClient kubernetes.Interface, ns, name stri
 	if name != CmName {
 		return newData, nil
 	}
-	_, ok := newData[CmCheckCode]
-	if ok {
-		delete(newData, CmCheckCode) // if check code exists, delete and create new
-	}
-	checkCode := MakeDataHash(newData)
-	newData[CmCheckCode] = checkCode
-	return newData, nil
+	return updateFaultCMCheckCode(newData), nil
 }
 
 // CheckConfigMapIsDeviceInfo check configmap is device info
@@ -159,4 +157,14 @@ func marshalData(data interface{}) []byte {
 		return nil
 	}
 	return dataBuffer
+}
+
+func updateFaultCMCheckCode(newData map[string]string) map[string]string {
+	_, ok := newData[CmCheckCode]
+	if ok {
+		delete(newData, CmCheckCode) // if check code exists, delete and create new
+	}
+	checkCode := MakeDataHash(newData)
+	newData[CmCheckCode] = checkCode
+	return newData
 }
