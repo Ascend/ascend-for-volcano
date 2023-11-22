@@ -65,7 +65,7 @@ func TestIsSelectorMeetJob(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := IsSelectorMeetJob(tt.args.jobSelectors, tt.args.conf); got != tt.want {
-				t.Errorf("IsSelectorMeetJob() = %#v, want %#v", got, tt.want)
+				t.Errorf("IsSelectorMeetJob() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -100,7 +100,7 @@ func TestIsVJob(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.nJob.IsVJob(); got != tt.want {
-				t.Errorf("Name() = %#v, want %#v", got, tt.want)
+				t.Errorf("Name() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -139,7 +139,7 @@ func TestSetVJobType(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.nJob.SetJobType()
 			if got := tt.nJob.Type; !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Name() = %#v, want %#v", got, tt.want)
+				t.Errorf("Name() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -170,7 +170,7 @@ func TestSetVJobStatusByInf(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.nJob.SetJobStatusByInf(tt.vcJob)
 			if got := tt.nJob.Status; got != tt.want {
-				t.Errorf("Name() = %#v, want %#v", got, tt.want)
+				t.Errorf("Name() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -43,11 +43,11 @@ func (fTask *FaultTask) getNodeRankIndex(task *api.TaskInfo) (string, error) {
 
 	index, err := strconv.Atoi(rankIndex)
 	if err != nil {
-		return "", fmt.Errorf("convert %#v:%#v", rankIndex, err)
+		return "", fmt.Errorf("convert %s:%s", util.SafePrint(rankIndex), util.SafePrint(err))
 	}
 
 	if index > maxRankIndex || index < 0 {
-		return "", fmt.Errorf("rankIndex:%#v out of limit", index)
+		return "", fmt.Errorf("rankIndex:%d out of limit", index)
 	}
 	klog.V(util.LogInfoLev).Infof("task %s rankIndex read from pod: %s", task.Name, rankIndex)
 	return rankIndex, nil

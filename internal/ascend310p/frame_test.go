@@ -298,7 +298,7 @@ func TestValidNPUJob(t *testing.T) {
 		t.Run(tt.Name, func(t *testing.T) {
 			npu.SetSchedulerAttr(tt.Attr)
 			if err := npu.ValidNPUJob(); !reflect.DeepEqual(err, tt.WantErr) {
-				t.Errorf("ValidNPUJob() error = %#v, wantErr %#v", err, tt.WantErr)
+				t.Errorf("ValidNPUJob() error = %v, wantErr %v", err, tt.WantErr)
 			}
 		})
 	}
@@ -412,7 +412,7 @@ func TestCheckNodeNPUByTask(t *testing.T) {
 		})
 		t.Run(tt.Name, func(t *testing.T) {
 			if err := npu.CheckNodeNPUByTask(tt.Task, tt.Node); !reflect.DeepEqual(err, tt.WantErr) {
-				t.Errorf("CheckNodeNPUByTask() error = %#v, wantErr %#v", err, tt.WantErr)
+				t.Errorf("CheckNodeNPUByTask() error = %v, wantErr %v", err, tt.WantErr)
 			}
 		})
 	}
@@ -512,7 +512,7 @@ func TestScoreBestNPUNodes(t *testing.T) {
 		npu.SchedulerJobAttr = tt.Attr
 		t.Run(tt.Name, func(t *testing.T) {
 			if err := npu.ScoreBestNPUNodes(tt.Task, tt.Nodes, tt.ScoreMap); !reflect.DeepEqual(err, tt.WantErr) {
-				t.Errorf("ScoreBestNPUNodes() error = %#v, wantErr %#v", err, tt.WantErr)
+				t.Errorf("ScoreBestNPUNodes() error = %v, wantErr %v", err, tt.WantErr)
 			}
 		})
 	}
@@ -623,7 +623,7 @@ func TestUseAnnotation(t *testing.T) {
 		npu.SetSchedulerEnv(env)
 		t.Run(tt.Name, func(t *testing.T) {
 			if got := npu.UseAnnotation(tt.Task, tt.Node); !reflect.DeepEqual(got, tt.WantNode) {
-				t.Errorf("CheckNodeNPUByTask() got = %#v, wantNode %#v", got, tt.WantNode)
+				t.Errorf("CheckNodeNPUByTask() got = %v, wantNode %v", got, tt.WantNode)
 			}
 		})
 	}
@@ -726,7 +726,7 @@ func TestReleaseAnnotation(t *testing.T) {
 		npu.SchedulerJobAttr = tt.Attr
 		t.Run(tt.Name, func(t *testing.T) {
 			if got := npu.ReleaseAnnotation(tt.Task, tt.Node); !reflect.DeepEqual(got, tt.WantNode) {
-				t.Errorf("CheckNodeNPUByTask() got = %#v, wantNode %#v", got, tt.WantNode)
+				t.Errorf("CheckNodeNPUByTask() got = %v, wantNode %v", got, tt.WantNode)
 			}
 		})
 	}

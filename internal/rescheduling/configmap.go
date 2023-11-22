@@ -48,13 +48,13 @@ func (dealCM *DealReSchedulerConfigmap) newReSchedulerCMFromEnv(env *plugin.Sche
 	reCmData, getErr := util.GetConfigMapWithRetry(env.FrameAttr.KubeClient, CmNameSpace, CmName)
 	if getErr != nil {
 		if !errors.IsNotFound(getErr) {
-			klog.V(util.LogErrorLev).Infof("newReSchedulerCMFromEnv :%#v.", getErr)
+			klog.V(util.LogErrorLev).Infof("newReSchedulerCMFromEnv :%s.", util.SafePrint(getErr))
 			return getErr
 		}
 		klog.V(util.LogDebugLev).Infof("%s's configmap %s not in env", RePropertyName, CmName)
 		cmData, err := dealCM.createEmptyReCM(env.FrameAttr.KubeClient, jobType)
 		if err != nil {
-			return fmt.Errorf("create %s configmap %s configmap failed: %#v", RePropertyName, CmName, err)
+			return fmt.Errorf("create %s configmap %s configmap failed: %s", RePropertyName, CmName, util.SafePrint(err))
 		}
 		dealCM.setCMName(CmName)
 		dealCM.setCMNameSpace(CmNameSpace)

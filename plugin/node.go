@@ -131,12 +131,12 @@ func getNodeDeviceInfoFromCM(cmData *v1.ConfigMap) (NodeDeviceInfo, error) {
 		return devInf.DeviceInfo, fmt.Errorf("configmap<%s> has no %s", cmData.Name, util.DevInfoCMKey)
 	}
 	if unmarshalErr := json.Unmarshal([]byte(data), &devInf); unmarshalErr != nil {
-		klog.V(util.LogInfoLev).Infof("convertToReSchedulerJobsMapFromCM Unmarshal: %#v.", unmarshalErr)
+		klog.V(util.LogInfoLev).Infof("convertToReSchedulerJobsMapFromCM Unmarshal: %s.", util.SafePrint(unmarshalErr))
 		return devInf.DeviceInfo, unmarshalErr
 	}
 
 	if checkErr := checkNodeDeviceInfo(devInf); checkErr != nil {
-		klog.V(util.LogInfoLev).Infof("checkNodeDeviceInfo failed :%#v.", checkErr)
+		klog.V(util.LogInfoLev).Infof("checkNodeDeviceInfo failed :%s.", util.SafePrint(checkErr))
 		return devInf.DeviceInfo, checkErr
 	}
 	return devInf.DeviceInfo, nil
@@ -354,7 +354,7 @@ func (sHandle *ScheduleHandler) NodePredicate(taskInfo *api.TaskInfo, nodeInfo *
 
 	vcJob, ok := sHandle.Jobs[taskInfo.Job]
 	if !ok {
-		klog.V(util.LogDebugLev).Infof("NodePredicate not support job:%#v.", taskInfo.Job)
+		klog.V(util.LogDebugLev).Infof("NodePredicate not support job:%s.", util.SafePrint(taskInfo.Job))
 		return nil
 	}
 	// check vcjob is npu job
@@ -386,7 +386,7 @@ func (sHandle *ScheduleHandler) NodePredicate(taskInfo *api.TaskInfo, nodeInfo *
 	}
 	if err := vcJob.handler.CheckNodeNPUByTask(taskInfo, vcNode); err != nil {
 		// node doesn't have enough npu for the task
-		klog.V(util.LogDebugLev).Infof("checkNodeNPUByTask %s:%#v ,cannot be selected.", vcNode.Name, err)
+		klog.V(util.LogDebugLev).Infof("checkNodeNPUByTask %s:%s ,cannot be selected.", vcNode.Name, util.SafePrint(err))
 		return fmt.Errorf("checkNodeNPUByTask  %s : %s", vcNode.Name, err)
 	}
 	klog.V(util.LogDebugLev).Infof("%s NodePredicate %s select successes.", PluginName, vcNode.Name)

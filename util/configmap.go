@@ -75,7 +75,7 @@ func CreateOrUpdateConfigMap(k8s kubernetes.Interface, cm *v1.ConfigMap, cmName,
 	_, cErr := k8s.CoreV1().ConfigMaps(cm.ObjectMeta.Namespace).Create(context.TODO(), cm, metav1.CreateOptions{})
 	if cErr != nil {
 		if !errors.IsAlreadyExists(cErr) {
-			return fmt.Errorf("unable to create ConfigMap:%#v", cErr)
+			return fmt.Errorf("unable to create ConfigMap:%s", SafePrint(cErr))
 		}
 
 		// To reduce the cm write operations
@@ -86,7 +86,7 @@ func CreateOrUpdateConfigMap(k8s kubernetes.Interface, cm *v1.ConfigMap, cmName,
 
 		_, err := k8s.CoreV1().ConfigMaps(cm.ObjectMeta.Namespace).Update(context.TODO(), cm, metav1.UpdateOptions{})
 		if err != nil {
-			return fmt.Errorf("unable to update ConfigMap:%#v", err)
+			return fmt.Errorf("unable to update ConfigMap:%s", SafePrint(cErr))
 		}
 	}
 	return nil
@@ -155,7 +155,7 @@ func MakeDataHash(data interface{}) string {
 func marshalData(data interface{}) []byte {
 	dataBuffer, err := json.Marshal(data)
 	if err != nil {
-		klog.V(LogErrorLev).Infof("marshal data err: %#v", err)
+		klog.V(LogErrorLev).Infof("marshal data err: %s", SafePrint(err))
 		return nil
 	}
 	return dataBuffer

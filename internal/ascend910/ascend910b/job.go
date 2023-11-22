@@ -154,7 +154,7 @@ func (ab *Base910b) selectNPUFromNode(task *api.TaskInfo, node plugin.NPUNode) (
 		if len(nodeTop) == ab.MaxNodeNPUNum {
 			return nodeTop, nil
 		}
-		err = fmt.Errorf("%s %#v can not meet task req:%d", node.Name, nodeTop, taskNPUNum)
+		err = fmt.Errorf("%s %v can not meet task req:%d", node.Name, nodeTop, taskNPUNum)
 		klog.V(util.LogErrorLev).Infof("%s ScoreBestNPUNodes err: %s", ab.GetPluginName(), err)
 		return nil, err
 	}

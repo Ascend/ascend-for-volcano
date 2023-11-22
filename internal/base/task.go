@@ -39,13 +39,13 @@ func (tp *NPUHandler) GetTaskReqNPUNum(task *api.TaskInfo) (int, error) {
 	nJob, jOK := tp.Jobs[task.Job]
 	if !jOK {
 		err := fmt.Errorf("%s is not npu job", task.Job)
-		klog.V(util.LogErrorLev).Infof("GetTaskReqNPUNum err: %s,%#v,%#v", err, task.Job, tp.Jobs)
+		klog.V(util.LogErrorLev).Infof("GetTaskReqNPUNum err: %s,%s,%#v", err, util.SafePrint(task.Job), tp.Jobs)
 		return 0, err
 	}
 	nTask, tOK := nJob.Tasks[task.UID]
 	if !tOK {
 		err := fmt.Errorf("task<%s> is not npu task", task.Name)
-		klog.V(util.LogErrorLev).Infof("GetTaskReqNPUNum err: %s,%#v,%#v", err, task.UID, tp.Tasks)
+		klog.V(util.LogErrorLev).Infof("GetTaskReqNPUNum err: %s,%s,%#v", err, util.SafePrint(task.UID), tp.Tasks)
 		return 0, err
 	}
 	klog.V(util.LogDebugLev).Infof("GetTaskReqNPUNum task req npu<%s>-<%d> ", nTask.ReqNPUName, nTask.ReqNPUNum)

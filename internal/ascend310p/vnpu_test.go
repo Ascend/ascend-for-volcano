@@ -85,7 +85,7 @@ func TestCheckStVJobReq(t *testing.T) {
 		npu.Tasks = tt.Tasks
 		t.Run(tt.Name, func(t *testing.T) {
 			if err := npu.checkStVJobReq(); !reflect.DeepEqual(err, tt.WantErr) {
-				t.Errorf("CheckStVJobReq() error = %#v, wantErr %#v", err, tt.WantErr)
+				t.Errorf("CheckStVJobReq() error = %v, wantErr %v", err, tt.WantErr)
 			}
 		})
 	}
@@ -142,7 +142,7 @@ func TestCheckDyVJobReq(t *testing.T) {
 		npu.Tasks = tt.Tasks
 		t.Run(tt.Name, func(t *testing.T) {
 			if err := npu.checkDyVJobReq(); !reflect.DeepEqual(err, tt.WantErr) {
-				t.Errorf("CheckDyVJobReq() error = %#v, wantErr %#v", err, tt.WantErr)
+				t.Errorf("CheckDyVJobReq() error = %v, wantErr %v", err, tt.WantErr)
 			}
 		})
 	}
@@ -243,7 +243,7 @@ func TestValidDyVNPUTaskDVPPLabel(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
 			if err := npu.validDyVNPUTaskDVPPLabel(tt.Task); !reflect.DeepEqual(err, tt.WantErr) {
-				t.Errorf("ValidDyVNPUTaskDVPPLabel() error = %#v, wantErr %#v", err, tt.WantErr)
+				t.Errorf("ValidDyVNPUTaskDVPPLabel() error = %v, wantErr %v", err, tt.WantErr)
 			}
 		})
 	}
@@ -295,7 +295,7 @@ func TestValidDyVNPUJobLabel(t *testing.T) {
 		npu.Tasks = tt.Tasks
 		t.Run(tt.Name, func(t *testing.T) {
 			if err := npu.validDyVNPUJobLabel(); !reflect.DeepEqual(err, tt.WantErr) {
-				t.Errorf("ValidDyVNPUJobLabel() error = %#v, wantErr %#v", err, tt.WantErr)
+				t.Errorf("ValidDyVNPUJobLabel() error = %v, wantErr %v", err, tt.WantErr)
 			}
 		})
 	}
@@ -341,7 +341,7 @@ func TestValidDyVNPUJob(t *testing.T) {
 		t.Run(tt.Name, func(t *testing.T) {
 			npu.VJob = tt.VJob
 			if got := npu.validDyVNPUJob(); !reflect.DeepEqual(got, tt.Want) {
-				t.Errorf("ValidDyVNPUJob() got = %#v, want %#v", got, tt.Want)
+				t.Errorf("ValidDyVNPUJob() got = %v, want %v", got, tt.Want)
 			}
 		})
 	}
@@ -383,7 +383,7 @@ func TestGetAllDyJobs(t *testing.T) {
 		t.Run(tt.Name, func(t *testing.T) {
 			npu.Jobs = tt.Jobs
 			if got := npu.getAllDyJobs(); !reflect.DeepEqual(got, tt.Want) {
-				t.Errorf("ValidNPUJob() got = %#v, want %#v", got, tt.Want)
+				t.Errorf("ValidNPUJob() got = %v, want %v", got, tt.Want)
 			}
 		})
 	}
@@ -409,7 +409,7 @@ func TestGetFailedDyTasksFromJobs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
 			if got := getFailedDyTasksFromJobs(tt.vJobs); !reflect.DeepEqual(got, tt.Want) {
-				t.Errorf("GetFailedDyTasksFromJobs() got = %#v, want %#v", got, tt.Want)
+				t.Errorf("GetFailedDyTasksFromJobs() got = %v, want %v", got, tt.Want)
 			}
 		})
 	}
@@ -438,7 +438,7 @@ func TestGetDyFailedNamespaces(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
 			if got := getDyFailedNamespaces(tt.VT); !reflect.DeepEqual(got, tt.Want) {
-				t.Errorf("GetDyFailedNamespaces() got = %#v, want %#v", got, tt.Want)
+				t.Errorf("GetDyFailedNamespaces() got = %v, want %v", got, tt.Want)
 			}
 		})
 	}
@@ -473,7 +473,7 @@ func TestGetAllDyFailedTasks(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
 			if got := getAllDyFailedTasks(tt.SSN, tt.nsMap); !reflect.DeepEqual(got, tt.Want) {
-				t.Errorf("GetAllDyFailedTasks() got = %#v, want %#v", got, tt.Want)
+				t.Errorf("GetAllDyFailedTasks() got = %v, want %v", got, tt.Want)
 			}
 		})
 	}
@@ -500,7 +500,7 @@ func TestGetDyFailedTaskIDsInFaileds(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
 			if got := getDyFailedTaskIDsInFaileds(tt.Ids, tt.VT); !reflect.DeepEqual(got, tt.Want) {
-				t.Errorf("GetDyFailedTaskIDsInFaileds() got = %#v, want %#v", got, tt.Want)
+				t.Errorf("GetDyFailedTaskIDsInFaileds() got = %v, want %v", got, tt.Want)
 			}
 		})
 	}
@@ -533,7 +533,7 @@ func TestGetDyFailedTasksFromFailed(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
 			if got := getDyFailedTasksFromFailed(tt.ssn, tt.VT); !reflect.DeepEqual(got, tt.Want) {
-				t.Errorf("GetDyFailedTasksFromFailed() got = %#v, want %#v", got, tt.Want)
+				t.Errorf("GetDyFailedTasksFromFailed() got = %v, want %v", got, tt.Want)
 			}
 		})
 	}
@@ -595,7 +595,7 @@ func TestGetRestartDyTasksFromJobs(t *testing.T) {
 
 			defer patch.Reset()
 			if got := npu.getRestartDyTasksFromJobs(tt.VJob, tt.ssn); !reflect.DeepEqual(got, tt.Want) {
-				t.Errorf("GetAllDyFailedTasks() got = %#v, want %#v", got, tt.Want)
+				t.Errorf("GetAllDyFailedTasks() got = %v, want %v", got, tt.Want)
 			}
 		})
 	}
@@ -654,7 +654,7 @@ func TestInitDyCutConCacheByJobInfo(t *testing.T) {
 		t.Run(tt.Name, func(t *testing.T) {
 			tt.VJob.NPUJob = tt.NPUJob
 			if err := initDyCutConCacheByJobInfo(tt.Nodes, tt.JobInfo, tt.VJob); !reflect.DeepEqual(err, tt.WantErr) {
-				t.Errorf("InitDyCutConCacheByJobInfo() err = %#v want %#v", err, tt.WantErr)
+				t.Errorf("InitDyCutConCacheByJobInfo() err = %v want %v", err, tt.WantErr)
 			}
 		})
 	}
@@ -716,7 +716,7 @@ func TestInitConcacheByTemplate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
 			if initConcacheByTemplate(tt.nodes, tt.vT, tt.template, tt.taskID); !reflect.DeepEqual(tt.nodes, tt.WantNode) {
-				t.Errorf("initConcacheByTemplate() tt.nodes = %#v want %#v", tt.nodes, tt.WantNode)
+				t.Errorf("initConcacheByTemplate() tt.nodes = %v want %v", tt.nodes, tt.WantNode)
 			}
 		})
 	}
@@ -784,7 +784,7 @@ func TestInitConCache(t *testing.T) {
 		npu = tt.NPU
 		t.Run(tt.Name, func(t *testing.T) {
 			if err := npu.initConCache(tt.ssn); !reflect.DeepEqual(err, tt.WantErr) {
-				t.Errorf("initConCache() error = %#v, wantErr %#v", err, tt.WantErr)
+				t.Errorf("initConCache() error = %v, wantErr %v", err, tt.WantErr)
 			}
 		})
 	}
@@ -848,7 +848,7 @@ func TestDeleteDyCutErrTasks(t *testing.T) {
 
 		t.Run(tt.Name, func(t *testing.T) {
 			if err := npu.deleteDyCutErrTasks(tt.ssn); !reflect.DeepEqual(err, tt.WantErr) {
-				t.Errorf("deleteDyCutErrTasks() err = %#v, want %#v", err, tt.WantErr)
+				t.Errorf("deleteDyCutErrTasks() err = %v, want %v", err, tt.WantErr)
 			}
 		})
 	}

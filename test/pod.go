@@ -44,7 +44,7 @@ func makePodSpec(pod NPUPod) v1.PodSpec {
 func BuildNPUPod(pod NPUPod) *v1.Pod {
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			UID:       types.UID(fmt.Sprintf("%#v-%#v", pod.Namespace, pod.Name)),
+			UID:       types.UID(fmt.Sprintf("%s-%s", pod.Namespace, pod.Name)),
 			Name:      pod.Name,
 			Namespace: pod.Namespace,
 			Labels:    pod.Labels,

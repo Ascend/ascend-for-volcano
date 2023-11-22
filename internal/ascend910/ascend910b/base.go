@@ -128,7 +128,7 @@ func (ab *Base910b) Judge910BNodeAndTaskNPU(taskNPU int, nodeTop []int) error {
 			return nil
 		}
 		meetErr := fmt.Errorf("%v not meet req npu(%d)", nodeTop, taskNPU)
-		klog.V(util.LogErrorLev).Infof("%s %#v not meet task req:%d.", ab.GetPluginName(), nodeTop, taskNPU)
+		klog.V(util.LogErrorLev).Infof("%s %v not meet task req:%d.", ab.GetPluginName(), nodeTop, taskNPU)
 		return meetErr
 	}
 
@@ -150,10 +150,10 @@ func (ab *Base910b) GetNodeBestScore(taskNPUNum int, npuTop []int) (int, error) 
 	sNodeInf := ab.initSelectNodeInf(npuTop)
 	if sNodeInf.AllNPUNum < 1 ||
 		sNodeInf.AllNPUNum > ab.MaxNodeNPUNum {
-		return 0, fmt.Errorf("node top %#v is invalid for %#v", npuTop, sNodeInf)
+		return 0, fmt.Errorf("node top %v is invalid for %v", npuTop, sNodeInf)
 	}
 
-	var err = fmt.Errorf("node %#v is not meet task req %d", npuTop, taskNPUNum)
+	var err = fmt.Errorf("node %v is not meet task req %d", npuTop, taskNPUNum)
 	if taskNPUNum == ab.MaxNodeNPUNum {
 		if len(npuTop) == ab.MaxNodeNPUNum {
 			return 0, nil
@@ -231,8 +231,8 @@ func (ab *Base910b) Use910bAnnotation(task *api.TaskInfo, node plugin.NPUNode) *
 		klog.V(util.LogErrorLev).Infof("UseAnnotation %s.", err)
 		return nil
 	}
-	klog.V(util.LogDebugLev).Infof("%s UseAnnotation task<%s> node<%s> resource<%s> Annotation: %#v",
-		ab.GetPluginName(), task.Name, node.Name, ab.GetAnnoName(), node.Annotation)
+	klog.V(util.LogDebugLev).Infof("%s UseAnnotation task<%s> node<%s> resource<%s> Annotation: %s",
+		ab.GetPluginName(), task.Name, node.Name, ab.GetAnnoName(), util.SafePrint(node.Annotation))
 	selectedNPU, err := ab.selectNPUFromNode(task, node)
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("%s UseAnnotation err:%s.", ab.GetPluginName(), err)

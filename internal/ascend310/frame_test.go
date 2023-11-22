@@ -430,7 +430,7 @@ func TestAscend310ValidNPUJob(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.tp.ValidNPUJob(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ValidNPUJob() = %#v, want %#v", got, tt.want)
+				t.Errorf("ValidNPUJob() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -480,7 +480,7 @@ func TestReleaseAnnotation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
 			if got := tp.ReleaseAnnotation(tt.Task, tt.Node); !reflect.DeepEqual(got, tt.WantNode) {
-				t.Errorf("ReleaseAnnotation() = %#v, want %#v", got, tt.WantNode)
+				t.Errorf("ReleaseAnnotation() = %v, want %v", got, tt.WantNode)
 			}
 		})
 	}

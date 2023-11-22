@@ -260,11 +260,11 @@ func TestGetTaskResource(t *testing.T) {
 			}
 			got, err := tp.GetTaskResource(tt.args.task, tt.args.node)
 			if !reflect.DeepEqual(err, tt.wantErr) {
-				t.Errorf("GetTaskResource() error = %#v, wantErr %#v", err, tt.wantErr)
+				t.Errorf("GetTaskResource() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetTaskResource() got = %#v, want %#v", got, tt.want)
+				t.Errorf("GetTaskResource() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

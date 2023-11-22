@@ -52,7 +52,7 @@ func (tp *VirtualNPU) IsNodeHasDifferentUnFinishedTask(taskInfo *api.TaskInfo, n
 		klog.V(util.LogDebugLev).Infof("IsNodeHasDifferentUnFinishedTask failed :%s", util.ArgumentError)
 		return errors.New(util.ArgumentError)
 	}
-	klog.V(util.LogDebugLev).Infof("%s IsNodeHasDifferentUnFinishedTask cache :%#v", taskInfo.Name, tp.ConCache)
+	klog.V(util.LogDebugLev).Infof("%s IsNodeHasDifferentUnFinishedTask cache :%v", taskInfo.Name, tp.ConCache)
 	nodeTempMap, ok := tp.ConCache[nodeInf.Name]
 	if !ok {
 		klog.V(util.LogDebugLev).Infof("%s IsNodeHasDifferentUnFinishedTask cache no node %s, ok.",
@@ -217,7 +217,7 @@ func (tp *DynamicVNPU) addTaskInConCache(task *api.TaskInfo, node plugin.NPUNode
 	temp[task.UID] = struct{}{}
 	date[template] = temp
 	tp.ConCache[node.Name] = date
-	klog.V(util.LogDebugLev).Infof("addTaskInConCache %s %s ConCache: %#v", node.Name, task.Name, tp.ConCache)
+	klog.V(util.LogDebugLev).Infof("addTaskInConCache %s %s ConCache: %v", node.Name, task.Name, tp.ConCache)
 	return nil
 }
 

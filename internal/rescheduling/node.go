@@ -121,8 +121,8 @@ func (fNode *FaultNode) getNodeHeartbeatIntervalFromDeviceInfo(node *plugin.NPUN
 	var err error
 	heartbeatInterval, err = strconv.Atoi(heartbeatIntervalStr)
 	if err != nil {
-		klog.V(util.LogInfoLev).Infof("%s convert %s to int64 failed [%#v].",
-			node.Name, heartbeatIntervalStr, err)
+		klog.V(util.LogInfoLev).Infof("%s convert %s to int64 failed [%s].",
+			node.Name, heartbeatIntervalStr, util.SafePrint(err))
 		return nodeUpdateTime, err
 	}
 
@@ -143,7 +143,7 @@ func (fNode *FaultNode) getNodeHeartbeatFromDeviceInfo(node *plugin.NPUNode) (in
 	}
 	heartbeatTime, err := strconv.ParseInt(heartbeatTimeStr, util.Base10, util.BitSize64)
 	if err != nil {
-		klog.V(util.LogInfoLev).Infof("%s cover %s to int64 failed [%#v].", node.Name, heartbeatTimeStr, err)
+		klog.V(util.LogInfoLev).Infof("%s cover %s to int64 failed [%s].", node.Name, heartbeatTimeStr, util.SafePrint(err))
 		return 0, err
 	}
 	klog.V(util.LogInfoLev).Infof("%s heartbeatTime: %d", node.Name, heartbeatTime)
@@ -163,7 +163,7 @@ func (fNode *FaultNode) updateFaultNodesFromDeviceInfo(node *plugin.NPUNode, car
 
 	tmpHBTime, err := fNode.getNodeHeartbeatFromDeviceInfo(node)
 	if err != nil {
-		klog.V(util.LogDebugLev).Infof("getNodeHeartbeatFromDeviceInfo: %#v", err)
+		klog.V(util.LogDebugLev).Infof("getNodeHeartbeatFromDeviceInfo: %s", util.SafePrint(err))
 	}
 
 	klog.V(util.LogDebugLev).Infof(
@@ -176,33 +176,33 @@ func (fNode *FaultNode) updateFaultNodesFromDeviceInfo(node *plugin.NPUNode, car
 
 	tmpHBIntervalTime, err := fNode.getNodeHeartbeatIntervalFromDeviceInfo(node)
 	if err != nil {
-		klog.V(util.LogDebugLev).Infof("getNodeHeartbeatIntervalFromDeviceInfo: %#v", err)
+		klog.V(util.LogDebugLev).Infof("getNodeHeartbeatIntervalFromDeviceInfo: %s", util.SafePrint(err))
 	}
 	fNode.setNodeHeartbeatInterval(tmpHBIntervalTime)
 
 	tmpUnhealthyNPUs, err := fNode.getUnhealthyCardsFromDeviceInfo(node, cardName)
 	if err != nil {
-		klog.V(util.LogDebugLev).Infof("getUnhealthyCardsFromDeviceInfo: %#v", err)
+		klog.V(util.LogDebugLev).Infof("getUnhealthyCardsFromDeviceInfo: %s", util.SafePrint(err))
 	}
 	fNode.setUnhealthyNPUList(tmpUnhealthyNPUs)
-	klog.V(util.LogInfoLev).Infof("Unhealthy cards from device info: %#v", tmpUnhealthyNPUs)
+	klog.V(util.LogInfoLev).Infof("Unhealthy cards from device info: %v", tmpUnhealthyNPUs)
 
 	tmpNetworkUnhealthyNPUs, err := fNode.getNetworkUnhealthyCardsFromDeviceInfo(node, cardName)
 	if err != nil {
-		klog.V(util.LogDebugLev).Infof("getNetworkUnhealthyCardsFromDeviceInfo: %#v", err)
+		klog.V(util.LogDebugLev).Infof("getNetworkUnhealthyCardsFromDeviceInfo: %s", util.SafePrint(err))
 	}
 	fNode.setNetworkUnhealthyNPUList(tmpNetworkUnhealthyNPUs)
-	klog.V(util.LogInfoLev).Infof("Network unhealthy cards from device info: %#v", tmpUnhealthyNPUs)
+	klog.V(util.LogInfoLev).Infof("Network unhealthy cards from device info: %v", tmpUnhealthyNPUs)
 
 	tmpAllCardsList, err := fNode.getAllNPUCardsFromDeviceInfo(node, cardName)
 	if err != nil {
-		klog.V(util.LogDebugLev).Infof("getAllNPUCardsFromDeviceInfo: %#v", err)
+		klog.V(util.LogDebugLev).Infof("getAllNPUCardsFromDeviceInfo: %s", util.SafePrint(err))
 	}
 	fNode.setAllCardList(tmpAllCardsList)
-	klog.V(util.LogInfoLev).Infof("Unallocated and fault cards from device info: %#v", tmpAllCardsList)
+	klog.V(util.LogInfoLev).Infof("Unallocated and fault cards from device info: %v", tmpAllCardsList)
 	DeviceFaultReason, err := GetNodeDeviceFaultFromDeviceInfo(node)
 	if err != nil {
-		klog.V(util.LogDebugLev).Infof("GetNodeDeviceFaultFromDeviceInfo: %#v", err)
+		klog.V(util.LogDebugLev).Infof("GetNodeDeviceFaultFromDeviceInfo: %s", util.SafePrint(err))
 	}
 	fNode.setFaultDeviceList(DeviceFaultReason)
 
@@ -215,7 +215,7 @@ func GetNodeDeviceFaultFromDeviceInfo(node *plugin.NPUNode) ([]FaultDeviceList, 
 	}
 	var deviceFault []FaultDeviceList
 	if unmarshalErr := json.Unmarshal([]byte(deviceFaultList), &deviceFault); unmarshalErr != nil {
-		klog.V(util.LogInfoLev).Infof("convertToDeviceFaultListFromCM Unmarshal: %#v.", unmarshalErr)
+		klog.V(util.LogInfoLev).Infof("convertToDeviceFaultListFromCM Unmarshal: %s.", util.SafePrint(unmarshalErr))
 		return nil, unmarshalErr
 	}
 	return deviceFault, nil
@@ -227,7 +227,7 @@ func (fNode *FaultNode) updateFaultNodesAttr(node *plugin.NPUNode) error {
 	// 1. create fault Card Object
 	tmpFaultCards, err := fNode.createFaultCardHandlers(node)
 	if err != nil {
-		klog.V(util.LogDebugLev).Infof("Getting node card failed: %#v", err)
+		klog.V(util.LogDebugLev).Infof("Getting node card failed: %s", util.SafePrint(err))
 		return err
 	}
 	fNode.setFaultCards(tmpFaultCards)

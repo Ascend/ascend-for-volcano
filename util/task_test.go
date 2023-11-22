@@ -72,11 +72,11 @@ func TestGetRealPodByTask(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := tt.npuTask.GetRealPodByTask(tt.ssn)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("GetRealPodByTask() error = %#v, wantErr %#v", err, tt.wantErr)
+				t.Errorf("GetRealPodByTask() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetRealPodByTask() got = %#v, want %#v", got, tt.want)
+				t.Errorf("GetRealPodByTask() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -133,7 +133,7 @@ func TestDeleteRealPodByTask(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := tt.npuTask.DeleteRealPodByTask(tt.ssn, tt.waitTime); (err != nil) != tt.wantErr {
-				t.Errorf("DeleteRealPodByTask() error = %#v, wantErr %#v", err, tt.wantErr)
+				t.Errorf("DeleteRealPodByTask() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -203,7 +203,7 @@ func TestEvictJobByTask(t *testing.T) {
 			defer patch.Reset()
 
 			if err := tt.asTask.EvictJobByTask(tt.ssn, tt.reason, tt.taskName); (err != nil) != tt.wantErr {
-				t.Errorf("EvictJobByTask() error = %#v, wantErr %#v", err, tt.wantErr)
+				t.Errorf("EvictJobByTask() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -238,7 +238,7 @@ func TestForceDeletePodByTaskInf(t *testing.T) {
 
 			if err := tt.asTask.ForceDeletePodByTaskInf(tt.args.ssn,
 				tt.args.reason, tt.args.nodeName); (err != nil) != tt.wantErr {
-				t.Errorf("ForceDeletePodByTaskInf() error = %#v, wantErr %#v", err, tt.wantErr)
+				t.Errorf("ForceDeletePodByTaskInf() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -286,7 +286,7 @@ func TestIsTaskInItsNode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.asTask.IsTaskInItsNode(tt.ssn, tt.nodeName); got != tt.want {
-				t.Errorf("IsTaskInItsNode() = %#v, want %#v", got, tt.want)
+				t.Errorf("IsTaskInItsNode() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -325,7 +325,7 @@ func TestSetVTaskType(t *testing.T) {
 		tt.asTask.VTask = &VTask{}
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.asTask.setVTaskType(); tt.asTask.Type != tt.want {
-				t.Errorf("SetVTaskType() = %#v, want %#v", tt.asTask.Type, tt.want)
+				t.Errorf("SetVTaskType() = %v, want %v", tt.asTask.Type, tt.want)
 			}
 		})
 	}
@@ -372,11 +372,11 @@ func TestGetVTaskUseTemplate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := GetVTaskUseTemplate(tt.taskInf)
 			if !reflect.DeepEqual(err, tt.wantErr) {
-				t.Errorf("GetVTaskUseTemplate() error = %#v, wantErr %#v", err, tt.wantErr)
+				t.Errorf("GetVTaskUseTemplate() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != tt.want {
-				t.Errorf("GetVTaskUseTemplate() got = %#v, want %#v", got, tt.want)
+				t.Errorf("GetVTaskUseTemplate() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -413,7 +413,7 @@ func TestSetVTaskUseCardIDs(t *testing.T) {
 			vTask = tt.vt
 			vTask.setVTaskUseCardIDs()
 			if !reflect.DeepEqual(vTask.Allocated.CardName, tt.want) {
-				t.Errorf("setVTaskUseCardIDs = %#v, want %#v", vTask.Allocated.CardName, tt.want)
+				t.Errorf("setVTaskUseCardIDs = %v, want %v", vTask.Allocated.CardName, tt.want)
 			}
 		})
 	}
@@ -488,7 +488,7 @@ func TestSetVTaskAllocated(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.asTask.setVTaskAllocated(tt.taskInfo)
 			if !reflect.DeepEqual(tt.asTask.VTask.Allocated, tt.want) {
-				t.Errorf("setVTaskAllocated = %#v, want %#v", tt.asTask.Allocated, tt.want)
+				t.Errorf("setVTaskAllocated = %v, want %v", tt.asTask.Allocated, tt.want)
 			}
 		})
 	}
@@ -573,7 +573,7 @@ func TestSetVTaskStatusFromInfo(t *testing.T) {
 				return
 			}
 			if !reflect.DeepEqual(tt.asTask.Status, tt.want) {
-				t.Errorf("setVTaskStatusFromInfo()  = %#v, wantErr %#v", tt.asTask.Status, tt.want)
+				t.Errorf("setVTaskStatusFromInfo()  = %v, wantErr %v", tt.asTask.Status, tt.want)
 			}
 		})
 	}

@@ -81,7 +81,7 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 		score, err := tp.Scheduler.BatchNodeOrderFn(task, nodes)
 		if err != nil {
 			if setErr := tp.Scheduler.SetJobPendingReason(ssn.Jobs[task.Job], err.Error()); setErr != nil {
-				klog.V(util.LogDebugLev).Infof("%s setJobFailed err:%#v.", PluginName, setErr)
+				klog.V(util.LogDebugLev).Infof("%s setJobFailed err:%s.", PluginName, util.SafePrint(setErr))
 			}
 		}
 		return score, nil
