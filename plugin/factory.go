@@ -112,7 +112,9 @@ func (sHandle *ScheduleHandler) InitJobsFromSsn(ssn *framework.Session) {
 	for jobID, jobInfo := range ssn.Jobs {
 		sJob := SchedulerJob{}
 		if err := sJob.Init(jobInfo, sHandle); err != nil {
-			klog.V(util.LogInfoLev).Infof("%s InitJobsFromSsn failed: %s.", jobInfo.Name, util.SafePrint(err))
+			if err.Error() != notNPUJobError {
+				klog.V(util.LogErrorLev).Infof("%s InitJobsFromSsn failed: %s.", jobInfo.Name, util.SafePrint(err))
+			}
 			continue
 		}
 		sHandle.Jobs[jobID] = sJob
@@ -130,7 +132,8 @@ func (vf *VolcanoFrame) AddDefaultSchedulerSelectorConfig() {
 	defaultSchedulerConfig[util.ArchSelector] = util.HuaweiArchArm + "|" + util.HuaweiArchX86
 	defaultSchedulerConfig[util.Accelerator] = util.Accelerator910Value + "|" + util.Accelerator310Value
 	defaultSchedulerConfig[util.AcceleratorType] = util.CardAcceleratorType + "|" + util.ModuleAcceleratorType +
-		"|" + util.ChipAcceleratorType
+		"|" + util.ChipAcceleratorType + "|" + util.Card910bx2AcceleratorType + "|" + util.Card910bx2InferAcceleratorType +
+		"|" + util.Module910bx16AcceleratorType + "|" + util.Module910bx8AcceleratorType
 
 	defaultCfg := config.Configuration{Name: util.CMSelectorKey, Arguments: defaultSchedulerConfig}
 
@@ -222,7 +225,7 @@ func (sHandle *ScheduleHandler) GetJobTemplate() map[string]map[string]util.VRes
 // InitVolcanoFrameFromSsn init frame parameter from ssn.
 func (sHandle *ScheduleHandler) InitVolcanoFrameFromSsn(ssn *framework.Session) {
 	if sHandle == nil || ssn == nil {
-		klog.V(util.LogInfoLev).Infof("InitVolcanoFrameFromSsn failed: %s.", util.ArgumentError)
+		klog.V(util.LogErrorLev).Infof("InitVolcanoFrameFromSsn failed: %s.", util.ArgumentError)
 		return
 	}
 	sHandle.FrameAttr = VolcanoFrame{
@@ -258,7 +261,7 @@ func initConfsFromSsn(confs []conf.Configuration) []config.Configuration {
 // InitJobsPlugin init job by plugins.
 func (sHandle *ScheduleHandler) InitJobsPlugin() {
 	if sHandle == nil {
-		klog.V(util.LogInfoLev).Infof("InitJobsPlugin failed: %s.", util.ArgumentError)
+		klog.V(util.LogErrorLev).Infof("InitJobsPlugin failed: %s.", util.ArgumentError)
 		return
 	}
 	for _, vcJob := range sHandle.Jobs {
@@ -409,7 +412,7 @@ func (sHandle *ScheduleHandler) AddConfigMap(obj interface{}) {
 		klog.V(util.LogDebugLev).Infof("AddConfigMap failed: %s.", util.ArgumentError)
 		return
 	}
-	klog.V(util.LogInfoLev).Infof("Add DeviceInfo to cache")
+	klog.V(util.LogDebugLev).Infof("Add DeviceInfo to cache")
 	sHandle.createOrUpdateDeviceInfo(obj)
 
 }
@@ -420,7 +423,7 @@ func (sHandle *ScheduleHandler) UpdateConfigMap(old, new interface{}) {
 		klog.V(util.LogDebugLev).Infof("UpdateConfigMap failed: %s.", util.ArgumentError)
 		return
 	}
-	klog.V(util.LogInfoLev).Infof("Update DeviceInfo to cache")
+	klog.V(util.LogDebugLev).Infof("Update DeviceInfo to cache")
 	sHandle.createOrUpdateDeviceInfo(new)
 
 }
@@ -431,7 +434,7 @@ func (sHandle *ScheduleHandler) DeleteConfigMap(obj interface{}) {
 		klog.V(util.LogDebugLev).Infof("DeleteConfigMap failed: %s.", util.ArgumentError)
 		return
 	}
-	klog.V(util.LogInfoLev).Infof("Del DeviceInfo to cache")
+	klog.V(util.LogDebugLev).Infof("Del DeviceInfo to cache")
 	cm, ok := obj.(*v12.ConfigMap)
 	if !ok {
 		klog.V(util.LogErrorLev).Infof("Cannot convert to ConfigMap:%#v", obj)
