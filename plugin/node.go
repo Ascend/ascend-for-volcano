@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
 	v12 "k8s.io/kube-scheduler/extender/v1"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -221,23 +222,18 @@ func (n *NPUNode) GetNewNPUNodeAnnotation(usedTop []int, resourceName, resourceN
 	if annotation == "" {
 		return "", nil
 	}
+	usedSet := sets.NewInt(usedTop...)
 	topStrArray := strings.Split(annotation, ",")
 	var newTopStrArray []string
 	for _, cardStr := range topStrArray {
 		v := strings.TrimPrefix(cardStr, resourceNamePre)
-		existFlag := false
 		cardInt, err := strconv.Atoi(v)
 		if err != nil {
 			klog.V(util.LogErrorLev).Infof("ChangeTopToIntArray conv failed %v.", err)
 			return "", err
 		}
-		for _, useId := range usedTop {
-			if cardInt == useId {
-				existFlag = true
-				break
-			}
-		}
-		if !existFlag {
+
+		if !usedSet.Has(cardInt) {
 			newTopStrArray = append(newTopStrArray, cardStr)
 		}
 	}
