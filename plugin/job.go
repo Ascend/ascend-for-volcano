@@ -147,7 +147,7 @@ func GetVCJobReqNPUTypeFromJobInfo(vcJob *api.JobInfo) (string, int, error) {
 			return string(k), int(v / util.NPUHexKilo), nil
 		}
 	}
-	klog.V(util.LogDebugLev).Infof("GetVCJobReqNPUTypeFromJobInfo %+v.", vcJob.TotalRequest.ScalarResources)
+	klog.V(util.LogDebugLev).Infof("GetVCJobReqNPUTypeFromJobInfo %+v.", getVcjobMinResource(vcJob).ScalarResources)
 	return "", 0.0, errors.New("nil NPU")
 }
 
@@ -219,8 +219,8 @@ func GetJobFirstTasksInfo(vcJob *api.JobInfo) *api.TaskInfo {
 	return nil
 }
 
-// InitSelfPluginByJobInfo init job's handler, the deal plugin.
-func (sJob *SchedulerJob) InitSelfPluginByJobInfo(sHandle *ScheduleHandler) {
+// initSelfPluginByJobInfo init job's handler, the deal plugin.
+func (sJob *SchedulerJob) initSelfPluginByJobInfo(sHandle *ScheduleHandler) {
 	if sJob == nil {
 		return
 	}
@@ -251,7 +251,7 @@ func IsJobRestarted(job *api.JobInfo) bool {
 // Init the SchedulerJob's init.
 func (sJob *SchedulerJob) Init(vcJob *api.JobInfo, sHandle *ScheduleHandler) error {
 	if sJob == nil || vcJob == nil {
-		klog.V(util.LogInfoLev).Infof("SchedulerJob_Init: parameter is nil.")
+		klog.V(util.LogErrorLev).Infof("SchedulerJob_Init: parameter is nil.")
 		return errors.New("parameter is nil")
 	}
 	if initErr := sJob.initByJobInfo(vcJob); initErr != nil {
@@ -259,12 +259,12 @@ func (sJob *SchedulerJob) Init(vcJob *api.JobInfo, sHandle *ScheduleHandler) err
 		return initErr
 	}
 
-	if !sJob.IsJobSupportByPlugin(sHandle) {
-		klog.V(util.LogInfoLev).Infof("%s IsJobSupportByPlugin not has suitable plugin.", sJob.Name)
+	if !sJob.isJobSupportByPlugin(sHandle) {
+		klog.V(util.LogDebugLev).Infof("%s IsJobSupportByPlugin not has suitable plugin.", sJob.Name)
 		return fmt.Errorf("%s's plugin not regist", sJob.Name)
 	}
 
-	sJob.InitSelfPluginByJobInfo(sHandle)
+	sJob.initSelfPluginByJobInfo(sHandle)
 	return nil
 }
 
@@ -295,11 +295,13 @@ func (sJob *SchedulerJob) initNPUJob(vcJob *api.JobInfo) {
 func (sJob *SchedulerJob) initByJobInfo(vcJob *api.JobInfo) error {
 	sJob.JobReadyTag = true
 	sJob.HealthTorRankIndex = map[string]string{}
-	sJob.SchedulerJobAttr.ComJob = util.ComJob{Name: vcJob.UID, NameSpace: vcJob.Namespace,
+	sJob.SchedulerJobAttr.ComJob = util.ComJob{
+		Name: vcJob.UID, NameSpace: vcJob.Namespace,
 		ReferenceName: util.ReferenceNameOfJob(vcJob),
 		Selector:      GetJobSelectorFromVcJob(vcJob),
 		Label:         GetJobLabelFromVcJob(vcJob),
-		Annotation:    vcJob.PodGroup.Annotations}
+		Annotation:    vcJob.PodGroup.Annotations,
+	}
 	sJob.SchedulerJobAttr.NPUJob = nil
 	sJob.handler = nil
 	name, num, err := GetVCJobReqNPUTypeFromJobInfo(vcJob)
@@ -940,8 +942,8 @@ func (sJob SchedulerJob) getPluginNameByReq() string {
 	return name
 }
 
-// IsJobSupportByPlugin judge job whether has it's plugin.
-func (sJob SchedulerJob) IsJobSupportByPlugin(sHandle *ScheduleHandler) bool {
+// isJobSupportByPlugin judge job whether has it's plugin.
+func (sJob SchedulerJob) isJobSupportByPlugin(sHandle *ScheduleHandler) bool {
 	name := sJob.getPluginNameByReq()
 	if name == "" {
 		return false

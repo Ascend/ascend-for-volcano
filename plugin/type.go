@@ -84,6 +84,8 @@ const (
 	maxTorAffinityNodeScore = float64(200)
 	cardHealthySuffix       = ""
 	unhealthyCardSuffix     = "-Unhealthy"
+	notNPUNodeError         = "getNodeDeviceInfoFromCM"
+	notNPUJobError          = "nil npu"
 )
 
 // SchedulerJob the plugin define job info

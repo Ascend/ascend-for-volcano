@@ -22,8 +22,9 @@ package plugin
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
@@ -33,20 +34,22 @@ import (
 
 func (sHandle *ScheduleHandler) InitTorNodeInfo(ssn *framework.Session) {
 	if sHandle == nil || ssn == nil {
-		klog.V(util.LogInfoLev).Infof("InitTorNodeInfo failed, err: %s", util.ArgumentError)
+		klog.V(util.LogErrorLev).Infof("InitTorNodeInfo failed, err: %s", util.ArgumentError)
 		return
 	}
 	sHandle.Tors = nil
 	cm, err := util.GetConfigMapWithRetry(ssn.KubeClient(), util.DevInfoNameSpace, TorNodeCMName)
 	if err != nil {
-		klog.V(util.LogInfoLev).Infof("Get Tor-Node configmap failed, err: %s", util.SafePrint(err))
+		if !errors.IsNotFound(err) {
+			klog.V(util.LogWarningLev).Infof("Get Tor-Node configmap failed, err: %s", util.SafePrint(err))
+		}
 		return
 	}
 
 	torList := &TorList{}
 
 	if err = torList.ParseFromString(cm.Data[TorInfoCMKey]); err != nil {
-		klog.V(util.LogInfoLev).Infof("Unmarshal FaultNodes from cache failed")
+		klog.V(util.LogErrorLev).Infof("Unmarshal FaultNodes from cache failed %s", util.SafePrint(err))
 		return
 	}
 
@@ -113,7 +116,7 @@ type Servers struct {
 func (tl *TorList) ParseFromString(info string) error {
 	if tl == nil {
 		klog.V(util.LogInfoLev).Infof("ParseFromString failed, err: %s", util.ArgumentError)
-		return errors.New(util.ArgumentError)
+		return fmt.Errorf(util.ArgumentError)
 	}
 	return json.Unmarshal([]byte(info), tl)
 }

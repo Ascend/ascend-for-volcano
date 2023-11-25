@@ -143,8 +143,8 @@ func getNodeDeviceInfoFromCM(cmData *v1.ConfigMap) (NodeDeviceInfo, error) {
 	return devInf.DeviceInfo, nil
 }
 
-// InitNPUNodeByNodeInf init NPU node from node info and cm.
-func (n *NPUNode) InitNPUNodeByNodeInf(npuNode *api.NodeInfo, deviceInfos map[string]NodeDeviceInfo,
+// initNPUNodeByNodeInf init NPU node from node info and cm.
+func (n *NPUNode) initNPUNodeByNodeInf(npuNode *api.NodeInfo, deviceInfos map[string]NodeDeviceInfo,
 	vJobTemplate map[string]map[string]util.VResource) error {
 	if n == nil || npuNode == nil {
 		klog.V(util.LogInfoLev).Infof("InitNPUNodeByNodeInf failed: %s.", util.ArgumentError)
@@ -154,6 +154,7 @@ func (n *NPUNode) InitNPUNodeByNodeInf(npuNode *api.NodeInfo, deviceInfos map[st
 	if !getErr || data.DeviceList == nil {
 		return fmt.Errorf("getNodeDeviceInfoFromCM %s failed", npuNode.Name)
 	}
+
 	capability := npuNode.Capability.ScalarResources
 	if !util.IsMapHasNPUResource(capability, util.HwPreName) {
 		return fmt.Errorf("%s not NPU node", npuNode.Name)
@@ -172,33 +173,13 @@ func (n *NPUNode) InitNPUNodeByNodeInf(npuNode *api.NodeInfo, deviceInfos map[st
 		}
 	}
 
-	if n.Annotation == nil {
-		n.Annotation = make(map[string]string, util.MapInitNum)
-	}
+	// sync last session device infos in cache while device infos's updateTime is not update
+	n.syncOldDeviceInfoFromCache()
 
-	existAnno := make(map[string]string)
-	for annoKey, annoValue := range n.Annotation {
-		if strings.Contains(annoKey, util.HwPreName) {
-			existAnno[annoKey] = annoValue
-			continue
-		}
-		if _, ok := npuNode.Node.Annotations[annoKey]; ok {
-			existAnno[annoKey] = annoValue
-		}
-	}
-	n.Annotation = existAnno
+	n.syncAnnotationFromSsnNode(npuNode)
 
-	for k, v := range npuNode.Node.Annotations {
-		n.Annotation[k] = v
-	}
-
-	if n.devInfoUpdateTime == data.UpdateTime {
-		klog.V(util.LogDebugLev).Infof("device info is not update, skip refresh cache")
+	if err := n.updateNPUNodeDeviceInfos(data); err != nil {
 		return nil
-	}
-	n.devInfoUpdateTime = data.UpdateTime
-	for k, v := range data.DeviceList {
-		n.Annotation[k] = v
 	}
 
 	if setVNPUErr := n.setNodeVNPUInfo(npuNode, vJobTemplate); setVNPUErr != nil {
@@ -290,52 +271,52 @@ func (n NPUNode) CheckNPUResourceStableReScheduling(vcJob SchedulerJob) error {
 	return nil
 }
 
+func (n *NPUNode) syncOldDeviceInfoFromCache() {
+	if n.Annotation == nil {
+		n.Annotation = make(map[string]string, util.MapInitNum)
+	}
+
+	existAnno := make(map[string]string)
+	for annoKey, annoValue := range n.Annotation {
+		if strings.Contains(annoKey, util.HwPreName) {
+			existAnno[annoKey] = annoValue
+			continue
+		}
+	}
+	n.Annotation = existAnno
+}
+
+func (n *NPUNode) updateNPUNodeDeviceInfos(data NodeDeviceInfo) error {
+	if n.devInfoUpdateTime == data.UpdateTime {
+		klog.V(util.LogDebugLev).Infof("device info is not update, skip refresh cache")
+		return fmt.Errorf("device info is not update, skip refresh cache")
+	}
+	n.devInfoUpdateTime = data.UpdateTime
+	for k, v := range data.DeviceList {
+		n.Annotation[k] = v
+	}
+	return nil
+}
+
+func (n *NPUNode) syncAnnotationFromSsnNode(npuNode *api.NodeInfo) {
+	for k, v := range npuNode.Node.Annotations {
+		n.Annotation[k] = v
+	}
+}
+
 // InitNodesFromSsn init all nodes in ssn.
 func (sHandle *ScheduleHandler) InitNodesFromSsn(ssn *framework.Session) {
 	if sHandle == nil || sHandle.FrameAttr.KubeClient == nil {
 		return
 	}
-	existNodes := make(map[string]NPUNode)
-	deviceInfos := make(map[string]NodeDeviceInfo)
-	for nodeName, nNode := range sHandle.Nodes {
-		_, exist := ssn.Nodes[nodeName]
-		if !exist {
-			klog.V(util.LogWarningLev).Infof("node init <%s> is not in session,"+
-				"maybe node is deleted or not ready", nodeName)
-			continue
-		}
-		existNodes[nodeName] = nNode
-	}
-	sHandle.Nodes = existNodes
+	// 1.nodes not in session cannot keep in npu node cache
+	sHandle.delNPUNodeNotInSsn(ssn)
 
-	sHandle.DeviceInfos.Lock()
-	for nodeName := range ssn.Nodes {
-		deviceInfos[nodeName] = sHandle.DeviceInfos.Devices[nodeName]
-	}
-	sHandle.DeviceInfos.Unlock()
+	// 2.obtain device infos ,and if node not in session, its device info should not keep in cache
+	deviceInfos := sHandle.syncDeviceInfosBySsn(ssn)
 
-	newNodes := make(map[string]NPUNode)
-	for nodeName, nodeInf := range ssn.Nodes {
-		node, exist := sHandle.Nodes[nodeName]
-		if exist {
-			err := node.InitNPUNodeByNodeInf(nodeInf, deviceInfos, sHandle.FrameAttr.VJobTemplate)
-			if err != nil {
-				klog.V(util.LogDebugLev).Infof("InitNodesFromSsn %s %s, not put in nodes.", nodeName, err)
-				continue
-			}
-			newNodes[nodeName] = node
-			continue
-		}
-		npuNode := NPUNode{}
-		err := npuNode.InitNPUNodeByNodeInf(nodeInf, deviceInfos, sHandle.FrameAttr.VJobTemplate)
-		if err != nil {
-			klog.V(util.LogDebugLev).Infof("InitNodesFromSsn %s %s, not put in nodes.", nodeName, err)
-			continue
-		}
-		newNodes[nodeName] = npuNode
-
-	}
-	sHandle.Nodes = newNodes
+	// 3.init NPU Nodes by  ssn.Nodes and deviceInfos
+	sHandle.initNodesFromSsn(ssn, deviceInfos)
 	return
 }
 
@@ -387,6 +368,45 @@ func (sHandle *ScheduleHandler) NodePredicate(taskInfo *api.TaskInfo, nodeInfo *
 	}
 	klog.V(util.LogDebugLev).Infof("%s NodePredicate %s select successes.", PluginName, vcNode.Name)
 	return nil
+}
+
+func (sHandle *ScheduleHandler) delNPUNodeNotInSsn(ssn *framework.Session) {
+	existNodes := make(map[string]NPUNode)
+	for nodeName, nNode := range sHandle.Nodes {
+		if _, exist := ssn.Nodes[nodeName]; !exist {
+			klog.V(util.LogWarningLev).Infof("node init <%s> is not in session,"+
+				"maybe node is deleted or not ready", nodeName)
+			continue
+		}
+		existNodes[nodeName] = nNode
+	}
+	sHandle.Nodes = existNodes
+}
+
+func (sHandle *ScheduleHandler) syncDeviceInfosBySsn(ssn *framework.Session) map[string]NodeDeviceInfo {
+	deviceInfos := make(map[string]NodeDeviceInfo)
+	sHandle.DeviceInfos.Lock()
+	for nodeName := range ssn.Nodes {
+		deviceInfos[nodeName] = sHandle.DeviceInfos.Devices[nodeName]
+	}
+	sHandle.DeviceInfos.Unlock()
+	return deviceInfos
+}
+
+func (sHandle *ScheduleHandler) initNodesFromSsn(ssn *framework.Session, deviceInfos map[string]NodeDeviceInfo) {
+	newNodes := make(map[string]NPUNode)
+	for nodeName, nodeInf := range ssn.Nodes {
+		// get npu node in map sHandle.Nodes, if exist get old node, if not exist get NPUNode{} for new node init
+		node := sHandle.Nodes[nodeName]
+		if err := node.initNPUNodeByNodeInf(nodeInf, deviceInfos, sHandle.FrameAttr.VJobTemplate); err != nil {
+			if !strings.Contains(err.Error(), notNPUNodeError) {
+				klog.V(util.LogErrorLev).Infof("InitNodesFromSsn %s %s, not put in nodes.", nodeName, err)
+			}
+			continue
+		}
+		newNodes[nodeName] = node
+	}
+	sHandle.Nodes = newNodes
 }
 
 func initScoreMap(nodes []*api.NodeInfo, interPodAffinityScore v12.HostPriorityList) map[string]float64 {
