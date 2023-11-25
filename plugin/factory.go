@@ -483,10 +483,6 @@ func (sHandle *ScheduleHandler) BatchNodeOrderFn(task *api.TaskInfo, nodes []*ap
 	klog.V(util.LogDebugLev).Infof("Enter batchNodeOrderFn")
 	defer klog.V(util.LogDebugLev).Infof("leaving batchNodeOrderFn")
 
-	if sHandle == nil || task == nil || len(nodes) == 0 {
-		klog.V(util.LogDebugLev).Infof("%s batchNodeOrderFn %s.", PluginName, util.ArgumentError)
-		return nil, errors.New(util.ArgumentError)
-	}
 	if !IsNPUTask(task) {
 		return nil, nil
 	}
@@ -505,7 +501,7 @@ func (sHandle *ScheduleHandler) BatchNodeOrderFn(task *api.TaskInfo, nodes []*ap
 
 	k, ok := vcJob.Label[TorAffinityKey]
 	if ok && (k == LargeModelTag || k == NormalSchema) {
-		klog.V(util.LogDebugLev).Infof("validNPUJob job is not use tor affinity")
+		klog.V(util.LogDebugLev).Infof("validNPUJob job is now use tor affinity")
 		return sHandle.SetTorAffinityJobNodesScore(task, nodes, vcJob, k, scoreMap)
 	}
 
