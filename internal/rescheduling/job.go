@@ -21,6 +21,7 @@ package rescheduling
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -281,6 +282,33 @@ func (fJob *FaultJob) getIsFaultJob() bool {
 		}
 	}
 	return false
+}
+
+func (fJob *FaultJob) recordFaultJobsToLogs() {
+	if !fJob.IsFaultJob {
+		return
+	}
+	var tmpfJobInfo miniFaultJob
+	tmpfJobInfo.ReferenceName = fJob.ReferenceName
+	tmpfJobInfo.FaultRetryTimes = fJob.FaultRetryTimes
+	for _, fTask := range fJob.FaultTasks {
+		if !fTask.IsFaultTask {
+			continue
+		}
+		var tmpfTaskInfo miniFaultTask
+		tmpfTaskInfo.Reason = fTask.Reason
+		tmpfTaskInfo.TaskName = fTask.TaskName
+		tmpfTaskInfo.NodeName = fTask.NodeName
+		tmpfTaskInfo.FaultType = fTask.faultType
+		tmpfTaskInfo.UseCardName = fTask.UseCardName
+		tmpfTaskInfo.NodeRankIndex = fTask.NodeRankIndex
+		tmpfJobInfo.FaultTasks = append(tmpfJobInfo.FaultTasks, tmpfTaskInfo)
+	}
+	str, err := json.Marshal(tmpfJobInfo)
+	if err != nil {
+		return
+	}
+	klog.V(util.LogWarningLev).Infof("Add FaultJob %s fault info: %s", fJob.JobName, string(str))
 }
 
 func (fJob *FaultJob) checkJobNodeRankIndexValid() bool {

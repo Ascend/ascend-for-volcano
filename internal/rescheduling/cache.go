@@ -105,6 +105,9 @@ func (reCache *DealReSchedulerCache) SetFaultNodesFromCM() error {
 	if !ok {
 		return fmt.Errorf("reading %s data from reScheduler configmap failed", CmFaultNodeKind)
 	}
+	if faultNodeData == "" {
+		return nil
+	}
 	faultNodes, err := reCache.getFaultNodesFromCM(faultNodeData)
 	if err != nil {
 		return fmt.Errorf("getFaultNodesFromCM %s", util.SafePrint(err))
@@ -127,6 +130,9 @@ func (reCache *DealReSchedulerCache) SetFaultJobsFromCM(jobType string) error {
 	if !ok {
 		return fmt.Errorf("reading %s data from reScheduler configmap failed", jobType)
 	}
+	if faultJobData == "" {
+		return nil
+	}
 	faultJobs, err := reCache.getFaultJobsFromCM(faultJobData)
 	if err != nil {
 		return fmt.Errorf("getFaultNodesFromCM %s", util.SafePrint(err))
@@ -144,6 +150,9 @@ func (reCache *DealReSchedulerCache) SetNodeHeartbeatFromCM() error {
 	nodeHBsData, ok := reCache.CMData[CmNodeHeartbeatKind]
 	if !ok {
 		return fmt.Errorf("reading %s data from reScheduler configmap failed", CmNodeHeartbeatKind)
+	}
+	if nodeHBsData == "" {
+		return nil
 	}
 	nodeHBs, err := reCache.getNodeHeartbeatFromCM(nodeHBsData)
 	if err != nil {
@@ -163,6 +172,9 @@ func (reCache *DealReSchedulerCache) SetRetryTimesFromCM() error {
 	if !ok {
 		return fmt.Errorf("reading %s data from reScheduler configmap failed", CmNodeHeartbeatKind)
 	}
+	if data == "" {
+		return nil
+	}
 	remain, err := reCache.getRetryTimesFromCM(data)
 	if err != nil {
 		return fmt.Errorf("getFaultNodesFromCM %s", util.SafePrint(err))
@@ -180,6 +192,9 @@ func (reCache *DealReSchedulerCache) SetNodeRankOccurrenceMapFromCM() error {
 	nodeRankOccMapData, ok := reCache.CMData[CmNodeRankTimeMapKind]
 	if !ok {
 		return fmt.Errorf("reading %s data from reScheduler configmap failed", CmNodeRankTimeMapKind)
+	}
+	if nodeRankOccMapData == "" {
+		return nil
 	}
 	nodeRankOccMap, err := reCache.getNodeRankOccurrenceMapFromCM(nodeRankOccMapData)
 	if err != nil {
@@ -251,6 +266,9 @@ func (reCache DealReSchedulerCache) GetRealFaultNodes() []FaultNode {
 
 func (reCache *DealReSchedulerCache) writeFaultNodesToCMString() (string, error) {
 	realFaultNode := reCache.GetRealFaultNodes()
+	if len(realFaultNode) == 0 {
+		return "", nil
+	}
 	nodeData, err := reCache.marshalCacheDataToString(realFaultNode)
 	if err != nil {
 		return "", fmt.Errorf("writeFaultNodesToCM: %s", util.SafePrint(err))
@@ -293,6 +311,9 @@ func (reCache *DealReSchedulerCache) writeNodeHeartbeatToCMString() (string, err
 }
 
 func (reCache *DealReSchedulerCache) writeRemainTimesToCMString() (string, error) {
+	if len(reCache.JobRemainRetryTimes) == 0 {
+		return "", nil
+	}
 	nodeHBsData, err := reCache.marshalCacheDataToString(reCache.JobRemainRetryTimes)
 	if err != nil {
 		return "", fmt.Errorf("writeRemainTimesToCMString: %s", util.SafePrint(err))
@@ -301,6 +322,9 @@ func (reCache *DealReSchedulerCache) writeRemainTimesToCMString() (string, error
 }
 
 func (reCache *DealReSchedulerCache) writeNodeRankOccurrenceMapToCMString() (string, error) {
+	if len(reCache.AllocNodeRankOccurrenceMap) == 0 {
+		return "", nil
+	}
 	nodeRankOccMapData, err := reCache.marshalCacheDataToString(reCache.AllocNodeRankOccurrenceMap)
 	if err != nil {
 		return "", fmt.Errorf("writeNodeRankOccurrenceMapToCM: %s", util.SafePrint(err))

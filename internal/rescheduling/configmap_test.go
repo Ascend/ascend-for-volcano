@@ -29,7 +29,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin/util"
 )
 
-const emptyCheckCode = "6d0c413224f9882c8342fe8bed0389875231fbb1af67a12629f0617257b533d4"
+const emptyCheckCode = "4d192c5c729e4c2c59d89bb64ea3a4c6fc9ba3c4b6dce34e47dd729fe84cc4d8"
 
 type DealReSchedulerConfigmapCreateEmptyReCMFields struct {
 	CMName      string
@@ -60,6 +60,7 @@ func buildTestDealReSchedulerConfigmapCreateEmptyReCMTests() []DealReSchedulerCo
 		CmFaultJob910x8Kind:   "",
 		CmNodeHeartbeatKind:   "",
 		CmNodeRankTimeMapKind: "",
+		CmJobRemainRetryTimes: "",
 	}
 	test1 := DealReSchedulerConfigmapCreateEmptyReCMTests{
 		name: "01-DealReSchedulerConfigmapCreateEmptyReCM()-success",

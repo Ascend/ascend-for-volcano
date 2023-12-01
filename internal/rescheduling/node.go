@@ -182,24 +182,24 @@ func (fNode *FaultNode) updateFaultNodesFromDeviceInfo(node *plugin.NPUNode, car
 
 	tmpUnhealthyNPUs, err := fNode.getUnhealthyCardsFromDeviceInfo(node, cardName)
 	if err != nil {
-		klog.V(util.LogDebugLev).Infof("getUnhealthyCardsFromDeviceInfo: %s", util.SafePrint(err))
+		klog.V(util.LogInfoLev).Infof("getUnhealthyCardsFromDeviceInfo: %s", util.SafePrint(err))
 	}
 	fNode.setUnhealthyNPUList(tmpUnhealthyNPUs)
 	klog.V(util.LogInfoLev).Infof("Unhealthy cards from device info: %v", tmpUnhealthyNPUs)
 
 	tmpNetworkUnhealthyNPUs, err := fNode.getNetworkUnhealthyCardsFromDeviceInfo(node, cardName)
 	if err != nil {
-		klog.V(util.LogDebugLev).Infof("getNetworkUnhealthyCardsFromDeviceInfo: %s", util.SafePrint(err))
+		klog.V(util.LogInfoLev).Infof("getNetworkUnhealthyCardsFromDeviceInfo: %s", util.SafePrint(err))
 	}
 	fNode.setNetworkUnhealthyNPUList(tmpNetworkUnhealthyNPUs)
 	klog.V(util.LogInfoLev).Infof("Network unhealthy cards from device info: %v", tmpUnhealthyNPUs)
 
 	tmpAllCardsList, err := fNode.getAllNPUCardsFromDeviceInfo(node, cardName)
 	if err != nil {
-		klog.V(util.LogDebugLev).Infof("getAllNPUCardsFromDeviceInfo: %s", util.SafePrint(err))
+		klog.V(util.LogInfoLev).Infof("getAllNPUCardsFromDeviceInfo: %s", util.SafePrint(err))
 	}
 	fNode.setAllCardList(tmpAllCardsList)
-	klog.V(util.LogInfoLev).Infof("Unallocated and fault cards from device info: %v", tmpAllCardsList)
+	klog.V(util.LogDebugLev).Infof("Unallocated and fault cards from device info: %v", tmpAllCardsList)
 	DeviceFaultReason, err := GetNodeDeviceFaultFromDeviceInfo(node)
 	if err != nil {
 		klog.V(util.LogDebugLev).Infof("GetNodeDeviceFaultFromDeviceInfo: %s", util.SafePrint(err))
@@ -215,7 +215,7 @@ func GetNodeDeviceFaultFromDeviceInfo(node *plugin.NPUNode) ([]FaultDeviceList, 
 	}
 	var deviceFault []FaultDeviceList
 	if unmarshalErr := json.Unmarshal([]byte(deviceFaultList), &deviceFault); unmarshalErr != nil {
-		klog.V(util.LogInfoLev).Infof("convertToDeviceFaultListFromCM Unmarshal: %s.", util.SafePrint(unmarshalErr))
+		klog.V(util.LogWarningLev).Infof("convertToDeviceFaultListFromCM Unmarshal: %s.", util.SafePrint(unmarshalErr))
 		return nil, unmarshalErr
 	}
 	return deviceFault, nil
@@ -248,7 +248,7 @@ func (fNode *FaultNode) updateFaultNodesAttr(node *plugin.NPUNode) error {
 
 func (fNode *FaultNode) setNodeHealthyByNodeD(node *plugin.NPUNode) {
 	if !fNode.isNodeDEnabled(node) {
-		klog.V(util.LogInfoLev).Infof("node %s nodeD not enabled", node.Name)
+		klog.V(util.LogDebugLev).Infof("node %s nodeD not enabled", node.Name)
 		fNode.setNodeDValue(false)
 		return
 	}
@@ -309,8 +309,8 @@ func (fNode *FaultNode) isNodeHealthyByHeartbeat() bool {
 			fNode.NodeName, nowTime, fNode.UpdateHeartbeatTime)
 	}
 	if latestInterval > maxInterval {
-		klog.V(util.LogErrorLev).Infof(" %s Time over %d [%d-%d],not health.",
-			fNode.NodeName, maxInterval, nowTime, fNode.UpdateHeartbeatTime)
+		klog.V(util.LogErrorLev).Infof(" %s Time over %d [%d-%d],not health,last heartbeat is %d.",
+			fNode.NodeName, maxInterval, nowTime, fNode.UpdateHeartbeatTime, fNode.OldHeartbeatTime)
 		return false
 	}
 	return true

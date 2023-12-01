@@ -96,21 +96,21 @@ func (tp *card910x2) PreStartAction(ssn *framework.Session) error {
 	tp.reHandle.SynCacheFaultJobWithSession(ssn)
 	// 1. restart Fault Jobs that are recorded in cache
 	if restartErr := tp.reHandle.RestartNeedForceDeleteJobs(ssn); restartErr != nil {
-		klog.V(util.LogInfoLev).Infof("%s RestartNeedForceDeleteJobs: %s", cardFullName, restartErr.Error())
+		klog.V(util.LogErrorLev).Infof("%s RestartNeedForceDeleteJobs: %s", cardFullName, restartErr.Error())
 	}
 	// 2. get all the new 910x2 jobs in session
 	runningJobs910x2, getRunErr := tp.reHandle.GetRunningJobs(ssn, util.NPU910CardName, util.CardAcceleratorType)
 	if getRunErr != nil {
-		klog.V(util.LogInfoLev).Infof("%s GetRunningJobs: %s", cardFullName, getRunErr.Error())
+		klog.V(util.LogDebugLev).Infof("%s GetRunningJobs: %s", cardFullName, getRunErr.Error())
 	}
 	// 3. get nodes of session and fault jobs of 910x2
 	err := tp.reHandle.AddFaultJobWithSession(runningJobs910x2, util.NPU910CardName, util.NPU910CardNamePre)
 	if err != nil {
-		klog.V(util.LogInfoLev).Infof("%s AddFaultJobWithSession", cardFullName)
+		klog.V(util.LogErrorLev).Infof("%s AddFaultJobWithSession %s", cardFullName, err)
 	}
 	// 4. restart the fault jobs
 	if restartErr := tp.reHandle.RestartFaultJobs(ssn); restartErr != nil {
-		klog.V(util.LogInfoLev).Infof("%s RestartFaultJobs: %s", cardFullName, restartErr.Error())
+		klog.V(util.LogErrorLev).Infof("%s RestartFaultJobs: %s", cardFullName, restartErr.Error())
 		return restartErr
 	}
 	return nil

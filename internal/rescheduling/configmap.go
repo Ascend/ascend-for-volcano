@@ -95,6 +95,7 @@ func (dealCM *DealReSchedulerConfigmap) createEmptyReCM(kubeClient kubernetes.In
 	cmData[jobType] = ""
 	cmData[CmNodeHeartbeatKind] = ""
 	cmData[CmNodeRankTimeMapKind] = ""
+	cmData[CmJobRemainRetryTimes] = ""
 	checkCode := util.MakeDataHash(cmData)
 	cmData[CmCheckCode] = checkCode
 
