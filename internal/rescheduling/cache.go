@@ -266,7 +266,7 @@ func (reCache *DealReSchedulerCache) writeFaultJobsToCMString() (string, error) 
 		}
 		return "", fmt.Errorf("writeFaultJobsToCM: %s", util.SafePrint(err))
 	}
-	jobData, err := reCache.marshalCacheDataToString(realFaultJob)
+	jobData, err := reCache.marshalCacheDataToString(getRealFaultJobForCM(realFaultJob))
 	if err != nil {
 		klog.V(util.LogErrorLev).Infof("WriteFaultJobsToCM: %s.", util.SafePrint(err))
 		return "", fmt.Errorf("writeFaultJobsToCM: %s", util.SafePrint(err))

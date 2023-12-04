@@ -349,3 +349,13 @@ func faultRetryTimeOfJob(job *api.JobInfo) int {
 	klog.V(util.LogInfoLev).Infof("get job: %s, fault-retry-times: %s", job.Name, value)
 	return v
 }
+
+func getRealFaultJobForCM(fJobs []FaultJob) []FaultJob {
+	var realFaultJobs []FaultJob
+	for _, fJob := range fJobs {
+		if fJob.IsFaultJob {
+			realFaultJobs = append(realFaultJobs, fJob)
+		}
+	}
+	return realFaultJobs
+}
