@@ -90,6 +90,7 @@ func (tp *module910bx16) PreStartAction(ssn *framework.Session) error {
 	tp.reHandle.NewCommonReScheduler(rescheduling.CmFaultJob910bx16Kind)
 	tp.reHandle.SynCacheFaultNodeWithSession(util.NPU910CardName)
 	tp.reHandle.AddFaultNodeWithSession(util.NPU910CardName)
+	tp.reHandle.SyncJobRemainRetryTimes(ssn)
 	tp.reHandle.SynCacheFaultJobWithSession(ssn)
 	tp.reHandle.SynCacheNodeRankOccMapWithSession(ssn)
 	// 1. restart Fault Jobs that are recorded in cache
