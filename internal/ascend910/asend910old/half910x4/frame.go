@@ -99,6 +99,7 @@ func (tp *half910x4) PreStartAction(ssn *framework.Session) error {
 	tp.reHandle.SynCacheFaultNodeWithSession(util.NPU910CardName)
 	tp.reHandle.AddFaultNodeWithSession(util.NPU910CardName)
 	tp.reHandle.SynCacheFaultJobWithSession(ssn)
+	tp.reHandle.SyncJobRemainRetryTimes(ssn)
 	tp.reHandle.SynCacheNodeRankOccMapWithSession(ssn)
 	// 1. restart Fault Jobs that are recorded in cache
 	if restartErr := tp.reHandle.RestartNeedForceDeleteJobs(ssn); restartErr != nil {
