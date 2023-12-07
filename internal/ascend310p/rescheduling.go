@@ -29,22 +29,22 @@ func (tp *ascend310P) preStartRescheduling(ssn *framework.Session) error {
 	tp.reHandle.SynCacheFaultJobWithSession(ssn)
 	// 1. restart Fault Jobs that are recorded in cache
 	if restartErr := tp.reHandle.RestartNeedForceDeleteJobs(ssn); restartErr != nil {
-		klog.V(util.LogInfoLev).Infof("%s RestartNeedForceDeleteJobs: %s",
+		klog.V(util.LogErrorLev).Infof("%s RestartNeedForceDeleteJobs: %s",
 			util.NPU310PCardName, restartErr.Error())
 	}
 	// 2. get all the new 310P jobs in session
 	runningJobs, getRunErr := tp.reHandle.GetRunningJobs(ssn, util.NPU310PCardName, util.ChipAcceleratorType)
 	if getRunErr != nil {
-		klog.V(util.LogInfoLev).Infof("%s GetRunningJobs: %s", util.NPU310PCardName, getRunErr.Error())
+		klog.V(util.LogDebugLev).Infof("%s GetRunningJobs: %s", util.NPU310PCardName, getRunErr.Error())
 	}
 	// 3. get nodes of session and fault jobs of 310P
 	err := tp.reHandle.AddFaultJobWithSession(runningJobs, util.NPU310PCardName, util.NPU310PCardNamePre)
 	if err != nil {
-		klog.V(util.LogInfoLev).Infof("%s AddFaultJobWithSession", util.NPU310PCardName)
+		klog.V(util.LogErrorLev).Infof("%s AddFaultJobWithSession %s", util.NPU310PCardName, err)
 	}
 	// 4. restart the fault jobs
 	if restartErr := tp.reHandle.RestartFaultJobs(ssn); restartErr != nil {
-		klog.V(util.LogInfoLev).Infof("%s RestartFaultJobs: %s", util.NPU310PCardName, restartErr.Error())
+		klog.V(util.LogErrorLev).Infof("%s RestartFaultJobs: %s", util.NPU310PCardName, restartErr.Error())
 		return restartErr
 	}
 	return nil

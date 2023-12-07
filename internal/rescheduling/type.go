@@ -144,6 +144,10 @@ const (
 	AcJobVersion = "mindxdl.gitee.com"
 )
 
+const (
+	getNoneJobsErr = "get none jobs"
+)
+
 // ReScheduler object for re-scheduling
 type ReScheduler struct {
 	*DealReSchedulerCache
@@ -235,6 +239,24 @@ type FaultTask struct {
 	PodUID        types.UID
 	faultType     string
 }
+
+// miniFaultTask struct for print fTask important infos to logs
+type miniFaultTask struct {
+	TaskName      string
+	NodeName      string
+	NodeRankIndex string
+	UseCardName   []string
+	Reason        []FaultReasonList
+	FaultType     string
+}
+
+// miniFaultJob struct for print fJobs important infos to logs
+type miniFaultJob struct {
+	ReferenceName   string
+	FaultTasks      []miniFaultTask
+	FaultRetryTimes int
+}
+
 type FaultReasonList struct {
 	NodeName string `json:"node_name"`
 	FaultDeviceList
