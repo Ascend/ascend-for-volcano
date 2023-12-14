@@ -109,7 +109,13 @@ func (sHandle *ScheduleHandler) InitJobsFromSsn(ssn *framework.Session) {
 		return
 	}
 	sHandle.Jobs = make(map[api.JobID]SchedulerJob, util.MapInitNum)
+	tmpJobServerInfos := make(map[api.JobID]struct{})
 	for jobID, jobInfo := range ssn.Jobs {
+		// mark the job which server list has been recorded in logs
+		if _, ok := sHandle.JobSeverInfos[jobID]; ok {
+			tmpJobServerInfos[jobID] = struct{}{}
+		}
+
 		sJob := SchedulerJob{}
 		if err := sJob.Init(jobInfo, sHandle); err != nil {
 			if err.Error() != notNPUJobError {
@@ -119,6 +125,7 @@ func (sHandle *ScheduleHandler) InitJobsFromSsn(ssn *framework.Session) {
 		}
 		sHandle.Jobs[jobID] = sJob
 	}
+	sHandle.JobSeverInfos = tmpJobServerInfos
 	return
 }
 
@@ -353,12 +360,16 @@ func (sHandle *ScheduleHandler) saveCacheToCm() {
 }
 
 // BeforeCloseHandler do the action before ssn close.
-func (sHandle *ScheduleHandler) BeforeCloseHandler(ssn *framework.Session) {
+func (sHandle *ScheduleHandler) BeforeCloseHandler() {
 	if sHandle == nil {
 		klog.V(util.LogInfoLev).Infof("BeforeCloseHandler failed: %s.", util.ArgumentError)
 		return
 	}
 	for _, job := range sHandle.Jobs {
+		if job.Status == util.PodGroupRunning {
+			job.recordTorAffinityJobServerList(sHandle)
+		}
+
 		if err := job.handler.PreStopAction(&sHandle.ScheduleEnv); err != nil {
 			if strings.Contains(err.Error(), util.ArgumentError) {
 				continue
@@ -543,8 +554,7 @@ func (sHandle *ScheduleHandler) SetTorAffinityJobNodesScore(task *api.TaskInfo, 
 		}
 		sHandle.Jobs[task.Job] = vcJob
 	}
-	errGet := sHandle.ScoreBestNPUNodes(task, nodes, scoreMap)
-	if errGet != nil {
+	if errGet := sHandle.ScoreBestNPUNodes(task, nodes, scoreMap); errGet != nil {
 		// get suitable node failed
 		klog.V(util.LogDebugLev).Infof("batchNodeOrderFn task[%s] failed[%s].", task.Name, util.SafePrint(errGet))
 	}

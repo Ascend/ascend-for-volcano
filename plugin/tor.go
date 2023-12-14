@@ -46,7 +46,9 @@ func (sHandle *ScheduleHandler) InitTorNodeInfo(ssn *framework.Session) {
 		return
 	}
 
-	torList := &TorList{}
+	torList := &TorList{
+		serverIps: map[string]string{},
+	}
 
 	if err = torList.ParseFromString(cm.Data[TorInfoCMKey]); err != nil {
 		klog.V(util.LogErrorLev).Infof("Unmarshal FaultNodes from cache failed %s", util.SafePrint(err))
@@ -55,16 +57,17 @@ func (sHandle *ScheduleHandler) InitTorNodeInfo(ssn *framework.Session) {
 
 	torList.SyncBySsnNodes(sHandle.Nodes)
 	torList.SyncBySsnJobs(sHandle.Jobs)
-
+	torList.initSeverMaps()
 	// refresh every ssn
 	sHandle.Tors = torList
 }
 
 // TorList tor info about nodes
 type TorList struct {
-	Version  string `json:"version"`
-	TorCount int    `json:"tor_count"`
-	Tors     []*Tor `json:"server_list"`
+	Version   string `json:"version"`
+	TorCount  int    `json:"tor_count"`
+	Tors      []*Tor `json:"server_list"`
+	serverIps map[string]string
 }
 
 type Tor struct {
@@ -119,6 +122,18 @@ func (tl *TorList) ParseFromString(info string) error {
 		return fmt.Errorf(util.ArgumentError)
 	}
 	return json.Unmarshal([]byte(info), tl)
+}
+
+func (tl *TorList) initSeverMaps() {
+	if tl == nil || len(tl.Tors) == 0 {
+		klog.V(util.LogInfoLev).Infof("initSeverMaps failed, err: %s", util.ArgumentError)
+		return
+	}
+	for _, tor := range tl.Tors {
+		for _, sr := range tor.Servers {
+			tl.serverIps[sr.Name] = tor.IP
+		}
+	}
 }
 
 func (tl *TorList) SyncBySsnNodes(nodes map[string]NPUNode) {

@@ -201,24 +201,6 @@ func GetJobNPUTasks(vcJob *api.JobInfo) map[api.TaskID]util.NPUTask {
 	return resultMap
 }
 
-// GetJobFirstTasksInfo get NPUTask from jobInfo.
-func GetJobFirstTasksInfo(vcJob *api.JobInfo) *api.TaskInfo {
-	if vcJob == nil {
-		return nil
-	}
-	if len(vcJob.Tasks) == 0 {
-		klog.V(util.LogDebugLev).Infof("GetJobNPUTasks %s not init has no task.", vcJob.Name)
-		return nil
-	}
-	for _, taskInf := range vcJob.Tasks {
-		if !IsNPUTask(taskInf) {
-			continue
-		}
-		return taskInf
-	}
-	return nil
-}
-
 // initSelfPluginByJobInfo init job's handler, the deal plugin.
 func (sJob *SchedulerJob) initSelfPluginByJobInfo(sHandle *ScheduleHandler) {
 	if sJob == nil {
@@ -268,6 +250,31 @@ func (sJob *SchedulerJob) Init(vcJob *api.JobInfo, sHandle *ScheduleHandler) err
 	return nil
 }
 
+func (sJob *SchedulerJob) recordTorAffinityJobServerList(sHandle *ScheduleHandler) {
+	if sJob == nil || sHandle == nil || !sJob.IsTorAffinityJob() {
+		return
+	}
+
+	// the job that has been recorded in the logs should not be recorded again
+	if _, found := sHandle.JobSeverInfos[sJob.Name]; found {
+		return
+	}
+
+	servers := map[string]string{}
+	for _, task := range sJob.Tasks {
+		if task.NodeName == "" {
+			return
+		}
+		servers[sHandle.Tors.serverIps[task.NodeName]] += task.NodeName + " "
+	}
+	str, err := json.Marshal(servers)
+	if err != nil {
+		return
+	}
+	sHandle.JobSeverInfos[sJob.Name] = struct{}{}
+	klog.V(util.LogWarningLev).Infof("record job %s serverList is %s", sJob.Name, string(str))
+}
+
 // setJobType get job type, used in vJob temporary.
 func (sJob *SchedulerJob) initVTasks(vcJob *api.JobInfo) {
 	for tID, t := range vcJob.Tasks {
@@ -282,6 +289,17 @@ func (sJob *SchedulerJob) initVTasks(vcJob *api.JobInfo) {
 		}
 		sJob.SchedulerJobAttr.NPUJob.Tasks[tID] = tmpTask
 	}
+}
+
+// IsTorAffinityJob check job is tor affinity job
+func (sJob *SchedulerJob) IsTorAffinityJob() bool {
+	if sJob == nil {
+		return false
+	}
+	if k, ok := sJob.Label[TorAffinityKey]; ok && (k == LargeModelTag || k == NormalSchema || k == NullTag) {
+		return true
+	}
+	return false
 }
 
 // initNPUJob get job type, used in vJob temporary.
@@ -386,7 +404,7 @@ func CheckNetSliceIsMeetJobRequire(sJob SchedulerJob, sHandler *ScheduleHandler,
 	n := sJob.NPUTaskNum - len(sJob.HealthTorRankIndex)
 	sort.Sort(TorLs(sHandler.Tors.Tors))
 	netSliceNum := sHandler.Tors.TorCount
-	if n < netSliceNum {
+	if sJob.NPUTaskNum < netSliceNum {
 		err := sJob.SetFillJobServerList(sHandler, sHandler.Tors.Tors, n)
 		if sJob.Label[TorAffinityKey] == LargeModelTag || err == nil {
 			return err
@@ -851,18 +869,17 @@ func (sHandle *ScheduleHandler) JobValid(obj interface{}) *api.ValidateResult {
 		return nil
 	}
 
-	k, ok := vcJob.Label[TorAffinityKey]
-	if ok && k != NullTag {
+	if vcJob.IsTorAffinityJob() {
 		if sHandle.Tors == nil {
-			reason := "job tor affinity check failed"
-			klog.V(util.LogErrorLev).Infof("%s job(%s) not ready:%s label is %s.", PluginName, job.Name,
-				reason, k)
+			reason := "job tor affinity check failed, cluster basic-tor-node-cm is not imported"
+			klog.V(util.LogWarningLev).Infof(reason)
 			return &api.ValidateResult{Pass: false, Reason: reason,
 				Message: fmt.Sprintf("validJobFn [%#v] failed:%s", obj, reason)}
 		}
 	}
-	if ok && k != LargeModelTag && k != NormalSchema && k != NullTag {
-		reason := "job tor affinity label check failed"
+	if k, ok := vcJob.Label[TorAffinityKey]; ok && k != LargeModelTag && k != NormalSchema && k != NullTag {
+		reason := fmt.Sprintf("job tor affinity label check failed,tor-affinity label value is %s", k)
+		klog.V(util.LogWarningLev).Infof(reason)
 		return &api.ValidateResult{Pass: false, Reason: reason,
 			Message: fmt.Sprintf("validJobFn [%#v] failed:%s label is %s ", obj, reason, k)}
 	}
