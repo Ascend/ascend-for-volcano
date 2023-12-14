@@ -563,15 +563,7 @@ func (reScheduler *ReScheduler) SynCacheFaultJobWithSession(ssn *framework.Sessi
 
 		jobInfo := faultJob.jobInfoInSession(ssn.Jobs)
 		if jobInfo == nil {
-			klog.V(util.LogDebugLev).Infof("faultJob name: %s not in session", faultJob.JobName)
-			if !faultJob.CheckJobExistsInKubernetes(ssn) { // 1.1 delete jobs not in session or k8s
-				klog.V(util.LogWarningLev).Infof(
-					"delete %s from re-scheduler cache due to not existence in session and k8s.", faultJob.JobName)
-				continue
-			}
-			faultJob.UpdateTime = nowTime
-			faultJob.IsInSession = false
-			updatedFaultJobs = append(updatedFaultJobs, faultJob) // 1.2 keep jobs not in session but in k8s
+			klog.V(util.LogWarningLev).Infof("faultJob name: %s not in session", faultJob.JobName)
 			continue
 		}
 		// 2. cache Jobs turned normal in session should be deleted ,meaning it has been restarted
