@@ -129,7 +129,6 @@ func buildBeforeCloseHandler() []beforeCloseHandlerTest {
 
 func TestBeforeCloseHandler(t *testing.T) {
 	tests := buildBeforeCloseHandler()
-	var ssn *framework.Session
 	tmpPatche := gomonkey.ApplyFunc(util.CreateOrUpdateConfigMap,
 		func(k8s kubernetes.Interface, cm *v1.ConfigMap, cmName, cmNameSpace string) error {
 			return nil
@@ -144,7 +143,7 @@ func TestBeforeCloseHandler(t *testing.T) {
 				NPUPlugins:  tt.fields.NPUPlugins,
 				ScheduleEnv: tt.fields.ScheduleEnv,
 			}
-			sHandle.BeforeCloseHandler(ssn)
+			sHandle.BeforeCloseHandler()
 		})
 	}
 	tmpPatche.Reset()

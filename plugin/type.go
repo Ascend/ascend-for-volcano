@@ -126,12 +126,13 @@ type FaultRankIdData struct {
 
 // ScheduleEnv for job scheduler context.
 type ScheduleEnv struct {
-	Jobs        map[api.JobID]SchedulerJob
-	Nodes       map[string]NPUNode
-	DeviceInfos *DeviceInfosWithMutex
-	FrameAttr   VolcanoFrame
-	Cache       ScheduleCache
-	Tors        *TorList
+	Jobs          map[api.JobID]SchedulerJob
+	Nodes         map[string]NPUNode
+	JobSeverInfos map[api.JobID]struct{}
+	DeviceInfos   *DeviceInfosWithMutex
+	FrameAttr     VolcanoFrame
+	Cache         ScheduleCache
+	Tors          *TorList
 }
 
 // DeviceInfosWithMutex information for the current plugin

@@ -186,7 +186,7 @@ func (tp *huaweiNPUPlugin) OnSessionClose(ssn *framework.Session) {
 			tp.Scheduler.SetJobPendReasonByNodesCase(job)
 		}
 	}
-	tp.Scheduler.BeforeCloseHandler(ssn)
+	tp.Scheduler.BeforeCloseHandler()
 }
 
 // HandlerStart HuaWei NPU plugin start by frame.
@@ -194,8 +194,9 @@ func HandlerStart() *plugin.ScheduleHandler {
 	scheduleHandler := &plugin.ScheduleHandler{
 		NPUPlugins: map[string]plugin.NPUBuilder{},
 		ScheduleEnv: plugin.ScheduleEnv{
-			Jobs:  map[api.JobID]plugin.SchedulerJob{},
-			Nodes: map[string]plugin.NPUNode{},
+			Jobs:          map[api.JobID]plugin.SchedulerJob{},
+			JobSeverInfos: map[api.JobID]struct{}{},
+			Nodes:         map[string]plugin.NPUNode{},
 			DeviceInfos: &plugin.DeviceInfosWithMutex{
 				Mutex:   sync.Mutex{},
 				Devices: map[string]plugin.NodeDeviceInfo{},
